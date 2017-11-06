@@ -25,3 +25,7 @@
 [submodule "thirdparty/Configuru"]
 	path = thirdparty/Configuru
 	url = https://github.com/emilk/Configuru.git
+[submodule "thirdparty/PS3EYEDriver"]
+	path = thirdparty/PS3EYEDriver
+	url = https://github.com/zelmon64/PS3EYEDriver.git
+	branch = set_resolution
