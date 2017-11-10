@@ -1,0 +1,50 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build directories
+build*
+bin*
+
+# Auto-downloaded Dependencies
+deps
+
+# Auto-generated Documentation
+docs
+
+# Local Scripts
+SetBuildVars.bat
+SetBuildVars_Win32.bat
+SetBuildVars_X64.bat
+
+
+# Allow source model files
+!src/psmoveconfigtool/source_assets/*.obj
+!src/openvr_plugin/resources/*.obj
+
+*.kdev4
