@@ -1,4 +1,6 @@
 # Step into the subdirectories
+MESSAGE(STATUS "Stepping into psvrmath")
+add_subdirectory(psvrmath)
 MESSAGE(STATUS "Stepping into psvrservice")
 add_subdirectory(psvrservice)
 MESSAGE(STATUS "Stepping into psvrconfigtool")

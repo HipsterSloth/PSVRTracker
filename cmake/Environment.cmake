@@ -39,11 +39,11 @@ else()
     endif()
 endif()
 
-#I cannot remember which one, but one of our dependencies
-#links against static runtime, so we need our apps to link
-#against the static runtime too.
-#https://cmake.org/Wiki/CMake_FAQ#How_can_I_build_my_MSVC_application_with_a_static_runtime.3F
 IF(MSVC)
+	#I cannot remember which one, but one of our dependencies
+	#links against static runtime, so we need our apps to link
+	#against the static runtime too.
+	#https://cmake.org/Wiki/CMake_FAQ#How_can_I_build_my_MSVC_application_with_a_static_runtime.3F
     SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
     SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 
@@ -58,6 +58,9 @@ IF(MSVC)
     foreach(CompilerFlag ${CompilerFlags})
       string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
     endforeach()
+
+    # fix: fatal error C1128: number of sections exceeded object file format limit
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")	
 ELSE()
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch")
 ENDIF(MSVC)

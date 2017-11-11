@@ -83,7 +83,7 @@ file(GLOB PSVR_UTILS_SRC
 )
 source_group("Utils" FILES ${PSVR_UTILS_SRC})
 
-set(PSVRSERVICE_SRC
+set(PSVR_SERVICE_SRC
 	${PSVR_CLIENTAPI_SRC}
     ${PSVR_CONFIG_SRC}
     ${PSVR_DEVICE_ENUM_SRC}
@@ -124,7 +124,7 @@ list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/thirdparty/kalman/include)
 
 # hidapi
 list(APPEND PSVR_SERVICE_INCL_DIRS ${HIDAPI_INCLUDE_DIRS})
-list(APPEND PSVRSERVICE_SRC ${HIDAPI_SRC})
+list(APPEND PSVR_SERVICE_SRC ${HIDAPI_SRC})
 list(APPEND PSVR_SERVICE_REQ_LIBS ${HIDAPI_LIBS})
 
 # LibUSB for device management
@@ -135,12 +135,16 @@ list(APPEND PSVR_SERVICE_REQ_LIBS ${LIBUSB_LIBRARIES})
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     # Windows utilities for querying driver infomation (provider name)
     list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Platform)
-    list(APPEND PSVRSERVICE_SRC
+    list(APPEND PSVR_SERVICE_SRC
         ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.h
         ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.cpp)
 ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ELSE()
 ENDIF()
+
+# PSMoveMath
+list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psvrmath/)
+list(APPEND PSVR_SERVICE_REQ_LIBS PSVRMath)
 
 # Tracker
 # Requires OpenCV, PS3EYEDriver (Mac/Win64), CLEye (Win32)
@@ -152,12 +156,12 @@ ENDIF()
 list(APPEND PSVR_SERVICE_REQ_LIBS ${OpenCV_LIBS})
 
 # PS Eye - This brings in LIBUSB on Windows and Mac, but not Linux
-list(APPEND PSVRSERVICE_SRC ${PSEYE_SRC})
+list(APPEND PSVR_SERVICE_SRC ${PSEYE_SRC})
 list(APPEND PSVR_SERVICE_INCL_DIRS ${PSEYE_INCLUDE_DIRS})
 list(APPEND PSVR_SERVICE_REQ_LIBS ${PSEYE_LIBRARIES})
 
 # Shared library
-add_library(PSVRService SHARED ${PSVRSERVICE_SRC})
+add_library(PSVRService SHARED ${PSVR_SERVICE_SRC})
 target_include_directories(PSVRService PUBLIC ${PSVR_SERVICE_INCL_DIRS})
 target_link_libraries(PSVRService PRIVATE ${PSVR_SERVICE_REQ_LIBS})
 set_target_properties(PSVRService PROPERTIES PUBLIC_HEADER "ClientConstants.h;ClientGeometry_CAPI.h;PSMoveClient_CAPI.h;PSMoveClient_export.h")

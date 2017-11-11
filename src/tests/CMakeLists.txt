@@ -68,18 +68,18 @@ ENDIF()
 #
 
 list(APPEND UNIT_TEST_INCL_DIRS
-    ${ROOT_DIR}/src/psvrservice/Math/)
+    ${ROOT_DIR}/src/psvrmath/)
 
 # Eigen math library
 list(APPEND UNIT_TEST_INCL_DIRS ${EIGEN3_INCLUDE_DIR})
 
 list(APPEND UNIT_TEST_SRC
-    ${ROOT_DIR}/src/psvrservice/Math/MathAlignment.h
-    ${ROOT_DIR}/src/psvrservice/Math/MathAlignment.cpp
-    ${ROOT_DIR}/src/psvrservice/Math/MathEigen.h
-    ${ROOT_DIR}/src/psvrservice/Math/MathEigen.cpp
-    ${ROOT_DIR}/src/psvrservice/Math/MathUtility.h
-    ${ROOT_DIR}/src/psvrservice/Math/MathUtility.cpp
+    ${ROOT_DIR}/src/psvrmath/MathAlignment.h
+    ${ROOT_DIR}/src/psvrmath/MathAlignment.cpp
+    ${ROOT_DIR}/src/psvrmath/MathEigen.h
+    ${ROOT_DIR}/src/psvrmath/MathEigen.cpp
+    ${ROOT_DIR}/src/psvrmath/MathUtility.h
+    ${ROOT_DIR}/src/psvrmath/MathUtility.cpp
     ${ROOT_DIR}/src/tests/math_alignment_unit_tests.cpp
     ${ROOT_DIR}/src/tests/math_eigen_unit_tests.cpp
     ${ROOT_DIR}/src/tests/math_utility_unit_tests.cpp
