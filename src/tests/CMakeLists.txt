@@ -19,27 +19,25 @@ list(APPEND TEST_CAMERA_REQ_LIBS ${PSEYE_LIBRARIES})
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows"
     AND NOT(${CMAKE_C_SIZEOF_DATA_PTR} EQUAL 8))
     # Windows utilities for querying driver infomation (provider name)
-    list(APPEND TEST_CAMERA_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Device/Interface)
-    list(APPEND TEST_CAMERA_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Server)
-    list(APPEND TEST_CAMERA_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Platform)
-    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psmoveservice/Device/Interface/DevicePlatformInterface.h)
-    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psmoveservice/Server/ServerLog.h)
-    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psmoveservice/Server/ServerLog.cpp)
-    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psmoveservice/Platform/PlatformDeviceAPIWin32.h)
-    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psmoveservice/Platform/PlatformDeviceAPIWin32.cpp)   
+    list(APPEND TEST_CAMERA_INCL_DIRS ${ROOT_DIR}/src/psvrservice/Device/Interface)
+    list(APPEND TEST_CAMERA_INCL_DIRS ${ROOT_DIR}/src/psvrservice/Service)
+    list(APPEND TEST_CAMERA_INCL_DIRS ${ROOT_DIR}/src/psvrservice/Platform)
+    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psvrservice/Device/Interface/DevicePlatformInterface.h)
+    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psvrservice/Service/ServerLog.h)
+    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psvrservice/Service/ServerLog.cpp)
+    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psvrservice/Platform/PlatformDeviceAPIWin32.h)
+    list(APPEND TEST_CAMERA_SRC ${ROOT_DIR}/src/psvrservice/Platform/PlatformDeviceAPIWin32.cpp)   
 ENDIF()
 
 # Our custom OpenCV VideoCapture classes
-# We could include the PSMoveService project but we want our test as isolated as possible.
+# We could include the psvrservice project but we want our test as isolated as possible.
 list(APPEND TEST_CAMERA_INCL_DIRS 
-    ${ROOT_DIR}/src/psmoveclient/
-    ${ROOT_DIR}/src/psmoveprotocol/
-    ${ROOT_DIR}/src/psmoveservice/PSMoveTracker/PSEye)
+    ${ROOT_DIR}/src/psvrservice/ClientAPI/
+    ${ROOT_DIR}/src/psvrservice/PSVRTracker/PSEye)
 list(APPEND TEST_CAMERA_SRC
-    ${ROOT_DIR}/src/psmoveclient/ClientConstants.h
-    ${ROOT_DIR}/src/psmoveprotocol/SharedConstants.h
-    ${ROOT_DIR}/src/psmoveservice/PSMoveTracker/PSEye/PSEyeVideoCapture.h
-    ${ROOT_DIR}/src/psmoveservice/PSMoveTracker/PSEye/PSEyeVideoCapture.cpp)
+    ${ROOT_DIR}/src/psvrservice/ClientAPI/ClientConstants.h
+    ${ROOT_DIR}/src/psvrservice/PSVRTracker/PSEye/PSEyeVideoCapture.h
+    ${ROOT_DIR}/src/psvrservice/PSVRTracker/PSEye/PSEyeVideoCapture.cpp)
 
 # The test_camera app
 add_executable(test_camera ${CMAKE_CURRENT_LIST_DIR}/test_camera.cpp ${TEST_CAMERA_SRC})
@@ -70,18 +68,18 @@ ENDIF()
 #
 
 list(APPEND UNIT_TEST_INCL_DIRS
-    ${ROOT_DIR}/src/psmovemath/)
+    ${ROOT_DIR}/src/psvrservice/Math/)
 
 # Eigen math library
 list(APPEND UNIT_TEST_INCL_DIRS ${EIGEN3_INCLUDE_DIR})
 
 list(APPEND UNIT_TEST_SRC
-    ${ROOT_DIR}/src/psmovemath/MathAlignment.h
-    ${ROOT_DIR}/src/psmovemath/MathAlignment.cpp
-    ${ROOT_DIR}/src/psmovemath/MathEigen.h
-    ${ROOT_DIR}/src/psmovemath/MathEigen.cpp
-    ${ROOT_DIR}/src/psmovemath/MathUtility.h
-    ${ROOT_DIR}/src/psmovemath/MathUtility.cpp
+    ${ROOT_DIR}/src/psvrservice/Math/MathAlignment.h
+    ${ROOT_DIR}/src/psvrservice/Math/MathAlignment.cpp
+    ${ROOT_DIR}/src/psvrservice/Math/MathEigen.h
+    ${ROOT_DIR}/src/psvrservice/Math/MathEigen.cpp
+    ${ROOT_DIR}/src/psvrservice/Math/MathUtility.h
+    ${ROOT_DIR}/src/psvrservice/Math/MathUtility.cpp
     ${ROOT_DIR}/src/tests/math_alignment_unit_tests.cpp
     ${ROOT_DIR}/src/tests/math_eigen_unit_tests.cpp
     ${ROOT_DIR}/src/tests/math_utility_unit_tests.cpp

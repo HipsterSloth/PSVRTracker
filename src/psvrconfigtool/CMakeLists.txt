@@ -30,7 +30,7 @@ target_include_directories(PSVRTracker PUBLIC ${PSVRTRACKER_INCL_DIRS})
 target_link_libraries(PSVRTracker ${PSVRTRACKER_REQ_LIBS})
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-add_dependencies(PSMoveService opencv)
+add_dependencies(PSVRTracker opencv)
 ENDIF()
 
 #MacOS OpenCV must be self-built, this links against older std, which is hidden

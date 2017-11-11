@@ -154,17 +154,25 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         version.lib)
 ENDIF()
 
+# libusb
+IF (NOT LIBUSB_INCLUDE_DIR OR NOT LIBUSB_LIBRARIES)
+	IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR (${CMAKE_SYSTEM_NAME} MATCHES "Windows"))    
+		#Requires libusb
+		find_package(USB1 REQUIRED)
+	ENDIF()
+ENDIF()
+
 # For PSEye camera
 set(PSEYE_SRC)
 set(PSEYE_INCLUDE_DIRS)
 set(PSEYE_LIBRARIES)
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR (${CMAKE_SYSTEM_NAME} MATCHES "Windows"))    
 	#PS4EYEDriver
-    list(APPEND PSEYE_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/src)
+    list(APPEND PSEYE_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/include)
     list(APPEND PSEYE_SRC
-        ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/include/ps4eye.h
-		${ROOT_DIR}/thirdparty/PS4-Eye-Driver/include/ps4eye_regs.h
-        ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/src/ps4eye.cpp)
+        ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/include/ps4eye.h
+		${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/include/ps4eye_regs.h
+        ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/src/ps4eye.cpp)
 	
     #PS3EYEDriver
     list(APPEND PSEYE_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/PS3EYEDriver/src)
@@ -174,7 +182,6 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR (${CMAKE_SYSTEM_NAME} MATCHES "Wind
     add_definitions(-DHAVE_PS3EYE)
 	
     #Requires libusb
-    find_package(USB1 REQUIRED)
     list(APPEND PSEYE_INCLUDE_DIRS ${LIBUSB_INCLUDE_DIR})
     list(APPEND PSEYE_LIBRARIES ${LIBUSB_LIBRARIES})
 	
