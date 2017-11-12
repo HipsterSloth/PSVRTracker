@@ -47,10 +47,10 @@ struct PersistentRequestConnectionState
 };
 
 //-- implementation -----
-class ServerRequestHandler
+class ServiceRequestHandler
 {
 public:
-    ServerRequestHandler(
+    ServiceRequestHandler(
 		class DeviceManager *device_manager,
 		class IDataFrameListener *data_frame_listener)
         : m_deviceManager(device_manager)
@@ -59,7 +59,7 @@ public:
     {
     }
 
-    virtual ~ServerRequestHandler()
+    virtual ~ServiceRequestHandler()
     {
 		delete m_peristentRequestState;
     }
@@ -111,7 +111,7 @@ public:
 
     void publish_tracker_data_frame(
         class ServerTrackerView *tracker_view,
-            ServerRequestHandler::t_generate_tracker_data_frame_for_stream callback)
+            ServiceRequestHandler::t_generate_tracker_data_frame_for_stream callback)
     {
         int tracker_id = tracker_view->getDeviceID();
 
@@ -138,7 +138,7 @@ public:
 
     void publish_hmd_data_frame(
         class ServerHMDView *hmd_view,
-        ServerRequestHandler::t_generate_hmd_data_frame_for_stream callback)
+        ServiceRequestHandler::t_generate_hmd_data_frame_for_stream callback)
     {
         int hmd_id = hmd_view->getDeviceID();
 
@@ -689,7 +689,8 @@ public:
 	}
 
     PSVRResult start_hmd_data_stream(
-        const PSVRHmdID hmd_id)
+        const PSVRHmdID hmd_id,
+        unsigned int data_stream_flags)
     {
 		PSVRResult result= PSVRResult_Error;
 

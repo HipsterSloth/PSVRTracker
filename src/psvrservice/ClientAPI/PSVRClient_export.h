@@ -37,7 +37,7 @@
 #endif
 
 #ifndef PSVR_PUBLIC_FUNCTION
-    #if defined(PSVRClient_EXPORTS)  // CMake-defined when creating shared library
+    #if defined(PSVRService_EXPORTS)  // CMake-defined when creating shared library
         #if defined _WIN32 || defined __CYGWIN__
             #define PSVR_PUBLIC_FUNCTION(rval)       PSVR_EXTERN_C    __declspec(dllexport)                   rval    PSVR_CALL
             #define PSVR_PUBLIC_CLASS                                __declspec(dllexport)

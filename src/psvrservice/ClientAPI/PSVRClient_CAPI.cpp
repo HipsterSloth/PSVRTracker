@@ -60,19 +60,16 @@ PSVRResult PSVR_Initialize(PSVRLogSeverityLevel log_level)
 	
 	if (result == PSVRResult_Success)
 	{
-		if (g_psvr_client == nullptr || !g_psvr_client->getIsInitialized())
+		if (g_psvr_client == nullptr)
 		{
-			if (g_psvr_client == nullptr)
-			{
-				g_psvr_client= new PSVRClient();
-			}
+			g_psvr_client= new PSVRClient(g_psvr_service->getRequestHandler());
+		}
 
-			if (!g_psvr_client->startup(log_level))
-			{
-				delete g_psvr_client;
-				g_psvr_client= nullptr;
-				result= PSVRResult_Error;
-			}
+		if (!g_psvr_client->startup(log_level))
+		{
+			delete g_psvr_client;
+			g_psvr_client= nullptr;
+			result= PSVRResult_Error;
 		}
 	}
 
@@ -124,7 +121,7 @@ PSVRResult PSVR_Update()
 {
     PSVRResult result = PSVRResult_Error;
 
-    if (PSVR_UpdateNoPollMessages() == PSVRResult_Success)
+    if (PSVR_UpdateNoPollEvents() == PSVRResult_Success)
     {
 		// Process all events and responses
 		// Any incoming events become status flags we can poll (ex: pollHasConnectionStatusChanged)
@@ -136,7 +133,7 @@ PSVRResult PSVR_Update()
     return result;
 }
 
-PSVRResult PSVR_UpdateNoPollMessages()
+PSVRResult PSVR_UpdateNoPollEvents()
 {
     PSVRResult result= PSVRResult_Error;
 
@@ -190,9 +187,9 @@ PSVRResult PSVR_GetTrackerScreenSize(PSVRTrackerID tracker_id, PSVRVector2f *out
 {
     PSVRResult result= PSVRResult_Error;
 
-    if (g_PSVR_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        PSVRTracker *tracker= g_PSVR_client->get_tracker_view(tracker_id);
+        PSVRTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
 
         switch (tracker->tracker_info.tracker_intrinsics.intrinsics_type)
         {
@@ -216,9 +213,9 @@ PSVRResult PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrin
 {
     PSVRResult result= PSVRResult_Error;
 
-    if (g_PSVR_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		PSVRTracker *tracker= g_PSVR_client->get_tracker_view(tracker_id);
+		PSVRTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
 
         *out_intrinsics= tracker->tracker_info.tracker_intrinsics;
 		result= PSVRResult_Success;
@@ -230,14 +227,14 @@ PSVRResult PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrin
 /// Tracker Requests
 PSVRResult PSVR_GetTrackerList(PSVRTrackerList *out_tracker_list)
 {
-    PSVRResult result_code= PSVRResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr)
     {
-		result_code= g_psvr_service->get_tracker_list(out_tracker_list);
+		result= g_psvr_service->getRequestHandler()->get_tracker_list(out_tracker_list);
     }
     
-    return result_code;
+    return result;
 }
 
 PSVRResult PSVR_StartTrackerDataStream(PSVRTrackerID tracker_id)
@@ -246,7 +243,7 @@ PSVRResult PSVR_StartTrackerDataStream(PSVRTrackerID tracker_id)
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		result_code= g_psvr_service->start_tracker_data_stream(tracker_id);
+		result= g_psvr_service->getRequestHandler()->start_tracker_data_stream(tracker_id);
     }
 
     return result;
@@ -258,7 +255,7 @@ PSVRResult PSVR_StopTrackerDataStream(PSVRTrackerID tracker_id)
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		result_code= g_psvr_service->start_tracker_data_stream(tracker_id);
+		result= g_psvr_service->getRequestHandler()->start_tracker_data_stream(tracker_id);
     }
 
     return result;
@@ -266,14 +263,14 @@ PSVRResult PSVR_StopTrackerDataStream(PSVRTrackerID tracker_id)
 
 PSVRResult PSVR_GetTrackingSpaceSettings(PSVRTrackingSpace *out_tracking_space)
 {
-    PSVRResult result_code= PSVRResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr)
     {
-        result_code= g_psvr_service->get_tracking_space_settings(out_tracking_space);
+        result= g_psvr_service->getRequestHandler()->get_tracking_space_settings(out_tracking_space);
     }
     
-    return result_code;
+    return result;
 }
 
 PSVRResult PSVR_OpenTrackerVideoStream(PSVRTrackerID tracker_id)
@@ -306,9 +303,9 @@ PSVRResult PSVR_GetTrackerVideoFrameSectionCount(PSVRTrackerID tracker_id, int *
     PSVRResult result= PSVRResult_Error;
 	assert(out_section_count != nullptr);
 
-    if (g_PSVR_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        *out_section_count= g_PSVR_client->get_video_frame_section_count(tracker_id);
+        *out_section_count= g_psvr_client->get_video_frame_section_count(tracker_id);
 		result= PSVRResult_Success;
     }
 
@@ -322,7 +319,7 @@ PSVRResult PSVR_GetTrackerVideoFrameBuffer(PSVRTrackerID tracker_id, PSVRVideoFr
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        const unsigned char *buffer= g_psvr_client->get_video_frame_buffer(tracker_id);
+        const unsigned char *buffer= g_psvr_client->get_video_frame_buffer(tracker_id, section_index);
 		if (buffer != nullptr)
 		{
 			*out_buffer= buffer;
@@ -551,7 +548,7 @@ PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProje
 {
 	PSVRResult result= PSVRResult_Error;
 	
-    if (g_PSVR_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
         PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -689,7 +686,7 @@ PSVRResult PSVR_GetHmdTrackingShape(PSVRHmdID hmd_id, PSVRTrackingShape *out_sha
 	
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-	    result= g_psvr_service->get_hmd_tracking_shape(hmd_id, out_shape);
+	    result= g_psvr_service->getRequestHandler()->get_hmd_tracking_shape(hmd_id, out_shape);
 	}
 
     return result;
@@ -702,7 +699,7 @@ PSVRResult PSVR_GetHmdList(PSVRHmdList *out_hmd_list)
 
     if (g_psvr_service != nullptr)
     {
-	    result= g_psvr_service->get_hmd_list(out_hmd_list);
+	    result= g_psvr_service->getRequestHandler()->get_hmd_list(out_hmd_list);
     }
     
     return result;
@@ -714,7 +711,7 @@ PSVRResult PSVR_StartHmdDataStream(PSVRHmdID hmd_id, unsigned int data_stream_fl
 
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-		result= g_psvr_service->start_hmd_data_stream(hmd_id, data_stream_flags);
+		result= g_psvr_service->getRequestHandler()->start_hmd_data_stream(hmd_id, data_stream_flags);
     }
 
     return result;
@@ -726,7 +723,7 @@ PSVRResult PSVR_StopHmdDataStream(PSVRHmdID hmd_id)
 
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-		result= g_psvr_service->stop_hmd_data_stream(hmd_id);
+		result= g_psvr_service->getRequestHandler()->stop_hmd_data_stream(hmd_id);
     }
 
     return result;
@@ -740,7 +737,7 @@ PSVRResult PSVR_SetHmdDataStreamTrackerIndex(PSVRHmdID hmd_id, PSVRTrackerID tra
         IS_VALID_HMD_INDEX(hmd_id) &&
         IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		result= g_psvr_service->set_hmd_data_stream_tracker_index(hmd_id, tracker_id);
+		result= g_psvr_service->getRequestHandler()->set_hmd_data_stream_tracker_index(hmd_id, tracker_id);
     }
 
     return result;

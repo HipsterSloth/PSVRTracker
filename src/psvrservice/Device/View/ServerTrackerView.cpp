@@ -939,7 +939,7 @@ void ServerTrackerView::publish_device_data_frame()
     
     // Tell the server request handler we want to send out tracker updates.
     // This will call generate_tracker_data_frame_for_stream for each listening connection.
-    ServerRequestHandler::get_instance()->publish_tracker_data_frame(
+    ServiceRequestHandler::get_instance()->publish_tracker_data_frame(
         this, &ServerTrackerView::generate_tracker_data_frame_for_stream);
 }
 

@@ -730,16 +730,16 @@ void ServerHMDView::publish_device_data_frame()
 {
     // Tell the server request handler we want to send out HMD updates.
     // This will call generate_hmd_data_frame_for_stream for each listening connection.
-    ServerRequestHandler::get_instance()->publish_hmd_data_frame(
+    ServiceRequestHandler::get_instance()->publish_hmd_data_frame(
         this, &ServerHMDView::generate_hmd_data_frame_for_stream);
 }
 
 void ServerHMDView::generate_hmd_data_frame_for_stream(
     const ServerHMDView *hmd_view,
     const struct HMDStreamInfo *stream_info,
-    DeviceOutputDataFramePtr &data_frame)
+    DeviceOutputDataFrame &data_frame)
 {
-    PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame =
+    HMDDataPacket *hmd_data_frame =
         data_frame->mutable_hmd_data_packet();
 
     hmd_data_frame->set_hmd_id(hmd_view->getDeviceID());

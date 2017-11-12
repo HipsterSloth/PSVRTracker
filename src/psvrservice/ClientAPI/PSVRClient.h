@@ -25,20 +25,21 @@ public:
 	bool pollHasTrackerListChanged();
 	bool pollHasHMDListChanged();
 
-    // -- ClientPSVRAPI System -----
+    // -- Client PSVR API System -----
     bool startup(PSVRLogSeverityLevel log_level);
     void update();
 	void process_messages();
     bool poll_next_message(PSVREventMessage *message, size_t message_size);
     void shutdown();
 
-    // -- ClientPSVRAPI Requests -----
+    // -- Client PSVR API Requests -----
     bool allocate_tracker_listener(const PSVRClientTrackerInfo &trackerInfo);
     void free_tracker_listener(PSVRTrackerID tracker_id);
     PSVRTracker* get_tracker_view(PSVRTrackerID tracker_id);
 	bool open_video_stream(PSVRTrackerID tracker_id);
 	void close_video_stream(PSVRTrackerID tracker_id);
-	const unsigned char *get_video_frame_buffer(PSVRTrackerID tracker_id) const;
+    int get_video_frame_section_count(PSVRTrackerID tracker_id) const;
+	const unsigned char *get_video_frame_buffer(PSVRTrackerID tracker_id, PSVRVideoFrameSection section) const;
 
     bool allocate_hmd_listener(PSVRHmdID HmdID);
     void free_hmd_listener(PSVRHmdID HmdID);   
@@ -46,7 +47,7 @@ public:
     
 protected:
     // IDataFrameListener
-    virtual void handle_data_frame(const DeviceOutputDataFrame *data_frame) override;
+    virtual void handle_data_frame(const DeviceOutputDataFrame &data_frame) override;
 
     // INotificationListener
     virtual void handle_notification(const PSVREventMessage &response) override;

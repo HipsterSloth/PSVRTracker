@@ -9,7 +9,7 @@ enum DeviceCategory
 {
 	DeviceCategory_TRACKER= 0,
 	DeviceCategory_HMD= 1
-}
+};
 
 struct TrackerDataPacket
 {
@@ -48,11 +48,12 @@ public:
     SharedVideoFrameBuffer();
     ~SharedVideoFrameBuffer();
 
-    bool initialize(const char *buffer_name, int width, int height, int stride);
+    bool initialize(const char *buffer_name, int width, int height, int stride, int section_count);
     void dispose();
     void writeVideoFrame(const unsigned char *buffer);
-    const unsigned char *getBuffer() const;
-    unsigned char *getBufferMutable();
+    inline int getSectionCount() const { return m_section_count; }
+    const unsigned char *getBuffer(PSVRVideoFrameSection section) const;
+    unsigned char *getBufferMutable(PSVRVideoFrameSection section);
     static size_t computeVideoBufferSize(int stride, int height);
 
 private:
@@ -60,6 +61,7 @@ private:
 	int m_width;
     int m_height;
     int m_stride;
+    int m_section_count;
 	unsigned char *m_buffer;
 	int m_frame_index;	
 };

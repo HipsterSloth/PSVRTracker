@@ -68,13 +68,13 @@ struct HMDStreamInfo
     }
 };
 
-class ServerRequestHandler 
+class ServiceRequestHandler 
 {
 public:
-    ServerRequestHandler(DeviceManager *deviceManager);
-    virtual ~ServerRequestHandler();
+    ServiceRequestHandler(DeviceManager *deviceManager);
+    virtual ~ServiceRequestHandler();
 
-    static ServerRequestHandler *get_instance() { return m_instance; }
+    static ServiceRequestHandler *get_instance() { return m_instance; }
 
     bool startup();
     void update();
@@ -88,7 +88,7 @@ public:
     typedef void(*t_generate_tracker_data_frame_for_stream)(
         const class ServerTrackerView *tracker_view,
         const TrackerStreamInfo *stream_info,
-        DeviceOutputDataFramePtr &data_frame);
+        DeviceOutputDataFrame &data_frame);
     void publish_tracker_data_frame(
         class ServerTrackerView *tracker_view, t_generate_tracker_data_frame_for_stream callback);
         
@@ -100,7 +100,7 @@ public:
     typedef void(*t_generate_hmd_data_frame_for_stream)(
         const class ServerHMDView *hmd_view,
         const HMDStreamInfo *stream_info,
-        DeviceOutputDataFramePtr &data_frame);
+        DeviceOutputDataFrame &data_frame);
     void publish_hmd_data_frame(
         class ServerHMDView *hmd_view, t_generate_hmd_data_frame_for_stream callback);
 
@@ -111,7 +111,7 @@ public:
 	PSVRResult get_shared_video_frame_buffer(PSVRTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer);
     PSVRResult get_tracker_settings(
 		PSVRTrackerID tracker_id, PSVRHmdID hmd_id, 
-		PSVRClientTrackerSettings *out_settings)
+		PSVRClientTrackerSettings *out_settings);
     PSVRResult set_tracker_frame_width(
 		const PSVRTrackerID tracker_id, const float desired_frame_width, const bool bSaveSetting,
 		float *out_result_frame_width);
@@ -142,7 +142,7 @@ public:
     // -- hmd requests -----
     PSVRResult get_hmd_list(PSVRHmdList *out_hmd_list);
 	PSVRResult get_hmd_tracking_shape(PSVRHmdID hmd_id, PSVRTrackingShape *out_shape);
-    PSVRResult start_hmd_data_stream(const PSVRHmdID hmd_id);
+    PSVRResult start_hmd_data_stream(const PSVRHmdID hmd_id, unsigned int data_stream_flags);
     PSVRResult stop_hmd_data_stream(const PSVRHmdID hmd_id);
     PSVRResult set_hmd_led_tracking_color(const PSVRHmdID hmd_id, const PSVRTrackingColorType new_color_id);
     PSVRResult set_hmd_accelerometer_calibration(
@@ -163,7 +163,7 @@ private:
 
     // Singleton instance of the class
     // Assigned in startup, cleared in teardown
-    static ServerRequestHandler *m_instance;
+    static ServiceRequestHandler *m_instance;
 };
 
 #endif  // SERVICE_REQUEST_HANDLER_H

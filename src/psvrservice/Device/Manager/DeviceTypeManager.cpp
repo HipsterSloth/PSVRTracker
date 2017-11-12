@@ -244,13 +244,13 @@ DeviceTypeManager::send_device_list_changed_notification()
 bool
 DeviceTypeManager::can_poll_connected_devices()
 {
-    return !ServerRequestHandler::get_instance()->any_active_bluetooth_requests();
+    return !ServiceRequestHandler::get_instance()->any_active_bluetooth_requests();
 }
 
 bool
 DeviceTypeManager::can_update_connected_devices()
 {
-    return !ServerRequestHandler::get_instance()->any_active_bluetooth_requests();
+    return !ServiceRequestHandler::get_instance()->any_active_bluetooth_requests();
 }
 
 void
