@@ -6,6 +6,7 @@
 #define __PSVRCLIENT_CAPI_H
 #include "PSVRClient_export.h"
 #include "ClientConstants.h"
+#include "ClientColor_CAPI.h"
 #include "ClientGeometry_CAPI.h"
 #include <stdbool.h>
 //cut_before
@@ -36,19 +37,6 @@ typedef enum
     PSVRResult_Error                 = -1, 	///< General Error Result
     PSVRResult_Success               = 0,	///< General Success Result
 } PSVRResult;
-
-/// The available tracking color types
-typedef enum
-{
-    PSVRTrackingColorType_Magenta,    ///< R:0xFF, G:0x00, B:0xFF
-    PSVRTrackingColorType_Cyan,       ///< R:0x00, G:0xFF, B:0xFF
-    PSVRTrackingColorType_Yellow,     ///< R:0xFF, G:0xFF, B:0x00
-    PSVRTrackingColorType_Red,        //</ R:0xFF, G:0x00, B:0x00
-    PSVRTrackingColorType_Green,      ///< R:0x00, G:0xFF, B:0x00
-    PSVRTrackingColorType_Blue,       ///< R:0x00, G:0x00, B:0xFF
-	
-	PSVRTrackingColorType_MaxColorTypes
-} PSVRTrackingColorType;
 
 /// The list of possible camera types tracked by PSVRService
 typedef enum
@@ -84,21 +72,6 @@ typedef enum
 
 // Tracker State
 //--------------
-
-/// A range of colors in the Hue-Saturation-Value color space
-typedef struct
-{
-    PSVRRangef hue_range;
-	PSVRRangef saturation_range;
-	PSVRRangef value_range;
-} PSVR_HSVColorRange;
-
-/// A table of color filters for each tracking color
-typedef struct
-{
-	char table_name[64];
-	PSVR_HSVColorRange color_presets[PSVRTrackingColorType_MaxColorTypes];	
-} PSVR_HSVColorRangeTable;
 
 /// Device projection geometry as seen by each tracker
 typedef struct
@@ -334,15 +307,17 @@ typedef struct
 // Service Events
 //------------------
 
+typedef enum 
+{
+    PSVREvent_trackerListUpdated,
+    PSVREvent_hmdListUpdated
+} PSVREventType;
+
+
 /// A container for all PSVRService events
 typedef struct
 {
-    enum eEventType
-    {
-        PSVREvent_trackerListUpdated,
-        PSVREvent_hmdListUpdated
-    } event_type;
-
+    PSVREventType event_type;
 } PSVREventMessage;
 
 // Service Responses

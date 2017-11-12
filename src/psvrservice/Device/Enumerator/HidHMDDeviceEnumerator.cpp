@@ -1,6 +1,6 @@
 // -- includes -----
 #include "HidHMDDeviceEnumerator.h"
-#include "ServerUtility.h"
+#include "Utility.h"
 #include "USBDeviceInfo.h" // for MAX_USB_DEVICE_PORT_PATH, t_usb_device_handle
 #include "assert.h"
 #include "hidapi.h"

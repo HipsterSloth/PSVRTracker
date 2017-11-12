@@ -22,7 +22,7 @@ struct TrackerProfile
 	float frame_rate;
 	float exposure;
     float gain;
-    CommonHSVColorRangeTable color_preset_table;
+    PSVR_HSVColorRangeTable color_preset_table;
 
     inline void clear()
     {
@@ -31,11 +31,7 @@ struct TrackerProfile
 		frame_rate = 0.f;
 		exposure = 0.f;
         gain = 0;
-		color_preset_table.table_name.clear();
-        for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
-        {
-            color_preset_table.color_presets[preset_index].clear();
-        }
+		memset(&color_preset_table, 0, sizeof(PSVR_HSVColorRangeTable));
     }
 };
 
@@ -46,8 +42,8 @@ public:
 
     TrackerManagerConfig(const std::string &fnamebase = "TrackerManagerConfig");
 
-    virtual const boost::property_tree::ptree config2ptree();
-    virtual void ptree2config(const boost::property_tree::ptree &pt);
+    virtual const configuru::Config writeToJSON();
+    virtual void readFromJSON(const configuru::Config &pt);
 
 	float controller_position_smoothing;
 	bool ignore_pose_from_one_tracker;

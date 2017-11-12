@@ -1,6 +1,6 @@
 //-- includes -----
 #include "ServerDeviceView.h"
-#include "ServerLog.h"
+#include "Logger.h"
 
 #include <chrono>
 

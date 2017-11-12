@@ -2,10 +2,10 @@
 #include "DeviceTypeManager.h"
 #include "DeviceEnumerator.h"
 #include "PSVRProtocol.pb.h"
-#include "ServerLog.h"
+#include "Logger.h"
 #include "ServerDeviceView.h"
 #include "ServerNetworkManager.h"
-#include "ServerUtility.h"
+#include "Utility.h"
 #include "ServerRequestHandler.h"
 
 //-- methods -----

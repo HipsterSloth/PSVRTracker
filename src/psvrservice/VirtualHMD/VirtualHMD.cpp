@@ -5,8 +5,8 @@
 #include "HMDDeviceEnumerator.h"
 #include "VirtualHMDDeviceEnumerator.h"
 #include "MathUtility.h"
-#include "ServerLog.h"
-#include "ServerUtility.h"
+#include "Logger.h"
+#include "Utility.h"
 #include <vector>
 #include <cstdlib>
 #ifdef _WIN32
@@ -23,24 +23,20 @@
 // -- Morpheus HMD Config
 const int VirtualHMDConfig::CONFIG_VERSION = 1;
 
-const boost::property_tree::ptree
-VirtualHMDConfig::config2ptree()
+const configuru::Config
+VirtualHMDConfig::writeToJSON()
 {
-    boost::property_tree::ptree pt;
-
-    pt.put("is_valid", is_valid);
-    pt.put("version", VirtualHMDConfig::CONFIG_VERSION);
-
-    pt.put("Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a);
-    pt.put("Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b);
-
-    pt.put("Calibration.Time.MeanUpdateTime", mean_update_time_delta);
-
-    pt.put("PositionFilter.FilterType", position_filter_type);
-    pt.put("PositionFilter.MaxVelocity", max_velocity);
-
-    pt.put("prediction_time", prediction_time);
-    pt.put("bulb_radius", bulb_radius);
+    configuru::Config pt{
+        {"is_valid", is_valid},
+        {"version", VirtualHMDConfig::CONFIG_VERSION},
+        {"Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a},
+        {"Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b},
+        {"Calibration.Time.MeanUpdateTime", mean_update_time_delta},
+        {"PositionFilter.FilterType", position_filter_type},
+        {"PositionFilter.MaxVelocity", max_velocity},
+        {"prediction_time", prediction_time},
+        {"bulb_radius", bulb_radius}
+    };
 
     writeTrackingColor(pt, tracking_color_id);
 
@@ -48,27 +44,27 @@ VirtualHMDConfig::config2ptree()
 }
 
 void
-VirtualHMDConfig::ptree2config(const boost::property_tree::ptree &pt)
+VirtualHMDConfig::readFromJSON(const configuru::Config &pt)
 {
-    version = pt.get<int>("version", 0);
+    version = pt.get_or<int>("version", 0);
 
     if (version == VirtualHMDConfig::CONFIG_VERSION)
     {
-        is_valid = pt.get<bool>("is_valid", false);
+        is_valid = pt.get_or<bool>("is_valid", false);
 
-        prediction_time = pt.get<float>("prediction_time", 0.f);
+        prediction_time = pt.get_or<float>("prediction_time", 0.f);
 
-        position_variance_exp_fit_a = pt.get<float>("Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a);
-        position_variance_exp_fit_b = pt.get<float>("Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b);
+        position_variance_exp_fit_a = pt.get_or<float>("Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a);
+        position_variance_exp_fit_b = pt.get_or<float>("Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b);
 
-        mean_update_time_delta = pt.get<float>("Calibration.Time.MeanUpdateTime", mean_update_time_delta);
+        mean_update_time_delta = pt.get_or<float>("Calibration.Time.MeanUpdateTime", mean_update_time_delta);
 
-        position_filter_type = pt.get<std::string>("PositionFilter.FilterType", position_filter_type);
-        max_velocity = pt.get<float>("PositionFilter.MaxVelocity", max_velocity);
+        position_filter_type = pt.get_or<std::string>("PositionFilter.FilterType", position_filter_type);
+        max_velocity = pt.get_or<float>("PositionFilter.MaxVelocity", max_velocity);
 
         // Read the tracking color
         tracking_color_id = static_cast<eCommonTrackingColorID>(readTrackingColor(pt));
-        bulb_radius = pt.get<float>("bulb_radius", bulb_radius);
+        bulb_radius = pt.get_or<float>("bulb_radius", bulb_radius);
     }
     else
     {

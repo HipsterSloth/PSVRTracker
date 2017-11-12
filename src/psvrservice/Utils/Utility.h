@@ -33,6 +33,15 @@ namespace Utility
 
     /// Sleeps the current thread for the given number of milliseconds
     void sleep_ms(int milliseconds);	
+
+    /// Get the "home" location where config files can be stored
+    std::string get_home_directory();
+
+    /// Attempts to create a directory at the given path. Returns 0 on success
+    bool create_directory(const std::string &path);
+
+    /// Returns true if a file exists
+    bool file_exists(const std::string& filename);
 };
 
 #endif // UTILITY_H

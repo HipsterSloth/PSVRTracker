@@ -8,10 +8,12 @@
 #include <locale>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 
 #if defined WIN32 || defined _WIN32 || defined WINCE
     #include <windows.h>
+    #include <direct.h>
     #include <algorithm>
 
     #ifdef _MSC_VER
@@ -19,7 +21,10 @@
         #define vsnprintf _vsnprintf
     #endif
 #else
-	#include <sys/time.h>
+    #include <sys/time.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+
 	#include <time.h>
 	#if defined __MACH__ && defined __APPLE__
 		#include <mach/mach.h>
@@ -43,7 +48,7 @@ namespace Utility
 
         if (wc_string != nullptr)
         {
-    #ifdef _WIN32
+#if defined WIN32 || defined _WIN32 || defined WINCE
             size_t countConverted;
             const wchar_t *wcsIndirectString = wc_string;
             mbstate_t mbstate;
@@ -55,13 +60,13 @@ namespace Utility
                 &wcsIndirectString,
                 _TRUNCATE,
                 &mbstate) == 0;
-    #else
+#else
             success=
                 wcstombs(
                     out_mb_serial, 
                     wc_string, 
                     mb_buffer_size) != static_cast<size_t>(-1);
-    #endif
+#endif
         }
 
         return success;
@@ -125,5 +130,61 @@ namespace Utility
         req.tv_nsec = milliseconds * MILLISECONDS_TO_NANOSECONDS;
         nanosleep(&req, (struct timespec *)NULL);
 #endif
-    }	
+    }
+
+    std::string get_home_directory()
+    {
+        std::string home_dir;
+
+#if defined WIN32 || defined _WIN32 || defined WINCE
+        size_t homedir_buffer_req_size;
+        char homedir_buffer[512];
+        getenv_s(&homedir_buffer_req_size, homedir_buffer, "APPDATA");
+        assert(homedir_buffer_req_size <= sizeof(homedir_buffer));
+        home_dir= homedir_buffer;
+#else    
+        // if run as root, use system-wide data directory
+        if (geteuid() == 0)
+        {
+            home_dir = "/etc/";
+        }
+        else
+        {
+            homedir = getenv("HOME");
+        }
+#endif
+        return home_dir;
+    }
+
+    bool create_directory(const std::string &path)
+    {
+        bool bSuccess= false;
+
+#if defined WIN32 || defined _WIN32 || defined WINCE
+        if (_mkdir(path.c_str()) == 0)
+        {
+            bSuccess= true;
+        }
+#else 
+        mode_t nMode = 0733; // UNIX style permissions
+        if (mkdir(path.c_str(), nMode) == 0)
+        {
+            bSuccess= true;
+        }
+#endif
+        else if (errno == EEXIST)
+        {
+            bSuccess= true;
+        }
+
+        return bSuccess;
+    }
+
+    bool file_exists(const std::string& filename) 
+    {
+        std::ifstream file(filename.c_str());
+
+        return (bool)file;
+    }
+
 };

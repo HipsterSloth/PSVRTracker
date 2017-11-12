@@ -4,7 +4,7 @@
 #include "ServerRequestHandler.h"
 #include "DeviceManager.h"
 #include "Version.h"
-#include "ServerLog.h"
+#include "Logger.h"
 #include "SharedTrackerState.h"
 #include "TrackerManager.h"
 #include "USBDeviceManager.h"

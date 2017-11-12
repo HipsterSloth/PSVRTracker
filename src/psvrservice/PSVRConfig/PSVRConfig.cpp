@@ -1,17 +1,28 @@
 #include "PSVRConfig.h"
 #include "DeviceInterface.h"
-#include "ServerUtility.h"
-#include <boost/filesystem.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-
+#include "Logger.h"
+#include "Utility.h"
 #include <iostream>
+
+// Suppress unhelpful configuru warnings
+#ifdef _MSC_VER
+    #pragma warning (push)
+    #pragma warning (disable: 4996) // This function or variable may be unsafe
+    #pragma warning (disable: 4244) // 'return': conversion from 'const int64_t' to 'float', possible loss of data
+    #pragma warning (disable: 4715) // configuru::Config::operator[]': not all control paths return a value
+#endif
+#define CONFIGURU_IMPLEMENTATION 1
+#include <configuru.hpp>
+#ifdef _MSC_VER
+    #pragma warning (pop)
+#endif
+
 
 // Format: {hue center, hue range}, {sat center, sat range}, {val center, val range}
 // All hue angles are 60 degrees apart to maximize hue separation for 6 max tracked colors.
 // Hue angle reference: http://i.imgur.com/PKjgfFXm.jpg 
 // Hue angles divide by 2 for opencv which remaps hue range to [0,180]
-const CommonHSVColorRange g_default_color_presets[] = {
+const PSVR_HSVColorRange g_default_color_presets[] = {
     { { 300 / 2, 10 }, { 255, 32 }, { 255, 32 } }, // Magenta
     { { 180 / 2, 10 }, { 255, 32 }, { 255, 32 } }, // Cyan
     { { 60 / 2, 10 }, { 255, 32 }, { 255, 32 } }, // Yellow
@@ -19,7 +30,7 @@ const CommonHSVColorRange g_default_color_presets[] = {
     { { 120 / 2, 10 }, { 255, 32 }, { 255, 32 } }, // Green
     { { 240 / 2, 10 }, { 255, 32 }, { 255, 32 } }, // Blue
 };
-const CommonHSVColorRange *k_default_color_presets = g_default_color_presets;
+const PSVR_HSVColorRange *k_default_color_presets = g_default_color_presets;
 
 PSVRConfig::PSVRConfig(const std::string &fnamebase)
 : ConfigFileBase(fnamebase)
@@ -29,46 +40,35 @@ PSVRConfig::PSVRConfig(const std::string &fnamebase)
 const std::string
 PSVRConfig::getConfigPath()
 {
-    const char *homedir;
-#ifdef _WIN32
-    size_t homedir_buffer_req_size;
-    char homedir_buffer[512];
-    getenv_s(&homedir_buffer_req_size, homedir_buffer, "APPDATA");
-    assert(homedir_buffer_req_size <= sizeof(homedir_buffer));
-    homedir= homedir_buffer;
-#else
-    homedir = getenv("HOME");
-    // if run as root, use system-wide data directory
-    if (geteuid() == 0) {
-        homedir = "/etc/PSVRSERVICE";
-    }
-#endif
+    std::string home_dir= Utility::get_home_directory();  
+    std::string config_path = home_dir + "/PSVRSERVICE";
     
-    boost::filesystem::path configpath(homedir);
-    configpath /= "PSVRSERVICE";
-    boost::filesystem::create_directory(configpath);
-    configpath /= ConfigFileBase + ".json";
-    std::cout << "Config file name: " << configpath << std::endl;
-    return configpath.string();
+    if (!Utility::create_directory(config_path))
+    {
+        PSVR_LOG_ERROR("PSVRConfig::getConfigPath") << "Failed to create config directory: " << config_path;
+    }
+
+    std::string config_filepath = config_path + "/" + ConfigFileBase + ".json";
+
+    return config_filepath;
 }
 
 void
 PSVRConfig::save()
 {
-    boost::property_tree::write_json(getConfigPath(), config2ptree());
+    configuru::dump_file(getConfigPath(), writeToJSON(), configuru::JSON);
 }
 
 bool
 PSVRConfig::load()
 {
     bool bLoadedOk = false;
-    boost::property_tree::ptree pt;
     std::string configPath = getConfigPath();
 
-    if ( boost::filesystem::exists( configPath ) )
+    if (Utility::file_exists( configPath ) )
     {
-        boost::property_tree::read_json(configPath, pt);
-        ptree2config(pt);
+        configuru::Config cfg = configuru::parse_file("input.json", configuru::JSON);
+        readFromJSON(cfg);
         bLoadedOk = true;
     }
 
@@ -77,10 +77,10 @@ PSVRConfig::load()
 
 void
 PSVRConfig::writeColorPropertyPresetTable(
-	const CommonHSVColorRangeTable *table,
-    boost::property_tree::ptree &pt)
+	const PSVR_HSVColorRangeTable *table,
+    configuru::Config &pt)
 {
-	const char *profile_name= table->table_name.c_str();
+	const char *profile_name= table->table_name;
 
     writeColorPreset(pt, profile_name, "magenta", &table->color_presets[eCommonTrackingColorID::Magenta]);
     writeColorPreset(pt, profile_name, "cyan", &table->color_presets[eCommonTrackingColorID::Cyan]);
@@ -92,10 +92,10 @@ PSVRConfig::writeColorPropertyPresetTable(
 
 void
 PSVRConfig::readColorPropertyPresetTable(
-	const boost::property_tree::ptree &pt,
-	CommonHSVColorRangeTable *table)
+	const configuru::Config &pt,
+	PSVR_HSVColorRangeTable *table)
 {
-	const char *profile_name= table->table_name.c_str();
+	const char *profile_name= table->table_name;
 
     readColorPreset(pt, profile_name, "magenta", &table->color_presets[eCommonTrackingColorID::Magenta], &k_default_color_presets[eCommonTrackingColorID::Magenta]);
     readColorPreset(pt, profile_name, "cyan", &table->color_presets[eCommonTrackingColorID::Cyan], &k_default_color_presets[eCommonTrackingColorID::Cyan]);
@@ -107,31 +107,31 @@ PSVRConfig::readColorPropertyPresetTable(
 
 void
 PSVRConfig::writeTrackingColor(
-	boost::property_tree::ptree &pt,
+	configuru::Config &pt,
 	int tracking_color_id)
 {
 	switch (tracking_color_id)
 	{
 	case eCommonTrackingColorID::INVALID_COLOR:
-		pt.put("tracking_color", "invalid");
+		pt["tracking_color"]= "invalid";
 		break;
 	case eCommonTrackingColorID::Magenta:
-		pt.put("tracking_color", "magenta");
+		pt["tracking_color"]= "magenta";
 		break;
 	case eCommonTrackingColorID::Cyan:
-		pt.put("tracking_color", "cyan");
+		pt["tracking_color"]= "cyan";
 		break;
 	case eCommonTrackingColorID::Yellow:
-		pt.put("tracking_color", "yellow");
+		pt["tracking_color"]= "yellow";
 		break;
 	case eCommonTrackingColorID::Red:
-		pt.put("tracking_color", "red");
+		pt["tracking_color"]= "red";
 		break;
 	case eCommonTrackingColorID::Green:
-		pt.put("tracking_color", "green");
+		pt["tracking_color"]= "green";
 		break;
 	case eCommonTrackingColorID::Blue:
-		pt.put("tracking_color", "blue");
+		pt["tracking_color"]= "blue";
 		break;
 	default:
 		assert(false && "unreachable");
@@ -140,9 +140,9 @@ PSVRConfig::writeTrackingColor(
 
 int 
 PSVRConfig::readTrackingColor(
-	const boost::property_tree::ptree &pt)
+	const configuru::Config &pt)
 {
-	std::string tracking_color_string = pt.get<std::string>("tracking_color", "invalid");
+	std::string tracking_color_string = pt.get_or("tracking_color", "invalid");
 	int tracking_color_id = eCommonTrackingColorID::INVALID_COLOR;
 
 	if (tracking_color_string == "magenta")
@@ -173,75 +173,87 @@ PSVRConfig::readTrackingColor(
 	return tracking_color_id;
 }
 
-static void
-writeColorPropertyPreset(
-    boost::property_tree::ptree &pt,
+void
+PSVRConfig::writeColorPreset(
+    configuru::Config &pt,
     const char *profile_name,
     const char *color_name,
-    const char *property_name,
-    float value)
+    const PSVR_HSVColorRange *colorPreset)
 {
-    char full_property_name[256];
-
     if (profile_name != nullptr && profile_name[0] != '\0')
     {
-        ServerUtility::format_string(full_property_name, sizeof(full_property_name), "%s.color_preset.%s.%s", 
-            profile_name, color_name, property_name);
+        pt.insert_or_assign(profile_name, {
+            {"color_preset", {
+                {"hue_center", colorPreset->hue_range.center},
+                {"hue_range", colorPreset->hue_range.range},
+                {"saturation_center", colorPreset->saturation_range.center},
+                {"saturation_range", colorPreset->saturation_range.range},
+                {"value_center", colorPreset->value_range.center},
+                {"value_range", colorPreset->value_range.range}
+            }},
+        });
     }
     else
     {
-        ServerUtility::format_string(full_property_name, sizeof(full_property_name), "color_preset.%s.%s", 
-            color_name, property_name);
+        pt.insert_or_assign("color_preset", {
+            {
+                {"hue_center", colorPreset->hue_range.center},
+                {"hue_range", colorPreset->hue_range.range},
+                {"saturation_center", colorPreset->saturation_range.center},
+                {"saturation_range", colorPreset->saturation_range.range},
+                {"value_center", colorPreset->value_range.center},
+                {"value_range", colorPreset->value_range.range}
+            },
+        });
     }
-    pt.put(full_property_name, value);
-}
-
-void
-PSVRConfig::writeColorPreset(
-    boost::property_tree::ptree &pt,
-    const char *profile_name,
-    const char *color_name,
-    const CommonHSVColorRange *colorPreset)
-{
-    writeColorPropertyPreset(pt, profile_name, color_name, "hue_center", colorPreset->hue_range.center);
-    writeColorPropertyPreset(pt, profile_name, color_name, "hue_range", colorPreset->hue_range.range);
-    writeColorPropertyPreset(pt, profile_name, color_name, "saturation_center", colorPreset->saturation_range.center);
-    writeColorPropertyPreset(pt, profile_name, color_name, "saturation_range", colorPreset->saturation_range.range);
-    writeColorPropertyPreset(pt, profile_name, color_name, "value_center", colorPreset->value_range.center);
-    writeColorPropertyPreset(pt, profile_name, color_name, "value_range", colorPreset->value_range.range);
 }
 
 static void
 readColorPropertyPreset(
-    const boost::property_tree::ptree &pt,
+    const configuru::Config &pt,
     const char *profile_name,
     const char *color_name,
     const char *property_name,
     float &out_value,
     const float default_value)
 {
-    char full_property_name[256];
+    configuru::Config profile= pt;
 
     if (profile_name != nullptr && profile_name[0] != '\0')
     {
-        ServerUtility::format_string(full_property_name, sizeof(full_property_name), "%s.color_preset.%s.%s", 
-            profile_name, color_name, property_name);
+        if (pt.has_key(profile_name))
+        {
+            profile= pt.get_or<configuru::Config>(profile_name);
+        }
     }
-    else
+
+    if (profile.has_key("color_preset"))
     {
-        ServerUtility::format_string(full_property_name, sizeof(full_property_name), "color_preset.%s.%s",
-            color_name, property_name);
+        const configuru::Config color_preset= profile.get<configuru::Config>("color_preset");
+
+        if (color_preset.has_key(color_name))
+        {
+            const configuru::Config color= color_preset.get<configuru::Config>(color_name);
+
+            if (color.has_key(property_name))
+            {
+                out_value= color.get<float>(property_name);
+                return;
+            }
+        }
     }
-    out_value = pt.get<float>(full_property_name, default_value);
+
+    out_value= default_value;
+    return;
 }
 
 void
 PSVRConfig::readColorPreset(
-    const boost::property_tree::ptree &pt,
+    const configuru::Config &pt,
     const char *profile_name,
     const char *color_name,
-    CommonHSVColorRange *outColorPreset,
-    const CommonHSVColorRange *defaultPreset)
+    PSVR_HSVColorRange *outColorPreset,
+    const PSVR_HSVColorRange *defaultPreset)
 {
     readColorPropertyPreset(pt, profile_name, color_name, "hue_center", outColorPreset->hue_range.center, defaultPreset->hue_range.center);
     readColorPropertyPreset(pt, profile_name, color_name, "hue_range", outColorPreset->hue_range.range, defaultPreset->hue_range.range);

@@ -8,7 +8,6 @@
 #include "DeviceTypeManager.h"
 #include "DeviceEnumerator.h"
 #include "PSVRConfig.h"
-#include "PSVRProtocol.pb.h"
 
 //-- typedefs -----
 class ServerHMDView;
@@ -23,8 +22,8 @@ public:
 
     HMDManagerConfig(const std::string &fnamebase = "HMDManagerConfig");
 
-    virtual const boost::property_tree::ptree config2ptree();
-    virtual void ptree2config(const boost::property_tree::ptree &pt);
+    virtual const configuru::Config writeToJSON();
+    virtual void readFromJSON(const configuru::Config &pt);
 
     int version;
     int virtual_hmd_count;

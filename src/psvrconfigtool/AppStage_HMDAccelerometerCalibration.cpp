@@ -11,7 +11,7 @@
 #include "MathEigen.h"
 #include "MathUtility.h"
 
-#include "PSVRProtocolInterface.h"
+#include "PSVRServiceInterface.h"
 #include "PSVRProtocol.pb.h"
 #include "Renderer.h"
 #include "UIConstants.h"

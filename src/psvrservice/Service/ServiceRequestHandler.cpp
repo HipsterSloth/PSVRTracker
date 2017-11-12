@@ -219,7 +219,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
 
@@ -251,7 +251,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 		
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
 
@@ -280,7 +280,7 @@ public:
 	{
 		PSVRResult result= PSVRResult_Error;
 
-		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+		if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -298,7 +298,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+		if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -329,7 +329,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+		if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -365,7 +365,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 		
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -401,7 +401,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 		
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -437,7 +437,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+		if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -473,7 +473,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 		
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -509,7 +509,7 @@ public:
     {
         PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -537,7 +537,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 		
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -562,7 +562,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -583,7 +583,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 		
-        if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
             if (tracker_view->getIsOpen())
@@ -611,7 +611,7 @@ public:
     {
         ServerHMDView *hmd_view = nullptr;
 
-        if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
+        if (Utility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
             ServerHMDViewPtr hmd_view_ptr = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -675,7 +675,7 @@ public:
 	{
 		PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
+        if (Utility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
             ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
 			
@@ -694,7 +694,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
+        if (Utility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
             ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -751,7 +751,7 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
+        if (Utility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
             ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -1009,8 +1009,8 @@ public:
     {
 		PSVRResult result= PSVRResult_Error;
 
-        if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()) &&
-            ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+        if (Utility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()) &&
+            Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
             ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
             HMDStreamInfo &streamInfo = m_peristentRequestState->active_hmd_stream_info[hmd_id];

@@ -7,7 +7,7 @@
 #include "CompoundPoseFilter.h"
 #include "PoseFilterInterface.h"
 #include "PSVRProtocol.pb.h"
-#include "ServerLog.h"
+#include "Logger.h"
 #include "ServerRequestHandler.h"
 #include "ServerTrackerView.h"
 #include "TrackerManager.h"

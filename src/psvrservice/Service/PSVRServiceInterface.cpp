@@ -5,7 +5,7 @@
 
 //-- implementation -----
 SharedVideoFrameBuffer::SharedVideoFrameBuffer()
-	: m_shared_memory_name()
+	: m_buffer_name()
 	, m_width(-1)
 	, m_height(-1)
 	, m_stride(-1)
@@ -25,13 +25,13 @@ bool SharedVideoFrameBuffer::initialize(const char *buffer_name, int width, int 
 
 	if (m_buffer == nullptr)
 	{			
-		PSVR_LOG_INFO("SharedVideoFrameBuffer::initialize()") << "Allocating video frame buffer: " << buffer_name;
+		PSVR_LOG_INFO("SharedVideoFrameBuffer::initialize()") << "Allocating video frame buffer: " << m_buffer_name;
 
 		size_t buffer_size= computeVideoBufferSize(section_count, stride, height);
 		m_buffer= new unsigned char[buffer_size];
 		std::memset(m_buffer, 0, buffer_size);			
 		
-		m_shared_memory_name = buffer_name;
+		m_buffer_name = buffer_name;
 	   
 		m_width = width;
 		m_height = height;
@@ -49,12 +49,12 @@ void SharedVideoFrameBuffer::dispose()
 {
 	if (m_buffer != nullptr)
 	{
-		PSVR_LOG_INFO("SharedVideoFrameBuffer::dispose()") << "Deallocating video frame buffer: " << buffer_name;
+		PSVR_LOG_INFO("SharedVideoFrameBuffer::dispose()") << "Deallocating video frame buffer: " << m_buffer_name;
 		
 		delete[] m_buffer;
 		m_buffer = nullptr;
 		
-		m_shared_memory_name= "";
+		m_buffer_name= "";
 		m_width= -1;
 		m_height= -1;
 		m_stride= -1;

@@ -8,7 +8,7 @@
 #include "Camera.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRProtocolInterface.h"
+#include "PSVRServiceInterface.h"
 #include "PSVRProtocol.pb.h"
 
 #include "SDL_keycode.h"

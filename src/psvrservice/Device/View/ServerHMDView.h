@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include "ServerDeviceView.h"
-#include "PSVRProtocolInterface.h"
+#include "PSVRServiceInterface.h"
 #include <cstring>
 
 // -- pre-declarations -----
@@ -134,7 +134,7 @@ protected:
     static void generate_hmd_data_frame_for_stream(
         const ServerHMDView *hmd_view,
         const struct HMDStreamInfo *stream_info,
-        DeviceOutputDataFramePtr &data_frame);
+        DeviceOutputDataFrame &data_frame);
 
 private:
 	// Tracking color state

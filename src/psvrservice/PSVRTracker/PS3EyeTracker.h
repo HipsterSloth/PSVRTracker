@@ -29,11 +29,11 @@ public:
 
     PS3EyeTrackerConfig(const std::string &fnamebase = "PS3EyeTrackerConfig");
     
-    virtual const boost::property_tree::ptree config2ptree();
-    virtual void ptree2config(const boost::property_tree::ptree &pt);
+    virtual const configuru::Config writeToJSON();
+    virtual void readFromJSON(const configuru::Config &pt);
 
-	const CommonHSVColorRangeTable *getColorRangeTable(const std::string &table_name) const;
-	inline CommonHSVColorRangeTable *getOrAddColorRangeTable(const std::string &table_name);
+	const PSVR_HSVColorRangeTable *getColorRangeTable(const std::string &table_name) const;
+	inline PSVR_HSVColorRangeTable *getOrAddColorRangeTable(const std::string &table_name);
     
     bool is_valid;
     long max_poll_failure_count;
@@ -58,8 +58,8 @@ public:
 
     eFOVSetting fovSetting;
     CommonDevicePose pose;
-	CommonHSVColorRangeTable SharedColorPresets;
-	std::vector<CommonHSVColorRangeTable> DeviceColorPresets;
+	PSVR_HSVColorRangeTable SharedColorPresets;
+	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
 
     static const int CONFIG_VERSION;
 	static const int LENS_CALIBRATION_VERSION;

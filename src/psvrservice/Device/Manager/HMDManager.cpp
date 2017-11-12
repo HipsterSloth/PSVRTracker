@@ -1,11 +1,10 @@
 //-- includes -----
 #include "HMDManager.h"
 #include "HMDDeviceEnumerator.h"
-#include "ServerLog.h"
+#include "Logger.h"
+#include "PSVRClient_CAPI.h"
 #include "ServerHMDView.h"
 #include "ServerDeviceView.h"
-#include "PSVRProtocol.pb.h"
-#include <boost/foreach.hpp>
 #include "VirtualHMDDeviceEnumerator.h"
 
 //-- methods -----
@@ -19,25 +18,25 @@ HMDManagerConfig::HMDManagerConfig(const std::string &fnamebase)
 
 };
 
-const boost::property_tree::ptree
-HMDManagerConfig::config2ptree()
+const configuru::Config
+HMDManagerConfig::writeToJSON()
 {
-    boost::property_tree::ptree pt;
-
-    pt.put("version", HMDManagerConfig::CONFIG_VERSION);
-    pt.put("virtual_hmd_count", virtual_hmd_count);
+    configuru::Config pt{
+        {"version", HMDManagerConfig::CONFIG_VERSION},
+        {"virtual_hmd_count", virtual_hmd_count}
+    };
 
     return pt;
 }
 
 void
-HMDManagerConfig::ptree2config(const boost::property_tree::ptree &pt)
+HMDManagerConfig::readFromJSON(const configuru::Config &pt)
 {
-    version = pt.get<int>("version", 0);
+    version = pt.get_or<int>("version", 0);
 
     if (version == HMDManagerConfig::CONFIG_VERSION)
     {
-        virtual_hmd_count = pt.get<int>("virtual_hmd_count", 0);
+        virtual_hmd_count = pt.get_or<int>("virtual_hmd_count", 0);
     }
     else
     {
@@ -132,5 +131,5 @@ HMDManager::allocate_device_view(int device_id)
 int 
 HMDManager::getListUpdatedResponseType()
 {
-    return (int)PSVRProtocol::Response_ResponseType_HMD_LIST_UPDATED;
+    return PSVREvent_hmdListUpdated;
 }

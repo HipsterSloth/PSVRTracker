@@ -1,8 +1,8 @@
 // -- includes -----
 #include "TrackerDeviceEnumerator.h"
-#include "ServerUtility.h"
+#include "Utility.h"
 #include "USBDeviceManager.h"
-#include "ServerLog.h"
+#include "Logger.h"
 #include "assert.h"
 #include "string.h"
 

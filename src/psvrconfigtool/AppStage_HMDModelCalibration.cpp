@@ -11,7 +11,7 @@
 #include "MathUtility.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRProtocolInterface.h"
+#include "PSVRServiceInterface.h"
 #include "PSVRProtocol.pb.h"
 #include "SharedTrackerState.h"
 #include "Logger.h"

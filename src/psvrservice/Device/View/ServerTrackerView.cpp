@@ -10,8 +10,8 @@
 #include "MathAlignment.h"
 #include "PS3EyeTracker.h"
 #include "PSVRProtocol.pb.h"
-#include "ServerUtility.h"
-#include "ServerLog.h"
+#include "Utility.h"
+#include "Logger.h"
 #include "ServerRequestHandler.h"
 #include "SharedTrackerState.h"
 #include "TrackerManager.h"
@@ -777,7 +777,7 @@ ServerTrackerView::ServerTrackerView(const int device_id)
     , m_opencv_buffer_state(nullptr)
     , m_device(nullptr)
 {
-    ServerUtility::format_string(m_shared_memory_name, sizeof(m_shared_memory_name), "tracker_view_%d", device_id);
+    Utility::format_string(m_shared_memory_name, sizeof(m_shared_memory_name), "tracker_view_%d", device_id);
 }
 
 ServerTrackerView::~ServerTrackerView()
@@ -946,14 +946,13 @@ void ServerTrackerView::publish_device_data_frame()
 void ServerTrackerView::generate_tracker_data_frame_for_stream(
     const ServerTrackerView *tracker_view,
     const struct TrackerStreamInfo *stream_info,
-    DeviceOutputDataFramePtr &data_frame)
+    DeviceOutputDataFrame &data_frame)
 {
-    PSVRProtocol::DeviceOutputDataFrame_TrackerDataPacket *tracker_data_frame =
-        data_frame->mutable_tracker_data_packet();
+    TrackerDataPacket *tracker_data_frame = &data_frame.device.tracker_data_packet;
 
-    tracker_data_frame->set_tracker_id(tracker_view->getDeviceID());
-    tracker_data_frame->set_sequence_num(tracker_view->m_sequence_number);
-    tracker_data_frame->set_isconnected(tracker_view->getIsOpen());
+    tracker_data_frame->tracker_id= tracker_view->getDeviceID();
+    tracker_data_frame->sequence_num= tracker_view->m_sequence_number;
+    tracker_data_frame->is_connected= tracker_view->getIsOpen();
 
     switch (tracker_view->getTrackerDeviceType())
     {
@@ -965,7 +964,7 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
         assert(0 && "Unhandled Tracker type");
     }
 
-    data_frame->set_device_category(PSVRProtocol::DeviceOutputDataFrame::TRACKER);
+    data_frame.device_category= DeviceCategory_TRACKER;
 }
 
 void ServerTrackerView::loadSettings()

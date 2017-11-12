@@ -4,6 +4,7 @@
 //-- includes -----
 #include "DeviceInterface.h"
 #include "DevicePlatformInterface.h"
+#include "PSVRServiceInterface.h"
 #include <memory>
 #include <chrono>
 #include <vector>
@@ -20,9 +21,6 @@ enum eDevicePlatformApiType
 //-- typedefs -----
 class DeviceManagerConfig;
 typedef std::shared_ptr<DeviceManagerConfig> DeviceManagerConfigPtr;
-
-class ServerControllerView;
-typedef std::shared_ptr<ServerControllerView> ServerControllerViewPtr;
 
 class ServerTrackerView;
 typedef std::shared_ptr<ServerTrackerView> ServerTrackerViewPtr;
@@ -53,7 +51,6 @@ public:
     { return m_instance; }
 
 	// -- Accessors ---
-	ServerControllerViewPtr getControllerViewPtr(int controller_id);
 	ServerTrackerViewPtr getTrackerViewPtr(int tracker_id);
 	ServerHMDViewPtr getHMDViewPtr(int hmd_id);
 
@@ -67,12 +64,11 @@ public:
 		char *buffer,
 		const int buffer_size);
 
-    int getControllerViewMaxCount() const;
     int getTrackerViewMaxCount() const;
     int getHMDViewMaxCount() const;       
 
 	// -- Notification --
-	void registerHotplugListener(const CommonDeviceState::eDeviceClass deviceClass, IDeviceHotplugListener *listener);
+	void registerHotplugListener(const DeviceCategory deviceClass, IDeviceHotplugListener *listener);
 	void handle_device_connected(enum DeviceClass device_class, const std::string &device_path) override;
 	void handle_device_disconnected(enum DeviceClass device_class, const std::string &device_path) override;
     
@@ -91,7 +87,6 @@ private:
 	std::vector<DeviceHotplugListener> m_listeners;
 
 public:
-    class ControllerManager *m_controller_manager;
     class TrackerManager *m_tracker_manager;
     class HMDManager *m_hmd_manager;
 };

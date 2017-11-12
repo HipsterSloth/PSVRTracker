@@ -50,14 +50,14 @@ public:
 
     bool initialize(const char *buffer_name, int width, int height, int stride, int section_count);
     void dispose();
-    void writeVideoFrame(const unsigned char *buffer);
+    void writeVideoFrame(PSVRVideoFrameSection section, const unsigned char *buffer);
     inline int getSectionCount() const { return m_section_count; }
     const unsigned char *getBuffer(PSVRVideoFrameSection section) const;
     unsigned char *getBufferMutable(PSVRVideoFrameSection section);
-    static size_t computeVideoBufferSize(int stride, int height);
+    static size_t computeVideoBufferSize(int section_count, int stride, int height);
 
 private:
-    std::string m_shared_memory_name;
+    std::string m_buffer_name;
 	int m_width;
     int m_height;
     int m_stride;

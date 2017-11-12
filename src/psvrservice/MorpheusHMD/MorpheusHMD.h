@@ -91,8 +91,8 @@ public:
 		identity_gravity_direction.k = -sinf(MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES*k_degrees_to_radians);
     };
 
-    virtual const boost::property_tree::ptree config2ptree();
-    virtual void ptree2config(const boost::property_tree::ptree &pt);
+    virtual const configuru::Config writeToJSON();
+    virtual void readFromJSON(const configuru::Config &pt);
 
     bool is_valid;
     long version;

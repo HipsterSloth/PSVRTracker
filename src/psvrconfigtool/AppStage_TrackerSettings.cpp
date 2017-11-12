@@ -11,7 +11,7 @@
 #include "PSVRClient_CAPI.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRProtocolInterface.h"
+#include "PSVRServiceInterface.h"
 #include "PSVRProtocol.pb.h"
 
 #include <glm/gtc/matrix_transform.hpp>

@@ -1,7 +1,7 @@
 // -- includes -----
 #include "PositionFilter.h"
 #include "MathEigen.h"
-#include "ServerLog.h"
+#include "Logger.h"
 
 #include <chrono>
 #include <numeric>

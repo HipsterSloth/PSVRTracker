@@ -40,12 +40,6 @@ typedef struct
     double x, y, z;
 } PSVRVector3d;
 
-/// A 1D range of values.
-typedef struct
-{
-    float center, range;
-} PSVRRangef;
-
 /// A 3D vector with float components.
 typedef struct
 {

@@ -1,8 +1,8 @@
 //-- includes -----
 #include "LibUSBApi.h"
 #include "LibUSBBulkTransferBundle.h"
-#include "ServerLog.h"
-#include "ServerUtility.h"
+#include "Logger.h"
+#include "Utility.h"
 #include "USBDeviceInfo.h"
 #include "USBDeviceRequest.h"
 #include "USBDeviceManager.h"
@@ -659,7 +659,7 @@ static bool libusb_device_get_path(libusb_device *dev, char *outBuffer, size_t b
 		if (libusb_device_get_port_path(dev, port_path, sizeof(port_path)))
 		{
 			int nCharsWritten =
-				ServerUtility::format_string(
+				Utility::format_string(
 					outBuffer, bufferSize,
 					"USB\\VID_%04X&PID_%04X\\%s",
 					dev_desc.idVendor, dev_desc.idProduct, port_path);
@@ -685,7 +685,7 @@ static bool libusb_device_get_port_path(libusb_device *dev, char *outBuffer, siz
 		int port_count = libusb_get_port_numbers(dev, port_numbers, MAX_USB_DEVICE_PORT_PATH);
 		int bus_id = libusb_get_bus_number(dev);
 
-		ServerUtility::format_string(outBuffer, bufferSize, "b%d", bus_id);
+		Utility::format_string(outBuffer, bufferSize, "b%d", bus_id);
 		if (port_count > 0)
 		{
 			bSuccess = true;
@@ -694,7 +694,7 @@ static bool libusb_device_get_port_path(libusb_device *dev, char *outBuffer, siz
 			{
 				uint8_t port_number = port_numbers[port_index];
 
-				if (ServerUtility::format_string(
+				if (Utility::format_string(
 					outBuffer, bufferSize,
 					(port_index == 0) ? "%s_p%d" : "%s.%d",
 					outBuffer, port_number) < 0)

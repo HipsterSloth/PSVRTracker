@@ -1,8 +1,8 @@
 //-- includes -----
 #include "LibUSBBulkTransferBundle.h"
 #include "LibUSBApi.h"
-#include "ServerLog.h"
-#include "ServerUtility.h"
+#include "Logger.h"
+#include "Utility.h"
 #include "USBDeviceRequest.h"
 
 #include "libusb.h"

@@ -5,8 +5,8 @@
 #include "HMDDeviceEnumerator.h"
 #include "HidHMDDeviceEnumerator.h"
 #include "MathUtility.h"
-#include "ServerLog.h"
-#include "ServerUtility.h"
+#include "Logger.h"
+#include "Utility.h"
 #include "hidapi.h"
 #include "libusb.h"
 #include <vector>
@@ -195,49 +195,41 @@ static bool morpheus_send_command(MorpheusUSBContext *morpheus_context, Morpheus
 // -- Morpheus HMD Config
 const int MorpheusHMDConfig::CONFIG_VERSION = 2;
 
-const boost::property_tree::ptree
-MorpheusHMDConfig::config2ptree()
+const configuru::Config
+MorpheusHMDConfig::writeToJSON()
 {
-    boost::property_tree::ptree pt;
-
-	pt.put("is_valid", is_valid);
-	pt.put("version", MorpheusHMDConfig::CONFIG_VERSION);
-
-	pt.put("disable_command_interface", disable_command_interface);
-
-	pt.put("Calibration.Accel.X.k", accelerometer_gain.i);
-	pt.put("Calibration.Accel.Y.k", accelerometer_gain.j);
-	pt.put("Calibration.Accel.Z.k", accelerometer_gain.k);
-	pt.put("Calibration.Accel.X.b", raw_accelerometer_bias.i);
-	pt.put("Calibration.Accel.Y.b", raw_accelerometer_bias.j);
-	pt.put("Calibration.Accel.Z.b", raw_accelerometer_bias.k);
-	pt.put("Calibration.Accel.Variance", raw_accelerometer_variance);
-	pt.put("Calibration.Gyro.X.k", gyro_gain.i);
-	pt.put("Calibration.Gyro.Y.k", gyro_gain.j);
-	pt.put("Calibration.Gyro.Z.k", gyro_gain.k);
-	pt.put("Calibration.Gyro.X.b", raw_gyro_bias.i);
-	pt.put("Calibration.Gyro.Y.b", raw_gyro_bias.j);
-	pt.put("Calibration.Gyro.Z.b", raw_gyro_bias.k);
-	pt.put("Calibration.Gyro.Variance", raw_gyro_variance);
-	pt.put("Calibration.Gyro.Drift", raw_gyro_drift);
-	pt.put("Calibration.Identity.Gravity.X", identity_gravity_direction.i);
-	pt.put("Calibration.Identity.Gravity.Y", identity_gravity_direction.j);
-	pt.put("Calibration.Identity.Gravity.Z", identity_gravity_direction.k);
-
-	pt.put("Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a);
-	pt.put("Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b);
-
-	pt.put("Calibration.Orientation.Variance", orientation_variance);
-
-	pt.put("Calibration.Time.MeanUpdateTime", mean_update_time_delta);
-
-	pt.put("OrientationFilter.FilterType", orientation_filter_type);
-
-	pt.put("PositionFilter.FilterType", position_filter_type);
-	pt.put("PositionFilter.MaxVelocity", max_velocity);
-
-	pt.put("prediction_time", prediction_time);
-	pt.put("max_poll_failure_count", max_poll_failure_count);
+    configuru::Config pt{
+	    {"is_valid", is_valid},
+	    {"version", MorpheusHMDConfig::CONFIG_VERSION},
+	    {"disable_command_interface", disable_command_interface},
+	    {"Calibration.Accel.X.k", accelerometer_gain.i},
+	    {"Calibration.Accel.Y.k", accelerometer_gain.j},
+	    {"Calibration.Accel.Z.k", accelerometer_gain.k},
+	    {"Calibration.Accel.X.b", raw_accelerometer_bias.i},
+	    {"Calibration.Accel.Y.b", raw_accelerometer_bias.j},
+	    {"Calibration.Accel.Z.b", raw_accelerometer_bias.k},
+	    {"Calibration.Accel.Variance", raw_accelerometer_variance},
+	    {"Calibration.Gyro.X.k", gyro_gain.i},
+	    {"Calibration.Gyro.Y.k", gyro_gain.j},
+	    {"Calibration.Gyro.Z.k", gyro_gain.k},
+	    {"Calibration.Gyro.X.b", raw_gyro_bias.i},
+	    {"Calibration.Gyro.Y.b", raw_gyro_bias.j},
+	    {"Calibration.Gyro.Z.b", raw_gyro_bias.k},
+	    {"Calibration.Gyro.Variance", raw_gyro_variance},
+	    {"Calibration.Gyro.Drift", raw_gyro_drift},
+	    {"Calibration.Identity.Gravity.X", identity_gravity_direction.i},
+	    {"Calibration.Identity.Gravity.Y", identity_gravity_direction.j},
+	    {"Calibration.Identity.Gravity.Z", identity_gravity_direction.k},
+	    {"Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a},
+	    {"Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b},
+	    {"Calibration.Orientation.Variance", orientation_variance},
+	    {"Calibration.Time.MeanUpdateTime", mean_update_time_delta},
+	    {"OrientationFilter.FilterType", orientation_filter_type},
+	    {"PositionFilter.FilterType", position_filter_type},
+	    {"PositionFilter.MaxVelocity", max_velocity},
+	    {"prediction_time", prediction_time},
+	    {"max_poll_failure_count", max_poll_failure_count}
+    };
 
 	writeTrackingColor(pt, tracking_color_id);
 
@@ -245,54 +237,54 @@ MorpheusHMDConfig::config2ptree()
 }
 
 void
-MorpheusHMDConfig::ptree2config(const boost::property_tree::ptree &pt)
+MorpheusHMDConfig::readFromJSON(const configuru::Config &pt)
 {
-    version = pt.get<int>("version", 0);
+    version = pt.get_or<int>("version", 0);
 
     if (version == MorpheusHMDConfig::CONFIG_VERSION)
     {
-		is_valid = pt.get<bool>("is_valid", false);
+		is_valid = pt.get_or<bool>("is_valid", false);
 
-		disable_command_interface= pt.get<bool>("disable_command_interface", disable_command_interface);
+		disable_command_interface= pt.get_or<bool>("disable_command_interface", disable_command_interface);
 
-		prediction_time = pt.get<float>("prediction_time", 0.f);
-		max_poll_failure_count = pt.get<long>("max_poll_failure_count", 100);
+		prediction_time = pt.get_or<float>("prediction_time", 0.f);
+		max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
 
 		// Use the current accelerometer values (constructor defaults) as the default values
-		accelerometer_gain.i = pt.get<float>("Calibration.Accel.X.k", accelerometer_gain.i);
-		accelerometer_gain.j = pt.get<float>("Calibration.Accel.Y.k", accelerometer_gain.j);
-		accelerometer_gain.k = pt.get<float>("Calibration.Accel.Z.k", accelerometer_gain.k);
-		raw_accelerometer_bias.i = pt.get<float>("Calibration.Accel.X.b", raw_accelerometer_bias.i);
-		raw_accelerometer_bias.j = pt.get<float>("Calibration.Accel.Y.b", raw_accelerometer_bias.j);
-		raw_accelerometer_bias.k = pt.get<float>("Calibration.Accel.Z.b", raw_accelerometer_bias.k);
-		raw_accelerometer_variance = pt.get<float>("Calibration.Accel.Variance", raw_accelerometer_variance);
+		accelerometer_gain.i = pt.get_or<float>("Calibration.Accel.X.k", accelerometer_gain.i);
+		accelerometer_gain.j = pt.get_or<float>("Calibration.Accel.Y.k", accelerometer_gain.j);
+		accelerometer_gain.k = pt.get_or<float>("Calibration.Accel.Z.k", accelerometer_gain.k);
+		raw_accelerometer_bias.i = pt.get_or<float>("Calibration.Accel.X.b", raw_accelerometer_bias.i);
+		raw_accelerometer_bias.j = pt.get_or<float>("Calibration.Accel.Y.b", raw_accelerometer_bias.j);
+		raw_accelerometer_bias.k = pt.get_or<float>("Calibration.Accel.Z.b", raw_accelerometer_bias.k);
+		raw_accelerometer_variance = pt.get_or<float>("Calibration.Accel.Variance", raw_accelerometer_variance);
 
 		// Use the current gyroscope values (constructor defaults) as the default values
-		gyro_gain.i = pt.get<float>("Calibration.Gyro.X.k", gyro_gain.i);
-		gyro_gain.j = pt.get<float>("Calibration.Gyro.Y.k", gyro_gain.j);
-		gyro_gain.k = pt.get<float>("Calibration.Gyro.Z.k", gyro_gain.k);
-		raw_gyro_bias.i = pt.get<float>("Calibration.Gyro.X.b", raw_gyro_bias.i);
-		raw_gyro_bias.j = pt.get<float>("Calibration.Gyro.Y.b", raw_gyro_bias.j);
-		raw_gyro_bias.k = pt.get<float>("Calibration.Gyro.Z.b", raw_gyro_bias.k);
-		raw_gyro_variance = pt.get<float>("Calibration.Gyro.Variance", raw_gyro_variance);
-		raw_gyro_drift = pt.get<float>("Calibration.Gyro.Drift", raw_gyro_drift);
+		gyro_gain.i = pt.get_or<float>("Calibration.Gyro.X.k", gyro_gain.i);
+		gyro_gain.j = pt.get_or<float>("Calibration.Gyro.Y.k", gyro_gain.j);
+		gyro_gain.k = pt.get_or<float>("Calibration.Gyro.Z.k", gyro_gain.k);
+		raw_gyro_bias.i = pt.get_or<float>("Calibration.Gyro.X.b", raw_gyro_bias.i);
+		raw_gyro_bias.j = pt.get_or<float>("Calibration.Gyro.Y.b", raw_gyro_bias.j);
+		raw_gyro_bias.k = pt.get_or<float>("Calibration.Gyro.Z.b", raw_gyro_bias.k);
+		raw_gyro_variance = pt.get_or<float>("Calibration.Gyro.Variance", raw_gyro_variance);
+		raw_gyro_drift = pt.get_or<float>("Calibration.Gyro.Drift", raw_gyro_drift);
 
-		position_variance_exp_fit_a = pt.get<float>("Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a);
-		position_variance_exp_fit_b = pt.get<float>("Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b);
+		position_variance_exp_fit_a = pt.get_or<float>("Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a);
+		position_variance_exp_fit_b = pt.get_or<float>("Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b);
 
-		orientation_variance = pt.get<float>("Calibration.Orientation.Variance", orientation_variance);
+		orientation_variance = pt.get_or<float>("Calibration.Orientation.Variance", orientation_variance);
 
-		mean_update_time_delta = pt.get<float>("Calibration.Time.MeanUpdateTime", mean_update_time_delta);
+		mean_update_time_delta = pt.get_or<float>("Calibration.Time.MeanUpdateTime", mean_update_time_delta);
 
-		orientation_filter_type = pt.get<std::string>("OrientationFilter.FilterType", orientation_filter_type);
+		orientation_filter_type = pt.get_or<std::string>("OrientationFilter.FilterType", orientation_filter_type);
 
-		position_filter_type = pt.get<std::string>("PositionFilter.FilterType", position_filter_type);
-		max_velocity = pt.get<float>("PositionFilter.MaxVelocity", max_velocity);
+		position_filter_type = pt.get_or<std::string>("PositionFilter.FilterType", position_filter_type);
+		max_velocity = pt.get_or<float>("PositionFilter.MaxVelocity", max_velocity);
 
 		// Get the calibration direction for "down"
-		identity_gravity_direction.i = pt.get<float>("Calibration.Identity.Gravity.X", identity_gravity_direction.i);
-		identity_gravity_direction.j = pt.get<float>("Calibration.Identity.Gravity.Y", identity_gravity_direction.j);
-		identity_gravity_direction.k = pt.get<float>("Calibration.Identity.Gravity.Z", identity_gravity_direction.k);
+		identity_gravity_direction.i = pt.get_or<float>("Calibration.Identity.Gravity.X", identity_gravity_direction.i);
+		identity_gravity_direction.j = pt.get_or<float>("Calibration.Identity.Gravity.Y", identity_gravity_direction.j);
+		identity_gravity_direction.k = pt.get_or<float>("Calibration.Identity.Gravity.Z", identity_gravity_direction.k);
 
 		// Read the tracking color
 		tracking_color_id = static_cast<eCommonTrackingColorID>(readTrackingColor(pt));
@@ -569,7 +561,7 @@ MorpheusHMD::poll()
 			{
 				char hidapi_err_mbs[256];
 				bool valid_error_mesg = 
-					ServerUtility::convert_wcs_to_mbs(hid_error(USBContext->sensor_device_handle), hidapi_err_mbs, sizeof(hidapi_err_mbs));
+					Utility::convert_wcs_to_mbs(hid_error(USBContext->sensor_device_handle), hidapi_err_mbs, sizeof(hidapi_err_mbs));
 
 				// Device no longer in valid state.
 				if (valid_error_mesg)

@@ -1,30 +1,24 @@
 //-- includes -----
 #include "DeviceManager.h"
 
-#include "ControllerManager.h"
 #include "DeviceEnumerator.h"
 #include "HMDManager.h"
 #include "OrientationFilter.h"
 #ifdef WIN32
 #include "PlatformDeviceAPIWin32.h"
 #endif // WIN32
-#include "ServerControllerView.h"
 #include "ServerHMDView.h"
 #include "ServerTrackerView.h"
-#include "ServerRequestHandler.h"
-#include "ServerLog.h"
+#include "ServiceRequestHandler.h"
+#include "Logger.h"
 #include "ServerDeviceView.h"
-#include "ServerNetworkManager.h"
-#include "ServerUtility.h"
-#include "PSVRProtocol.pb.h"
+#include "Utility.h"
 #include "PSVRConfig.h"
 #include "TrackerManager.h"
 
 #include <chrono>
 
 //-- constants -----
-static const int k_default_controller_reconnect_interval= 1000; // ms
-static const int k_default_controller_poll_interval= 2; // ms
 static const int k_default_tracker_reconnect_interval= 10000; // ms
 static const int k_default_tracker_poll_interval= 13; // 1000/75 ms
 static const int k_default_hmd_reconnect_interval= 10000; // ms
@@ -37,8 +31,6 @@ public:
 
     DeviceManagerConfig(const std::string &fnamebase = "DeviceManagerConfig")
         : PSVRConfig(fnamebase)
-        , controller_reconnect_interval(k_default_controller_reconnect_interval)
-        , controller_poll_interval(k_default_controller_poll_interval)
         , tracker_reconnect_interval(k_default_tracker_reconnect_interval)
         , tracker_poll_interval(k_default_tracker_poll_interval)
         , hmd_reconnect_interval(k_default_hmd_reconnect_interval)
@@ -47,39 +39,35 @@ public:
 		, platform_api_enabled(true)
     {};
 
-    const boost::property_tree::ptree
-    config2ptree()
+    const configuru::Config
+    writeToJSON()
     {
-        boost::property_tree::ptree pt;
+        configuru::Config pt{
+            {"version", DeviceManagerConfig::CONFIG_VERSION+0},
+            {"tracker_reconnect_interval", tracker_reconnect_interval},
+            {"tracker_poll_interval", tracker_poll_interval},
+            {"hmd_reconnect_interval", hmd_reconnect_interval},
+            {"hmd_poll_interval", hmd_poll_interval},
+		    {"gamepad_api_enabled", gamepad_api_enabled},
+		    {"platform_api_enabled", platform_api_enabled}
+        };
     
-        pt.put("version", DeviceManagerConfig::CONFIG_VERSION+0);
-        pt.put("controller_reconnect_interval", controller_reconnect_interval);
-        pt.put("controller_poll_interval", controller_poll_interval);
-        pt.put("tracker_reconnect_interval", tracker_reconnect_interval);
-        pt.put("tracker_poll_interval", tracker_poll_interval);
-        pt.put("hmd_reconnect_interval", hmd_reconnect_interval);
-        pt.put("hmd_poll_interval", hmd_poll_interval); 
-		pt.put("gamepad_api_enabled", gamepad_api_enabled);
-		pt.put("platform_api_enabled", platform_api_enabled);
-
         return pt;
     }
 
     void
-    ptree2config(const boost::property_tree::ptree &pt)
+    readFromJSON(const configuru::Config &pt)
     {
-        version = pt.get<int>("version", 0);
+        version = pt.get_or<int>("version", 0);
 
         if (version == (DeviceManagerConfig::CONFIG_VERSION+0))
         {
-            controller_reconnect_interval = pt.get<int>("controller_reconnect_interval", k_default_controller_reconnect_interval);
-            controller_poll_interval = pt.get<int>("controller_poll_interval", k_default_controller_poll_interval);
-            tracker_reconnect_interval = pt.get<int>("tracker_reconnect_interval", k_default_tracker_reconnect_interval);
-            tracker_poll_interval = pt.get<int>("tracker_poll_interval", k_default_tracker_poll_interval);
-            hmd_reconnect_interval = pt.get<int>("hmd_reconnect_interval", k_default_hmd_reconnect_interval);
-            hmd_poll_interval = pt.get<int>("hmd_poll_interval", k_default_hmd_poll_interval);
-		    gamepad_api_enabled = pt.get<bool>("gamepad_api_enabled", gamepad_api_enabled);
-		    platform_api_enabled = pt.get<bool>("platform_api_enabled", platform_api_enabled);
+            tracker_reconnect_interval = pt.get_or<int>("tracker_reconnect_interval", k_default_tracker_reconnect_interval);
+            tracker_poll_interval = pt.get_or<int>("tracker_poll_interval", k_default_tracker_poll_interval);
+            hmd_reconnect_interval = pt.get_or<int>("hmd_reconnect_interval", k_default_hmd_reconnect_interval);
+            hmd_poll_interval = pt.get_or<int>("hmd_poll_interval", k_default_hmd_poll_interval);
+		    gamepad_api_enabled = pt.get_or<bool>("gamepad_api_enabled", gamepad_api_enabled);
+		    platform_api_enabled = pt.get_or<bool>("platform_api_enabled", platform_api_enabled);
         }
         else
         {
@@ -107,7 +95,6 @@ DeviceManager::DeviceManager()
     : m_config() // NULL config until startup
 	, m_platform_api_type(_eDevicePlatformApiType_None)
 	, m_platform_api(nullptr)
-    , m_controller_manager(new ControllerManager())
     , m_tracker_manager(new TrackerManager())
     , m_hmd_manager(new HMDManager())
 {
@@ -115,7 +102,6 @@ DeviceManager::DeviceManager()
 
 DeviceManager::~DeviceManager()
 {
-    delete m_controller_manager;
     delete m_tracker_manager;
     delete m_hmd_manager;
 
@@ -158,26 +144,17 @@ DeviceManager::startup()
 	}
 
 	// Register for hotplug events if this platform supports them
-	int controller_reconnect_interval = m_config->controller_reconnect_interval;
 	int tracker_reconnect_interval = m_config->tracker_reconnect_interval;
 	int hmd_reconnect_interval = m_config->hmd_reconnect_interval;
 	if (success && m_platform_api_type != _eDevicePlatformApiType_None)
 	{
-		registerHotplugListener(CommonDeviceState::Controller, m_controller_manager);
-		controller_reconnect_interval = -1;
-
-		registerHotplugListener(CommonDeviceState::TrackingCamera, m_tracker_manager);
+		registerHotplugListener(DeviceCategory_TRACKER, m_tracker_manager);
 		tracker_reconnect_interval = -1;
 
-		registerHotplugListener(CommonDeviceState::HeadMountedDisplay, m_hmd_manager);
+		registerHotplugListener(DeviceCategory_HMD, m_hmd_manager);
 		hmd_reconnect_interval = -1;
 	}
 
-    m_controller_manager->reconnect_interval = controller_reconnect_interval;
-    m_controller_manager->poll_interval = m_config->controller_poll_interval;
-	m_controller_manager->gamepad_api_enabled= m_config->gamepad_api_enabled;
-    success &= m_controller_manager->startup();
-    
     m_tracker_manager->reconnect_interval = tracker_reconnect_interval;
     m_tracker_manager->poll_interval = m_config->tracker_poll_interval;
     success &= m_tracker_manager->startup();
@@ -199,14 +176,11 @@ DeviceManager::update()
 		m_platform_api->poll(); // Send device hotplug events
 	}
 
-    m_controller_manager->poll(); // Update controller counts and poll button/IMU state
     m_tracker_manager->poll(); // Update tracker count and poll video frames
     m_hmd_manager->poll(); // Update HMD count and poll IMU state
 
-    m_controller_manager->updateStateAndPredict(m_tracker_manager); // Compute pose/prediction of tracking blob+IMU state
     m_hmd_manager->updateStateAndPredict(m_tracker_manager); // Compute pose/prediction of tracking blobs+IMU state
 
-    m_controller_manager->publish(); // publish controller state to any listening clients  (common case)
     m_tracker_manager->publish(); // publish tracker state to any listening clients (probably only used by ConfigTool)
     m_hmd_manager->publish(); // publish hmd state to any listening clients (common case)
 }
@@ -217,11 +191,6 @@ DeviceManager::shutdown()
 	if (m_config)
 	{
 		m_config->save();
-	}
-
-	if (m_controller_manager != nullptr)
-	{
-	    m_controller_manager->shutdown();
 	}
 
 	if (m_tracker_manager != nullptr)
@@ -263,12 +232,6 @@ DeviceManager::get_device_property(
 }
 
 int 
-DeviceManager::getControllerViewMaxCount() const
-{
-    return m_controller_manager->getMaxDevices();
-}
-
-int 
 DeviceManager::getTrackerViewMaxCount() const
 {
     return m_tracker_manager->getMaxDevices();
@@ -280,23 +243,11 @@ DeviceManager::getHMDViewMaxCount() const
     return m_hmd_manager->getMaxDevices();
 }
 
-ServerControllerViewPtr
-DeviceManager::getControllerViewPtr(int device_id)
-{
-    ServerControllerViewPtr result;
-    if (ServerUtility::is_index_valid(device_id, m_controller_manager->getMaxDevices()))
-    {
-        result = m_controller_manager->getControllerViewPtr(device_id);
-    }
-
-    return result;
-}
-
 ServerTrackerViewPtr
 DeviceManager::getTrackerViewPtr(int tracker_id)
 {
     ServerTrackerViewPtr result;
-    if (ServerUtility::is_index_valid(tracker_id, m_tracker_manager->getMaxDevices()))
+    if (Utility::is_index_valid(tracker_id, m_tracker_manager->getMaxDevices()))
     {
         result = m_tracker_manager->getTrackerViewPtr(tracker_id);
     }
@@ -308,7 +259,7 @@ ServerHMDViewPtr
 DeviceManager::getHMDViewPtr(int hmd_id)
 {
     ServerHMDViewPtr result;
-    if (ServerUtility::is_index_valid(hmd_id, m_hmd_manager->getMaxDevices()))
+    if (Utility::is_index_valid(hmd_id, m_hmd_manager->getMaxDevices()))
     {
         result = m_hmd_manager->getHMDViewPtr(hmd_id);
     }
@@ -318,18 +269,17 @@ DeviceManager::getHMDViewPtr(int hmd_id)
 
 // -- Notification --
 void
-DeviceManager::registerHotplugListener(const CommonDeviceState::eDeviceClass deviceClass, IDeviceHotplugListener *listener)
+DeviceManager::registerHotplugListener(enum DeviceCategory device_category, IDeviceHotplugListener *listener)
 {
 	DeviceHotplugListener entry;
 	entry.listener = listener;
 
-	switch (deviceClass)
+	switch (device_category)
 	{
-	case CommonDeviceState::Controller:
-	case CommonDeviceState::HeadMountedDisplay:
+	case DeviceCategory_HMD:
 		entry.device_class = DeviceClass::DeviceClass_HID;
 		break;
-	case CommonDeviceState::TrackingCamera:
+	case DeviceCategory_TRACKER:
 		entry.device_class = DeviceClass::DeviceClass_Camera;
 		break;
 	default:

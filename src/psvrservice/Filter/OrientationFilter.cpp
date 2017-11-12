@@ -1,7 +1,7 @@
 // -- includes -----
 #include "OrientationFilter.h"
 #include "MathAlignment.h"
-#include "ServerLog.h"
+#include "Logger.h"
 #include <deque>
 
 //-- constants -----

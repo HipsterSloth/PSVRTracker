@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include "DevicePlatformInterface.h"
-#include "PSVRProtocolInterface.h"
+#include "PSVRServiceInterface.h"
 
 #include <memory>
 #include <chrono>

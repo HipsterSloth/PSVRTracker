@@ -2,13 +2,31 @@
 #define PSVR_CONFIG_H
 
 //-- includes -----
+#include "ClientColor_CAPI.h"
 #include <string>
-#include <boost/property_tree/ptree.hpp>
+
+#ifdef _MSC_VER
+    #pragma warning (push)
+    #pragma warning (disable: 4996) // This function or variable may be unsafe
+    #pragma warning (disable: 4244) // 'return': conversion from 'const int64_t' to 'float', possible loss of data
+    #pragma warning (disable: 4715) // configuru::Config::operator[]': not all control paths return a value
+#endif
+#include <configuru.hpp>
+#ifdef _MSC_VER
+    #pragma warning (pop)
+#endif
 
 //-- constants -----
-extern const struct CommonHSVColorRange *k_default_color_presets;
+extern const PSVR_HSVColorRange *k_default_color_presets;
 
 //-- definitions -----
+/*
+Note that PSVRConfig is an abstract class because it has 2 pure virtual functions.
+Child classes must add public member variables that store the config data,
+as well as implement writeToJSON and readFromJSON that use pt[key]= value and
+pt.get_or<type>(), respectively, to convert between member variables and the
+property tree. See tests/test_config.cpp for an example.
+*/
 class PSVRConfig {
 public:
     PSVRConfig(const std::string &fnamebase = std::string("PSVRConfig"));
@@ -17,39 +35,33 @@ public:
     
     std::string ConfigFileBase;
 
-    virtual const boost::property_tree::ptree config2ptree() = 0;  // Implement by each device class' own Config
-    virtual void ptree2config(const boost::property_tree::ptree &pt) = 0;  // Implement by each device class' own Config
+    virtual const configuru::Config writeToJSON() = 0;  // Implement by each device class' own Config
+    virtual void readFromJSON(const configuru::Config &pt) = 0;  // Implement by each device class' own Config
     
     static void writeColorPreset(
-        boost::property_tree::ptree &pt,
+        configuru::Config &pt,
         const char *profile_name,
         const char *color_name,
-        const struct CommonHSVColorRange *colorPreset);
+        const PSVR_HSVColorRange *colorPreset);
     static void readColorPreset(
-        const boost::property_tree::ptree &pt,
+        const configuru::Config &pt,
         const char *profile_name,
         const char *color_name,
-        struct CommonHSVColorRange *outColorPreset,
-        const struct CommonHSVColorRange *defaultPreset);
+        PSVR_HSVColorRange *outColorPreset,
+        const PSVR_HSVColorRange *defaultPreset);
 
 	static void writeColorPropertyPresetTable(
-		const struct CommonHSVColorRangeTable *table,
-		boost::property_tree::ptree &pt);
+		const PSVR_HSVColorRangeTable *table,
+		configuru::Config &pt);
 	static void readColorPropertyPresetTable(
-		const boost::property_tree::ptree &pt,
-		struct CommonHSVColorRangeTable *table);
+		const configuru::Config &pt,
+		PSVR_HSVColorRangeTable *table);
 
-	static void writeTrackingColor(boost::property_tree::ptree &pt, int tracking_color_id);
-	static int readTrackingColor(const boost::property_tree::ptree &pt);
+	static void writeTrackingColor(configuru::Config &pt, int tracking_color_id);
+	static int readTrackingColor(const configuru::Config &pt);
 
 private:
     const std::string getConfigPath();
 };
-/*
-Note that PSVRConfig is an abstract class because it has 2 pure virtual functions.
-Child classes must add public member variables that store the config data,
-as well as implement config2ptree and ptree2config that use pt.put() and
-pt.get(), respectively, to convert between member variables and the
-property tree. See tests/test_config.cpp for an example.
-*/
+
 #endif // PSVR_CONFIG_H

@@ -4,7 +4,7 @@
 #include "ControllerManager.h"
 #include "DeviceManager.h"
 #include "HMDManager.h"
-#include "ServerLog.h"
+#include "Logger.h"
 #include "ServerControllerView.h"
 #include "ServerHMDView.h"
 #include "ServerTrackerView.h"
@@ -34,7 +34,10 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
 	default_tracker_profile.frame_rate = 40;
     default_tracker_profile.exposure = 32;
     default_tracker_profile.gain = 32;
-	default_tracker_profile.color_preset_table.table_name= "default_tracker_profile";
+	strncpy(
+        default_tracker_profile.color_preset_table.table_name, 
+        "default_tracker_profile", 
+        sizeof(default_tracker_profile.color_preset_table.table_name));
 	global_forward_degrees = 270.f; // Down -Z by default
     for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
     {
@@ -42,32 +45,25 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     }
 };
 
-const boost::property_tree::ptree
-TrackerManagerConfig::config2ptree()
+const configuru::Config
+TrackerManagerConfig::writeToJSON()
 {
-    boost::property_tree::ptree pt;
-
-    pt.put("version", TrackerManagerConfig::CONFIG_VERSION);
-
-	pt.put("controller_position_smoothing", controller_position_smoothing);
-	pt.put("ignore_pose_from_one_tracker", ignore_pose_from_one_tracker);
-    pt.put("optical_tracking_timeout", optical_tracking_timeout);
-	pt.put("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
-	pt.put("tracker_sleep_ms", tracker_sleep_ms);
-
-	pt.put("excluded_opposed_cameras", exclude_opposed_cameras);	
-
-	pt.put("min_valid_projection_area", min_valid_projection_area);	
-
-	pt.put("disable_roi", disable_roi);
-
-	pt.put("default_tracker_profile.frame_width", default_tracker_profile.frame_width);
-	//pt.put("default_tracker_profile.frame_height", default_tracker_profile.frame_height);
-	pt.put("default_tracker_profile.frame_rate", default_tracker_profile.frame_rate);
-    pt.put("default_tracker_profile.exposure", default_tracker_profile.exposure);
-    pt.put("default_tracker_profile.gain", default_tracker_profile.gain);
-
-	pt.put("global_forward_degrees", global_forward_degrees);
+    configuru::Config pt{
+        {"version", TrackerManagerConfig::CONFIG_VERSION},
+	    {"controller_position_smoothing", controller_position_smoothing},
+	    {"ignore_pose_from_one_tracker", ignore_pose_from_one_tracker},
+        {"optical_tracking_timeout", optical_tracking_timeout},
+	    {"use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table},
+	    {"tracker_sleep_ms", tracker_sleep_ms},
+	    {"excluded_opposed_cameras", exclude_opposed_cameras},	
+	    {"min_valid_projection_area", min_valid_projection_area},	
+	    {"disable_roi", disable_roi},
+	    {"default_tracker_profile.frame_width", default_tracker_profile.frame_width},
+	    {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
+        {"default_tracker_profile.exposure", default_tracker_profile.exposure},
+        {"default_tracker_profile.gain", default_tracker_profile.gain},
+	    {"global_forward_degrees", global_forward_degrees}
+    };
 
 	writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
 
@@ -75,27 +71,27 @@ TrackerManagerConfig::config2ptree()
 }
 
 void
-TrackerManagerConfig::ptree2config(const boost::property_tree::ptree &pt)
+TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
 {
-    version = pt.get<int>("version", 0);
+    version = pt.get_or<int>("version", 0);
 
     if (version == TrackerManagerConfig::CONFIG_VERSION)
     {
-		controller_position_smoothing = pt.get<float>("controller_position_smoothing", controller_position_smoothing);
-		ignore_pose_from_one_tracker = pt.get<bool>("ignore_pose_from_one_tracker", ignore_pose_from_one_tracker);
-        optical_tracking_timeout= pt.get<int>("optical_tracking_timeout", optical_tracking_timeout);
-		use_bgr_to_hsv_lookup_table = pt.get<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
-		tracker_sleep_ms = pt.get<int>("tracker_sleep_ms", tracker_sleep_ms);
-		exclude_opposed_cameras = pt.get<bool>("excluded_opposed_cameras", exclude_opposed_cameras);
-		min_valid_projection_area = pt.get<float>("min_valid_projection_area", min_valid_projection_area);	
-		disable_roi = pt.get<bool>("disable_roi", disable_roi);
-		default_tracker_profile.frame_width = pt.get<float>("default_tracker_profile.frame_width", 640);
-		//default_tracker_profile.frame_height = pt.get<float>("default_tracker_profile.frame_height", 480);
-		default_tracker_profile.frame_rate = pt.get<float>("default_tracker_profile.frame_rate", 40);
-        default_tracker_profile.exposure = pt.get<float>("default_tracker_profile.exposure", 32);
-        default_tracker_profile.gain = pt.get<float>("default_tracker_profile.gain", 32);
+		controller_position_smoothing = pt.get_or<float>("controller_position_smoothing", controller_position_smoothing);
+		ignore_pose_from_one_tracker = pt.get_or<bool>("ignore_pose_from_one_tracker", ignore_pose_from_one_tracker);
+        optical_tracking_timeout= pt.get_or<int>("optical_tracking_timeout", optical_tracking_timeout);
+		use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
+		tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
+		exclude_opposed_cameras = pt.get_or<bool>("excluded_opposed_cameras", exclude_opposed_cameras);
+		min_valid_projection_area = pt.get_or<float>("min_valid_projection_area", min_valid_projection_area);	
+		disable_roi = pt.get_or<bool>("disable_roi", disable_roi);
+		default_tracker_profile.frame_width = pt.get_or<float>("default_tracker_profile.frame_width", 640);
+		//default_tracker_profile.frame_height = pt.get_or<float>("default_tracker_profile.frame_height", 480);
+		default_tracker_profile.frame_rate = pt.get_or<float>("default_tracker_profile.frame_rate", 40);
+        default_tracker_profile.exposure = pt.get_or<float>("default_tracker_profile.exposure", 32);
+        default_tracker_profile.gain = pt.get_or<float>("default_tracker_profile.gain", 32);
 
-		global_forward_degrees= pt.get<float>("global_forward_degrees", global_forward_degrees);
+		global_forward_degrees= pt.get_or<float>("global_forward_degrees", global_forward_degrees);
 
 		readColorPropertyPresetTable(pt, &default_tracker_profile.color_preset_table);
     }

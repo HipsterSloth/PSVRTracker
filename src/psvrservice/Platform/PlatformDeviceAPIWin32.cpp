@@ -1,6 +1,6 @@
 // -- include -----
 #include "PlatformDeviceAPIWin32.h"
-#include "ServerLog.h"
+#include "Logger.h"
 
 #define ANSI
 #define WIN32_LEAN_AND_MEAN

@@ -116,6 +116,12 @@ list(APPEND PSVR_SERVICE_INCL_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/VirtualHMD
 )
 
+# Configuru
+list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/thirdparty/Configuru)
+
+# Lockfree Queue
+list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/thirdparty/lockfreequeue)
+
 # Eigen math library
 list(APPEND PSVR_SERVICE_INCL_DIRS ${EIGEN3_INCLUDE_DIR})
 
@@ -188,6 +194,7 @@ list(APPEND PSVR_SERVICE_CAPI_REQ_LIBS PSVRService_static)
 # Source files to develop the shared library.
 list(APPEND PSVR_SERVICE_CAPI_LIBRARY_SRC
     "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/PSVRClient_export.h"
+	"${CMAKE_CURRENT_LIST_DIR}/ClientAPI/ClientColor_CAPI.h"
     "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/ClientGeometry_CAPI.h"
     "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/ClientGeometry_CAPI.cpp"	
     "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/PSVRClient_CAPI.h"
@@ -199,7 +206,7 @@ add_library(PSVRService SHARED ${PSVR_SERVICE_CAPI_LIBRARY_SRC})
 target_include_directories(PSVRService PUBLIC ${CMAKE_CURRENT_LIST_DIR}/ClientAPI)
 target_link_libraries(PSVRService PRIVATE ${PSVR_SERVICE_CAPI_REQ_LIBS})
 target_compile_definitions(PSVRService_static PRIVATE PSVRClient_EXPORTS) # See PSVRClient_export.h
-set_target_properties(PSVRService PROPERTIES PUBLIC_HEADER "ClientConstants.h;ClientGeometry_CAPI.h;PSMoveClient_CAPI.h;PSMoveClient_export.h")
+set_target_properties(PSVRService PROPERTIES PUBLIC_HEADER "ClientConstants.h;ClientColor_CAPI.h;ClientGeometry_CAPI.h;PSMoveClient_CAPI.h;PSMoveClient_export.h")
 set_target_properties(PSVRService PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(PSVRService PROPERTIES C_VISIBILITY_PRESET hidden)	
 

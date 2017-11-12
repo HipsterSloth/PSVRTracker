@@ -1,6 +1,6 @@
 // -- includes -----
 #include "VirtualHMDDeviceEnumerator.h"
-#include "ServerUtility.h"
+#include "Utility.h"
 #include "assert.h"
 #include "hidapi.h"
 #include "string.h"
@@ -47,7 +47,7 @@ bool VirtualHMDDeviceEnumerator::next()
     if (m_device_index < m_device_count)
     {
         char device_path[32];
-        ServerUtility::format_string(device_path, sizeof(device_path), "VirtualHMD__%s", m_device_index);
+        Utility::format_string(device_path, sizeof(device_path), "VirtualHMD__%s", m_device_index);
 
         m_current_device_identifier= device_path;
     }
