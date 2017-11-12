@@ -241,9 +241,9 @@ public:
 };
 
 /**
-* @brief Measurement model for measuring PSMove controller
+* @brief Measurement model for measuring PSVR controller
 *
-* This is the measurement model for measuring the position and magnetometer of the PSMove controller.
+* This is the measurement model for measuring the position and magnetometer of the PSVR controller.
 * The measurement is given by the optical trackers.
 */
 class PositionMeasurementModel : public Kalman::MeasurementModel<PositionStateVectord, PositionMeasurementVectord, Kalman::SquareRootBase>

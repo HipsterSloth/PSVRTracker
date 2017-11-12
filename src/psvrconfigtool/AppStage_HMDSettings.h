@@ -21,7 +21,7 @@ public:
         int HmdID;
         eHMDType HmdType;
         std::string DevicePath;
-        PSMTrackingColorType TrackingColorType;
+        PSVRTrackingColorType TrackingColorType;
 		int PositionFilterIndex;
 		std::string PositionFilterName;
 		int OrientationFilterIndex;
@@ -51,12 +51,12 @@ public:
 
 protected:
     virtual bool onClientAPIEvent(
-        PSMEventMessage::eEventType event, 
-        PSMEventDataHandle opaque_event_handle) override;
+        PSVREventMessage::eEventType event, 
+        PSVREventDataHandle opaque_event_handle) override;
 
     void request_hmd_list();
 	static void handle_hmd_list_response(
-		const PSMResponseMessage *response,
+		const PSVRResponseMessage *response,
 		void *userdata);
 
 	void request_set_orientation_filter(const int hmd_id, const std::string &filter_name);
@@ -64,7 +64,7 @@ protected:
 	void request_set_hmd_prediction(const int hmd_id, float prediction_time);
 	void request_set_hmd_tracking_color_id(
 		const int hmd_id,
-		PSMTrackingColorType tracking_color_type);
+		PSVRTrackingColorType tracking_color_type);
 
 
 private:

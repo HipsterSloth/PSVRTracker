@@ -3,11 +3,11 @@
 
 //-- includes -----
 #include "ServerDeviceView.h"
-#include "PSMoveProtocolInterface.h"
+#include "PSVRProtocolInterface.h"
 #include <vector>
 
 // -- pre-declarations -----
-namespace PSMoveProtocol
+namespace PSVRProtocol
 {
     class Response_ResultTrackerSettings;
     class TrackingColorPreset;
@@ -125,12 +125,12 @@ public:
     void getFOV(float &outHFOV, float &outVFOV) const;
     void getZRange(float &outZNear, float &outZFar) const;
 
-    void gatherTrackerOptions(PSMoveProtocol::Response_ResultTrackerSettings* settings) const;
+    void gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const;
     bool setOptionIndex(const std::string &option_name, int option_index);
     bool getOptionIndex(const std::string &option_name, int &out_option_index) const;
 
-    void gatherTrackingColorPresets(const class ServerControllerView *controller, PSMoveProtocol::Response_ResultTrackerSettings* settings) const;
-	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSMoveProtocol::Response_ResultTrackerSettings* settings) const;
+    void gatherTrackingColorPresets(const class ServerControllerView *controller, PSVRProtocol::Response_ResultTrackerSettings* settings) const;
+	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSVRProtocol::Response_ResultTrackerSettings* settings) const;
 
     void setControllerTrackingColorPreset(const class ServerControllerView *controller, eCommonTrackingColorID color, const CommonHSVColorRange *preset);
     void getControllerTrackingColorPreset(const class ServerControllerView *controller, eCommonTrackingColorID color, CommonHSVColorRange *out_preset) const;

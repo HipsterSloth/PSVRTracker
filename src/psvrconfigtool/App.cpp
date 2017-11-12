@@ -5,7 +5,7 @@
 #include "Renderer.h"
 #include "Logger.h"
 
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocol.pb.h"
 
 //-- public methods -----
 App::App()
@@ -19,8 +19,8 @@ App::App()
     , m_appStage(nullptr)
     , m_bShutdownRequested(false)
 {
-	strncpy(m_serverAddress, PSMOVESERVICE_DEFAULT_ADDRESS, sizeof(m_serverAddress));
-	strncpy(m_serverPort, PSMOVESERVICE_DEFAULT_PORT, sizeof(m_serverPort));
+	strncpy(m_serverAddress, PSVRSERVICE_DEFAULT_ADDRESS, sizeof(m_serverAddress));
+	strncpy(m_serverPort, PSVRSERVICE_DEFAULT_PORT, sizeof(m_serverPort));
 	m_bIsServerLocal= true;
 }
 
@@ -78,15 +78,15 @@ int App::exec(int argc, char** argv, const char *initial_state_name)
 
 bool App::reconnectToService()
 {
-    if (PSM_GetIsInitialized())
+    if (PSVR_GetIsInitialized())
     {
-		PSM_Shutdown();
+		PSVR_Shutdown();
     }
 
     bool success= 
-		PSM_InitializeAsync(
+		PSVR_InitializeAsync(
             m_serverAddress,
-            m_serverPort) == PSMResult_Success;
+            m_serverPort) == PSVRResult_Success;
 
     return success;
 }
@@ -220,11 +220,11 @@ void App::onSDLEvent(const SDL_Event &e)
     }
 }
 
-void App::onClientPSMoveEvent(
-    const PSMEventMessage *event)
+void App::onClientPSVREvent(
+    const PSVREventMessage *event)
 {
-    PSMEventMessage::eEventType event_type = event->event_type;
-    PSMEventDataHandle opaque_event_handle = event->event_data_handle;
+    PSVREventMessage::eEventType event_type = event->event_type;
+    PSVREventDataHandle opaque_event_handle = event->event_data_handle;
 
     // Try giving the event to the current AppStage first
     if (!m_appStage->onClientAPIEvent(event_type, opaque_event_handle))
@@ -241,37 +241,37 @@ void App::onClientPSMoveEvent(
     }
 }
 
-void App::onClientPSMoveResponse(
-    const PSMResponseMessage *response)
+void App::onClientPSVRResponse(
+    const PSVRResponseMessage *response)
 {
-    PSMRequestID request_id= response->request_id;
-    const PSMoveProtocol::Response *protocol_response = GET_PSMOVEPROTOCOL_RESPONSE(response->opaque_response_handle);
-    PSMoveProtocol::Response_ResponseType protocol_response_type= protocol_response->type();
-    const std::string& protocol_response_type_name = PSMoveProtocol::Response_ResponseType_Name(protocol_response_type);
+    PSVRRequestID request_id= response->request_id;
+    const PSVRProtocol::Response *protocol_response = GET_PSVRPROTOCOL_RESPONSE(response->opaque_response_handle);
+    PSVRProtocol::Response_ResponseType protocol_response_type= protocol_response->type();
+    const std::string& protocol_response_type_name = PSVRProtocol::Response_ResponseType_Name(protocol_response_type);
 
     // All responses should have been handled by a response handler
-    Log_ERROR("App::onClientPSMoveResponse", "Unhandled response type:%s (request id: %d)!", 
+    Log_ERROR("App::onClientPSVRResponse", "Unhandled response type:%s (request id: %d)!", 
         protocol_response_type_name.c_str(), request_id);
 }
 
 void App::update()
 {
-	if (PSM_GetIsInitialized())
+	if (PSVR_GetIsInitialized())
 	{
 		// Poll any events from the service
-		PSM_UpdateNoPollMessages();
+		PSVR_UpdateNoPollMessages();
 
-		// Poll events queued up by the call to ClientPSMoveAPI::update()
-		PSMMessage message;
-		while (PSM_PollNextMessage(&message, sizeof(message)) == PSMResult_Success)
+		// Poll events queued up by the call to ClientPSVRAPI::update()
+		PSVRMessage message;
+		while (PSVR_PollNextMessage(&message, sizeof(message)) == PSVRResult_Success)
 		{
 			switch (message.payload_type)
 			{
-			case PSMMessage::_messagePayloadType_Response:
-				onClientPSMoveResponse(&message.response_data);
+			case PSVRMessage::_messagePayloadType_Response:
+				onClientPSVRResponse(&message.response_data);
 				break;
-			case PSMMessage::_messagePayloadType_Event:
-				onClientPSMoveEvent(&message.event_data);
+			case PSVRMessage::_messagePayloadType_Event:
+				onClientPSVREvent(&message.event_data);
 				break;
 			}
 		}

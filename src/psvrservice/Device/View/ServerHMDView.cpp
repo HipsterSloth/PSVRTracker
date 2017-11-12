@@ -6,7 +6,7 @@
 #include "VirtualHMD.h"
 #include "CompoundPoseFilter.h"
 #include "PoseFilterInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocol.pb.h"
 #include "ServerLog.h"
 #include "ServerRequestHandler.h"
 #include "ServerTrackerView.h"
@@ -370,7 +370,7 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
 
         // How we compute the final world pose estimate varies based on
         // * Number of trackers that currently have a valid projections of the controller
-        // * The kind of projection shape (psmove sphere or ds4 lightbar)
+        // * The kind of projection shape (PSVR sphere or ds4 lightbar)
         if (projections_found > 1)
         {
             // If multiple trackers can see the controller, 
@@ -739,7 +739,7 @@ void ServerHMDView::generate_hmd_data_frame_for_stream(
     const struct HMDStreamInfo *stream_info,
     DeviceOutputDataFramePtr &data_frame)
 {
-    PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame =
+    PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame =
         data_frame->mutable_hmd_data_packet();
 
     hmd_data_frame->set_hmd_id(hmd_view->getDeviceID());
@@ -760,7 +760,7 @@ void ServerHMDView::generate_hmd_data_frame_for_stream(
         assert(0 && "Unhandled HMD type");
     }
 
-    data_frame->set_device_category(PSMoveProtocol::DeviceOutputDataFrame::HMD);
+    data_frame->set_device_category(PSVRProtocol::DeviceOutputDataFrame::HMD);
 }
 
 static void
@@ -811,7 +811,7 @@ init_filters_for_morpheus_hmd(
 
 	*out_pose_filter_space = pose_filter_space;
 	*out_pose_filter = pose_filter_factory(
-		CommonDeviceState::eDeviceType::PSMove,
+		CommonDeviceState::eDeviceType::PSVR,
 		hmd_config->position_filter_type,
 		hmd_config->orientation_filter_type,
 		constants);
@@ -1107,14 +1107,14 @@ static void generate_morpheus_hmd_data_frame_for_stream(
     const CommonHMDState *hmd_state = hmd_view->getState();
     const CommonDevicePose hmd_pose = hmd_view->getFilteredPose();
 
-    PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame = data_frame->mutable_hmd_data_packet();
+    PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame = data_frame->mutable_hmd_data_packet();
 
     if (hmd_state != nullptr)
     {
         assert(hmd_state->DeviceType == CommonDeviceState::Morpheus);
         const MorpheusHMDState * morpheus_hmd_state = static_cast<const MorpheusHMDState *>(hmd_state);
 
-        PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket_MorpheusState* morpheus_data_frame = 
+        PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket_MorpheusState* morpheus_data_frame = 
             hmd_data_frame->mutable_morpheus_state();
 
 		morpheus_data_frame->set_iscurrentlytracking(hmd_view->getIsCurrentlyTracking());
@@ -1166,7 +1166,7 @@ static void generate_morpheus_hmd_data_frame_for_stream(
         // If requested, get the raw sensor data for the hmd
         if (stream_info->include_raw_sensor_data)
         {
-            PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket_MorpheusState_RawSensorData *raw_sensor_data =
+            PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket_MorpheusState_RawSensorData *raw_sensor_data =
                 morpheus_data_frame->mutable_raw_sensor_data();
 
 			// Two frames: [[ax0, ay0, az0], [ax1, ay1, az1]] 
@@ -1185,7 +1185,7 @@ static void generate_morpheus_hmd_data_frame_for_stream(
 		// If requested, get the raw sensor data for the hmd
 		if (stream_info->include_calibrated_sensor_data)
 		{
-			PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket_MorpheusState_CalibratedSensorData *calibrated_sensor_data =
+			PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket_MorpheusState_CalibratedSensorData *calibrated_sensor_data =
 				morpheus_data_frame->mutable_calibrated_sensor_data();
 
 			// Two frames: [[ax0, ay0, az0], [ax1, ay1, az1]] 
@@ -1225,7 +1225,7 @@ static void generate_morpheus_hmd_data_frame_for_stream(
 				        {
 					        const CommonDeviceScreenLocation trackerScreenLocation =
 						        tracker_view->projectTrackerRelativePosition(&trackerRelativePosition);
-					        PSMoveProtocol::Pixel *pixel = raw_tracker_data->mutable_screen_location();
+					        PSVRProtocol::Pixel *pixel = raw_tracker_data->mutable_screen_location();
 
 					        pixel->set_x(trackerScreenLocation.x);
 					        pixel->set_y(trackerScreenLocation.y);
@@ -1233,7 +1233,7 @@ static void generate_morpheus_hmd_data_frame_for_stream(
 
 				        // Add the tracker relative 3d position
 				        {
-					        PSMoveProtocol::Position *position = raw_tracker_data->mutable_relative_position_cm();
+					        PSVRProtocol::Position *position = raw_tracker_data->mutable_relative_position_cm();
 
 					        position->set_x(trackerRelativePosition.x);
 					        position->set_y(trackerRelativePosition.y);
@@ -1246,11 +1246,11 @@ static void generate_morpheus_hmd_data_frame_for_stream(
 						        positionEstimate->projection;
 
 					        assert(trackerRelativeProjection.shape_type == eCommonTrackingProjectionType::ProjectionType_Points);
-					        PSMoveProtocol::Polygon *polygon = raw_tracker_data->mutable_projected_point_cloud();
+					        PSVRProtocol::Polygon *polygon = raw_tracker_data->mutable_projected_point_cloud();
 
 					        for (int vert_index = 0; vert_index < trackerRelativeProjection.shape.points.point_count; ++vert_index)
 					        {
-						        PSMoveProtocol::Pixel *pixel = polygon->add_vertices();
+						        PSVRProtocol::Pixel *pixel = polygon->add_vertices();
 
 						        pixel->set_x(trackerRelativeProjection.shape.points.point[vert_index].x);
 						        pixel->set_y(trackerRelativeProjection.shape.points.point[vert_index].y);
@@ -1265,7 +1265,7 @@ static void generate_morpheus_hmd_data_frame_for_stream(
 		}
     }
 
-    hmd_data_frame->set_hmd_type(PSMoveProtocol::Morpheus);
+    hmd_data_frame->set_hmd_type(PSVRProtocol::Morpheus);
 }
 
 static void generate_virtual_hmd_data_frame_for_stream(
@@ -1279,7 +1279,7 @@ static void generate_virtual_hmd_data_frame_for_stream(
     const CommonHMDState *hmd_state = hmd_view->getState();
     const CommonDevicePose hmd_pose = hmd_view->getFilteredPose();
 
-    PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame = data_frame->mutable_hmd_data_packet();
+    PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket *hmd_data_frame = data_frame->mutable_hmd_data_packet();
 
     if (hmd_state != nullptr)
     {
@@ -1344,7 +1344,7 @@ static void generate_virtual_hmd_data_frame_for_stream(
 				        {
 					        const CommonDeviceScreenLocation trackerScreenLocation =
 						        tracker_view->projectTrackerRelativePosition(&trackerRelativePosition);
-					        PSMoveProtocol::Pixel *pixel = raw_tracker_data->mutable_screen_location();
+					        PSVRProtocol::Pixel *pixel = raw_tracker_data->mutable_screen_location();
 
 					        pixel->set_x(trackerScreenLocation.x);
 					        pixel->set_y(trackerScreenLocation.y);
@@ -1352,7 +1352,7 @@ static void generate_virtual_hmd_data_frame_for_stream(
 
 				        // Add the tracker relative 3d position
 				        {
-					        PSMoveProtocol::Position *position = raw_tracker_data->mutable_relative_position_cm();
+					        PSVRProtocol::Position *position = raw_tracker_data->mutable_relative_position_cm();
 
 					        position->set_x(trackerRelativePosition.x);
 					        position->set_y(trackerRelativePosition.y);
@@ -1365,7 +1365,7 @@ static void generate_virtual_hmd_data_frame_for_stream(
 						        positionEstimate->projection;
 
 					        assert(trackerRelativeProjection.shape_type == eCommonTrackingProjectionType::ProjectionType_Ellipse);
-					        PSMoveProtocol::Ellipse *ellipse = raw_tracker_data->mutable_projected_sphere();
+					        PSVRProtocol::Ellipse *ellipse = raw_tracker_data->mutable_projected_sphere();
 
                             ellipse->mutable_center()->set_x(trackerRelativeProjection.shape.ellipse.center.x);
                             ellipse->mutable_center()->set_y(trackerRelativeProjection.shape.ellipse.center.y);
@@ -1382,7 +1382,7 @@ static void generate_virtual_hmd_data_frame_for_stream(
 		}
     }
 
-    hmd_data_frame->set_hmd_type(PSMoveProtocol::VirtualHMD);
+    hmd_data_frame->set_hmd_type(PSVRProtocol::VirtualHMD);
 }
 
 static Eigen::Vector3f CommonDevicePosition_to_EigenVector3f(const CommonDevicePosition &p)

@@ -574,7 +574,7 @@ MorpheusHMD::poll()
 				// Device no longer in valid state.
 				if (valid_error_mesg)
 				{
-					SERVER_LOG_ERROR("PSMoveController::readDataIn") << "HID ERROR: " << hidapi_err_mbs;
+					SERVER_LOG_ERROR("PSVRController::readDataIn") << "HID ERROR: " << hidapi_err_mbs;
 				}
 				result = IHMDInterface::_PollResultFailure;
 

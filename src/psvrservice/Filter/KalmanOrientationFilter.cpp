@@ -28,18 +28,18 @@ enum OrientationFilterStateEnum
     STATE_PARAMETER_COUNT
 };
 
-enum PSMoveMeasurementEnum {
-	PSMOVE_ACCELEROMETER_X, // gravity units
-	PSMOVE_ACCELEROMETER_Y,
-	PSMOVE_ACCELEROMETER_Z,
-	PSMOVE_GYROSCOPE_PITCH, // radians/s
-	PSMOVE_GYROSCOPE_YAW,
-	PSMOVE_GYROSCOPE_ROLL,
-	PSMOVE_MAGNETOMETER_X, // unit vector
-	PSMOVE_MAGNETOMETER_Y,
-	PSMOVE_MAGNETOMETER_Z,
+enum PSVRMeasurementEnum {
+	PSVR_ACCELEROMETER_X, // gravity units
+	PSVR_ACCELEROMETER_Y,
+	PSVR_ACCELEROMETER_Z,
+	PSVR_GYROSCOPE_PITCH, // radians/s
+	PSVR_GYROSCOPE_YAW,
+	PSVR_GYROSCOPE_ROLL,
+	PSVR_MAGNETOMETER_X, // unit vector
+	PSVR_MAGNETOMETER_Y,
+	PSVR_MAGNETOMETER_Z,
 
-	PSMOVE_MEASUREMENT_PARAMETER_COUNT
+	PSVR_MEASUREMENT_PARAMETER_COUNT
 };
 
 enum DS4MeasurementEnum {
@@ -221,34 +221,34 @@ public:
 };
 
 template<typename T>
-class PSMove_OrientationMeasurementVector : public Kalman::Vector<T, PSMOVE_MEASUREMENT_PARAMETER_COUNT>
+class PSVR_OrientationMeasurementVector : public Kalman::Vector<T, PSVR_MEASUREMENT_PARAMETER_COUNT>
 {
 public:
-	KALMAN_VECTOR(PSMove_OrientationMeasurementVector, T, PSMOVE_MEASUREMENT_PARAMETER_COUNT)
+	KALMAN_VECTOR(PSVR_OrientationMeasurementVector, T, PSVR_MEASUREMENT_PARAMETER_COUNT)
 
 	// Accessors
 	Eigen::Vector3d get_accelerometer() const {
-		return Eigen::Vector3d((*this)[PSMOVE_ACCELEROMETER_X], (*this)[PSMOVE_ACCELEROMETER_Y], (*this)[PSMOVE_ACCELEROMETER_Z]);
+		return Eigen::Vector3d((*this)[PSVR_ACCELEROMETER_X], (*this)[PSVR_ACCELEROMETER_Y], (*this)[PSVR_ACCELEROMETER_Z]);
 	}
 	Eigen::Vector3d get_gyroscope() const {
-		return Eigen::Vector3d((*this)[PSMOVE_GYROSCOPE_PITCH], (*this)[PSMOVE_GYROSCOPE_YAW], (*this)[PSMOVE_GYROSCOPE_ROLL]);
+		return Eigen::Vector3d((*this)[PSVR_GYROSCOPE_PITCH], (*this)[PSVR_GYROSCOPE_YAW], (*this)[PSVR_GYROSCOPE_ROLL]);
 	}
 	Eigen::Vector3d get_magnetometer() const {
-		return Eigen::Vector3d((*this)[PSMOVE_MAGNETOMETER_X], (*this)[PSMOVE_MAGNETOMETER_Y], (*this)[PSMOVE_MAGNETOMETER_Z]);
+		return Eigen::Vector3d((*this)[PSVR_MAGNETOMETER_X], (*this)[PSVR_MAGNETOMETER_Y], (*this)[PSVR_MAGNETOMETER_Z]);
 	}
 
 	// Mutators
 	void set_accelerometer(const Eigen::Vector3d &a) {
-		(*this)[PSMOVE_ACCELEROMETER_X] = a.x(); (*this)[PSMOVE_ACCELEROMETER_Y] = a.y(); (*this)[PSMOVE_ACCELEROMETER_Z] = a.z();
+		(*this)[PSVR_ACCELEROMETER_X] = a.x(); (*this)[PSVR_ACCELEROMETER_Y] = a.y(); (*this)[PSVR_ACCELEROMETER_Z] = a.z();
 	}
 	void set_gyroscope(const Eigen::Vector3d &g) {
-		(*this)[PSMOVE_GYROSCOPE_PITCH] = g.x(); (*this)[PSMOVE_GYROSCOPE_YAW] = g.y(); (*this)[PSMOVE_GYROSCOPE_ROLL] = g.z();
+		(*this)[PSVR_GYROSCOPE_PITCH] = g.x(); (*this)[PSVR_GYROSCOPE_YAW] = g.y(); (*this)[PSVR_GYROSCOPE_ROLL] = g.z();
 	}
 	void set_magnetometer(const Eigen::Vector3d &m) {
-		(*this)[PSMOVE_MAGNETOMETER_X] = m.x(); (*this)[PSMOVE_MAGNETOMETER_Y] = m.y(); (*this)[PSMOVE_MAGNETOMETER_Z] = m.z();
+		(*this)[PSVR_MAGNETOMETER_X] = m.x(); (*this)[PSVR_MAGNETOMETER_Y] = m.y(); (*this)[PSVR_MAGNETOMETER_Z] = m.z();
 	}
 };
-typedef PSMove_OrientationMeasurementVector<double> PSMove_OrientationMeasurementVectord;
+typedef PSVR_OrientationMeasurementVector<double> PSVR_OrientationMeasurementVectord;
 
 template<typename T>
 class DS4_OrientationMeasurementVector : public Kalman::Vector<T, DS4_MEASUREMENT_PARAMETER_COUNT>
@@ -281,34 +281,34 @@ public:
 typedef DS4_OrientationMeasurementVector<double> DS4_OrientationMeasurementVectord;
 
 /**
-* @brief Orientation Measurement model for measuring PSMove controller
+* @brief Orientation Measurement model for measuring PSVR controller
 *
-* This is the measurement model for measuring the position and magnetometer of the PSMove controller.
+* This is the measurement model for measuring the position and magnetometer of the PSVR controller.
 * The measurement is given by the optical trackers.
 */
-class PSMove_OrientationMeasurementModel : 
-	public Kalman::MeasurementModel<OrientationStateVectord, PSMove_OrientationMeasurementVectord, Kalman::SquareRootBase>
+class PSVR_OrientationMeasurementModel : 
+	public Kalman::MeasurementModel<OrientationStateVectord, PSVR_OrientationMeasurementVectord, Kalman::SquareRootBase>
 {
 public:
 	void init(const OrientationFilterConstants &constants)
 	{
 		// Update the measurement covariance R
-		Kalman::Covariance<PSMove_OrientationMeasurementVectord> R =
-			Kalman::Covariance<PSMove_OrientationMeasurementVectord>::Zero();
+		Kalman::Covariance<PSVR_OrientationMeasurementVectord> R =
+			Kalman::Covariance<PSVR_OrientationMeasurementVectord>::Zero();
 
 		// Only diagonals used so no need to compute Cholesky
 		static float r_accelerometer_scale = R_SCALE;
 		static float r_gyro_scale = R_SCALE;
 		static float r_magnetometer_scale = R_SCALE;
-		R(PSMOVE_ACCELEROMETER_X, PSMOVE_ACCELEROMETER_X) = r_accelerometer_scale*constants.accelerometer_variance.x();
-		R(PSMOVE_ACCELEROMETER_Y, PSMOVE_ACCELEROMETER_Y) = r_accelerometer_scale*constants.accelerometer_variance.y();
-		R(PSMOVE_ACCELEROMETER_Z, PSMOVE_ACCELEROMETER_Z) = r_accelerometer_scale*constants.accelerometer_variance.z();
-		R(PSMOVE_GYROSCOPE_PITCH, PSMOVE_GYROSCOPE_PITCH) = r_gyro_scale*constants.gyro_variance.x();
-		R(PSMOVE_GYROSCOPE_YAW, PSMOVE_GYROSCOPE_YAW) = r_gyro_scale*constants.gyro_variance.y();
-		R(PSMOVE_GYROSCOPE_ROLL, PSMOVE_GYROSCOPE_ROLL) = r_gyro_scale*constants.gyro_variance.z();
-		R(PSMOVE_MAGNETOMETER_X, PSMOVE_MAGNETOMETER_X) = r_magnetometer_scale*constants.magnetometer_variance.x();
-		R(PSMOVE_MAGNETOMETER_Y, PSMOVE_MAGNETOMETER_Y) = r_magnetometer_scale*constants.magnetometer_variance.y();
-		R(PSMOVE_MAGNETOMETER_Z, PSMOVE_MAGNETOMETER_Z) = r_magnetometer_scale*constants.magnetometer_variance.z();
+		R(PSVR_ACCELEROMETER_X, PSVR_ACCELEROMETER_X) = r_accelerometer_scale*constants.accelerometer_variance.x();
+		R(PSVR_ACCELEROMETER_Y, PSVR_ACCELEROMETER_Y) = r_accelerometer_scale*constants.accelerometer_variance.y();
+		R(PSVR_ACCELEROMETER_Z, PSVR_ACCELEROMETER_Z) = r_accelerometer_scale*constants.accelerometer_variance.z();
+		R(PSVR_GYROSCOPE_PITCH, PSVR_GYROSCOPE_PITCH) = r_gyro_scale*constants.gyro_variance.x();
+		R(PSVR_GYROSCOPE_YAW, PSVR_GYROSCOPE_YAW) = r_gyro_scale*constants.gyro_variance.y();
+		R(PSVR_GYROSCOPE_ROLL, PSVR_GYROSCOPE_ROLL) = r_gyro_scale*constants.gyro_variance.z();
+		R(PSVR_MAGNETOMETER_X, PSVR_MAGNETOMETER_X) = r_magnetometer_scale*constants.magnetometer_variance.x();
+		R(PSVR_MAGNETOMETER_Y, PSVR_MAGNETOMETER_Y) = r_magnetometer_scale*constants.magnetometer_variance.y();
+		R(PSVR_MAGNETOMETER_Z, PSVR_MAGNETOMETER_Z) = r_magnetometer_scale*constants.magnetometer_variance.z();
 		setCovariance(R);
 
 		identity_gravity_direction = constants.gravity_calibration_direction.cast<double>();
@@ -337,9 +337,9 @@ public:
 	* @param [in] x The system state in current time-step
 	* @returns The (predicted) sensor measurement for the system state
 	*/
-	PSMove_OrientationMeasurementVectord h(const OrientationStateVectord& x) const
+	PSVR_OrientationMeasurementVectord h(const OrientationStateVectord& x) const
 	{
-		PSMove_OrientationMeasurementVectord predicted_measurement;
+		PSVR_OrientationMeasurementVectord predicted_measurement;
 
 		// Use the orientation from the state for prediction
 		const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
@@ -576,10 +576,10 @@ public:
 	}
 };
 
-class PSMoveKalmanPoseFilterImpl : public KalmanOrientationFilterImpl
+class PSVRKalmanPoseFilterImpl : public KalmanOrientationFilterImpl
 {
 public:
-	PSMove_OrientationMeasurementModel measurement_model;
+	PSVR_OrientationMeasurementModel measurement_model;
 
 	void init(const OrientationFilterConstants &constants) override
 	{
@@ -807,43 +807,43 @@ void KalmanOrientationFilterDS4::update(const float delta_time, const PoseFilter
 	}
 }
 
-//-- KalmanOrientationFilterPSMove --
-bool KalmanOrientationFilterPSMove::init(const OrientationFilterConstants &constants)
+//-- KalmanOrientationFilterPSVR --
+bool KalmanOrientationFilterPSVR::init(const OrientationFilterConstants &constants)
 {
 	KalmanOrientationFilter::init(constants);
 
-	PSMoveKalmanPoseFilterImpl *filter = new PSMoveKalmanPoseFilterImpl();
+	PSVRKalmanPoseFilterImpl *filter = new PSVRKalmanPoseFilterImpl();
 	filter->init(constants);
 	m_filter = filter;
 
 	return true;
 }
 
-bool KalmanOrientationFilterPSMove::init(
+bool KalmanOrientationFilterPSVR::init(
 	const OrientationFilterConstants &constants,
 	const Eigen::Quaternionf &orientation)
 {
 	KalmanOrientationFilter::init(constants);
 
-	PSMoveKalmanPoseFilterImpl *filter = new PSMoveKalmanPoseFilterImpl();
+	PSVRKalmanPoseFilterImpl *filter = new PSVRKalmanPoseFilterImpl();
 	filter->init(constants, orientation);
 	m_filter = filter;
 
 	return true;
 }
 
-void KalmanOrientationFilterPSMove::update(const float delta_time, const PoseFilterPacket &packet)
+void KalmanOrientationFilterPSVR::update(const float delta_time, const PoseFilterPacket &packet)
 {
     if (m_filter->bIsValid)
     {
-		PSMoveKalmanPoseFilterImpl *filter = static_cast<PSMoveKalmanPoseFilterImpl *>(m_filter);
+		PSVRKalmanPoseFilterImpl *filter = static_cast<PSVRKalmanPoseFilterImpl *>(m_filter);
 
         // Predict state for current time-step using the filters
 		filter->system_model.set_time_step(delta_time);
 		filter->ukf.predict(filter->system_model);
 
-        // Get the measurement model for the PSMove from the derived filter impl
-		PSMove_OrientationMeasurementModel &measurement_model = filter->measurement_model;
+        // Get the measurement model for the PSVR from the derived filter impl
+		PSVR_OrientationMeasurementModel &measurement_model = filter->measurement_model;
 
 		// Update the linear acceleration on the measurement model with last frames acceleration state
 		measurement_model.update_world_linear_acceleration_m_per_sec_sqr(
@@ -876,7 +876,7 @@ void KalmanOrientationFilterPSMove::update(const float delta_time, const PoseFil
 		}
 
 		// Accelerometer, gyroscope, magnetometer measurements are always available
-		PSMove_OrientationMeasurementVectord measurement = PSMove_OrientationMeasurementVectord::Zero();
+		PSVR_OrientationMeasurementVectord measurement = PSVR_OrientationMeasurementVectord::Zero();
 		measurement.set_accelerometer(packet.imu_accelerometer_g_units.cast<double>());
 		measurement.set_gyroscope(packet.imu_gyroscope_rad_per_sec.cast<double>());
 		measurement.set_magnetometer(packet.imu_magnetometer_unit.cast<double>());

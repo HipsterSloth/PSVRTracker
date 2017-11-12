@@ -7,8 +7,8 @@
 #include <vector>
 #include "DeviceTypeManager.h"
 #include "DeviceEnumerator.h"
-#include "PSMoveConfig.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRConfig.h"
+#include "PSVRProtocol.pb.h"
 
 //-- typedefs -----
 class ServerHMDView;
@@ -16,7 +16,7 @@ typedef std::shared_ptr<ServerHMDView> ServerHMDViewPtr;
 class TrackerManager;
 
 //-- definitions -----
-class HMDManagerConfig : public PSMoveConfig
+class HMDManagerConfig : public PSVRConfig
 {
 public:
     static const int CONFIG_VERSION;
@@ -40,7 +40,7 @@ public:
 
 	void updateStateAndPredict(TrackerManager* tracker_manager);
 
-    static const int k_max_devices = PSMOVESERVICE_MAX_HMD_COUNT;
+    static const int k_max_devices = PSVRSERVICE_MAX_HMD_COUNT;
     int getMaxDevices() const override
     {
         return HMDManager::k_max_devices;

@@ -2,7 +2,7 @@
 #define PSVR_CLIENT_H
 
 //-- includes -----
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 #include "PSVRServiceInterface.h"
 #include "Logger.h"
 #include <deque>
@@ -10,7 +10,7 @@
 #include <vector>
 
 //-- typedefs -----
-typedef std::deque<PSMMessage> t_message_queue;
+typedef std::deque<PSVRMessage> t_message_queue;
 typedef std::vector<ResponsePtr> t_event_reference_cache;
 
 //-- definitions -----
@@ -27,24 +27,24 @@ public:
 	bool pollHasTrackerListChanged();
 	bool pollHasHMDListChanged();
 
-    // -- ClientPSMoveAPI System -----
+    // -- ClientPSVRAPI System -----
     bool startup(e_log_severity_level log_level);
     void update();
 	void process_messages();
-    bool poll_next_message(PSMEventMessage *message, size_t message_size);
+    bool poll_next_message(PSVREventMessage *message, size_t message_size);
     void shutdown();
 
-    // -- ClientPSMoveAPI Requests -----
-    bool allocate_tracker_listener(const PSMClientTrackerInfo &trackerInfo);
-    void free_tracker_listener(PSMTrackerID tracker_id);
-    PSMTracker* get_tracker_view(PSMTrackerID tracker_id);
-	bool open_video_stream(PSMTrackerID tracker_id);
-	void close_video_stream(PSMTrackerID tracker_id);
-	const unsigned char *get_video_frame_buffer(PSMTrackerID tracker_id) const;
+    // -- ClientPSVRAPI Requests -----
+    bool allocate_tracker_listener(const PSVRClientTrackerInfo &trackerInfo);
+    void free_tracker_listener(PSVRTrackerID tracker_id);
+    PSVRTracker* get_tracker_view(PSVRTrackerID tracker_id);
+	bool open_video_stream(PSVRTrackerID tracker_id);
+	void close_video_stream(PSVRTrackerID tracker_id);
+	const unsigned char *get_video_frame_buffer(PSVRTrackerID tracker_id) const;
 
-    bool allocate_hmd_listener(PSMHmdID HmdID);
-    void free_hmd_listener(PSMHmdID HmdID);   
-	PSMHeadMountedDisplay* get_hmd_view(PSMHmdID tracker_id);
+    bool allocate_hmd_listener(PSVRHmdID HmdID);
+    void free_hmd_listener(PSVRHmdID HmdID);   
+	PSVRHeadMountedDisplay* get_hmd_view(PSVRHmdID tracker_id);
     
 protected:
     // IDataFrameListener
@@ -55,18 +55,18 @@ protected:
 
     // Message Helpers
     //-----------------
-	void process_event_message(const PSMEventMessage *event_message);
-    void enqueue_event_message(PSMEventMessage::eEventType event_type, ResponsePtr event);
+	void process_event_message(const PSVREventMessage *event_message);
+    void enqueue_event_message(PSVREventMessage::eEventType event_type, ResponsePtr event);
 
 private:
     //-- Request Handling -----
     class ServiceRequestHandler *m_requestManager;
     
     //-- Tracker Views -----
-	PSMTracker m_trackers[PSMOVESERVICE_MAX_TRACKER_COUNT];
+	PSVRTracker m_trackers[PSVRSERVICE_MAX_TRACKER_COUNT];
     
     //-- HMD Views -----
-	PSMHeadMountedDisplay m_HMDs[PSMOVESERVICE_MAX_HMD_COUNT];
+	PSVRHeadMountedDisplay m_HMDs[PSVRSERVICE_MAX_HMD_COUNT];
 
 	bool m_bHasTrackerListChanged;
 	bool m_bHasHMDListChanged;

@@ -56,8 +56,8 @@ public:
     const TextureAsset *getPS3EyeTextureAsset()
     { return &m_ps3eyeTexture; }
 
-    const TextureAsset *getPSMoveTextureAsset()
-    { return &m_psmoveTexture; }
+    const TextureAsset *getPSVRTextureAsset()
+    { return &m_PSVRTexture; }
 
     const TextureAsset *getPSDualShock4TextureAsset()
     { return &m_psdualshock4Texture; }
@@ -83,7 +83,7 @@ private:
 
     // Utility Textures
 	TextureAsset m_ps3eyeTexture;
-    TextureAsset m_psmoveTexture;
+    TextureAsset m_PSVRTexture;
     TextureAsset m_psnaviTexture;
     TextureAsset m_psdualshock4Texture;
     TextureAsset m_virtualTexture;

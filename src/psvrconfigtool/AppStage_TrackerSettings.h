@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include "AppStage.h"
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 
 #include <vector>
 
@@ -14,20 +14,20 @@ public:
     struct ControllerInfo
     {
         int ControllerID;
-		PSMTrackingColorType TrackingColorType;
-        PSMControllerType ControllerType;
+		PSVRTrackingColorType TrackingColorType;
+        PSVRControllerType ControllerType;
     };
 
 	struct HMDInfo
 	{
 		int HmdID;
-		PSMTrackingColorType TrackingColorType;
-		PSMHmdType HmdType;
+		PSVRTrackingColorType TrackingColorType;
+		PSVRHmdType HmdType;
 	};
 
     AppStage_TrackerSettings(class App *app);
 
-    const PSMClientTrackerInfo *getSelectedTrackerInfo() const;
+    const PSVRClientTrackerInfo *getSelectedTrackerInfo() const;
 	void set_selectedTrackerIndex(int index);
 
 	void set_selectedControllerIndex(int index);
@@ -61,27 +61,27 @@ public:
 
 protected:
     virtual bool onClientAPIEvent(
-        PSMEventMessage::eEventType event, 
-        PSMEventDataHandle opaque_event_handle) override;
+        PSVREventMessage::eEventType event, 
+        PSVREventDataHandle opaque_event_handle) override;
 
     void request_tracker_list();
     static void handle_tracker_list_response(
-        const PSMResponseMessage *response,
+        const PSVRResponseMessage *response,
         void *userdata);
 
     void request_controller_list();
     static void handle_controller_list_response(
-        const PSMResponseMessage *response_message,
+        const PSVRResponseMessage *response_message,
         void *userdata);
 
 	void request_hmd_list();
 	static void handle_hmd_list_response(
-		const PSMResponseMessage *response_message,
+		const PSVRResponseMessage *response_message,
 		void *userdata);
 
     void request_search_for_new_trackers();
     static void handle_search_for_new_trackers_response(
-        const PSMResponseMessage *response,
+        const PSVRResponseMessage *response,
         void *userdata);
 
 protected:
@@ -100,7 +100,7 @@ protected:
     };
     eTrackerMenuState m_menuState;
 
-    std::vector<PSMClientTrackerInfo> m_trackerInfos;
+    std::vector<PSVRClientTrackerInfo> m_trackerInfos;
 	std::vector<ControllerInfo> m_controllerInfos;
 	std::vector<HMDInfo> m_hmdInfos;
 

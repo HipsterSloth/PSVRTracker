@@ -6,7 +6,7 @@
 #include <tuple>
 
 // -- pre-declarations ----
-namespace PSMoveProtocol
+namespace PSVRProtocol
 {
     class Response_ResultTrackerSettings;
     class TrackingColorPreset;
@@ -197,7 +197,7 @@ struct CommonDeviceState
     
     enum eDeviceType
     {
-        PSMove = Controller + 0x00,
+        PSVR = Controller + 0x00,
         PSNavi = Controller + 0x01,
         PSDualShock4 = Controller + 0x02,
         VirtualController = Controller + 0x03,
@@ -233,8 +233,8 @@ struct CommonDeviceState
 
         switch (device_type)
         {
-        case PSMove:
-            result= "PSMove";
+        case PSVR:
+            result= "PSVR";
             break;
         case PSNavi:
             result = "PSNavi";
@@ -449,7 +449,7 @@ public:
     virtual const CommonDeviceState * getState(int lookBack = 0) const = 0;   
 };
 
-/// Abstract class for controller interface. Implemented in PSMoveController.cpp
+/// Abstract class for controller interface. Implemented in PSVRController.cpp
 class IControllerInterface : public IDeviceInterface
 {
 public:
@@ -589,11 +589,11 @@ public:
     virtual void getFOV(float &outHFOV, float &outVFOV) const = 0;
     virtual void getZRange(float &outZNear, float &outZFar) const = 0;
 
-    virtual void gatherTrackerOptions(PSMoveProtocol::Response_ResultTrackerSettings* settings) const = 0;
+    virtual void gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const = 0;
     virtual bool setOptionIndex(const std::string &option_name, int option_index) = 0;
     virtual bool getOptionIndex(const std::string &option_name, int &out_option_index) const = 0;
 
-    virtual void gatherTrackingColorPresets(const std::string &controller_serial, PSMoveProtocol::Response_ResultTrackerSettings* settings) const = 0;
+    virtual void gatherTrackingColorPresets(const std::string &controller_serial, PSVRProtocol::Response_ResultTrackerSettings* settings) const = 0;
     virtual void setTrackingColorPreset(const std::string &controller_serial, eCommonTrackingColorID color, const CommonHSVColorRange *preset) = 0;
     virtual void getTrackingColorPreset(const std::string &controller_serial, eCommonTrackingColorID color, CommonHSVColorRange *out_preset) const = 0;
 };

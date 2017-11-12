@@ -9,7 +9,7 @@
 #include "MathGLM.h"
 #include "MathAlignment.h"
 #include "PS3EyeTracker.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocol.pb.h"
 #include "ServerUtility.h"
 #include "ServerLog.h"
 #include "ServerRequestHandler.h"
@@ -948,7 +948,7 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
     const struct TrackerStreamInfo *stream_info,
     DeviceOutputDataFramePtr &data_frame)
 {
-    PSMoveProtocol::DeviceOutputDataFrame_TrackerDataPacket *tracker_data_frame =
+    PSVRProtocol::DeviceOutputDataFrame_TrackerDataPacket *tracker_data_frame =
         data_frame->mutable_tracker_data_packet();
 
     tracker_data_frame->set_tracker_id(tracker_view->getDeviceID());
@@ -965,7 +965,7 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
         assert(0 && "Unhandled Tracker type");
     }
 
-    data_frame->set_device_category(PSMoveProtocol::DeviceOutputDataFrame::TRACKER);
+    data_frame->set_device_category(PSVRProtocol::DeviceOutputDataFrame::TRACKER);
 }
 
 void ServerTrackerView::loadSettings()
@@ -1161,7 +1161,7 @@ void ServerTrackerView::getZRange(float &outZNear, float &outZFar) const
     m_device->getZRange(outZNear, outZFar);
 }
 
-void ServerTrackerView::gatherTrackerOptions(PSMoveProtocol::Response_ResultTrackerSettings* settings) const
+void ServerTrackerView::gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const
 {
     m_device->gatherTrackerOptions(settings);
 }
@@ -1178,7 +1178,7 @@ bool ServerTrackerView::getOptionIndex(const std::string &option_name, int &out_
 
 void ServerTrackerView::gatherTrackingColorPresets(
     const class ServerControllerView *controller, 
-    PSMoveProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRProtocol::Response_ResultTrackerSettings* settings) const
 {
     std::string controller_id= (controller != nullptr) ? controller->getConfigIdentifier() : "";
 
@@ -1187,7 +1187,7 @@ void ServerTrackerView::gatherTrackingColorPresets(
 
 void ServerTrackerView::gatherTrackingColorPresets(
     const class ServerHMDView *hmd,
-    PSMoveProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRProtocol::Response_ResultTrackerSettings* settings) const
 {
     std::string hmd_id = (hmd != nullptr) ? hmd->getConfigIdentifier() : "";
 

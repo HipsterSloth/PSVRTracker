@@ -7,7 +7,7 @@
 #include "DeviceTypeManager.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
-#include "PSMoveConfig.h"
+#include "PSVRConfig.h"
 
 //-- typedefs -----
 
@@ -39,7 +39,7 @@ struct TrackerProfile
     }
 };
 
-class TrackerManagerConfig : public PSMoveConfig
+class TrackerManagerConfig : public PSVRConfig
 {
 public:
     static const int CONFIG_VERSION;
@@ -78,7 +78,7 @@ public:
 
     void closeAllTrackers();
 
-    static const int k_max_devices = PSMOVESERVICE_MAX_TRACKER_COUNT;
+    static const int k_max_devices = PSVRSERVICE_MAX_TRACKER_COUNT;
     int getMaxDevices() const override
     {
         return TrackerManager::k_max_devices;

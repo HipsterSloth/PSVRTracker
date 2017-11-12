@@ -1,5 +1,5 @@
-#ifndef PSMOVE_SERVICE_H
-#define PSMOVE_SERVICE_H
+#ifndef PSVR_SERVICE_H
+#define PSVR_SERVICE_H
 
 //-- includes -----
 #include "ClientConstants.h"
@@ -39,4 +39,4 @@ private:
 	bool m_isInitialized;
 };
 
-#endif // PSMOVE_SERVICE_H
+#endif // PSVR_SERVICE_H

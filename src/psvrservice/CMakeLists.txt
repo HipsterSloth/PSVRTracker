@@ -160,17 +160,48 @@ list(APPEND PSVR_SERVICE_SRC ${PSEYE_SRC})
 list(APPEND PSVR_SERVICE_INCL_DIRS ${PSEYE_INCLUDE_DIRS})
 list(APPEND PSVR_SERVICE_REQ_LIBS ${PSEYE_LIBRARIES})
 
+#
+# PSVRService Static library
+#
+
+# TODO: Build PSMoveClient as a STATIC or OBJECT w/ $<TARGET_OBJECTS:objlib>
+add_library(PSVRService_static STATIC ${PSVR_SERVICE_SRC})
+target_include_directories(PSVRService_static PUBLIC ${PSVR_SERVICE_INCL_DIRS})
+target_link_libraries(PSVRService_static PUBLIC ${PSVR_SERVICE_REQ_LIBS})
+target_compile_definitions(PSVRService_static PRIVATE PSVRService_STATIC) # See PSVRClient_export.h
+target_compile_definitions(PSVRService_static PRIVATE PSVRSERVICE_CPP_API) # See PSVRClient_export.h
+
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    add_dependencies(PSVRService_static opencv)
+ENDIF()
+
+#
+# PSVRService Shared library
+#
+
+set(PSVR_SERVICE_CAPI_REQ_LIBS)
+
+# PSVRService_static
+list(APPEND PSVR_SERVICE_CAPI_REQ_LIBS PSVRService_static)
+#Via PSVRService_static, transitively inherits PSMoveMath
+
+# Source files to develop the shared library.
+list(APPEND PSVR_SERVICE_CAPI_LIBRARY_SRC
+    "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/PSVRClient_export.h"
+    "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/ClientGeometry_CAPI.h"
+    "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/ClientGeometry_CAPI.cpp"	
+    "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/PSVRClient_CAPI.h"
+    "${CMAKE_CURRENT_LIST_DIR}/ClientAPI/PSVRClient_CAPI.cpp"
+)
+
 # Shared library
-add_library(PSVRService SHARED ${PSVR_SERVICE_SRC})
-target_include_directories(PSVRService PUBLIC ${PSVR_SERVICE_INCL_DIRS})
-target_link_libraries(PSVRService PRIVATE ${PSVR_SERVICE_REQ_LIBS})
+add_library(PSVRService SHARED ${PSVR_SERVICE_CAPI_LIBRARY_SRC})
+target_include_directories(PSVRService PUBLIC ${CMAKE_CURRENT_LIST_DIR}/ClientAPI)
+target_link_libraries(PSVRService PRIVATE ${PSVR_SERVICE_CAPI_REQ_LIBS})
+target_compile_definitions(PSVRService_static PRIVATE PSVRClient_EXPORTS) # See PSVRClient_export.h
 set_target_properties(PSVRService PROPERTIES PUBLIC_HEADER "ClientConstants.h;ClientGeometry_CAPI.h;PSMoveClient_CAPI.h;PSMoveClient_export.h")
 set_target_properties(PSVRService PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(PSVRService PROPERTIES C_VISIBILITY_PRESET hidden)	
-
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    add_dependencies(PSVRService opencv)
-ENDIF()
 
 # Install
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

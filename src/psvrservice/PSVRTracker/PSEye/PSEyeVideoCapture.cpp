@@ -64,9 +64,9 @@ public:
 #ifdef HAVE_CLEYE
 /// Implementation of cv::IVideoCapture when using CLEyeMulticam.dll
 /**
-Either uses the DLL that comes with PSMoveService and the user has their camera activated.
+Either uses the DLL that comes with PSVRSERVICE and the user has their camera activated.
 Or the user has the CL Eye Platform SDK developer binaries installed and they delete
-the DLL that comes with PSMoveService.
+the DLL that comes with PSVRSERVICE.
 */
 class PSEYECaptureCAM_CLMULTI : public cv::IVideoCapture
 {

@@ -4,7 +4,7 @@
 //-- includes -----
 #include "AppStage.h"
 #include "ClientGeometry_CAPI.h"
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 
 #include <deque>
 #include <chrono>
@@ -32,7 +32,7 @@ public:
 
 protected:
     static void handle_acquire_hmd(
-        const PSMResponseMessage *response,
+        const PSVRResponseMessage *response,
         void *userdata);
     void request_exit_to_app_stage(const char *app_stage_name);
 
@@ -52,12 +52,12 @@ private:
 
     bool m_bBypassCalibration;
 
-    PSMHeadMountedDisplay *m_hmdView;
+    PSVRHeadMountedDisplay *m_hmdView;
     bool m_isHMDStreamActive;
     int m_lastHMDSeqNum;
 
-    PSMVector3i m_lastRawAccelerometer;
-    PSMVector3f m_lastCalibratedAccelerometer;
+    PSVRVector3i m_lastRawAccelerometer;
+    PSVRVector3f m_lastCalibratedAccelerometer;
 
     struct HMDAccelerometerPoseSamples *m_noiseSamples;
 };

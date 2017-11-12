@@ -4,7 +4,7 @@
 //-- includes -----
 #include "AppStage.h"
 #include "ClientGeometry_CAPI.h"
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 
 #include <deque>
 #include <chrono>
@@ -74,28 +74,28 @@ protected:
 
 	void request_hmd_list();
 	static void handle_hmd_list_response(
-		const PSMResponseMessage *response,
+		const PSVRResponseMessage *response,
 		void *userdata);
 
-	void request_hmd_tracking_shape(PSMHmdID HmdID);
+	void request_hmd_tracking_shape(PSVRHmdID HmdID);
 	static void handle_hmd_tracking_shape_response(
-		const PSMResponseMessage *response,
+		const PSVRResponseMessage *response,
 		void *userdata);
 
-	void request_start_hmd_stream(PSMHmdID HmdID);
+	void request_start_hmd_stream(PSVRHmdID HmdID);
 	static void handle_start_hmd_response(
-		const PSMResponseMessage *response_message,
+		const PSVRResponseMessage *response_message,
 		void *userdata);
 
 	void request_tracker_list();
 	static void handle_tracker_list_response(
-		const PSMResponseMessage *response_message,
+		const PSVRResponseMessage *response_message,
 		void *userdata);
-	bool setup_stereo_tracker(const PSMTrackerList &tracker_list);
+	bool setup_stereo_tracker(const PSVRTrackerList &tracker_list);
 
-	void request_tracker_start_stream(PSMTracker *tracker_view);
+	void request_tracker_start_stream(PSVRTracker *tracker_view);
 	static void handle_tracker_start_stream_response(
-		const PSMResponseMessage *response,
+		const PSVRResponseMessage *response,
 		void *userdata);
 
 	void request_set_hmd_led_model_calibration();
@@ -113,7 +113,7 @@ private:
 	struct StereoCameraState *m_stereoTrackerState;
 	class HMDModelState *m_hmdModelState;
 
-	PSMHeadMountedDisplay *m_hmdView;
+	PSVRHeadMountedDisplay *m_hmdView;
 	int m_overrideHmdId;
 
 	std::string m_failureDetails;

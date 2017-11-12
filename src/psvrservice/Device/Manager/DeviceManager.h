@@ -37,7 +37,7 @@ struct DeviceHotplugListener
 	IDeviceHotplugListener *listener;
 };
 
-/// This is the class that is actually used by the PSMoveService.
+/// This is the class that is actually used by the PSVRSERVICE.
 class DeviceManager : public IDeviceHotplugListener
 {
 public:

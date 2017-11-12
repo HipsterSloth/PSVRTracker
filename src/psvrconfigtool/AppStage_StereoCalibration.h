@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include "AppStage.h"
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 
 #include <vector>
 
@@ -26,7 +26,7 @@ public:
     void request_tracker_stop_stream();
     void request_tracker_set_temp_gain(float gain);
     void request_tracker_set_temp_exposure(float exposure);
-    void request_tracker_set_intrinsic(const PSMStereoTrackerIntrinsics &new_stereo_intrinsics);
+    void request_tracker_set_intrinsic(const PSVRStereoTrackerIntrinsics &new_stereo_intrinsics);
     void request_tracker_reload_settings();
     void request_exit();
 
@@ -36,12 +36,12 @@ protected:
     void renderCameraSettingsUI();
 
     static void handle_tracker_start_stream_response(
-        const PSMResponseMessage *response,
+        const PSVRResponseMessage *response,
         void *userdata);
     void open_shared_memory_stream();
 
     static void handle_tracker_stop_stream_response(
-        const PSMResponseMessage *response,
+        const PSVRResponseMessage *response,
         void *userdata);
     void close_shared_memory_stream();
     
@@ -75,7 +75,7 @@ private:
     bool m_bypassCalibrationFlag;
 
     bool m_bStreamIsActive;
-    PSMTracker *m_tracker_view;
+    PSVRTracker *m_tracker_view;
     class OpenCVStereoState *m_opencv_stereo_state;
 };
 

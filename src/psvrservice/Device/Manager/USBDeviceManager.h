@@ -2,7 +2,7 @@
 #define USB_DEVICE_MANAGER_H
 
 //-- includes -----
-#include "PSMoveConfig.h"
+#include "PSVRConfig.h"
 #include "USBDeviceRequest.h"
 #include <functional>
 
@@ -17,7 +17,7 @@ enum eUSBApiType
 };
 
 //-- definitions -----
-class USBManagerConfig : public PSMoveConfig
+class USBManagerConfig : public PSVRConfig
 {
 public:
     static const int CONFIG_VERSION;

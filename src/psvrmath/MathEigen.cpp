@@ -13,7 +13,7 @@ const Eigen::Quaternionf *k_eigen_quaternion_zero = &g_eigen_quaternion_zero;
 
 //-- public methods -----
 // Creates a quaternion that rotates clockwise about the axis for a positive angle
-// when appied with psmove_vector_clockwise_rotate()
+// when appied with PSVR_vector_clockwise_rotate()
 Eigen::Quaternionf
 eigen_quaternion_angle_axis(float radians, const Eigen::Vector3f &axis)
 {

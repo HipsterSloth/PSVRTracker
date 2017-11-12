@@ -11,8 +11,8 @@
 #include "MathEigen.h"
 #include "MathUtility.h"
 
-#include "PSMoveProtocolInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocolInterface.h"
+#include "PSVRProtocol.pb.h"
 #include "Renderer.h"
 #include "UIConstants.h"
 
@@ -37,15 +37,15 @@ struct HMDAccelerometerPoseSamples
 {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-	PSMVector3f raw_accelerometer_samples[k_max_accelerometer_samples];
-    PSMVector3f raw_average_gravity;
+	PSVRVector3f raw_accelerometer_samples[k_max_accelerometer_samples];
+    PSVRVector3f raw_average_gravity;
 	float raw_variance; // Max raw sensor variance (raw_sensor_units^2)
     int sample_count;
 
     void clear()
     {        
         sample_count= 0;
-		raw_average_gravity = *k_psm_float_vector3_zero;
+		raw_average_gravity = *k_PSVR_float_vector3_zero;
 		raw_variance = 0.f;
     }
 
@@ -54,42 +54,42 @@ struct HMDAccelerometerPoseSamples
 		const float N = static_cast<float>(k_max_accelerometer_samples);
 
 		// Compute both mean of signed and unsigned samples
-		PSMVector3f mean_acc_abs_error = *k_psm_float_vector3_zero;
-        raw_average_gravity = *k_psm_float_vector3_zero;
+		PSVRVector3f mean_acc_abs_error = *k_PSVR_float_vector3_zero;
+        raw_average_gravity = *k_PSVR_float_vector3_zero;
         for (int sample_index= 0; sample_index < k_max_accelerometer_samples; ++sample_index)
         {
-			PSMVector3f signed_error_sample = raw_accelerometer_samples[sample_index];
-			PSMVector3f unsigned_error_sample = PSM_Vector3fAbs(&signed_error_sample);
+			PSVRVector3f signed_error_sample = raw_accelerometer_samples[sample_index];
+			PSVRVector3f unsigned_error_sample = PSVR_Vector3fAbs(&signed_error_sample);
 
-			mean_acc_abs_error = PSM_Vector3fAdd(&mean_acc_abs_error, &unsigned_error_sample);
-            raw_average_gravity= PSM_Vector3fAdd(&raw_average_gravity, &signed_error_sample);
+			mean_acc_abs_error = PSVR_Vector3fAdd(&mean_acc_abs_error, &unsigned_error_sample);
+            raw_average_gravity= PSVR_Vector3fAdd(&raw_average_gravity, &signed_error_sample);
         }
-		mean_acc_abs_error = PSM_Vector3fUnsafeScalarDivide(&mean_acc_abs_error, N);
-        raw_average_gravity= PSM_Vector3fUnsafeScalarDivide(&raw_average_gravity, N);
+		mean_acc_abs_error = PSVR_Vector3fUnsafeScalarDivide(&mean_acc_abs_error, N);
+        raw_average_gravity= PSVR_Vector3fUnsafeScalarDivide(&raw_average_gravity, N);
 
 		// Compute the variance of the (unsigned) sample error, where "error" = abs(accelerometer_sample)
-		PSMVector3f var_accelerometer = *k_psm_float_vector3_zero;
+		PSVRVector3f var_accelerometer = *k_PSVR_float_vector3_zero;
 		for (int sample_index = 0; sample_index < sample_count; sample_index++)
 		{
-			PSMVector3f unsigned_error_sample = PSM_Vector3fAbs(&raw_accelerometer_samples[sample_index]);
-			PSMVector3f diff_from_mean = PSM_Vector3fSubtract(&unsigned_error_sample, &mean_acc_abs_error);
-			PSMVector3f diff_from_mean_sqrd= PSM_Vector3fSquare(&diff_from_mean);
+			PSVRVector3f unsigned_error_sample = PSVR_Vector3fAbs(&raw_accelerometer_samples[sample_index]);
+			PSVRVector3f diff_from_mean = PSVR_Vector3fSubtract(&unsigned_error_sample, &mean_acc_abs_error);
+			PSVRVector3f diff_from_mean_sqrd= PSVR_Vector3fSquare(&diff_from_mean);
 
-			var_accelerometer = PSM_Vector3fAdd(&var_accelerometer, &diff_from_mean_sqrd);
+			var_accelerometer = PSVR_Vector3fAdd(&var_accelerometer, &diff_from_mean_sqrd);
 		}
-		var_accelerometer = PSM_Vector3fUnsafeScalarDivide(&var_accelerometer, N - 1);
+		var_accelerometer = PSVR_Vector3fUnsafeScalarDivide(&var_accelerometer, N - 1);
 
 		// Use the max variance of all three axes (should be close)
-		raw_variance = PSM_Vector3fMaxValue(&var_accelerometer);
+		raw_variance = PSVR_Vector3fMaxValue(&var_accelerometer);
     }
 };
 
 //-- private methods -----
 static void request_set_hmd_accelerometer_calibration(
     const int controller_id,
-	const PSMVector3f &raw_bias,
+	const PSVRVector3f &raw_bias,
     const float raw_variance);
-static void drawHMD(PSMHeadMountedDisplay *controllerView, const glm::mat4 &transform);
+static void drawHMD(PSVRHeadMountedDisplay *controllerView, const glm::mat4 &transform);
 
 //-- public methods -----
 AppStage_HMDAccelerometerCalibration::AppStage_HMDAccelerometerCalibration(App *app)
@@ -125,27 +125,27 @@ void AppStage_HMDAccelerometerCalibration::enter()
     // Initialize the controller state
     assert(hmdInfo->HmdID != -1);
     assert(m_hmdView == nullptr);
-	PSM_AllocateHmdListener(hmdInfo->HmdID);
-	m_hmdView = PSM_GetHmd(hmdInfo->HmdID);
+	PSVR_AllocateHmdListener(hmdInfo->HmdID);
+	m_hmdView = PSVR_GetHmd(hmdInfo->HmdID);
 
-    m_lastCalibratedAccelerometer = *k_psm_float_vector3_zero;
+    m_lastCalibratedAccelerometer = *k_PSVR_float_vector3_zero;
     m_lastHMDSeqNum = -1;
 
     // Start streaming in controller data
     assert(!m_isHMDStreamActive);
 
-	PSMRequestID requestId;
-	PSM_StartHmdDataStreamAsync(
+	PSVRRequestID requestId;
+	PSVR_StartHmdDataStreamAsync(
 		m_hmdView->HmdID, 
-		PSMStreamFlags_includeCalibratedSensorData | PSMStreamFlags_includeRawSensorData, 
+		PSVRStreamFlags_includeCalibratedSensorData | PSVRStreamFlags_includeRawSensorData, 
 		&requestId); // turns on tracking lights
-	PSM_RegisterCallback(requestId, &AppStage_HMDAccelerometerCalibration::handle_acquire_hmd, this);
+	PSVR_RegisterCallback(requestId, &AppStage_HMDAccelerometerCalibration::handle_acquire_hmd, this);
 }
 
 void AppStage_HMDAccelerometerCalibration::exit()
 {
     assert(m_hmdView != nullptr);
-    PSM_FreeHmdListener(m_hmdView->HmdID);
+    PSVR_FreeHmdListener(m_hmdView->HmdID);
     m_hmdView = nullptr;
     m_menuState = eCalibrationMenuState::inactive;
 
@@ -161,17 +161,17 @@ void AppStage_HMDAccelerometerCalibration::update()
     {
         switch(m_hmdView->HmdType)
         {
-		case PSMHmd_Morpheus:
+		case PSVRHmd_Morpheus:
             {
-				const PSMMorpheusRawSensorData &rawSensorData =
+				const PSVRMorpheusRawSensorData &rawSensorData =
 					m_hmdView->HmdState.MorpheusState.RawSensorData;
-                const PSMMorpheusCalibratedSensorData &calibratedSensorData =
+                const PSVRMorpheusCalibratedSensorData &calibratedSensorData =
                     m_hmdView->HmdState.MorpheusState.CalibratedSensorData;
 
 				m_lastRawAccelerometer = rawSensorData.Accelerometer;
                 m_lastCalibratedAccelerometer = calibratedSensorData.Accelerometer;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
                 m_lastRawAccelerometer = {0, 0, 0};
                 m_lastCalibratedAccelerometer = {0, 0, 0};
@@ -210,7 +210,7 @@ void AppStage_HMDAccelerometerCalibration::update()
             if (bControllerDataUpdatedThisFrame && m_noiseSamples->sample_count < k_max_accelerometer_samples)
             {
                 // Store the new sample
-                m_noiseSamples->raw_accelerometer_samples[m_noiseSamples->sample_count] = PSM_Vector3iCastToFloat(&m_lastRawAccelerometer);
+                m_noiseSamples->raw_accelerometer_samples[m_noiseSamples->sample_count] = PSVR_Vector3iCastToFloat(&m_lastRawAccelerometer);
                 ++m_noiseSamples->sample_count;
 
                 // See if we filled all of the samples for this pose
@@ -246,8 +246,8 @@ void AppStage_HMDAccelerometerCalibration::render()
 
     switch(m_hmdView->HmdType)
     {
-    case PSMHmd_Morpheus:
-    case PSMHmd_Virtual:
+    case PSVRHmd_Morpheus:
+    case PSVRHmd_Virtual:
         hmdTransform = glm::scale(glm::mat4(1.f), glm::vec3(modelScale, modelScale, modelScale));
         break;
     }
@@ -280,7 +280,7 @@ void AppStage_HMDAccelerometerCalibration::render()
             // Draw the current raw accelerometer direction
             {
                 glm::vec3 m_start = glm::vec3(0.f, 0.f, 0.f);
-                glm::vec3 m_end = psm_vector3f_to_glm_vec3(PSM_Vector3iCastToFloat(&m_lastRawAccelerometer));
+                glm::vec3 m_end = PSVR_vector3f_to_glm_vec3(PSVR_Vector3iCastToFloat(&m_lastRawAccelerometer));
 
                 drawArrow(sampleTransform, m_start, m_end, 0.1f, glm::vec3(1.f, 0.f, 0.f));
                 drawTextAtWorldPosition(sampleTransform, m_end, "A");
@@ -296,9 +296,9 @@ void AppStage_HMDAccelerometerCalibration::render()
 
             // Draw the current filtered accelerometer direction
             {
-                const float accel_g = PSM_Vector3fLength(&m_lastCalibratedAccelerometer);
+                const float accel_g = PSVR_Vector3fLength(&m_lastCalibratedAccelerometer);
                 glm::vec3 m_start = glm::vec3(0.f);
-                glm::vec3 m_end = psm_vector3f_to_glm_vec3(m_lastCalibratedAccelerometer);
+                glm::vec3 m_end = PSVR_vector3f_to_glm_vec3(m_lastCalibratedAccelerometer);
 
                 drawArrow(sensorTransform, m_start, m_end, 0.1f, glm::vec3(1.f, 0.f, 0.f));
                 drawTextAtWorldPosition(sensorTransform, m_end, "A(%.1fg)", accel_g);
@@ -362,8 +362,8 @@ void AppStage_HMDAccelerometerCalibration::renderUI()
 
 			switch(m_hmdView->HmdType)
 			{
-			case PSMHmd_Morpheus:
-            case PSMHmd_Virtual:
+			case PSVRHmd_Morpheus:
+            case PSVRHmd_Virtual:
 				ImGui::Text("Set the HMD on a flat, level surface");
 				break;
 			}
@@ -456,13 +456,13 @@ void AppStage_HMDAccelerometerCalibration::renderUI()
 //-- private methods -----
 static void request_set_hmd_accelerometer_calibration(
     const int controller_id,
-	const PSMVector3f &raw_average_gravity,
+	const PSVRVector3f &raw_average_gravity,
     const float variance)
 {
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_HMD_ACCELEROMETER_CALIBRATION);
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_ACCELEROMETER_CALIBRATION);
 
-    PSMoveProtocol::Request_RequestSetHMDAccelerometerCalibration *calibration =
+    PSVRProtocol::Request_RequestSetHMDAccelerometerCalibration *calibration =
         request->mutable_set_hmd_accelerometer_calibration_request();
 
     calibration->set_hmd_id(controller_id);
@@ -471,16 +471,16 @@ static void request_set_hmd_accelerometer_calibration(
 	calibration->mutable_raw_average_gravity()->set_k(raw_average_gravity.z);
     calibration->set_raw_variance(variance);
 
-    PSM_SendOpaqueRequest(&request, nullptr);
+    PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_HMDAccelerometerCalibration::handle_acquire_hmd(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
     AppStage_HMDAccelerometerCalibration *thisPtr = reinterpret_cast<AppStage_HMDAccelerometerCalibration *>(userdata);
 
-    if (response->result_code == PSMResult_Success)
+    if (response->result_code == PSVRResult_Success)
     {
         thisPtr->m_isHMDStreamActive = true;
         thisPtr->m_lastHMDSeqNum = -1;
@@ -494,23 +494,23 @@ void AppStage_HMDAccelerometerCalibration::handle_acquire_hmd(
 
 void AppStage_HMDAccelerometerCalibration::request_exit_to_app_stage(const char *app_stage_name)
 {
-    PSMRequestID request_id;
-	PSM_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
-    PSM_EatResponse(request_id);
+    PSVRRequestID request_id;
+	PSVR_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
+    PSVR_EatResponse(request_id);
 
     m_isHMDStreamActive= false;
     m_app->setAppStage(app_stage_name);
 }
 
 //-- private methods -----
-static void drawHMD(PSMHeadMountedDisplay *hmdView, const glm::mat4 &transform)
+static void drawHMD(PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform)
 {
     switch(hmdView->HmdType)
     {
-    case PSMHmd_Morpheus:
+    case PSVRHmd_Morpheus:
         drawMorpheusModel(transform, glm::vec3(1.f, 1.f, 1.f));
         break;
-    case PSMHmd_Virtual:
+    case PSVRHmd_Virtual:
         drawVirtualHMDModel(transform, glm::vec3(1.f, 1.f, 1.f));
         break;
     }

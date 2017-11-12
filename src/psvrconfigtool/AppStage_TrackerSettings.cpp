@@ -8,11 +8,11 @@
 #include "AppStage_MainMenu.h"
 #include "App.h"
 #include "Camera.h"
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSMoveProtocolInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocolInterface.h"
+#include "PSVRProtocol.pb.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
@@ -61,16 +61,16 @@ void AppStage_TrackerSettings::render()
     {
         if (m_selectedTrackerIndex >= 0)
         {
-            const PSMClientTrackerInfo &trackerInfo = m_trackerInfos[m_selectedTrackerIndex];
+            const PSVRClientTrackerInfo &trackerInfo = m_trackerInfos[m_selectedTrackerIndex];
 
             switch (trackerInfo.tracker_type)
             {
-            case PSMTracker_PS3Eye:
+            case PSVRTracker_PS3Eye:
                 {
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
                     drawPS3EyeModel(scale3);
                 } break;
-            case PSMTracker_VirtualStereoCamera:
+            case PSVRTracker_VirtualStereoCamera:
                 {
                     glm::mat4 left = glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(-5.f, 0.f, 0.f)), glm::vec3(3.f, 3.f, 3.f));
                     glm::mat4 right = glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(5.f, 0.f, 0.f)), glm::vec3(3.f, 3.f, 3.f));
@@ -100,7 +100,7 @@ void AppStage_TrackerSettings::render()
     }
 }
 
-const PSMClientTrackerInfo *AppStage_TrackerSettings::getSelectedTrackerInfo() const
+const PSVRClientTrackerInfo *AppStage_TrackerSettings::getSelectedTrackerInfo() const
 {
     return
         (m_selectedTrackerIndex != -1)
@@ -203,7 +203,7 @@ void AppStage_TrackerSettings::renderUI()
 
         if (m_trackerInfos.size() > 0)
         {
-            const PSMClientTrackerInfo &trackerInfo = m_trackerInfos[m_selectedTrackerIndex];
+            const PSVRClientTrackerInfo &trackerInfo = m_trackerInfos[m_selectedTrackerIndex];
 
             if (m_selectedTrackerIndex > 0)
             {
@@ -239,11 +239,11 @@ void AppStage_TrackerSettings::renderUI()
 
             switch (trackerInfo.tracker_type)
             {
-            case PSMTracker_PS3Eye:
+            case PSVRTracker_PS3Eye:
                 {
                     ImGui::BulletText("Camera Type: PS3 Eye");
                 } break;
-            case PSMTracker_VirtualStereoCamera:
+            case PSVRTracker_VirtualStereoCamera:
                 {
                     ImGui::BulletText("Camera Type: Virtual Stereo");
                 } break;
@@ -253,19 +253,19 @@ void AppStage_TrackerSettings::renderUI()
 
             switch (trackerInfo.tracker_driver)
             {
-            case PSMDriver_LIBUSB:
+            case PSVRDriver_LIBUSB:
                 {
                     ImGui::BulletText("Controller Type: LIBUSB");
                 } break;
-            case PSMDriver_CL_EYE:
+            case PSVRDriver_CL_EYE:
                 {
                     ImGui::BulletText("Controller Type: CLEye");
                 } break;
-            case PSMDriver_CL_EYE_MULTICAM:
+            case PSVRDriver_CL_EYE_MULTICAM:
                 {
                     ImGui::BulletText("Controller Type: CLEye(Multicam SDK)");
                 } break;
-            case PSMDriver_GENERIC_WEBCAM:
+            case PSVRDriver_GENERIC_WEBCAM:
                 {
                     ImGui::BulletText("Controller Type: Generic Webcam");
                 } break;
@@ -285,7 +285,7 @@ void AppStage_TrackerSettings::renderUI()
                     m_app->setAppStage(AppStage_TestTracker::APP_STAGE_NAME);
                 }
 
-                if (trackerInfo.tracker_intrinsics.intrinsics_type == PSMTrackerIntrinsics::PSM_STEREO_TRACKER_INTRINSICS)
+                if (trackerInfo.tracker_intrinsics.intrinsics_type == PSVRTrackerIntrinsics::PSVR_STEREO_TRACKER_INTRINSICS)
                 {
                     if (ImGui::Button("Calibrate Stereo Tracker"))
                     {
@@ -337,12 +337,12 @@ void AppStage_TrackerSettings::renderUI()
                     const AppStage_TrackerSettings::ControllerInfo &controllerInfo = 
                         m_controllerInfos[m_selectedControllerIndex];
 
-                    if (controllerInfo.ControllerType == PSMController_Move ||
-                        controllerInfo.ControllerType == PSMController_Virtual)
+                    if (controllerInfo.ControllerType == PSVRController_Move ||
+                        controllerInfo.ControllerType == PSVRController_Virtual)
                     { 
-                        const char * szControllerLabel= (controllerInfo.ControllerType == PSMController_Move) ? "PSMove" : "Virtual";
+                        const char * szControllerLabel= (controllerInfo.ControllerType == PSVRController_Move) ? "PSVR" : "Virtual";
 
-                        if (0 <= controllerInfo.TrackingColorType && controllerInfo.TrackingColorType < PSMTrackingColorType_MaxColorTypes) 
+                        if (0 <= controllerInfo.TrackingColorType && controllerInfo.TrackingColorType < PSVRTrackingColorType_MaxColorTypes) 
                         {
                             const char *colors[] = { "Magenta","Cyan","Yellow","Red","Green","Blue" };
 
@@ -444,9 +444,9 @@ void AppStage_TrackerSettings::renderUI()
                     const AppStage_TrackerSettings::HMDInfo &hmdInfo = m_hmdInfos[m_selectedHmdIndex];
                     const char *colors[] = { "Magenta","Cyan","Yellow","Red","Green","Blue" };
 
-                    if (hmdInfo.HmdType == PSMHmd_Morpheus)
+                    if (hmdInfo.HmdType == PSVRHmd_Morpheus)
                     {
-                        if (0 <= hmdInfo.TrackingColorType && hmdInfo.TrackingColorType < PSMTrackingColorType_MaxColorTypes) 
+                        if (0 <= hmdInfo.TrackingColorType && hmdInfo.TrackingColorType < PSVRTrackingColorType_MaxColorTypes) 
                         {
                             ImGui::Text("HMD: %d (Morpheus) - %s",
                                 m_selectedHmdIndex,
@@ -457,9 +457,9 @@ void AppStage_TrackerSettings::renderUI()
                             ImGui::Text("HMD: %d (Morpheus)", m_selectedHmdIndex);
                         }
                     }
-                    else if (hmdInfo.HmdType == PSMHmd_Virtual)
+                    else if (hmdInfo.HmdType == PSVRHmd_Virtual)
                     {
-                        if (0 <= hmdInfo.TrackingColorType && hmdInfo.TrackingColorType < PSMTrackingColorType_MaxColorTypes) 
+                        if (0 <= hmdInfo.TrackingColorType && hmdInfo.TrackingColorType < PSVRTrackingColorType_MaxColorTypes) 
                         {
                             ImGui::Text("HMD: %d (Virtual) - %s",
                                 m_selectedHmdIndex,
@@ -500,7 +500,7 @@ void AppStage_TrackerSettings::renderUI()
                     {
                         const AppStage_TrackerSettings::HMDInfo &hmdInfo = m_hmdInfos[m_selectedHmdIndex];
 
-                        if (hmdInfo.HmdType == PSMHmd_Virtual)
+                        if (hmdInfo.HmdType == PSVRHmd_Virtual)
                         {
                             if (ImGui::Button("Compute Tracker Poses Using HMD"))
                             {
@@ -587,14 +587,14 @@ void AppStage_TrackerSettings::renderUI()
 }
 
 bool AppStage_TrackerSettings::onClientAPIEvent(
-    PSMEventMessage::eEventType event, 
-    PSMEventDataHandle opaque_event_handle)
+    PSVREventMessage::eEventType event, 
+    PSVREventDataHandle opaque_event_handle)
 {
     bool bHandled = false;
 
     switch (event)
     {
-    case  PSMEventMessage::PSMEvent_controllerListUpdated:
+    case  PSVREventMessage::PSVREvent_controllerListUpdated:
         {
             bHandled = true;
             request_tracker_list();
@@ -610,25 +610,25 @@ void AppStage_TrackerSettings::request_tracker_list()
     {
         m_menuState = AppStage_TrackerSettings::pendingTrackerListRequest;
 
-        // Tell the psmove service that we we want a list of trackers connected to this machine
-        PSMRequestID requestId;
-        PSM_GetTrackerListAsync(&requestId);
-        PSM_RegisterCallback(requestId, AppStage_TrackerSettings::handle_tracker_list_response, this);
+        // Tell the PSVR service that we we want a list of trackers connected to this machine
+        PSVRRequestID requestId;
+        PSVR_GetTrackerListAsync(&requestId);
+        PSVR_RegisterCallback(requestId, AppStage_TrackerSettings::handle_tracker_list_response, this);
     }
 }
 
 void AppStage_TrackerSettings::handle_tracker_list_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_TrackerSettings *thisPtr = static_cast<AppStage_TrackerSettings *>(userdata);
 
     switch (response_message->result_code)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            assert(response_message->payload_type == PSMResponseMessage::_responsePayloadType_TrackerList);
-            const PSMTrackerList &tracker_list= response_message->payload.tracker_list;
+            assert(response_message->payload_type == PSVRResponseMessage::_responsePayloadType_TrackerList);
+            const PSVRTrackerList &tracker_list= response_message->payload.tracker_list;
             int oldSelectedTrackerIndex= thisPtr->m_selectedTrackerIndex;
 
             thisPtr->m_selectedTrackerIndex = -1;
@@ -636,7 +636,7 @@ void AppStage_TrackerSettings::handle_tracker_list_response(
 
             for (int tracker_index = 0; tracker_index < tracker_list.count; ++tracker_index)
             {
-                const PSMClientTrackerInfo &TrackerInfo = tracker_list.trackers[tracker_index];
+                const PSVRClientTrackerInfo &TrackerInfo = tracker_list.trackers[tracker_index];
 
                 thisPtr->m_trackerInfos.push_back(TrackerInfo);
             }
@@ -658,9 +658,9 @@ void AppStage_TrackerSettings::handle_tracker_list_response(
             thisPtr->request_controller_list();
         } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->m_menuState = AppStage_TrackerSettings::failedTrackerListRequest;
         } break;
@@ -673,33 +673,33 @@ void AppStage_TrackerSettings::request_controller_list()
     {
         m_menuState= AppStage_TrackerSettings::pendingControllerListRequest;
 
-        // Tell the psmove service that we we want a list of controllers connected to this machine
-        RequestPtr request(new PSMoveProtocol::Request());
-        request->set_type(PSMoveProtocol::Request_RequestType_GET_CONTROLLER_LIST);
+        // Tell the PSVR service that we we want a list of controllers connected to this machine
+        RequestPtr request(new PSVRProtocol::Request());
+        request->set_type(PSVRProtocol::Request_RequestType_GET_CONTROLLER_LIST);
 
         // Don't need the usb controllers
         request->mutable_request_get_controller_list()->set_include_usb_controllers(false);
 
-        PSMRequestID request_id;
-        PSM_SendOpaqueRequest(&request, &request_id);
-        PSM_RegisterCallback(request_id, AppStage_TrackerSettings::handle_controller_list_response, this);
+        PSVRRequestID request_id;
+        PSVR_SendOpaqueRequest(&request, &request_id);
+        PSVR_RegisterCallback(request_id, AppStage_TrackerSettings::handle_controller_list_response, this);
     }
 }
 
 void AppStage_TrackerSettings::handle_controller_list_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_TrackerSettings *thisPtr= static_cast<AppStage_TrackerSettings *>(userdata);
 
-    const PSMResult ResultCode = response_message->result_code;
-    const PSMResponseHandle response_handle = response_message->opaque_response_handle;
+    const PSVRResult ResultCode = response_message->result_code;
+    const PSVRResponseHandle response_handle = response_message->opaque_response_handle;
 
     switch(ResultCode)
     {
-        case PSMResult_Success:
+        case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response= GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response= GET_PSVRPROTOCOL_RESPONSE(response_handle);
             int oldSelectedControllerIndex= thisPtr->m_selectedControllerIndex;
 
             thisPtr->m_controllerInfos.clear();
@@ -711,23 +711,23 @@ void AppStage_TrackerSettings::handle_controller_list_response(
                 AppStage_TrackerSettings::ControllerInfo ControllerInfo;
 
                 ControllerInfo.ControllerID= ControllerResponse.controller_id();
-                ControllerInfo.TrackingColorType = (PSMTrackingColorType)ControllerResponse.tracking_color_type();
+                ControllerInfo.TrackingColorType = (PSVRTrackingColorType)ControllerResponse.tracking_color_type();
 
                 switch(ControllerResponse.controller_type())
                 {
-                case PSMoveProtocol::PSMOVE:
-                    ControllerInfo.ControllerType = PSMController_Move;
+                case PSVRProtocol::PSVR:
+                    ControllerInfo.ControllerType = PSVRController_Move;
                     thisPtr->m_controllerInfos.push_back(ControllerInfo);
                     break;
-                case PSMoveProtocol::PSNAVI:
-                    ControllerInfo.ControllerType = PSMController_Navi;
+                case PSVRProtocol::PSNAVI:
+                    ControllerInfo.ControllerType = PSVRController_Navi;
                     break;
-                case PSMoveProtocol::PSDUALSHOCK4:
-                    ControllerInfo.ControllerType = PSMController_DualShock4;
+                case PSVRProtocol::PSDUALSHOCK4:
+                    ControllerInfo.ControllerType = PSVRController_DualShock4;
                     thisPtr->m_controllerInfos.push_back(ControllerInfo);
                     break;
-                case PSMoveProtocol::VIRTUALCONTROLLER:
-                    ControllerInfo.ControllerType = PSMController_Virtual;
+                case PSVRProtocol::VIRTUALCONTROLLER:
+                    ControllerInfo.ControllerType = PSVRController_Virtual;
                     thisPtr->m_controllerInfos.push_back(ControllerInfo);
                     break;
                 default:
@@ -752,9 +752,9 @@ void AppStage_TrackerSettings::handle_controller_list_response(
             thisPtr->request_hmd_list();
         } break;
 
-        case PSMResult_Error:
-        case PSMResult_Canceled:
-        case PSMResult_Timeout:
+        case PSVRResult_Error:
+        case PSVRResult_Canceled:
+        case PSVRResult_Timeout:
         { 
             thisPtr->m_menuState= AppStage_TrackerSettings::failedControllerListRequest;
         } break;
@@ -767,30 +767,30 @@ void AppStage_TrackerSettings::request_hmd_list()
     {
         m_menuState = AppStage_TrackerSettings::pendingHmdListRequest;
 
-        // Tell the psmove service that we we want a list of HMDs connected to this machine
-        RequestPtr request(new PSMoveProtocol::Request());
-        request->set_type(PSMoveProtocol::Request_RequestType_GET_HMD_LIST);
+        // Tell the PSVR service that we we want a list of HMDs connected to this machine
+        RequestPtr request(new PSVRProtocol::Request());
+        request->set_type(PSVRProtocol::Request_RequestType_GET_HMD_LIST);
 
-        PSMRequestID request_id;
-        PSM_SendOpaqueRequest(&request, &request_id);
-        PSM_RegisterCallback(request_id, AppStage_TrackerSettings::handle_hmd_list_response, this);
+        PSVRRequestID request_id;
+        PSVR_SendOpaqueRequest(&request, &request_id);
+        PSVR_RegisterCallback(request_id, AppStage_TrackerSettings::handle_hmd_list_response, this);
     }
 }
 
 void AppStage_TrackerSettings::handle_hmd_list_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_TrackerSettings *thisPtr = static_cast<AppStage_TrackerSettings *>(userdata);
 
-    const PSMResult ResultCode = response_message->result_code;
-    const PSMResponseHandle response_handle = response_message->opaque_response_handle;
+    const PSVRResult ResultCode = response_message->result_code;
+    const PSVRResponseHandle response_handle = response_message->opaque_response_handle;
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
-        const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+        const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
         int oldSelectedHmdIndex = thisPtr->m_selectedHmdIndex;
 
         thisPtr->m_hmdInfos.clear();
@@ -802,16 +802,16 @@ void AppStage_TrackerSettings::handle_hmd_list_response(
             AppStage_TrackerSettings::HMDInfo HmdInfo;
 
             HmdInfo.HmdID = HmdResponse.hmd_id();
-            HmdInfo.TrackingColorType = (PSMTrackingColorType)HmdResponse.tracking_color_type();
+            HmdInfo.TrackingColorType = (PSVRTrackingColorType)HmdResponse.tracking_color_type();
 
             switch (HmdResponse.hmd_type())
             {
-            case PSMoveProtocol::Morpheus:
-                HmdInfo.HmdType = PSMHmd_Morpheus;
+            case PSVRProtocol::Morpheus:
+                HmdInfo.HmdType = PSVRHmd_Morpheus;
                 thisPtr->m_hmdInfos.push_back(HmdInfo);
                 break;
-            case PSMoveProtocol::VirtualHMD:
-                HmdInfo.HmdType = PSMHmd_Virtual;
+            case PSVRProtocol::VirtualHMD:
+                HmdInfo.HmdType = PSVRHmd_Virtual;
                 thisPtr->m_hmdInfos.push_back(HmdInfo);
                 break;
             default:
@@ -835,9 +835,9 @@ void AppStage_TrackerSettings::handle_hmd_list_response(
         thisPtr->m_menuState = AppStage_TrackerSettings::idle;
     } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
     {
         thisPtr->m_menuState = AppStage_TrackerSettings::failedControllerListRequest;
     } break;
@@ -846,21 +846,21 @@ void AppStage_TrackerSettings::handle_hmd_list_response(
 
 void AppStage_TrackerSettings::request_search_for_new_trackers()
 {
-    // Tell the psmove service that we want see if new trackers are connected.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SEARCH_FOR_NEW_TRACKERS);
+    // Tell the PSVR service that we want see if new trackers are connected.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SEARCH_FOR_NEW_TRACKERS);
 
     m_menuState = AppStage_TrackerSettings::pendingSearchForNewTrackersRequest;
     m_selectedTrackerIndex = -1;
     m_trackerInfos.clear();
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_TrackerSettings::handle_search_for_new_trackers_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_TrackerSettings::handle_search_for_new_trackers_response, this);
 }
 
 void AppStage_TrackerSettings::handle_search_for_new_trackers_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
     AppStage_TrackerSettings *thisPtr = static_cast<AppStage_TrackerSettings *>(userdata);

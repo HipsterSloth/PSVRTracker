@@ -48,7 +48,7 @@ int main(int, char**)
 	std::cin >> frame_width_init;
 
     // Open all available cameras (up to 4 max)
-	for (int camera_index = 0; camera_index < PSMOVESERVICE_MAX_TRACKER_COUNT; ++camera_index)
+	for (int camera_index = 0; camera_index < PSVRSERVICE_MAX_TRACKER_COUNT; ++camera_index)
 	{
         PSEyeVideoCapture *camera = new PSEyeVideoCapture(camera_index); // open the default camera
 

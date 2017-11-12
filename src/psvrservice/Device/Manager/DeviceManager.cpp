@@ -16,8 +16,8 @@
 #include "ServerDeviceView.h"
 #include "ServerNetworkManager.h"
 #include "ServerUtility.h"
-#include "PSMoveProtocol.pb.h"
-#include "PSMoveConfig.h"
+#include "PSVRProtocol.pb.h"
+#include "PSVRConfig.h"
 #include "TrackerManager.h"
 
 #include <chrono>
@@ -30,13 +30,13 @@ static const int k_default_tracker_poll_interval= 13; // 1000/75 ms
 static const int k_default_hmd_reconnect_interval= 10000; // ms
 static const int k_default_hmd_poll_interval= 2; // ms
 
-class DeviceManagerConfig : public PSMoveConfig
+class DeviceManagerConfig : public PSVRConfig
 {
 public:
     static const int CONFIG_VERSION= 1;
 
     DeviceManagerConfig(const std::string &fnamebase = "DeviceManagerConfig")
-        : PSMoveConfig(fnamebase)
+        : PSVRConfig(fnamebase)
         , controller_reconnect_interval(k_default_controller_reconnect_interval)
         , controller_poll_interval(k_default_controller_poll_interval)
         , tracker_reconnect_interval(k_default_tracker_reconnect_interval)
@@ -100,7 +100,7 @@ public:
 	bool platform_api_enabled;
 };
 
-// DeviceManager - This is the interface used by PSMoveService
+// DeviceManager - This is the interface used by PSVRSERVICE
 DeviceManager *DeviceManager::m_instance= nullptr;
 
 DeviceManager::DeviceManager()

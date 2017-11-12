@@ -9,8 +9,8 @@
 #include "MathUtility.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSMoveProtocolInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocolInterface.h"
+#include "PSVRProtocol.pb.h"
 #include "SharedTrackerState.h"
 
 #include "SDL_keycode.h"
@@ -52,7 +52,7 @@ static const char *k_tracking_color_names[] = {
 class VideoBufferState
 {
 public:
-    VideoBufferState(PSMTracker *trackerView)
+    VideoBufferState(PSVRTracker *trackerView)
         : videoTexture(nullptr)
         , bgrBuffer(nullptr)
         , hsvBuffer(nullptr)
@@ -60,8 +60,8 @@ public:
         , gsUpperBuffer(nullptr)
         , maskedBuffer(nullptr)
     {
-        PSMVector2f screenSize;
-        PSM_GetTrackerScreenSize(trackerView->tracker_info.tracker_id, &screenSize);
+        PSVRVector2f screenSize;
+        PSVR_GetTrackerScreenSize(trackerView->tracker_info.tracker_id, &screenSize);
         const int frameWidth = static_cast<int>(screenSize.x);
         const int frameHeight = static_cast<int>(screenSize.y);
 
@@ -157,7 +157,7 @@ AppStage_ColorCalibration::AppStage_ColorCalibration(App *app)
     , m_bShowAlignment(false)
     , m_bShowAlignmentColor(false)
     , m_AlignmentOffset(0.f)
-    , m_masterTrackingColorType(PSMTrackingColorType_Magenta)
+    , m_masterTrackingColorType(PSVRTrackingColorType_Magenta)
 { 
     memset(m_colorPresets, 0, sizeof(m_colorPresets));
 }
@@ -168,7 +168,7 @@ void AppStage_ColorCalibration::enter()
     m_app->getAppStage<AppStage_TrackerSettings>()->gotoHMDColorCalib(false);
     const AppStage_TrackerSettings *trackerSettings =
         m_app->getAppStage<AppStage_TrackerSettings>();
-    const PSMClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTrackerInfo();
+    const PSVRClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTrackerInfo();
     assert(trackerInfo->tracker_id != -1);
 
     m_app->setCameraType(_cameraFixed);
@@ -178,14 +178,14 @@ void AppStage_ColorCalibration::enter()
 
     // Use the tracker selected from the tracker settings menu
     assert(m_trackerView == nullptr);
-    PSM_AllocateTrackerListener(trackerInfo->tracker_id, trackerInfo);
-    m_trackerView = PSM_GetTracker(trackerInfo->tracker_id);
+    PSVR_AllocateTrackerListener(trackerInfo->tracker_id, trackerInfo);
+    m_trackerView = PSVR_GetTracker(trackerInfo->tracker_id);
 
     if (m_overrideHmdId != -1)
     {
         assert(m_hmdView == nullptr);
-        PSM_AllocateHmdListener(m_overrideHmdId);
-        m_hmdView = PSM_GetHmd(m_overrideHmdId);
+        PSVR_AllocateHmdListener(m_overrideHmdId);
+        m_hmdView = PSVR_GetHmd(m_overrideHmdId);
         m_isHmdStreamActive = false;
         m_lastHmdSeqNum = -1;
     }
@@ -200,8 +200,8 @@ void AppStage_ColorCalibration::enter()
         for (int list_index = 0; list_index < trackerSettings->get_controller_count(); ++list_index)
         {
             const AppStage_TrackerSettings::ControllerInfo *controller_info= trackerSettings->get_controller_info(list_index);
-            PSM_AllocateControllerListener(controller_info->ControllerID);
-            PSMController *controllerView= PSM_GetController(controller_info->ControllerID);
+            PSVR_AllocateControllerListener(controller_info->ControllerID);
+            PSVRController *controllerView= PSVR_GetController(controller_info->ControllerID);
 
             if (masterControllerID == controller_info->ControllerID)
             {
@@ -261,11 +261,11 @@ void AppStage_ColorCalibration::update()
     if (m_video_buffer_state != nullptr)
     {
         const unsigned char *video_buffer= nullptr;
-        if (PSM_PollTrackerVideoStream(m_trackerView->tracker_info.tracker_id) == PSMResult_Success &&
-            PSM_GetTrackerVideoFrameBuffer(m_trackerView->tracker_info.tracker_id, PSMVideoFrameSection_Primary, &video_buffer) == PSMResult_Success)
+        if (PSVR_PollTrackerVideoStream(m_trackerView->tracker_info.tracker_id) == PSVRResult_Success &&
+            PSVR_GetTrackerVideoFrameBuffer(m_trackerView->tracker_info.tracker_id, PSVRVideoFrameSection_Primary, &video_buffer) == PSVRResult_Success)
         {
-            PSMVector2f screenSize;
-            PSM_GetTrackerScreenSize(m_trackerView->tracker_info.tracker_id, &screenSize);
+            PSVRVector2f screenSize;
+            PSVR_GetTrackerScreenSize(m_trackerView->tracker_info.tracker_id, &screenSize);
             const unsigned int frameWidth = static_cast<unsigned int>(screenSize.x);
             const unsigned int frameHeight = static_cast<unsigned int>(screenSize.y);
             const unsigned char *display_buffer = video_buffer;
@@ -587,8 +587,8 @@ void AppStage_ColorCalibration::renderUI()
             {
                 if (m_bAutoChangeColor) {
                     setState(eMenuState::blank1);
-                    request_set_controller_tracking_color(m_masterControllerView, PSMTrackingColorType_Magenta);
-                    m_masterTrackingColorType = PSMTrackingColorType_Magenta;
+                    request_set_controller_tracking_color(m_masterControllerView, PSVRTrackingColorType_Magenta);
+                    m_masterTrackingColorType = PSVRTrackingColorType_Magenta;
                     std::this_thread::sleep_for(std::chrono::milliseconds(auto_calib_sleep));
                 }
                 else if ( m_bAutoChangeController && !m_bShowAlignment) {
@@ -662,9 +662,9 @@ void AppStage_ColorCalibration::renderUI()
                 }
                 // Change color: C
                 if (ImGui::IsKeyReleased(99)) {
-                    PSMTrackingColorType new_color =
-                        static_cast<PSMTrackingColorType>(
-                        (m_masterTrackingColorType + 1) % PSMTrackingColorType_MaxColorTypes);
+                    PSVRTrackingColorType new_color =
+                        static_cast<PSVRTrackingColorType>(
+                        (m_masterTrackingColorType + 1) % PSVRTrackingColorType_MaxColorTypes);
                     request_set_controller_tracking_color(m_masterControllerView, new_color);
                     m_masterTrackingColorType = new_color;
                 }
@@ -682,19 +682,19 @@ void AppStage_ColorCalibration::renderUI()
             {
                 if (ImGui::Button("<##Color"))
                 {
-                    PSMTrackingColorType new_color =
-                        static_cast<PSMTrackingColorType>(
-                            (m_masterTrackingColorType + PSMTrackingColorType_MaxColorTypes - 1)
-                            % PSMTrackingColorType_MaxColorTypes);
+                    PSVRTrackingColorType new_color =
+                        static_cast<PSVRTrackingColorType>(
+                            (m_masterTrackingColorType + PSVRTrackingColorType_MaxColorTypes - 1)
+                            % PSVRTrackingColorType_MaxColorTypes);
                     request_set_controller_tracking_color(m_masterControllerView, new_color);
                     m_masterTrackingColorType= new_color;
                 }
                 ImGui::SameLine();
                 if (ImGui::Button(">##Color"))
                 {
-                    PSMTrackingColorType new_color =
-                        static_cast<PSMTrackingColorType>(
-                            (m_masterTrackingColorType + 1) % PSMTrackingColorType_MaxColorTypes);
+                    PSVRTrackingColorType new_color =
+                        static_cast<PSVRTrackingColorType>(
+                            (m_masterTrackingColorType + 1) % PSVRTrackingColorType_MaxColorTypes);
                     request_set_controller_tracking_color(m_masterControllerView, new_color);
                     m_masterTrackingColorType= new_color;
                 }
@@ -910,22 +910,22 @@ void AppStage_ColorCalibration::renderUI()
             {
                 switch (m_masterTrackingColorType)
                 {
-                case PSMoveProtocol::Magenta:
+                case PSVRProtocol::Magenta:
                     r = 0xFF; g = 0x00; b = 0xFF;
                     break;
-                case PSMoveProtocol::Cyan:
+                case PSVRProtocol::Cyan:
                     r = 0x00; g = 0xFF; b = 0xFF;
                     break;
-                case PSMoveProtocol::Yellow:
+                case PSVRProtocol::Yellow:
                     r = 0xFF; g = 0xFF; b = 0x00;
                     break;
-                case PSMoveProtocol::Red:
+                case PSVRProtocol::Red:
                     r = 0xFF; g = 0x00; b = 0x00;
                     break;
-                case PSMoveProtocol::Green:
+                case PSVRProtocol::Green:
                     r = 0x00; g = 0xFF; b = 0x00;
                     break;
-                case PSMoveProtocol::Blue:
+                case PSVRProtocol::Blue:
                     r = 0x00; g = 0x00; b = 0xFF;
                     break;
                 default:
@@ -958,9 +958,9 @@ void AppStage_ColorCalibration::renderUI()
 
     case eMenuState::autoConfig:
     {
-        PSMTrackingColorType new_color =
-            static_cast<PSMTrackingColorType>(
-            (m_masterTrackingColorType + 1) % PSMTrackingColorType_MaxColorTypes);
+        PSVRTrackingColorType new_color =
+            static_cast<PSVRTrackingColorType>(
+            (m_masterTrackingColorType + 1) % PSVRTrackingColorType_MaxColorTypes);
 
         float x0 = ImGui::GetIO().DisplaySize.x / 2;
         float y0 = ImGui::GetIO().DisplaySize.y / 2 + m_AlignmentOffset;
@@ -978,7 +978,7 @@ void AppStage_ColorCalibration::renderUI()
 
         request_set_controller_tracking_color(m_masterControllerView, new_color);
 
-        if (new_color == PSMTrackingColorType_Magenta) {
+        if (new_color == PSVRTrackingColorType_Magenta) {
             if (m_bAutoChangeController && !m_bShowAlignment) setState(eMenuState::changeController);
             else if (m_bAutoChangeTracker) setState(eMenuState::changeTracker);
             else setState(eMenuState::manualConfig);
@@ -1072,13 +1072,13 @@ void AppStage_ColorCalibration::setState(
 
 void AppStage_ColorCalibration::request_start_controller_streams()
 {
-    for (PSMController *controllerView : m_controllerViews)
+    for (PSVRController *controllerView : m_controllerViews)
     {
         ++m_pendingControllerStartCount;
 
-        PSMRequestID request_id;
-        PSM_StartControllerDataStreamAsync(controllerView->ControllerID, PSMStreamFlags_defaultStreamOptions, &request_id);
-        PSM_RegisterCallback(request_id, &AppStage_ColorCalibration::handle_start_controller_response, this);
+        PSVRRequestID request_id;
+        PSVR_StartControllerDataStreamAsync(controllerView->ControllerID, PSVRStreamFlags_defaultStreamOptions, &request_id);
+        PSVR_RegisterCallback(request_id, &AppStage_ColorCalibration::handle_start_controller_response, this);
     }
 
     // Start receiving data from the controller
@@ -1086,17 +1086,17 @@ void AppStage_ColorCalibration::request_start_controller_streams()
 }
 
 void AppStage_ColorCalibration::handle_start_controller_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
-    const PSMResult ResultCode = response_message->result_code;
-//    const ClientPSMoveAPI::t_request_id request_id = response_message->request_id;
+    const PSVRResult ResultCode = response_message->result_code;
+//    const ClientPSVRAPI::t_request_id request_id = response_message->request_id;
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
             --thisPtr->m_pendingControllerStartCount;
 
@@ -1107,9 +1107,9 @@ void AppStage_ColorCalibration::handle_start_controller_response(
             }
         } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->setState(AppStage_ColorCalibration::failedControllerStartRequest);
         } break;
@@ -1117,36 +1117,36 @@ void AppStage_ColorCalibration::handle_start_controller_response(
 }
 
 void AppStage_ColorCalibration::request_set_controller_tracking_color(
-    PSMController *controllerView,
-    PSMTrackingColorType tracking_color)
+    PSVRController *controllerView,
+    PSVRTrackingColorType tracking_color)
 {
     unsigned char r, g, b;
 
     switch (tracking_color)
     {
-    case PSMoveProtocol::Magenta:
+    case PSVRProtocol::Magenta:
         r = 0xFF; g = 0x00; b = 0xFF;
         break;
-    case PSMoveProtocol::Cyan:
+    case PSVRProtocol::Cyan:
         r = 0x00; g = 0xFF; b = 0xFF;
         break;
-    case PSMoveProtocol::Yellow:
+    case PSVRProtocol::Yellow:
         r = 0xFF; g = 0xFF; b = 0x00;
         break;
-    case PSMoveProtocol::Red:
+    case PSVRProtocol::Red:
         r = 0xFF; g = 0x00; b = 0x00;
         break;
-    case PSMoveProtocol::Green:
+    case PSVRProtocol::Green:
         r = 0x00; g = 0xFF; b = 0x00;
         break;
-    case PSMoveProtocol::Blue:
+    case PSVRProtocol::Blue:
         r = 0x00; g = 0x00; b = 0xFF;
         break;
     default:
         assert(0 && "unreachable");
     }
 
-    PSM_SetControllerLEDOverrideColor(controllerView->ControllerID, r, g, b);
+    PSVR_SetControllerLEDOverrideColor(controllerView->ControllerID, r, g, b);
 }
 
 void AppStage_ColorCalibration::request_start_hmd_stream()
@@ -1154,29 +1154,29 @@ void AppStage_ColorCalibration::request_start_hmd_stream()
     // Start receiving data from the controller
     setState(AppStage_ColorCalibration::pendingHmdStartRequest);
 
-    PSMRequestID requestId;
-    PSM_StartHmdDataStreamAsync(m_hmdView->HmdID, PSMStreamFlags_defaultStreamOptions, &requestId);
-    PSM_RegisterCallback(requestId, AppStage_ColorCalibration::handle_start_hmd_response, this);
+    PSVRRequestID requestId;
+    PSVR_StartHmdDataStreamAsync(m_hmdView->HmdID, PSVRStreamFlags_defaultStreamOptions, &requestId);
+    PSVR_RegisterCallback(requestId, AppStage_ColorCalibration::handle_start_hmd_response, this);
 }
 
 void AppStage_ColorCalibration::handle_start_hmd_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
-    const PSMResult ResultCode = response_message->result_code;
+    const PSVRResult ResultCode = response_message->result_code;
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
             thisPtr->m_isHmdStreamActive = true;
             thisPtr->setState(AppStage_ColorCalibration::waitingForStreamStartResponse);
         } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->setState(AppStage_ColorCalibration::failedControllerStartRequest);
         } break;
@@ -1189,27 +1189,27 @@ void AppStage_ColorCalibration::request_tracker_start_stream()
     {
         setState(AppStage_ColorCalibration::pendingTrackerStartStreamRequest);
 
-        // Tell the psmove service that we want to start streaming data from the tracker
-        PSMRequestID requestID;
-        PSM_StartTrackerDataStreamAsync(m_trackerView->tracker_info.tracker_id, &requestID);
-        PSM_RegisterCallback(requestID, AppStage_ColorCalibration::handle_tracker_start_stream_response, this);
+        // Tell the PSVR service that we want to start streaming data from the tracker
+        PSVRRequestID requestID;
+        PSVR_StartTrackerDataStreamAsync(m_trackerView->tracker_info.tracker_id, &requestID);
+        PSVR_RegisterCallback(requestID, AppStage_ColorCalibration::handle_tracker_start_stream_response, this);
     }
 }
 
 void AppStage_ColorCalibration::handle_tracker_start_stream_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (response->result_code)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            PSMTracker *trackerView = thisPtr->m_trackerView;
+            PSVRTracker *trackerView = thisPtr->m_trackerView;
 
             // Open the shared memory that the video stream is being written to
-            if (PSM_OpenTrackerVideoStream(trackerView->tracker_info.tracker_id) == PSMResult_Success)
+            if (PSVR_OpenTrackerVideoStream(trackerView->tracker_info.tracker_id) == PSVRResult_Success)
             {
                 thisPtr->allocate_video_buffers();
             }
@@ -1225,9 +1225,9 @@ void AppStage_ColorCalibration::handle_tracker_start_stream_response(
             }
         } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->setState(AppStage_ColorCalibration::failedTrackerStartStreamRequest);
         } break;
@@ -1247,16 +1247,16 @@ void AppStage_ColorCalibration::release_video_buffers()
 
 void AppStage_ColorCalibration::request_tracker_set_frame_width(double value)
 {
-    // Tell the psmove service that we want to change frame width.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_TRACKER_FRAME_WIDTH);
+    // Tell the PSVR service that we want to change frame width.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_FRAME_WIDTH);
     request->mutable_request_set_tracker_frame_width()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_set_tracker_frame_width()->set_value(static_cast<float>(value));
     request->mutable_request_set_tracker_frame_width()->set_save_setting(true);
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_frame_width_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_frame_width_response, this);
 
     // Exit and re-enter Color Calibration
     m_app->getAppStage<AppStage_TrackerSettings>()->gotoControllerColorCalib(true);
@@ -1265,23 +1265,23 @@ void AppStage_ColorCalibration::request_tracker_set_frame_width(double value)
 }
 
 void AppStage_ColorCalibration::handle_tracker_set_frame_width_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
-        const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+        const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
         thisPtr->m_trackerFrameWidth = response->result_set_tracker_frame_width().new_frame_width();
     } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
     {
         //###HipsterSloth $TODO - Replace with C_API style log
         //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to set the tracker frame width!";
@@ -1291,36 +1291,36 @@ void AppStage_ColorCalibration::handle_tracker_set_frame_width_response(
 
 void AppStage_ColorCalibration::request_tracker_set_frame_rate(double value)
 {
-    // Tell the psmove service that we want to change frame rate.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_TRACKER_FRAME_RATE);
+    // Tell the PSVR service that we want to change frame rate.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_FRAME_RATE);
     request->mutable_request_set_tracker_frame_rate()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_set_tracker_frame_rate()->set_value(static_cast<float>(value));
     request->mutable_request_set_tracker_frame_rate()->set_save_setting(true);
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_frame_rate_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_frame_rate_response, this);
 }
 
 void AppStage_ColorCalibration::handle_tracker_set_frame_rate_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
             thisPtr->m_trackerFrameRate = response->result_set_tracker_frame_rate().new_frame_rate();
         } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             //###HipsterSloth $TODO - Replace with C_API style log
             //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to set the tracker frame rate!";
@@ -1330,36 +1330,36 @@ void AppStage_ColorCalibration::handle_tracker_set_frame_rate_response(
 
 void AppStage_ColorCalibration::request_tracker_set_exposure(double value)
 {
-    // Tell the psmove service that we want to change exposure.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_TRACKER_EXPOSURE);
+    // Tell the PSVR service that we want to change exposure.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_EXPOSURE);
     request->mutable_request_set_tracker_exposure()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_set_tracker_exposure()->set_value(static_cast<float>(value));
     request->mutable_request_set_tracker_exposure()->set_save_setting(true);
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_exposure_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_exposure_response, this);
 }
 
 void AppStage_ColorCalibration::handle_tracker_set_exposure_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
             thisPtr->m_trackerExposure = response->result_set_tracker_exposure().new_exposure();
         } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             //###HipsterSloth $TODO - Replace with C_API style log
             //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to set the tracker exposure!";
@@ -1369,36 +1369,36 @@ void AppStage_ColorCalibration::handle_tracker_set_exposure_response(
 
 void AppStage_ColorCalibration::request_tracker_set_gain(double value)
 {
-    // Tell the psmove service that we want to change gain.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_TRACKER_GAIN);
+    // Tell the PSVR service that we want to change gain.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_GAIN);
     request->mutable_request_set_tracker_gain()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_set_tracker_gain()->set_value(static_cast<float>(value));
     request->mutable_request_set_tracker_gain()->set_save_setting(true);
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_gain_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_gain_response, this);
 }
 
 void AppStage_ColorCalibration::handle_tracker_set_gain_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
             thisPtr->m_trackerGain = response->result_set_tracker_gain().new_gain();
         } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             //###HipsterSloth $TODO - Replace with C_API style log
             //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to set the tracker gain!";
@@ -1410,31 +1410,31 @@ void AppStage_ColorCalibration::request_tracker_set_option(
     TrackerOption &option, 
     int new_option_index)
 {
-    // Tell the psmove service that we want to change gain.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_TRACKER_OPTION);
+    // Tell the PSVR service that we want to change gain.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_OPTION);
     request->mutable_request_set_tracker_option()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_set_tracker_option()->set_option_name(option.option_name);
     request->mutable_request_set_tracker_option()->set_option_index(new_option_index);
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_option_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_option_response, this);
 }
 
 void AppStage_ColorCalibration::handle_tracker_set_option_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
             int result_option_index = response->result_set_tracker_option().new_option_index();
             std::string option_name = response->result_set_tracker_option().option_name();
 
@@ -1451,9 +1451,9 @@ void AppStage_ColorCalibration::handle_tracker_set_option_response(
                 it->option_index = result_option_index;
             }
         } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             //###HipsterSloth $TODO - Replace with C_API style log
             //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to set the tracker gain!";
@@ -1462,32 +1462,32 @@ void AppStage_ColorCalibration::handle_tracker_set_option_response(
 }
 
 void AppStage_ColorCalibration::request_tracker_set_color_preset(
-    PSMTrackingColorType color_type,
+    PSVRTrackingColorType color_type,
     TrackerColorPreset &color_preset)
 {
-    // Tell the psmove service that we want to change gain.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_TRACKER_COLOR_PRESET);
+    // Tell the PSVR service that we want to change gain.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_COLOR_PRESET);
     request->mutable_request_set_tracker_color_preset()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
 
     if (m_hmdView != nullptr)
     {
         request->mutable_request_set_tracker_color_preset()->set_device_id(m_overrideHmdId);
         request->mutable_request_set_tracker_color_preset()->set_device_category(
-            PSMoveProtocol::Request_RequestSetTrackerColorPreset_DeviceCategory_HMD);
+            PSVRProtocol::Request_RequestSetTrackerColorPreset_DeviceCategory_HMD);
     }
     else
     {
         request->mutable_request_set_tracker_color_preset()->set_device_id(m_overrideControllerId);
         request->mutable_request_set_tracker_color_preset()->set_device_category(
-            PSMoveProtocol::Request_RequestSetTrackerColorPreset_DeviceCategory_CONTROLLER);
+            PSVRProtocol::Request_RequestSetTrackerColorPreset_DeviceCategory_CONTROLLER);
     }
 
     {
-        PSMoveProtocol::TrackingColorPreset* tracking_color_preset =
+        PSVRProtocol::TrackingColorPreset* tracking_color_preset =
             request->mutable_request_set_tracker_color_preset()->mutable_color_preset();
 
-        tracking_color_preset->set_color_type(static_cast<PSMoveProtocol::TrackingColorType>(color_type));
+        tracking_color_preset->set_color_type(static_cast<PSVRProtocol::TrackingColorType>(color_type));
         tracking_color_preset->set_hue_center(color_preset.hue_center);
         tracking_color_preset->set_hue_range(color_preset.hue_range);
         tracking_color_preset->set_saturation_center(color_preset.saturation_center);
@@ -1496,23 +1496,23 @@ void AppStage_ColorCalibration::request_tracker_set_color_preset(
         tracking_color_preset->set_value_range(color_preset.value_range);
     }
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_color_preset_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_set_color_preset_response, this);
 }
 
 void AppStage_ColorCalibration::handle_tracker_set_color_preset_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
     switch (response->result_code)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMResponseHandle response_handle = response->opaque_response_handle;
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
-            const PSMoveProtocol::TrackingColorPreset &srcPreset= response->result_set_tracker_color_preset().new_color_preset();
-            const PSMTrackingColorType color_type = static_cast<PSMTrackingColorType>(srcPreset.color_type());
+            const PSVRResponseHandle response_handle = response->opaque_response_handle;
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::TrackingColorPreset &srcPreset= response->result_set_tracker_color_preset().new_color_preset();
+            const PSVRTrackingColorType color_type = static_cast<PSVRTrackingColorType>(srcPreset.color_type());
 
             AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
             AppStage_ColorCalibration::TrackerColorPreset &targetPreset= thisPtr->m_colorPresets[color_type];
@@ -1524,9 +1524,9 @@ void AppStage_ColorCalibration::handle_tracker_set_color_preset_response(
             targetPreset.value_center= srcPreset.value_center();
             targetPreset.value_range= srcPreset.value_range();
         } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             //###HipsterSloth $TODO - Replace with C_API style log
             //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to set the tracker presets!";
@@ -1536,40 +1536,40 @@ void AppStage_ColorCalibration::handle_tracker_set_color_preset_response(
 
 void AppStage_ColorCalibration::request_tracker_get_settings()
 {
-    // Tell the psmove service that we want to change exposure.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_GET_TRACKER_SETTINGS);
+    // Tell the PSVR service that we want to change exposure.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_GET_TRACKER_SETTINGS);
     request->mutable_request_get_tracker_settings()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
 
     if (m_overrideHmdId != -1)
     {
         request->mutable_request_get_tracker_settings()->set_device_id(m_overrideHmdId);
-        request->mutable_request_get_tracker_settings()->set_device_category(PSMoveProtocol::Request_RequestGetTrackerSettings_DeviceCategory_HMD);
+        request->mutable_request_get_tracker_settings()->set_device_category(PSVRProtocol::Request_RequestGetTrackerSettings_DeviceCategory_HMD);
     }
     else
     {
         request->mutable_request_get_tracker_settings()->set_device_id(m_overrideControllerId);
-        request->mutable_request_get_tracker_settings()->set_device_category(PSMoveProtocol::Request_RequestGetTrackerSettings_DeviceCategory_CONTROLLER);
+        request->mutable_request_get_tracker_settings()->set_device_category(PSVRProtocol::Request_RequestGetTrackerSettings_DeviceCategory_CONTROLLER);
     }
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_get_settings_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_get_settings_response, this);
 }
 
 void AppStage_ColorCalibration::handle_tracker_get_settings_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_ColorCalibration *thisPtr = static_cast<AppStage_ColorCalibration *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
             thisPtr->m_trackerFrameWidth = response->result_tracker_settings().frame_width();
             thisPtr->m_trackerFrameRate = response->result_tracker_settings().frame_rate();
             thisPtr->m_trackerExposure = response->result_tracker_settings().exposure();
@@ -1580,7 +1580,7 @@ void AppStage_ColorCalibration::handle_tracker_get_settings_response(
                 it != response->result_tracker_settings().option_sets().end();
                 ++it)
             {
-                const PSMoveProtocol::OptionSet &srcOption = *it;
+                const PSVRProtocol::OptionSet &srcOption = *it;
                 AppStage_ColorCalibration::TrackerOption destOption;
 
                 destOption.option_index = srcOption.option_index();
@@ -1601,9 +1601,9 @@ void AppStage_ColorCalibration::handle_tracker_get_settings_response(
                 it != response->result_tracker_settings().color_presets().end();
                 ++it)
             {
-                const PSMoveProtocol::TrackingColorPreset &srcPreset = *it;
-                const PSMTrackingColorType client_color= 
-                    static_cast<PSMTrackingColorType>(srcPreset.color_type());
+                const PSVRProtocol::TrackingColorPreset &srcPreset = *it;
+                const PSVRTrackingColorType client_color= 
+                    static_cast<PSVRTrackingColorType>(srcPreset.color_type());
 
                 AppStage_ColorCalibration::TrackerColorPreset &destPreset = thisPtr->m_colorPresets[client_color];
                 destPreset.hue_center= srcPreset.hue_center();
@@ -1614,9 +1614,9 @@ void AppStage_ColorCalibration::handle_tracker_get_settings_response(
                 destPreset.value_range = srcPreset.value_range();
             }
         } break;
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             //###HipsterSloth $TODO - Replace with C_API style log
             //CLIENT_LOG_INFO("AppStage_ColorCalibration") << "Failed to get the tracker settings!";
@@ -1626,26 +1626,26 @@ void AppStage_ColorCalibration::handle_tracker_get_settings_response(
 
 void AppStage_ColorCalibration::request_save_default_tracker_profile()
 {
-    // Tell the psmove service that we want to save the current trackers profile.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SAVE_TRACKER_PROFILE);
+    // Tell the PSVR service that we want to save the current trackers profile.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SAVE_TRACKER_PROFILE);
     request->mutable_request_save_tracker_profile()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_save_tracker_profile()->set_controller_id(m_overrideControllerId);
 
-    PSM_SendOpaqueRequest(&request, nullptr);
+    PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_ColorCalibration::request_apply_default_tracker_profile()
 {
-    // Tell the psmove service that we want to apply the saved default profile to the current tracker.
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_APPLY_TRACKER_PROFILE);
+    // Tell the PSVR service that we want to apply the saved default profile to the current tracker.
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_APPLY_TRACKER_PROFILE);
     request->mutable_request_save_tracker_profile()->set_tracker_id(m_trackerView->tracker_info.tracker_id);
     request->mutable_request_save_tracker_profile()->set_controller_id(m_overrideControllerId);
 
-    PSMRequestID request_id;
-    PSM_SendOpaqueRequest(&request, &request_id);
-    PSM_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_get_settings_response, this);
+    PSVRRequestID request_id;
+    PSVR_SendOpaqueRequest(&request, &request_id);
+    PSVR_RegisterCallback(request_id, AppStage_ColorCalibration::handle_tracker_get_settings_response, this);
 }
 
 void AppStage_ColorCalibration::release_devices()
@@ -1654,18 +1654,18 @@ void AppStage_ColorCalibration::release_devices()
 
     release_video_buffers();
 
-    for (PSMController *controllerView : m_controllerViews)
+    for (PSVRController *controllerView : m_controllerViews)
     {
-        PSM_SetControllerLEDOverrideColor(controllerView->ControllerID, 0, 0, 0);
+        PSVR_SetControllerLEDOverrideColor(controllerView->ControllerID, 0, 0, 0);
 
         if (m_areAllControllerStreamsActive)
         {
-            PSMRequestID request_id;
-            PSM_StopControllerDataStreamAsync(controllerView->ControllerID, &request_id);
-            PSM_EatResponse(request_id);
+            PSVRRequestID request_id;
+            PSVR_StopControllerDataStreamAsync(controllerView->ControllerID, &request_id);
+            PSVR_EatResponse(request_id);
         }
 
-        PSM_FreeControllerListener(controllerView->ControllerID);
+        PSVR_FreeControllerListener(controllerView->ControllerID);
     }
     m_controllerViews.clear();
 
@@ -1678,12 +1678,12 @@ void AppStage_ColorCalibration::release_devices()
     {
         if (m_isHmdStreamActive)
         {
-            PSMRequestID request_id;
-            PSM_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
-            PSM_EatResponse(request_id);
+            PSVRRequestID request_id;
+            PSVR_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
+            PSVR_EatResponse(request_id);
         }
 
-        PSM_FreeHmdListener(m_hmdView->HmdID);
+        PSVR_FreeHmdListener(m_hmdView->HmdID);
         m_hmdView = nullptr;
         m_isHmdStreamActive = false;
         m_lastHmdSeqNum = -1;
@@ -1691,13 +1691,13 @@ void AppStage_ColorCalibration::release_devices()
 
     if (m_trackerView != nullptr)
     {
-        PSM_CloseTrackerVideoStream(m_trackerView->tracker_info.tracker_id);
+        PSVR_CloseTrackerVideoStream(m_trackerView->tracker_info.tracker_id);
 
-        PSMRequestID request_id;
-        PSM_StopTrackerDataStreamAsync(m_trackerView->tracker_info.tracker_id, &request_id);
-        PSM_EatResponse(request_id);
+        PSVRRequestID request_id;
+        PSVR_StopTrackerDataStreamAsync(m_trackerView->tracker_info.tracker_id, &request_id);
+        PSVR_EatResponse(request_id);
 
-        PSM_FreeTrackerListener(m_trackerView->tracker_info.tracker_id);
+        PSVR_FreeTrackerListener(m_trackerView->tracker_info.tracker_id);
         m_trackerView = nullptr;
     }
 }
@@ -1714,7 +1714,7 @@ void AppStage_ColorCalibration::request_turn_on_all_tracking_bulbs(bool bEnabled
     assert(m_controllerViews.size() == m_controllerTrackingColorTypes.size());
     for (int list_index= 0; list_index < m_controllerViews.size(); ++list_index)
     {
-        PSMController *controllerView= m_controllerViews[list_index];
+        PSVRController *controllerView= m_controllerViews[list_index];
 
         if (controllerView == m_masterControllerView)
             continue;
@@ -1725,7 +1725,7 @@ void AppStage_ColorCalibration::request_turn_on_all_tracking_bulbs(bool bEnabled
         }
         else
         {
-            PSM_SetControllerLEDOverrideColor(controllerView->ControllerID, 0, 0, 0);
+            PSVR_SetControllerLEDOverrideColor(controllerView->ControllerID, 0, 0, 0);
         }
     }
 }
@@ -1735,10 +1735,10 @@ void AppStage_ColorCalibration::request_change_controller(int step)
     assert(m_controllerViews.size() == m_controllerTrackingColorTypes.size());
 
     {
-        PSMController *controllerView = m_controllerViews[m_overrideControllerId];
+        PSVRController *controllerView = m_controllerViews[m_overrideControllerId];
 
         if (controllerView == m_masterControllerView) {
-            PSM_SetControllerLEDOverrideColor(m_masterControllerView->ControllerID, 0, 0, 0);
+            PSVR_SetControllerLEDOverrideColor(m_masterControllerView->ControllerID, 0, 0, 0);
             if (m_overrideControllerId + step < static_cast<int>(m_controllerViews.size()) && m_overrideControllerId + step >= 0) {
                 m_overrideControllerId = m_overrideControllerId + step;
                 m_masterControllerView = m_controllerViews[m_overrideControllerId];

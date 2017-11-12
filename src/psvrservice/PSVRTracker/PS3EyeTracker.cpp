@@ -3,7 +3,7 @@
 #include "ServerLog.h"
 #include "ServerUtility.h"
 #include "PSEyeVideoCapture.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocol.pb.h"
 #include "TrackerDeviceEnumerator.h"
 #include "TrackerManager.h"
 #include "opencv2/opencv.hpp"
@@ -34,7 +34,7 @@ const int PS3EyeTrackerConfig::CONFIG_VERSION = 7;
 const int PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION= 1;
 
 PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
-    : PSMoveConfig(fnamebase)
+    : PSVRConfig(fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
 	, frame_width(640)
@@ -274,7 +274,7 @@ PS3EyeTracker::~PS3EyeTracker()
     }
 }
 
-// PSMoveTracker
+// PSVRTracker
 bool PS3EyeTracker::open() // Opens the first HID device for the tracker
 {
     TrackerDeviceEnumerator enumerator;
@@ -703,9 +703,9 @@ void PS3EyeTracker::getZRange(float &outZNear, float &outZFar) const
 }
 
 void PS3EyeTracker::gatherTrackerOptions(
-    PSMoveProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRProtocol::Response_ResultTrackerSettings* settings) const
 {
-    PSMoveProtocol::OptionSet *optionSet = settings->add_option_sets();
+    PSVRProtocol::OptionSet *optionSet = settings->add_option_sets();
     
     optionSet->set_option_name(OPTION_FOV_SETTING);
     optionSet->add_option_strings(OPTION_FOV_RED_DOT);
@@ -749,7 +749,7 @@ bool PS3EyeTracker::getOptionIndex(
 
 void PS3EyeTracker::gatherTrackingColorPresets(
 	const std::string &controller_serial, 
-    PSMoveProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRProtocol::Response_ResultTrackerSettings* settings) const
 {
 	const CommonHSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
 
@@ -758,8 +758,8 @@ void PS3EyeTracker::gatherTrackingColorPresets(
         const CommonHSVColorRange &hsvRange = table->color_presets[list_index];
         const eCommonTrackingColorID colorType = static_cast<eCommonTrackingColorID>(list_index);
 
-        PSMoveProtocol::TrackingColorPreset *colorPreset= settings->add_color_presets();
-        colorPreset->set_color_type(static_cast<PSMoveProtocol::TrackingColorType>(colorType));
+        PSVRProtocol::TrackingColorPreset *colorPreset= settings->add_color_presets();
+        colorPreset->set_color_type(static_cast<PSVRProtocol::TrackingColorType>(colorType));
         colorPreset->set_hue_center(hsvRange.hue_range.center);
         colorPreset->set_hue_range(hsvRange.hue_range.range);
         colorPreset->set_saturation_center(hsvRange.saturation_range.center);

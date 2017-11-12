@@ -26,7 +26,7 @@ AppStage_MainMenu::AppStage_MainMenu(App *app)
 bool AppStage_MainMenu::init(int argc, char** argv)
 {
     // Always fallback to the main menu on disconnection
-    m_app->registerEventFallbackAppStage<AppStage_MainMenu>(PSMEventMessage::PSMEvent_disconnectedFromService);
+    m_app->registerEventFallbackAppStage<AppStage_MainMenu>(PSVREventMessage::PSVREvent_disconnectedFromService);
 
     return true;
 }
@@ -38,7 +38,7 @@ void AppStage_MainMenu::enter()
     // Only set the menu state if it hasn't been set already
     if (m_menuState == AppStage_MainMenu::inactive)
     {
-        if (PSM_GetIsInitialized())
+        if (PSVR_GetIsInitialized())
         {
             m_menuState= AppStage_MainMenu::connectedToService;
         }
@@ -102,7 +102,7 @@ void AppStage_MainMenu::renderUI()
                 ImGuiWindowFlags_NoCollapse;
             ImGui::SetNextWindowPosCenter();
             ImGui::Begin("Status", nullptr, ImVec2(300, 150), k_background_alpha, window_flags);
-            ImGui::Text("Connecting to PSMoveService...");
+            ImGui::Text("Connecting to PSVRSERVICE...");
             if (ImGui::Button("Exit"))
             {
                 m_app->requestShutdown();
@@ -124,17 +124,17 @@ void AppStage_MainMenu::renderUI()
 
 			if (m_menuState == failedConnectionToService)
 			{
-	            ImGui::Text("Failed to connect to PSMoveService!");
+	            ImGui::Text("Failed to connect to PSVRSERVICE!");
 			}
 			else if (m_menuState == disconnectedFromService)
 			{
-				ImGui::Text("Disconnected from PSMoveService!");
+				ImGui::Text("Disconnected from PSVRSERVICE!");
 			}
             
 			ImGui::PushItemWidth(125.f);
 			if (ImGui::InputText("Server Address", m_app->m_serverAddress, sizeof(m_app->m_serverAddress), ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank))
 			{
-				m_app->m_bIsServerLocal= (strncmp(m_app->m_serverAddress, PSMOVESERVICE_DEFAULT_ADDRESS, sizeof(m_app->m_serverAddress)) == 0);
+				m_app->m_bIsServerLocal= (strncmp(m_app->m_serverAddress, PSVRSERVICE_DEFAULT_ADDRESS, sizeof(m_app->m_serverAddress)) == 0);
 			}
 
 			ImGui::InputText("Server Port", m_app->m_serverPort, sizeof(m_app->m_serverPort), ImGuiInputTextFlags_CharsDecimal);
@@ -159,28 +159,28 @@ void AppStage_MainMenu::renderUI()
 }
 
 bool AppStage_MainMenu::onClientAPIEvent(
-    PSMEventMessage::eEventType event, 
-    PSMEventDataHandle opaque_event_handle)
+    PSVREventMessage::eEventType event, 
+    PSVREventDataHandle opaque_event_handle)
 {
     bool bHandeled= false;
 
     switch(event)
     {
-    case PSMEventMessage::PSMEvent_connectedToService:
+    case PSVREventMessage::PSVREvent_connectedToService:
         {
             // Allow the user to access the menu now
             m_menuState= AppStage_MainMenu::connectedToService;
             bHandeled= true;
         } break;
 
-    case PSMEventMessage::PSMEvent_failedToConnectToService:
+    case PSVREventMessage::PSVREvent_failedToConnectToService:
         {
             // Tell the user that the connection attempt failed
             m_menuState= AppStage_MainMenu::failedConnectionToService;
             bHandeled= true;
         } break;
 
-    case PSMEventMessage::PSMEvent_disconnectedFromService:
+    case PSVREventMessage::PSVREvent_disconnectedFromService:
         {
             // Tell the user that we failed to connect
             m_menuState= AppStage_MainMenu::failedConnectionToService;

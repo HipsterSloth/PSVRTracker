@@ -1,7 +1,7 @@
 #ifndef VIRTUAL_HMD_H
 #define VIRTUAL_HMD_H
 
-#include "PSMoveConfig.h"
+#include "PSVRConfig.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
 #include "MathUtility.h"
@@ -11,13 +11,13 @@
 #include <array>
 
 
-class VirtualHMDConfig : public PSMoveConfig
+class VirtualHMDConfig : public PSVRConfig
 {
 public:
     static const int CONFIG_VERSION;
 
     VirtualHMDConfig(const std::string &fnamebase = "VirtualHMDConfig")
-        : PSMoveConfig(fnamebase)
+        : PSVRConfig(fnamebase)
 		, is_valid(false)
 		, version(CONFIG_VERSION)
 		, position_filter_type("LowPassOptical")
@@ -27,7 +27,7 @@ public:
 		, position_variance_exp_fit_b(-0.000567041978f)
         , prediction_time(0.f)
 		, tracking_color_id(eCommonTrackingColorID::Blue)
-        , bulb_radius(2.25f) // The radius of the psmove tracking bulb in cm
+        , bulb_radius(2.25f) // The radius of the PSVR tracking bulb in cm
     {
     };
 

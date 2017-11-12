@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include <glm/glm.hpp>
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 
 //-- typedefs -----
 typedef union SDL_Event SDL_Event;
@@ -79,11 +79,11 @@ private:
 };
 
 //-- drawing methods -----
-PSMVector2f remapPointIntoSubWindow(
+PSVRVector2f remapPointIntoSubWindow(
     const float screenWidth, const float screenHeight,
     const float windowLeft, const float windowTop,
     const float windowRight, const float windowBottom,
-    const PSMVector2f &in_point);
+    const PSVRVector2f &in_point);
 glm::vec3 remapPointIntoSubWindow(
     const float screenWidth, const float screenHeight,
     const float windowLeft, const float windowTop,
@@ -100,19 +100,19 @@ void drawFullscreenStereoTexture(
 void drawPointCloudProjection(
     const float trackerWidth, const float trackerHeight,
     const glm::vec3 &color,
-    const PSMVector2f *points, const int point_count, const float point_size);
+    const PSVRVector2f *points, const int point_count, const float point_size);
 void drawPointCloudProjectionInSubWindow(
     const float trackerWidth, const float trackerHeight,
     const float windowX0, const float windowY0,
     const float windowX1, const float windowY1,
     const glm::vec3 &color,
-    const PSMVector2f *points, const int point_count, const float point_size);
+    const PSVRVector2f *points, const int point_count, const float point_size);
 void drawTransformedAxes(const glm::mat4 &transform, float scale);
 void drawTransformedAxes(const glm::mat4 &transform, float xScale, float yScale, float zScale);
 void drawTransformedBox(const glm::mat4 &transform, const glm::vec3 &half_extents, const glm::vec3 &color);
 void drawTransformedBox(const glm::mat4 &transform, const glm::vec3 &box_min, const glm::vec3 &box_max, const glm::vec3 &color);
 void drawTransformedTexturedCube(const glm::mat4 &transform, int textureId, float scale);
-void drawTransformedFrustum(const glm::mat4 &transform, const PSMFrustum *frustum, const glm::vec3 &color);
+void drawTransformedFrustum(const glm::mat4 &transform, const PSVRFrustum *frustum, const glm::vec3 &color);
 void drawWireframeTriangles(const glm::mat4 &transform, const float *vertices, const int *indices, const int triangle_count, const glm::vec3 &color);
 void drawWireframeTriangle(const glm::mat4 &transform, const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec3 &color, const float line_width);
 void drawPointCloud(const glm::mat4 &transform, const glm::vec3 &color, const float *points, const int point_count);
@@ -145,13 +145,13 @@ void drawOpenCVChessBoardInSubWindow(
     const float windowX1, const float windowY1,
     const float *points2d, const int point_count, 
     bool validPoints);
-void drawPoseArrayStrip(const PSMPosef *poses, const int poseCount, const glm::vec3 &color);
-void drawPSMoveModel(const glm::mat4 &transform, const glm::vec3 &color);
+void drawPoseArrayStrip(const PSVRPosef *poses, const int poseCount, const glm::vec3 &color);
+void drawPSVRModel(const glm::mat4 &transform, const glm::vec3 &color);
 void drawPSNaviModel(const glm::mat4 &transform);
 void drawPSDualShock4Model(const glm::mat4 &transform, const glm::vec3 &color);
 void drawVirtualControllerModel(const glm::mat4 &transform, const glm::vec3 &color);
 void drawPS3EyeModel(const glm::mat4 &transform);
-void drawTrackerList(const PSMClientTrackerInfo *trackerList, const int trackerCount);
+void drawTrackerList(const PSVRClientTrackerInfo *trackerList, const int trackerCount);
 void drawMorpheusModel(const glm::mat4 &transform, const glm::vec3 &color);
 void drawVirtualHMDModel(const glm::mat4 &transform, const glm::vec3 &color);
 

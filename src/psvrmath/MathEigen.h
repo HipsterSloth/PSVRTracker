@@ -75,7 +75,7 @@ eigen_quaternion_from_forward_up(
 	const Eigen::Vector3f &up);
 
 // Creates a quaternion that rotates clockwise about the axis for a positive angle
-// when appied with psmove_vector_clockwise_rotate()
+// when appied with PSVR_vector_clockwise_rotate()
 Eigen::Quaternionf
 eigen_quaternion_angle_axis(float radians, const Eigen::Vector3f &axis);
 

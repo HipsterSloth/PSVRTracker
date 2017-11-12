@@ -2,7 +2,7 @@
 #define PS3EYE_TRACKER_H
 
 // -- includes -----
-#include "PSMoveConfig.h"
+#include "PSVRConfig.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
 #include <string>
@@ -10,13 +10,13 @@
 #include <deque>
 
 // -- pre-declarations -----
-namespace PSMoveProtocol
+namespace PSVRProtocol
 {
     class Response_ResultTrackerSettings;
 };
 
 // -- definitions -----
-class PS3EyeTrackerConfig : public PSMoveConfig
+class PS3EyeTrackerConfig : public PSVRConfig
 {
 public:
     enum eFOVSetting
@@ -84,7 +84,7 @@ public:
     PS3EyeTracker();
     virtual ~PS3EyeTracker();
         
-    // PSMoveTracker
+    // PSVRTracker
     bool open(); // Opens the first HID device for the controller
     
     // -- IDeviceInterface
@@ -131,10 +131,10 @@ public:
     void setTrackerPose(const struct CommonDevicePose *pose) override;
     void getFOV(float &outHFOV, float &outVFOV) const override;
     void getZRange(float &outZNear, float &outZFar) const override;
-    void gatherTrackerOptions(PSMoveProtocol::Response_ResultTrackerSettings* settings) const override;
+    void gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const override;
     bool setOptionIndex(const std::string &option_name, int option_index) override;
     bool getOptionIndex(const std::string &option_name, int &out_option_index) const override;
-    void gatherTrackingColorPresets(const std::string &controller_serial, PSMoveProtocol::Response_ResultTrackerSettings* settings) const override;
+    void gatherTrackingColorPresets(const std::string &controller_serial, PSVRProtocol::Response_ResultTrackerSettings* settings) const override;
     void setTrackingColorPreset(const std::string &controller_serial, eCommonTrackingColorID color, const CommonHSVColorRange *preset) override;
     void getTrackingColorPreset(const std::string &controller_serial, eCommonTrackingColorID color, CommonHSVColorRange *out_preset) const override;
 

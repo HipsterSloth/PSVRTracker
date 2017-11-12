@@ -1,7 +1,7 @@
 #ifndef MORPHEUS_HMD_H
 #define MORPHEUS_HMD_H
 
-#include "PSMoveConfig.h"
+#include "PSVRConfig.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
 #include "MathUtility.h"
@@ -15,13 +15,13 @@
 // i.e. where what we consider the "identity" pose
 #define MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES 0.0f
 
-class MorpheusHMDConfig : public PSMoveConfig
+class MorpheusHMDConfig : public PSVRConfig
 {
 public:
     static const int CONFIG_VERSION;
 
     MorpheusHMDConfig(const std::string &fnamebase = "MorpheusHMDConfig")
-        : PSMoveConfig(fnamebase)
+        : PSVRConfig(fnamebase)
 		, is_valid(false)
 		, version(CONFIG_VERSION)
 		, disable_command_interface(true)

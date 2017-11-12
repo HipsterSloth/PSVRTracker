@@ -7,26 +7,26 @@
 //-- definitions -----
 enum DeviceCategory
 {
-	DeviceCategory_TRACKER= 0;
-	DeviceCategory_HMD= 1;
+	DeviceCategory_TRACKER= 0,
+	DeviceCategory_HMD= 1
 }
 
 struct TrackerDataPacket
 {
-	PSMTrackerID tracker_id; 
-	PSMTrackerType tracker_type;
+	PSVRTrackerID tracker_id; 
+	PSVRTrackerType tracker_type;
     int sequence_num;
 	bool is_connected;
 };
 	
 struct HMDDataPacket
 {
-    PSMHmdID hmd_id;
-    PSMHmdType hmd_type;
+    PSVRHmdID hmd_id;
+    PSVRHmdType hmd_type;
     union
     {
-        PSMMorpheus  morpheus_state;
-        PSMVirtualHMD virtual_hmd_state;
+        PSVRMorpheus  morpheus_state;
+        PSVRVirtualHMD virtual_hmd_state;
     }               hmd_state;
     bool            is_valid;
     int             output_sequence_num;
@@ -68,7 +68,7 @@ private:
 class INotificationListener
 {
 public:
-    virtual void handle_notification(const PSMEventMessage &response) = 0;
+    virtual void handle_notification(const PSVREventMessage &response) = 0;
 };
 
 class IDataFrameListener
@@ -77,4 +77,4 @@ public:
     virtual void handle_data_frame(const DeviceOutputDataFrame &data_frame) = 0;
 };
 
-#endif  // PSMOVEPROTOCOL_INTERFACE_H
+#endif  // PSVRPROTOCOL_INTERFACE_H

@@ -105,57 +105,57 @@ public:
         class ServerHMDView *hmd_view, t_generate_hmd_data_frame_for_stream callback);
 
     // -- tracker requests -----
-    PSMResult get_tracker_list(PSMTrackerList *out_tracker_list);
-    PSMResult start_tracker_data_stream(PSMTrackerID tracker_id);
-    PSMResult stop_tracker_data_stream(PSMTrackerID tracker_id);
-	PSMResult get_shared_video_frame_buffer(PSMTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer);
-    PSMResult get_tracker_settings(
-		PSMTrackerID tracker_id, PSMHmdID hmd_id, 
-		PSMClientTrackerSettings *out_settings)
-    PSMResult set_tracker_frame_width(
-		const PSMTrackerID tracker_id, const float desired_frame_width, const bool bSaveSetting,
+    PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list);
+    PSVRResult start_tracker_data_stream(PSVRTrackerID tracker_id);
+    PSVRResult stop_tracker_data_stream(PSVRTrackerID tracker_id);
+	PSVRResult get_shared_video_frame_buffer(PSVRTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer);
+    PSVRResult get_tracker_settings(
+		PSVRTrackerID tracker_id, PSVRHmdID hmd_id, 
+		PSVRClientTrackerSettings *out_settings)
+    PSVRResult set_tracker_frame_width(
+		const PSVRTrackerID tracker_id, const float desired_frame_width, const bool bSaveSetting,
 		float *out_result_frame_width);
-    PSMResult set_tracker_frame_height(
-		const PSMTrackerID tracker_id, const float desired_frame_height, const bool bSaveSetting,
+    PSVRResult set_tracker_frame_height(
+		const PSVRTrackerID tracker_id, const float desired_frame_height, const bool bSaveSetting,
 		float *out_result_frame_height);
-    PSMResult set_tracker_frame_rate(
-		const PSMTrackerID tracker_id, const float desired_frame_rate, const bool bSaveSetting,
+    PSVRResult set_tracker_frame_rate(
+		const PSVRTrackerID tracker_id, const float desired_frame_rate, const bool bSaveSetting,
 		float *out_result_frame_rate);
-    PSMResult set_tracker_exposure(
-		const PSMTrackerID tracker_id, const float desired_exposure, const bool bSaveSetting,
+    PSVRResult set_tracker_exposure(
+		const PSVRTrackerID tracker_id, const float desired_exposure, const bool bSaveSetting,
 		float *out_result_exposure);
-    PSMResult set_tracker_gain(
-		const PSMTrackerID tracker_id, const float desired_gain, const bool bSaveSetting,
+    PSVRResult set_tracker_gain(
+		const PSVRTrackerID tracker_id, const float desired_gain, const bool bSaveSetting,
 		float *out_result_gain);
-    PSMResult set_tracker_option(
-		const PSMTrackerID tracker_id, const std::string &option_name, const int desired_option_index, 
+    PSVRResult set_tracker_option(
+		const PSVRTrackerID tracker_id, const std::string &option_name, const int desired_option_index, 
 		int *out_new_option_index);
-    PSMResult handle_request__set_tracker_color_preset(
-        const PSMTrackerID tracker_id, const PSMHmdID hmd_id,
-		const PSMTrackingColorType color_type,
-		const PSMHSVColorRange *desired_range, PSMHSVColorRange *out_result_range);
-    PSMResult set_tracker_pose(const PSMTrackerID tracker_id, const PSMPosef *pose);
-    PSMResult set_tracker_intrinsics(const PSMTrackerID tracker_id, const PSMTrackerIntrinsics *tracker_intrinsics);
-    PSMResult reload_tracker_settings(const PSMTrackerID tracker_id);
-    PSMResult get_tracking_space_settings(PSMTrackingSpace *out_tracking_space);
+    PSVRResult handle_request__set_tracker_color_preset(
+        const PSVRTrackerID tracker_id, const PSVRHmdID hmd_id,
+		const PSVRTrackingColorType color_type,
+		const PSVR_HSVColorRange *desired_range, PSVR_HSVColorRange *out_result_range);
+    PSVRResult set_tracker_pose(const PSVRTrackerID tracker_id, const PSVRPosef *pose);
+    PSVRResult set_tracker_intrinsics(const PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *tracker_intrinsics);
+    PSVRResult reload_tracker_settings(const PSVRTrackerID tracker_id);
+    PSVRResult get_tracking_space_settings(PSVRTrackingSpace *out_tracking_space);
 	
     // -- hmd requests -----
-    PSMResult get_hmd_list(PSMHmdList *out_hmd_list);
-	PSMResult get_hmd_tracking_shape(PSMHmdID hmd_id, PSMTrackingShape *out_shape);
-    PSMResult start_hmd_data_stream(const PSMHmdID hmd_id);
-    PSMResult stop_hmd_data_stream(const PSMHmdID hmd_id);
-    PSMResult set_hmd_led_tracking_color(const PSMHmdID hmd_id, const PSMTrackingColorType new_color_id);
-    PSMResult set_hmd_accelerometer_calibration(
-        const PSMHmdID hmd_id, const PSMVector3f &measured_g, const float raw_variance);
-    PSMResult set_hmd_gyroscope_calibration(
-        const PSMHmdID hmd_id, const PSMVector3f &raw_gyro_bias, const float raw_variance, const float raw_drift);
-    PSMResult set_hmd_orientation_filter(const PSMHmdID hmd_id, const std::string orientation_filter);
-    PSMResult set_hmd_position_filter(const PSMHmdID hmd_id, const std::string position_filter);
-    PSMResult set_hmd_prediction_time(const PSMHmdID hmd_id, const float hmd_prediction_time);
-    PSMResult set_hmd_data_stream_tracker_index(const PSMTrackerID tracker_id, const PSMHmdID hmd_id);
+    PSVRResult get_hmd_list(PSVRHmdList *out_hmd_list);
+	PSVRResult get_hmd_tracking_shape(PSVRHmdID hmd_id, PSVRTrackingShape *out_shape);
+    PSVRResult start_hmd_data_stream(const PSVRHmdID hmd_id);
+    PSVRResult stop_hmd_data_stream(const PSVRHmdID hmd_id);
+    PSVRResult set_hmd_led_tracking_color(const PSVRHmdID hmd_id, const PSVRTrackingColorType new_color_id);
+    PSVRResult set_hmd_accelerometer_calibration(
+        const PSVRHmdID hmd_id, const PSVRVector3f &measured_g, const float raw_variance);
+    PSVRResult set_hmd_gyroscope_calibration(
+        const PSVRHmdID hmd_id, const PSVRVector3f &raw_gyro_bias, const float raw_variance, const float raw_drift);
+    PSVRResult set_hmd_orientation_filter(const PSVRHmdID hmd_id, const std::string orientation_filter);
+    PSVRResult set_hmd_position_filter(const PSVRHmdID hmd_id, const std::string position_filter);
+    PSVRResult set_hmd_prediction_time(const PSVRHmdID hmd_id, const float hmd_prediction_time);
+    PSVRResult set_hmd_data_stream_tracker_index(const PSVRTrackerID tracker_id, const PSVRHmdID hmd_id);
 	
 	// -- general requests -----
-    PSMResult get_service_version(char *out_version_string, size_t max_version_string);		
+    PSVRResult get_service_version(char *out_version_string, size_t max_version_string);		
 
 private:
     // private implementation - same lifetime as the ServerRequestHandler

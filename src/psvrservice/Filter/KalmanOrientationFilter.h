@@ -38,7 +38,7 @@ public:
 };
 
 /// Kalman Orientation filter for Magnetometer + Angular Rate(Gyroscope) + Gravity(Accelerometer)
-class KalmanOrientationFilterPSMove : public KalmanOrientationFilter
+class KalmanOrientationFilterPSVR : public KalmanOrientationFilter
 {
 public:
 	bool init(const OrientationFilterConstants &constant) override;

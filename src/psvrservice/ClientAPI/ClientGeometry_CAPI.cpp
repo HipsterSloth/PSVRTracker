@@ -6,327 +6,327 @@
 
 //-- constants -----
 
-const PSMVector2f g_psm_float_vector2_zero= {0.f, 0.f};
-const PSMVector2f *k_psm_float_vector2_zero= &g_psm_float_vector2_zero;
+const PSVRVector2f g_PSVR_float_vector2_zero= {0.f, 0.f};
+const PSVRVector2f *k_PSVR_float_vector2_zero= &g_PSVR_float_vector2_zero;
 
-const PSMVector3f g_psm_float_vector3_zero= {0.f, 0.f, 0.f};
-const PSMVector3f *k_psm_float_vector3_zero= &g_psm_float_vector3_zero;
+const PSVRVector3f g_PSVR_float_vector3_zero= {0.f, 0.f, 0.f};
+const PSVRVector3f *k_PSVR_float_vector3_zero= &g_PSVR_float_vector3_zero;
 
-const PSMVector3f g_psm_float_vector3_one= {1.f, 1.f, 1.f};
-const PSMVector3f *k_psm_float_vector3_one= &g_psm_float_vector3_one;
+const PSVRVector3f g_PSVR_float_vector3_one= {1.f, 1.f, 1.f};
+const PSVRVector3f *k_PSVR_float_vector3_one= &g_PSVR_float_vector3_one;
 
-const PSMVector3f g_psm_float_vector3_i = { 1.f, 0.f, 0.f };
-const PSMVector3f *k_psm_float_vector3_i = &g_psm_float_vector3_i;
+const PSVRVector3f g_PSVR_float_vector3_i = { 1.f, 0.f, 0.f };
+const PSVRVector3f *k_PSVR_float_vector3_i = &g_PSVR_float_vector3_i;
 
-const PSMVector3f g_psm_float_vector3_j = { 0.f, 1.f, 0.f };
-const PSMVector3f *k_psm_float_vector3_j = &g_psm_float_vector3_j;
+const PSVRVector3f g_PSVR_float_vector3_j = { 0.f, 1.f, 0.f };
+const PSVRVector3f *k_PSVR_float_vector3_j = &g_PSVR_float_vector3_j;
 
-const PSMVector3f g_psm_float_vector3_k = { 0.f, 0.f, 1.f };
-const PSMVector3f *k_psm_float_vector3_k = &g_psm_float_vector3_k;
+const PSVRVector3f g_PSVR_float_vector3_k = { 0.f, 0.f, 1.f };
+const PSVRVector3f *k_PSVR_float_vector3_k = &g_PSVR_float_vector3_k;
 
-const PSMVector3i g_psm_int_vector3_zero= {0, 0, 0};
-const PSMVector3i *k_psm_int_vector3_zero= &g_psm_int_vector3_zero;
+const PSVRVector3i g_PSVR_int_vector3_zero= {0, 0, 0};
+const PSVRVector3i *k_PSVR_int_vector3_zero= &g_PSVR_int_vector3_zero;
 
-const PSMVector3i g_psm_int_vector3_one= {1, 1, 1};
-const PSMVector3i *k_psm_int_vector3_one= &g_psm_int_vector3_one;
+const PSVRVector3i g_PSVR_int_vector3_one= {1, 1, 1};
+const PSVRVector3i *k_PSVR_int_vector3_one= &g_PSVR_int_vector3_one;
 
-const PSMVector3f g_psm_position_origin= {0.f, 0.f, 0.f};
-const PSMVector3f *k_psm_position_origin= &g_psm_position_origin;
+const PSVRVector3f g_PSVR_position_origin= {0.f, 0.f, 0.f};
+const PSVRVector3f *k_PSVR_position_origin= &g_PSVR_position_origin;
 
-const PSMQuatf g_psm_quaternion_identity= {1.f, 0.f, 0.f, 0.f};
-const PSMQuatf *k_psm_quaternion_identity= &g_psm_quaternion_identity;
+const PSVRQuatf g_PSVR_quaternion_identity= {1.f, 0.f, 0.f, 0.f};
+const PSVRQuatf *k_PSVR_quaternion_identity= &g_PSVR_quaternion_identity;
 
-const PSMMatrix3f g_psm_matrix_identity = { {{1.f, 0.f, 0.f} , {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}} };
-const PSMMatrix3f *k_psm_matrix_identity = &g_psm_matrix_identity;
+const PSVRMatrix3f g_PSVR_matrix_identity = { {{1.f, 0.f, 0.f} , {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}} };
+const PSVRMatrix3f *k_PSVR_matrix_identity = &g_PSVR_matrix_identity;
 
-const PSMPosef g_psm_pose_identity = { g_psm_position_origin, g_psm_quaternion_identity };
-const PSMPosef *k_psm_pose_identity = &g_psm_pose_identity;
+const PSVRPosef g_PSVR_pose_identity = { g_PSVR_position_origin, g_PSVR_quaternion_identity };
+const PSVRPosef *k_PSVR_pose_identity = &g_PSVR_pose_identity;
 
 //-- methods -----
-// PSMVector2f Methods
-PSMVector2f PSM_Vector2fAdd(const PSMVector2f *a, const PSMVector2f *b)
+// PSVRVector2f Methods
+PSVRVector2f PSVR_Vector2fAdd(const PSVRVector2f *a, const PSVRVector2f *b)
 {
 	return {a->x + b->x, a->y + b->y};
 }
 
-PSMVector2f PSM_Vector2fSubtract(const PSMVector2f *a, const PSMVector2f *b)
+PSVRVector2f PSVR_Vector2fSubtract(const PSVRVector2f *a, const PSVRVector2f *b)
 {
 	return {a->x - b->x, a->y - b->y};
 }
 
-PSMVector2f PSM_Vector2fScale(const PSMVector2f *v, const float s)
+PSVRVector2f PSVR_Vector2fScale(const PSVRVector2f *v, const float s)
 {
 	return {v->x*s, v->y*s};
 }
 
-PSMVector2f PSM_Vector2fScaleAndAdd(const PSMVector2f *v, const float s, const PSMVector2f *b)
+PSVRVector2f PSVR_Vector2fScaleAndAdd(const PSVRVector2f *v, const float s, const PSVRVector2f *b)
 {
 	return {v->x*s + b->x, v->y*s + b->y};
 }
 
-PSMVector2f PSM_Vector2fUnsafeScalarDivide(const PSMVector2f *numerator, const float divisor)
+PSVRVector2f PSVR_Vector2fUnsafeScalarDivide(const PSVRVector2f *numerator, const float divisor)
 {
 	return {numerator->x/divisor, numerator->y/divisor};
 }
 
-PSMVector2f PSM_Vector2fUnsafeVectorDivide(const PSMVector2f *numerator, const PSMVector2f *divisor)
+PSVRVector2f PSVR_Vector2fUnsafeVectorDivide(const PSVRVector2f *numerator, const PSVRVector2f *divisor)
 {
 	return {numerator->x/divisor->x, numerator->y/divisor->y};
 }
 
-PSMVector2f PSM_Vector2fSafeScalarDivide(const PSMVector2f *numerator, const float divisor, const PSMVector2f *default_result)
+PSVRVector2f PSVR_Vector2fSafeScalarDivide(const PSVRVector2f *numerator, const float divisor, const PSVRVector2f *default_result)
 {
-	return !is_nearly_zero(divisor) ? PSM_Vector2fUnsafeScalarDivide(numerator, divisor) : *default_result;
+	return !is_nearly_zero(divisor) ? PSVR_Vector2fUnsafeScalarDivide(numerator, divisor) : *default_result;
 }
 
-PSMVector2f PSM_Vector2fSafeVectorDivide(const PSMVector2f *numerator, const PSMVector2f *divisor, const PSMVector2f *default_result)
+PSVRVector2f PSVR_Vector2fSafeVectorDivide(const PSVRVector2f *numerator, const PSVRVector2f *divisor, const PSVRVector2f *default_result)
 {
 	return {!is_nearly_zero(divisor->x) ? (numerator->x / divisor->x) : default_result->x,
 			!is_nearly_zero(divisor->y) ? (numerator->y / divisor->y) : default_result->y};
 }
 
-PSMVector2f PSM_Vector2fAbs(const PSMVector2f *v)
+PSVRVector2f PSVR_Vector2fAbs(const PSVRVector2f *v)
 {
 	return {fabsf(v->x), fabsf(v->y)};
 }
 
-PSMVector2f PSM_Vector2fSquare(const PSMVector2f *v)
+PSVRVector2f PSVR_Vector2fSquare(const PSVRVector2f *v)
 {
 	return {v->x*v->x, v->y*v->y};
 }
 
-float PSM_Vector2fLength(const PSMVector2f *v)
+float PSVR_Vector2fLength(const PSVRVector2f *v)
 {
 	return sqrtf(v->x*v->x + v->y*v->y);
 }
 
-PSMVector2f PSM_Vector2fNormalizeWithDefault(const PSMVector2f *v, const PSMVector2f *default_result)
+PSVRVector2f PSVR_Vector2fNormalizeWithDefault(const PSVRVector2f *v, const PSVRVector2f *default_result)
 {
-    return PSM_Vector2fSafeScalarDivide(v, PSM_Vector2fLength(v), default_result);
+    return PSVR_Vector2fSafeScalarDivide(v, PSVR_Vector2fLength(v), default_result);
 }
 
-float PSM_Vector2fMinValue(const PSMVector2f *v)
+float PSVR_Vector2fMinValue(const PSVRVector2f *v)
 {
 	return fminf(v->x, v->y);
 }
 
-float PSM_Vector2fMaxValue(const PSMVector2f *v)
+float PSVR_Vector2fMaxValue(const PSVRVector2f *v)
 {
 	return fmaxf(v->x, v->y);
 }
 
-float PSM_Vector2fDot(const PSMVector2f *a, const PSMVector2f *b)
+float PSVR_Vector2fDot(const PSVRVector2f *a, const PSVRVector2f *b)
 {
 	return a->x*b->x + a->y*b->y;
 }
 
-float PSM_Vector2fDistanceSquared(const PSMVector2f *a, const PSMVector2f *b)
+float PSVR_Vector2fDistanceSquared(const PSVRVector2f *a, const PSVRVector2f *b)
 {
-    PSMVector2f diff= PSM_Vector2fSubtract(a, b);
+    PSVRVector2f diff= PSVR_Vector2fSubtract(a, b);
 
-    return PSM_Vector2fDot(&diff, &diff);
+    return PSVR_Vector2fDot(&diff, &diff);
 }
 
-float PSM_Vector2fDistance(const PSMVector2f *a, const PSMVector2f *b)
+float PSVR_Vector2fDistance(const PSVRVector2f *a, const PSVRVector2f *b)
 {
-    return sqrtf(PSM_Vector2fDistanceSquared(a, b));
+    return sqrtf(PSVR_Vector2fDistanceSquared(a, b));
 }
 
-PSMVector2f PSM_Vector2fMin(const PSMVector2f *a, const PSMVector2f *b)
+PSVRVector2f PSVR_Vector2fMin(const PSVRVector2f *a, const PSVRVector2f *b)
 {
 	return { fminf(a->x, b->x), fminf(a->y, b->y) };
 }
 
-PSMVector2f PSM_Vector2fMax(const PSMVector2f *a, const PSMVector2f *b)
+PSVRVector2f PSVR_Vector2fMax(const PSVRVector2f *a, const PSVRVector2f *b)
 {
 	return { fmaxf(a->x, b->x), fmaxf(a->y, b->y) };
 }
 
-// PSMVector3f Methods
-PSMVector3f PSM_Vector3fAdd(const PSMVector3f *a, const PSMVector3f *b)
+// PSVRVector3f Methods
+PSVRVector3f PSVR_Vector3fAdd(const PSVRVector3f *a, const PSVRVector3f *b)
 {
 	return {a->x + b->x, a->y + b->y, a->z + b->z};
 }
 
-PSMVector3f PSM_Vector3fSubtract(const PSMVector3f *a, const PSMVector3f *b)
+PSVRVector3f PSVR_Vector3fSubtract(const PSVRVector3f *a, const PSVRVector3f *b)
 {
 	return {a->x - b->x, a->y - b->y, a->z - b->z};
 }
 
-PSMVector3f PSM_Vector3fScale(const PSMVector3f *v, const float s)
+PSVRVector3f PSVR_Vector3fScale(const PSVRVector3f *v, const float s)
 {
 	return {v->x*s, v->y*s, v->z*s};
 }
 
-PSMVector3f PSM_Vector3fScaleAndAdd(const PSMVector3f *v, const float s, const PSMVector3f *b)
+PSVRVector3f PSVR_Vector3fScaleAndAdd(const PSVRVector3f *v, const float s, const PSVRVector3f *b)
 {
 	return {v->x*s + b->x, v->y*s + b->y, v->z*s + b->z};
 }
 
-PSMVector3f PSM_Vector3fUnsafeScalarDivide(const PSMVector3f *numerator, const float divisor)
+PSVRVector3f PSVR_Vector3fUnsafeScalarDivide(const PSVRVector3f *numerator, const float divisor)
 {
 	return {numerator->x/divisor, numerator->y/divisor, numerator->z/divisor};
 }
 
-PSMVector3f PSM_Vector3fUnsafeVectorDivide(const PSMVector3f *numerator, const PSMVector3f *divisor)
+PSVRVector3f PSVR_Vector3fUnsafeVectorDivide(const PSVRVector3f *numerator, const PSVRVector3f *divisor)
 {
 	return {numerator->x/divisor->x, numerator->y/divisor->y, numerator->z/divisor->z};
 }
 
-PSMVector3f PSM_Vector3fSafeScalarDivide(const PSMVector3f *numerator, const float divisor, const PSMVector3f *default_result)
+PSVRVector3f PSVR_Vector3fSafeScalarDivide(const PSVRVector3f *numerator, const float divisor, const PSVRVector3f *default_result)
 {
-	return !is_nearly_zero(divisor) ? PSM_Vector3fUnsafeScalarDivide(numerator, divisor) : *default_result;
+	return !is_nearly_zero(divisor) ? PSVR_Vector3fUnsafeScalarDivide(numerator, divisor) : *default_result;
 }
 
-PSMVector3f PSM_Vector3fSafeVectorDivide(const PSMVector3f *numerator, const PSMVector3f *divisor, const PSMVector3f *default_result)
+PSVRVector3f PSVR_Vector3fSafeVectorDivide(const PSVRVector3f *numerator, const PSVRVector3f *divisor, const PSVRVector3f *default_result)
 {
 	return {!is_nearly_zero(divisor->x) ? (numerator->x / divisor->x) : default_result->x,
 			!is_nearly_zero(divisor->y) ? (numerator->y / divisor->y) : default_result->y,
 			!is_nearly_zero(divisor->z) ? (numerator->z / divisor->z) : default_result->z};
 }
 
-PSMVector3f PSM_Vector3fAbs(const PSMVector3f *v)
+PSVRVector3f PSVR_Vector3fAbs(const PSVRVector3f *v)
 {
 	return {fabsf(v->x), fabsf(v->y), fabsf(v->z)};
 }
 
-PSMVector3f PSM_Vector3fSquare(const PSMVector3f *v)
+PSVRVector3f PSVR_Vector3fSquare(const PSVRVector3f *v)
 {
 	return {v->x*v->x, v->y*v->y, v->z*v->z};
 }
 
-float PSM_Vector3fLength(const PSMVector3f *v)
+float PSVR_Vector3fLength(const PSVRVector3f *v)
 {
 	return sqrtf(v->x*v->x + v->y*v->y + v->z*v->z);
 }
 
-PSMVector3f PSM_Vector3fNormalizeWithDefault(const PSMVector3f *v, const PSMVector3f *default_result)
+PSVRVector3f PSVR_Vector3fNormalizeWithDefault(const PSVRVector3f *v, const PSVRVector3f *default_result)
 {
-	return PSM_Vector3fSafeScalarDivide(v, PSM_Vector3fLength(v), default_result);
+	return PSVR_Vector3fSafeScalarDivide(v, PSVR_Vector3fLength(v), default_result);
 }
 
-PSMVector3f PSM_Vector3fNormalizeWithDefaultGetLength(const PSMVector3f *v, const PSMVector3f *default_result, float *out_length)
+PSVRVector3f PSVR_Vector3fNormalizeWithDefaultGetLength(const PSVRVector3f *v, const PSVRVector3f *default_result, float *out_length)
 {
-	const float length= PSM_Vector3fLength(v);
+	const float length= PSVR_Vector3fLength(v);
 		
 	if (out_length)
 		*out_length= length;
 
-	return PSM_Vector3fSafeScalarDivide(v, length, default_result);
+	return PSVR_Vector3fSafeScalarDivide(v, length, default_result);
 }
 
-float PSM_Vector3fMinValue(const PSMVector3f *v)
+float PSVR_Vector3fMinValue(const PSVRVector3f *v)
 {
 	return fminf(fminf(v->x, v->y), v->z);
 }
 
-float PSM_Vector3fMaxValue(const PSMVector3f *v)
+float PSVR_Vector3fMaxValue(const PSVRVector3f *v)
 {
 	return fmaxf(fmaxf(v->x, v->y), v->z);
 }
 
-float PSM_Vector3fDot(const PSMVector3f *a, const PSMVector3f *b)
+float PSVR_Vector3fDot(const PSVRVector3f *a, const PSVRVector3f *b)
 {
 	return a->x*b->x + a->y*b->y + a->z*b->z;
 }
 
-PSMVector3f PSM_Vector3fCross(const PSMVector3f *a, const PSMVector3f *b)
+PSVRVector3f PSVR_Vector3fCross(const PSVRVector3f *a, const PSVRVector3f *b)
 {
 	return {a->y*b->z - b->y*a->z, a->x*b->z - b->x*a->z, a->x*b->y - b->x*a->y};
 }
 
-PSMVector3f PSM_Vector3fMin(const PSMVector3f *a, const PSMVector3f *b)
+PSVRVector3f PSVR_Vector3fMin(const PSVRVector3f *a, const PSVRVector3f *b)
 {
 	return {fminf(a->x, b->x), fminf(a->y, b->y), fminf(a->z, b->z)};
 }
 
-PSMVector3f PSM_Vector3fMax(const PSMVector3f *a, const PSMVector3f *b)
+PSVRVector3f PSVR_Vector3fMax(const PSVRVector3f *a, const PSVRVector3f *b)
 {
 	return {fmaxf(a->x, b->x), fmaxf(a->y, b->y), fmaxf(a->z, b->z)};
 }
 
-// PSMVector3i Methods
-PSMVector3i PSM_Vector3iAdd(const PSMVector3i *a, const PSMVector3i *b)
+// PSVRVector3i Methods
+PSVRVector3i PSVR_Vector3iAdd(const PSVRVector3i *a, const PSVRVector3i *b)
 {
 	return {a->x + b->x, a->y + b->y, a->z + b->z};
 }
 
-PSMVector3i PSM_Vector3iSubtract(const PSMVector3i *a, const PSMVector3i *b)
+PSVRVector3i PSVR_Vector3iSubtract(const PSVRVector3i *a, const PSVRVector3i *b)
 {
 	return {a->x - b->x, a->y - b->y, a->z - b->z};
 }
 
-PSMVector3i PSM_Vector3iUnsafeScalarDivide(const PSMVector3i *numerator, const int divisor)
+PSVRVector3i PSVR_Vector3iUnsafeScalarDivide(const PSVRVector3i *numerator, const int divisor)
 {
 	return {numerator->x/divisor, numerator->y/divisor, numerator->z/divisor};
 }
 
-PSMVector3i PSM_Vector3iUnsafeVectorDivide(const PSMVector3i *numerator, const PSMVector3i *divisor)
+PSVRVector3i PSVR_Vector3iUnsafeVectorDivide(const PSVRVector3i *numerator, const PSVRVector3i *divisor)
 {
 	return {numerator->x/divisor->x, numerator->y/divisor->y, numerator->z/divisor->z};
 }
 
-PSMVector3i PSM_Vector3iSafeScalarDivide(const PSMVector3i *numerator, const int divisor, const PSMVector3i *default_result)
+PSVRVector3i PSVR_Vector3iSafeScalarDivide(const PSVRVector3i *numerator, const int divisor, const PSVRVector3i *default_result)
 {
-	return divisor != 0 ? PSM_Vector3iUnsafeScalarDivide(numerator, divisor) : *default_result;
+	return divisor != 0 ? PSVR_Vector3iUnsafeScalarDivide(numerator, divisor) : *default_result;
 }
 
-PSMVector3i PSM_Vector3iSafeVectorDivide(const PSMVector3i *numerator, const PSMVector3i *divisor, const PSMVector3i *default_result)
+PSVRVector3i PSVR_Vector3iSafeVectorDivide(const PSVRVector3i *numerator, const PSVRVector3i *divisor, const PSVRVector3i *default_result)
 {
 	return {divisor->x != 0 ? (numerator->x / divisor->x) : default_result->x,
 			divisor->y != 0 ? (numerator->y / divisor->y) : default_result->y,
 			divisor->z != 0 ? (numerator->z / divisor->z) : default_result->z};
 }
 
-PSMVector3i PSM_Vector3iAbs(const PSMVector3i *v)
+PSVRVector3i PSVR_Vector3iAbs(const PSVRVector3i *v)
 {
 	return {std::abs(v->x), std::abs(v->y), std::abs(v->z)};
 }
 
-PSMVector3i PSM_Vector3iSquare(const PSMVector3i *v)
+PSVRVector3i PSVR_Vector3iSquare(const PSVRVector3i *v)
 {
 	return {v->x*v->x, v->y*v->y, v->z*v->z};
 }
 
-int PSM_Vector3iLengthSquared(const PSMVector3i *v)
+int PSVR_Vector3iLengthSquared(const PSVRVector3i *v)
 {
 	return v->x*v->x + v->y*v->y + v->z*v->z;
 }
 
-int PSM_Vector3iMinValue(const PSMVector3i *v)
+int PSVR_Vector3iMinValue(const PSVRVector3i *v)
 {
 	return std::min(std::min(v->x, v->y), v->z);
 }
 
-int PSM_Vector3iMaxValue(const PSMVector3i *v)
+int PSVR_Vector3iMaxValue(const PSVRVector3i *v)
 {
 	return std::max(std::max(v->x, v->y), v->z);
 }
 
-PSMVector3i PSM_Vector3iMin(const PSMVector3i *a, const PSMVector3i *b)
+PSVRVector3i PSVR_Vector3iMin(const PSVRVector3i *a, const PSVRVector3i *b)
 {
 	return {std::min(a->x, b->x), std::min(a->y, b->y), std::min(a->z, b->z)};
 }
 
-PSMVector3i PSM_Vector3iMax(const PSMVector3i *a, const PSMVector3i *b)
+PSVRVector3i PSVR_Vector3iMax(const PSVRVector3i *a, const PSVRVector3i *b)
 {
 	return {std::max(a->x, b->x), std::max(a->y, b->y), std::max(a->z, b->z)};
 }
 
-PSMVector3f PSM_Vector3iCastToFloat(const PSMVector3i *v)
+PSVRVector3f PSVR_Vector3iCastToFloat(const PSVRVector3i *v)
 {
 	return { static_cast<float>(v->x), static_cast<float>(v->y), static_cast<float>(v->z) };
 }
 
-// PSMQuatf Methods
-PSMQuatf PSM_QuatfCreate(float w, float x, float y, float z)
+// PSVRQuatf Methods
+PSVRQuatf PSVR_QuatfCreate(float w, float x, float y, float z)
 {
 	return {w, x, y, z};
 }
 
-PSMQuatf PSM_QuatfCreateFromAngles(const PSMVector3f *eulerAngles)
+PSVRQuatf PSVR_QuatfCreateFromAngles(const PSVRVector3f *eulerAngles)
 {
-	PSMQuatf q;
+	PSVRQuatf q;
 
 	// Assuming the angles are in radians.
 	float c1 = cosf(eulerAngles->y / 2.f);
@@ -345,17 +345,17 @@ PSMQuatf PSM_QuatfCreateFromAngles(const PSMVector3f *eulerAngles)
 	return q;
 }
 
-PSMQuatf PSM_QuatfAdd(const PSMQuatf *a, const PSMQuatf *b)
+PSVRQuatf PSVR_QuatfAdd(const PSVRQuatf *a, const PSVRQuatf *b)
 {
 	return {a->w + b->w, a->x + b->x, a->y + b->y, a->z + b->z};
 }
 
-PSMQuatf PSM_QuatfScale(const PSMQuatf *q, const float s)
+PSVRQuatf PSVR_QuatfScale(const PSVRQuatf *q, const float s)
 {
 	return {q->w*s, q->x*s, q->y*s, q->z*s};
 }
 
-PSMQuatf PSM_QuatfMultiply(const PSMQuatf *a, const PSMQuatf *b)
+PSVRQuatf PSVR_QuatfMultiply(const PSVRQuatf *a, const PSVRQuatf *b)
 {
 	return {a->w*b->w - a->x*b->x - a->y*b->y - a->z*b->z,
 			a->w*b->x + a->x*b->w + a->y*b->z - a->z*b->y,
@@ -363,47 +363,47 @@ PSMQuatf PSM_QuatfMultiply(const PSMQuatf *a, const PSMQuatf *b)
 			a->w*b->z + a->x*b->y - a->y*b->x + a->z*b->w};
 }
 
-PSMQuatf PSM_QuatfUnsafeScalarDivide(const PSMQuatf *q, const float s)
+PSVRQuatf PSVR_QuatfUnsafeScalarDivide(const PSVRQuatf *q, const float s)
 {
 	return {q->w / s, q->x / s, q->y / s, q->z / s};
 }
 
-PSMQuatf PSM_QuatfSafeScalarDivide(const PSMQuatf *q, const float s, const PSMQuatf *default_result)
+PSVRQuatf PSVR_QuatfSafeScalarDivide(const PSVRQuatf *q, const float s, const PSVRQuatf *default_result)
 {
-	return !is_nearly_zero(s) ? PSM_QuatfUnsafeScalarDivide(q, s) : *default_result;
+	return !is_nearly_zero(s) ? PSVR_QuatfUnsafeScalarDivide(q, s) : *default_result;
 }
 
-PSMQuatf PSM_QuatfConjugate(const PSMQuatf *q)
+PSVRQuatf PSVR_QuatfConjugate(const PSVRQuatf *q)
 {
 	return {q->w, -q->x, -q->y, -q->z};
 }
 
-PSMQuatf PSM_QuatfConcat(const PSMQuatf *first, const PSMQuatf *second)
+PSVRQuatf PSVR_QuatfConcat(const PSVRQuatf *first, const PSVRQuatf *second)
 {
-	return PSM_QuatfMultiply(second, first);
+	return PSVR_QuatfMultiply(second, first);
 }
 
-PSMVector3f PSM_QuatfRotateVector(const PSMQuatf *q, const PSMVector3f *v)
+PSVRVector3f PSVR_QuatfRotateVector(const PSVRQuatf *q, const PSVRVector3f *v)
 {
 	return {q->w*q->w*v->x + 2*q->y*q->w*v->z - 2*q->z*q->w*v->y + q->x*q->x*v->x + 2*q->y*q->x*v->y + 2*q->z*q->x*v->z - q->z*q->z*v->x - q->y*q->y*v->x,
 			2*q->x*q->y*v->x + q->y*q->y*v->y + 2*q->z*q->y*v->z + 2*q->w*q->z*v->x - q->z*q->z*v->y + q->w*q->w*v->y - 2*q->x*q->w*v->z - q->x*q->x*v->y,
 			2*q->x*q->z*v->x + 2*q->y*q->z*v->y + q->z*q->z*v->z - 2*q->w*q->y*v->x - q->y*q->y*v->z + 2*q->w*q->x*v->y - q->x*q->x*v->z + q->w*q->w*v->z};
 }
 
-float PSM_QuatfLength(const PSMQuatf *q)
+float PSVR_QuatfLength(const PSVRQuatf *q)
 {
     return sqrtf(q->w*q->w + q->x*q->x + q->y*q->y + q->z*q->z);
 }
 
-PSMQuatf PSM_QuatfNormalizeWithDefault(const PSMQuatf *q, const PSMQuatf *default_result)
+PSVRQuatf PSVR_QuatfNormalizeWithDefault(const PSVRQuatf *q, const PSVRQuatf *default_result)
 {
-	return PSM_QuatfSafeScalarDivide(q, PSM_QuatfLength(q), default_result);
+	return PSVR_QuatfSafeScalarDivide(q, PSVR_QuatfLength(q), default_result);
 }
 
-// PSMMatrix3d Methods
-PSMMatrix3d PSM_Matrix3dCreate(const PSMVector3d *basis_x, const PSMVector3d *basis_y, const PSMVector3d *basis_z)
+// PSVRMatrix3d Methods
+PSVRMatrix3d PSVR_Matrix3dCreate(const PSVRVector3d *basis_x, const PSVRVector3d *basis_y, const PSVRVector3d *basis_z)
 {
-    PSMMatrix3d mat;
+    PSVRMatrix3d mat;
 
     mat.m[0][0] = basis_x->x; mat.m[0][1] = basis_x->y; mat.m[0][2] = basis_x->z;
     mat.m[1][0] = basis_y->x; mat.m[1][1] = basis_y->y; mat.m[1][2] = basis_y->z;
@@ -412,25 +412,25 @@ PSMMatrix3d PSM_Matrix3dCreate(const PSMVector3d *basis_x, const PSMVector3d *ba
     return mat;
 }
 
-PSMVector3d PSM_Matrix3dBasisX(const PSMMatrix3d *mat)
+PSVRVector3d PSVR_Matrix3dBasisX(const PSVRMatrix3d *mat)
 {
     return {mat->m[0][0], mat->m[0][1], mat->m[0][2]};
 }
 
-PSMVector3d PSM_Matrix3dBasisY(const PSMMatrix3d *mat)
+PSVRVector3d PSVR_Matrix3dBasisY(const PSVRMatrix3d *mat)
 {
 	return {mat->m[1][0], mat->m[1][1], mat->m[1][2]};
 }
 
-PSMVector3d PSM_Matrix3dBasisZ(const PSMMatrix3d *mat)
+PSVRVector3d PSVR_Matrix3dBasisZ(const PSVRMatrix3d *mat)
 {
 	return {mat->m[2][0], mat->m[2][1], mat->m[2][2]};
 }
 
-// PSMMatrix3f Methods
-PSMMatrix3f PSM_Matrix3fCreate(const PSMVector3f *basis_x, const PSMVector3f *basis_y, const PSMVector3f *basis_z)
+// PSVRMatrix3f Methods
+PSVRMatrix3f PSVR_Matrix3fCreate(const PSVRVector3f *basis_x, const PSVRVector3f *basis_y, const PSVRVector3f *basis_z)
 {
-    PSMMatrix3f mat;
+    PSVRMatrix3f mat;
 
     mat.m[0][0] = basis_x->x; mat.m[0][1] = basis_x->y; mat.m[0][2] = basis_x->z;
     mat.m[1][0] = basis_y->x; mat.m[1][1] = basis_y->y; mat.m[1][2] = basis_y->z;
@@ -439,9 +439,9 @@ PSMMatrix3f PSM_Matrix3fCreate(const PSMVector3f *basis_x, const PSMVector3f *ba
     return mat;
 }
 
-PSMMatrix3f PSM_Matrix3fCreateFromQuatf(const PSMQuatf *q)
+PSVRMatrix3f PSVR_Matrix3fCreateFromQuatf(const PSVRQuatf *q)
 {
-	PSMMatrix3f mat;
+	PSVRMatrix3f mat;
 
 	const float qw = q->w;
 	const float qx = q->x;
@@ -459,25 +459,25 @@ PSMMatrix3f PSM_Matrix3fCreateFromQuatf(const PSMQuatf *q)
 	return mat;
 }
 
-PSMVector3f PSM_Matrix3fBasisX(const PSMMatrix3f *mat)
+PSVRVector3f PSVR_Matrix3fBasisX(const PSVRMatrix3f *mat)
 {
 	return {mat->m[0][0], mat->m[0][1], mat->m[0][2]};
 }
 
-PSMVector3f PSM_Matrix3fBasisY(const PSMMatrix3f *mat)
+PSVRVector3f PSVR_Matrix3fBasisY(const PSVRMatrix3f *mat)
 {
 	return {mat->m[1][0], mat->m[1][1], mat->m[1][2]};
 }
 
-PSMVector3f PSM_Matrix3fBasisZ(const PSMMatrix3f *mat)
+PSVRVector3f PSVR_Matrix3fBasisZ(const PSVRMatrix3f *mat)
 {
 	return {mat->m[2][0], mat->m[2][1], mat->m[2][2]};
 }
 
-// PSMMatrix4d Methods
-PSMMatrix4d PSM_Matrix4dCreate(const PSMVector4d *basis_x, const PSMVector4d *basis_y, const PSMVector4d *basis_z, const PSMVector4d *basis_w)
+// PSVRMatrix4d Methods
+PSVRMatrix4d PSVR_Matrix4dCreate(const PSVRVector4d *basis_x, const PSVRVector4d *basis_y, const PSVRVector4d *basis_z, const PSVRVector4d *basis_w)
 {
-    PSMMatrix4d mat;
+    PSVRMatrix4d mat;
 
     mat.m[0][0] = basis_x->x; mat.m[0][1] = basis_x->y; mat.m[0][2] = basis_x->z; mat.m[0][3] = basis_x->w;
     mat.m[1][0] = basis_y->x; mat.m[1][1] = basis_y->y; mat.m[1][2] = basis_y->z; mat.m[1][3] = basis_y->w;
@@ -487,75 +487,75 @@ PSMMatrix4d PSM_Matrix4dCreate(const PSMVector4d *basis_x, const PSMVector4d *ba
     return mat;
 }
 
-PSMVector4d PSM_Matrix4dBasisX(const PSMMatrix4d *mat)
+PSVRVector4d PSVR_Matrix4dBasisX(const PSVRMatrix4d *mat)
 {
     return {mat->m[0][0], mat->m[0][1], mat->m[0][2], mat->m[0][3]};
 }
 
-PSMVector4d PSM_Matrix4dBasisY(const PSMMatrix4d *mat)
+PSVRVector4d PSVR_Matrix4dBasisY(const PSVRMatrix4d *mat)
 {
     return {mat->m[1][0], mat->m[1][1], mat->m[1][2], mat->m[1][3]};
 }
 
-PSMVector4d PSM_Matrix4dBasisZ(const PSMMatrix4d *mat)
+PSVRVector4d PSVR_Matrix4dBasisZ(const PSVRMatrix4d *mat)
 {
     return {mat->m[2][0], mat->m[2][1], mat->m[2][2], mat->m[2][3]};
 }
 
-PSMVector4d PSM_Matrix4dBasisW(const PSMMatrix4d *mat)
+PSVRVector4d PSVR_Matrix4dBasisW(const PSVRMatrix4d *mat)
 {
     return {mat->m[3][0], mat->m[3][1], mat->m[3][2], mat->m[3][3]};
 }
 
-// PSMPosef
-PSMPosef PSM_PosefCreate(const PSMVector3f *position, const PSMQuatf *orientation)
+// PSVRPosef
+PSVRPosef PSVR_PosefCreate(const PSVRVector3f *position, const PSVRQuatf *orientation)
 {
 	return {*position, *orientation};
 }
 
-PSMPosef PSM_PosefInverse(const PSMPosef *pose)
+PSVRPosef PSVR_PosefInverse(const PSVRPosef *pose)
 {
-	PSMQuatf q_inv = PSM_QuatfConjugate(&pose->Orientation);
-	PSMPosef result;
+	PSVRQuatf q_inv = PSVR_QuatfConjugate(&pose->Orientation);
+	PSVRPosef result;
 
 	result.Orientation = q_inv;
-	result.Position = PSM_QuatfRotateVector(&q_inv, &pose->Position);
-	result.Position = PSM_Vector3fScale(&result.Position, -1.f);
+	result.Position = PSVR_QuatfRotateVector(&q_inv, &pose->Position);
+	result.Position = PSVR_Vector3fScale(&result.Position, -1.f);
 
 	return result;
 }
 
-PSMPosef PSM_PosefConcat(const PSMPosef *first, const PSMPosef *second)
+PSVRPosef PSVR_PosefConcat(const PSVRPosef *first, const PSVRPosef *second)
 {
-	PSMPosef result;
+	PSVRPosef result;
 
-	result.Orientation = PSM_QuatfConcat(&first->Orientation, &second->Orientation);
-	result.Position = PSM_QuatfRotateVector(&second->Orientation, &first->Position);
-    result.Position = PSM_Vector3fAdd(&result.Position, &second->Position);
+	result.Orientation = PSVR_QuatfConcat(&first->Orientation, &second->Orientation);
+	result.Position = PSVR_QuatfRotateVector(&second->Orientation, &first->Position);
+    result.Position = PSVR_Vector3fAdd(&result.Position, &second->Position);
 
 	return result;
 }
 
-PSMVector3f PSM_PosefTransformPoint(const PSMPosef *pose, const PSMVector3f *p)
+PSVRVector3f PSVR_PosefTransformPoint(const PSVRPosef *pose, const PSVRVector3f *p)
 {
-	PSMVector3f result= PSM_QuatfRotateVector(&pose->Orientation, p);
-	result= PSM_Vector3fAdd(&result, &pose->Position);
+	PSVRVector3f result= PSVR_QuatfRotateVector(&pose->Orientation, p);
+	result= PSVR_Vector3fAdd(&result, &pose->Position);
 
 	return result;
 }
 
-PSMVector3f PSM_PosefInverseTransformPoint(const PSMPosef *pose, const PSMVector3f *p)
+PSVRVector3f PSVR_PosefInverseTransformPoint(const PSVRPosef *pose, const PSVRVector3f *p)
 {
-	PSMQuatf q_inv = PSM_QuatfConjugate(&pose->Orientation);
-	PSMVector3f unrotate_p= PSM_QuatfRotateVector(&q_inv, p);
-	PSMVector3f unrotate_pose_position= PSM_QuatfRotateVector(&q_inv, &pose->Position);
-	PSMVector3f result = PSM_Vector3fSubtract(&unrotate_p, &unrotate_pose_position);
+	PSVRQuatf q_inv = PSVR_QuatfConjugate(&pose->Orientation);
+	PSVRVector3f unrotate_p= PSVR_QuatfRotateVector(&q_inv, p);
+	PSVRVector3f unrotate_pose_position= PSVR_QuatfRotateVector(&q_inv, &pose->Position);
+	PSVRVector3f result = PSVR_Vector3fSubtract(&unrotate_p, &unrotate_pose_position);
 
 	return result;
 }
 
-// PSMFrustumf
-void PSM_FrustumSetPose(PSMFrustum *frustum, const PSMPosef *pose)
+// PSVRFrustumf
+void PSVR_FrustumSetPose(PSVRFrustum *frustum, const PSVRPosef *pose)
 {
     const glm::quat orientation(pose->Orientation.w, pose->Orientation.x, pose->Orientation.y, pose->Orientation.z);
     const glm::vec3 position(pose->Position.x, pose->Position.y, pose->Position.z);
@@ -570,31 +570,31 @@ void PSM_FrustumSetPose(PSMFrustum *frustum, const PSMPosef *pose)
     frustum->origin = {glm_mat4[3].x, glm_mat4[3].y, glm_mat4[3].z};
 }
 
-// -- PSMoveTrackingProjection -- 
-float PSM_TrackingProjectionGetArea(const PSMTrackingProjection *proj, const PSMTrackingProjectionCount area_index)
+// -- PSVRTrackingProjection -- 
+float PSVR_TrackingProjectionGetArea(const PSVRTrackingProjection *proj, const PSVRTrackingProjectionCount area_index)
 {
 	float area = 0.f;
 
 	switch (proj->shape_type)
 	{
-	case PSMShape_Ellipse:
+	case PSVRShape_Ellipse:
 		{
 			area = k_real_pi
                 *proj->projections[area_index].shape.ellipse.half_x_extent
                 *proj->projections[area_index].shape.ellipse.half_y_extent;
 		} break;
-	case PSMShape_LightBar:
+	case PSVRShape_LightBar:
 		{
-			PSMVector2f edge1 = 
-                PSM_Vector2fSubtract(
+			PSVRVector2f edge1 = 
+                PSVR_Vector2fSubtract(
                     &proj->projections[area_index].shape.lightbar.quad[0],
                     &proj->projections[area_index].shape.lightbar.quad[1]);
-			PSMVector2f edge2 = 
-                PSM_Vector2fSubtract(
+			PSVRVector2f edge2 = 
+                PSVR_Vector2fSubtract(
                     &proj->projections[area_index].shape.lightbar.quad[0],
                     &proj->projections[area_index].shape.lightbar.quad[3]);
 
-			area = PSM_Vector2fLength(&edge1)*PSM_Vector2fLength(&edge2);
+			area = PSVR_Vector2fLength(&edge1)*PSVR_Vector2fLength(&edge2);
 		} break;
 	}
 

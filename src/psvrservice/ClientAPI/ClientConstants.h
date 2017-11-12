@@ -18,14 +18,14 @@ typedef enum
     PSVRLogSeverityLevel_fatal
 } PSVRLogSeverityLevel;
 
-// See TrackerManager.h in PSMoveService
-#define PSMOVESERVICE_MAX_TRACKER_COUNT  8
+// See TrackerManager.h in PSVRSERVICE
+#define PSVRSERVICE_MAX_TRACKER_COUNT  8
 
-// See HMDManager.h in PSMoveService
-#define PSMOVESERVICE_MAX_HMD_COUNT  4
+// See HMDManager.h in PSVRSERVICE
+#define PSVRSERVICE_MAX_HMD_COUNT  4
 
 // The max length of the service version string
-#define PSMOVESERVICE_MAX_VERSION_STRING_LEN 32
+#define PSVRSERVICE_MAX_VERSION_STRING_LEN 32
 
 // Defines a standard _PAUSE function
 #if __cplusplus >= 199711L  // if C++11

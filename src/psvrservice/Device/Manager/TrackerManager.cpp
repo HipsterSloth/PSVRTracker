@@ -10,7 +10,7 @@
 #include "ServerTrackerView.h"
 #include "ServerDeviceView.h"
 #include "MathUtility.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocol.pb.h"
 
 //-- constants -----
 
@@ -18,7 +18,7 @@
 const int TrackerManagerConfig::CONFIG_VERSION = 2;
 
 TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
-    : PSMoveConfig(fnamebase)
+    : PSVRConfig(fnamebase)
 {
 
 	controller_position_smoothing = 0.f;
@@ -239,7 +239,7 @@ TrackerManager::getTrackerViewPtr(int device_id) const
 
 int TrackerManager::getListUpdatedResponseType()
 {
-	return PSMoveProtocol::Response_ResponseType_TRACKER_LIST_UPDATED;
+	return PSVRProtocol::Response_ResponseType_TRACKER_LIST_UPDATED;
 }
 
 eCommonTrackingColorID 

@@ -8,8 +8,8 @@
 #include "Camera.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSMoveProtocolInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocolInterface.h"
+#include "PSVRProtocol.pb.h"
 
 #include "SDL_keycode.h"
 
@@ -83,22 +83,22 @@ void AppStage_HMDSettings::render()
 
             switch (hmdInfo.TrackingColorType)
             {
-            case PSMTrackingColorType_Magenta:
+            case PSVRTrackingColorType_Magenta:
                 bulb_color = glm::vec3(1.f, 0.f, 1.f);
                 break;
-            case PSMTrackingColorType_Cyan:
+            case PSVRTrackingColorType_Cyan:
                 bulb_color = glm::vec3(0.f, 1.f, 1.f);
                 break;
-            case PSMTrackingColorType_Yellow:
+            case PSVRTrackingColorType_Yellow:
                 bulb_color = glm::vec3(1.f, 1.f, 0.f);
                 break;
-            case PSMTrackingColorType_Red:
+            case PSVRTrackingColorType_Red:
                 bulb_color = glm::vec3(1.f, 0.f, 0.f);
                 break;
-            case PSMTrackingColorType_Green:
+            case PSVRTrackingColorType_Green:
                 bulb_color = glm::vec3(0.f, 1.f, 0.f);
                 break;
-            case PSMTrackingColorType_Blue:
+            case PSVRTrackingColorType_Blue:
                 bulb_color = glm::vec3(0.f, 0.f, 1.f);
                 break;
             default:
@@ -107,12 +107,12 @@ void AppStage_HMDSettings::render()
 
             switch (hmdInfo.HmdType)
             {
-            case PSMoveProtocol::Morpheus:
+            case PSVRProtocol::Morpheus:
                 {
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(2.f, 2.f, 2.f));
                     drawMorpheusModel(scale3, glm::vec3(1.f, 1.f, 1.f));
                 } break;
-            case PSMoveProtocol::VirtualHMD:
+            case PSVRProtocol::VirtualHMD:
                 {
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(2.f, 2.f, 2.f));
                     drawVirtualHMDModel(scale3, bulb_color);
@@ -181,7 +181,7 @@ void AppStage_HMDSettings::renderUI()
                 ImGui::PushItemWidth(195);
                 if (ImGui::Combo("Tracking Color", &newTrackingColorType, "Magenta\0Cyan\0Yellow\0Red\0Green\0Blue\0\0"))
                 {
-                    hmdInfo.TrackingColorType = static_cast<PSMTrackingColorType>(newTrackingColorType);
+                    hmdInfo.TrackingColorType = static_cast<PSVRTrackingColorType>(newTrackingColorType);
 
                     request_set_hmd_tracking_color_id(hmdInfo.HmdID, hmdInfo.TrackingColorType);
 
@@ -194,22 +194,22 @@ void AppStage_HMDSettings::renderUI()
             {
                 switch (hmdInfo.TrackingColorType)
                 {
-                case PSMTrackingColorType_Magenta:
+                case PSVRTrackingColorType_Magenta:
                     ImGui::BulletText("Tracking Color: Magenta");
                     break;
-                case PSMTrackingColorType_Cyan:
+                case PSVRTrackingColorType_Cyan:
                     ImGui::BulletText("Tracking Color: Cyan");
                     break;
-                case PSMTrackingColorType_Yellow:
+                case PSVRTrackingColorType_Yellow:
                     ImGui::BulletText("Tracking Color: Yellow");
                     break;
-                case PSMTrackingColorType_Red:
+                case PSVRTrackingColorType_Red:
                     ImGui::BulletText("Tracking Color: Red");
                     break;
-                case PSMTrackingColorType_Green:
+                case PSVRTrackingColorType_Green:
                     ImGui::BulletText("Tracking Color: Green");
                     break;
-                case PSMTrackingColorType_Blue:
+                case PSVRTrackingColorType_Blue:
                     ImGui::BulletText("Tracking Color: Blue");
                     break;
                 }
@@ -398,14 +398,14 @@ void AppStage_HMDSettings::renderUI()
 }
 
 bool AppStage_HMDSettings::onClientAPIEvent(
-    PSMEventMessage::eEventType event, 
-    PSMEventDataHandle opaque_event_handle)
+    PSVREventMessage::eEventType event, 
+    PSVREventDataHandle opaque_event_handle)
 {
     bool bHandled = false;
 
     switch (event)
     {
-    case PSMEventMessage::PSMEvent_hmdListUpdated:
+    case PSVREventMessage::PSVREvent_hmdListUpdated:
         {
             bHandled = true;
             request_hmd_list();
@@ -423,13 +423,13 @@ void AppStage_HMDSettings::request_hmd_list()
         m_selectedHmdIndex = -1;
         m_hmdInfos.clear();
 
-        // Tell the psmove service that we we want a list of HMDs connected to this machine
-        RequestPtr request(new PSMoveProtocol::Request());
-        request->set_type(PSMoveProtocol::Request_RequestType_GET_HMD_LIST);
+        // Tell the PSVR service that we we want a list of HMDs connected to this machine
+        RequestPtr request(new PSVRProtocol::Request());
+        request->set_type(PSVRProtocol::Request_RequestType_GET_HMD_LIST);
 
-        PSMRequestID request_id;
-        PSM_SendOpaqueRequest(&request, &request_id);
-        PSM_RegisterCallback(request_id, AppStage_HMDSettings::handle_hmd_list_response, this);
+        PSVRRequestID request_id;
+        PSVR_SendOpaqueRequest(&request, &request_id);
+        PSVR_RegisterCallback(request_id, AppStage_HMDSettings::handle_hmd_list_response, this);
     }
 }
 
@@ -437,68 +437,68 @@ void AppStage_HMDSettings::request_set_orientation_filter(
     const int hmd_id,
     const std::string &filter_name)
 {
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_HMD_ORIENTATION_FILTER);
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_ORIENTATION_FILTER);
 
     request->mutable_request_set_hmd_orientation_filter()->set_hmd_id(hmd_id);
     request->mutable_request_set_hmd_orientation_filter()->set_orientation_filter(filter_name);
 
-    PSM_SendOpaqueRequest(&request, nullptr);
+    PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_HMDSettings::request_set_position_filter(
     const int hmd_id,
     const std::string &filter_name)
 {
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_HMD_POSITION_FILTER);
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_POSITION_FILTER);
 
     request->mutable_request_set_hmd_position_filter()->set_hmd_id(hmd_id);
     request->mutable_request_set_hmd_position_filter()->set_position_filter(filter_name);
 
-    PSM_SendOpaqueRequest(&request, nullptr);
+    PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_HMDSettings::request_set_hmd_prediction(const int hmd_id, float prediction_time)
 {
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_HMD_PREDICTION_TIME);
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_PREDICTION_TIME);
 
-    PSMoveProtocol::Request_RequestSetHMDPredictionTime *calibration =
+    PSVRProtocol::Request_RequestSetHMDPredictionTime *calibration =
         request->mutable_request_set_hmd_prediction_time();
 
     calibration->set_hmd_id(hmd_id);
     calibration->set_prediction_time(prediction_time);
 
-    PSM_SendOpaqueRequest(&request, nullptr);
+    PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_HMDSettings::request_set_hmd_tracking_color_id(
 	int HmdID,
-	PSMTrackingColorType tracking_color_type)
+	PSVRTrackingColorType tracking_color_type)
 {
-	RequestPtr request(new PSMoveProtocol::Request());
-	request->set_type(PSMoveProtocol::Request_RequestType_SET_HMD_LED_TRACKING_COLOR);
+	RequestPtr request(new PSVRProtocol::Request());
+	request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_LED_TRACKING_COLOR);
 	request->mutable_set_hmd_led_tracking_color_request()->set_hmd_id(HmdID);
 	request->mutable_set_hmd_led_tracking_color_request()->set_color_type(
-		static_cast<PSMoveProtocol::TrackingColorType>(tracking_color_type));
+		static_cast<PSVRProtocol::TrackingColorType>(tracking_color_type));
 
-	PSM_SendOpaqueRequest(&request, nullptr);
+	PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_HMDSettings::handle_hmd_list_response(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
-    PSMResult ResultCode = response->result_code;
-    PSMResponseHandle response_handle = response->opaque_response_handle;
+    PSVRResult ResultCode = response->result_code;
+    PSVRResponseHandle response_handle = response->opaque_response_handle;
     AppStage_HMDSettings *thisPtr = static_cast<AppStage_HMDSettings *>(userdata);
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
         {
-            const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_handle);
+            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
 
             for (int hmd_index = 0; hmd_index < response->result_hmd_list().hmd_entries_size(); ++hmd_index)
             {
@@ -510,17 +510,17 @@ void AppStage_HMDSettings::handle_hmd_list_response(
 
                 switch (HmdResponse.hmd_type())
                 {
-                case PSMoveProtocol::HMDType::Morpheus:
+                case PSVRProtocol::HMDType::Morpheus:
                     HmdInfo.HmdType = AppStage_HMDSettings::Morpheus;
                     break;
-                case PSMoveProtocol::HMDType::VirtualHMD:
+                case PSVRProtocol::HMDType::VirtualHMD:
                     HmdInfo.HmdType = AppStage_HMDSettings::VirtualHMD;
                     break;
                 default:
                     assert(0 && "unreachable");
                 }
 
-                HmdInfo.TrackingColorType = static_cast<PSMTrackingColorType>(HmdResponse.tracking_color_type());
+                HmdInfo.TrackingColorType = static_cast<PSVRTrackingColorType>(HmdResponse.tracking_color_type());
                 HmdInfo.DevicePath = HmdResponse.device_path();
                 HmdInfo.PredictionTime = HmdResponse.prediction_time();
                 HmdInfo.OrientationFilterName= HmdResponse.orientation_filter();
@@ -572,9 +572,9 @@ void AppStage_HMDSettings::handle_hmd_list_response(
             thisPtr->m_menuState = AppStage_HMDSettings::idle;
         } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->m_menuState = AppStage_HMDSettings::failedHmdListRequest;
         } break;

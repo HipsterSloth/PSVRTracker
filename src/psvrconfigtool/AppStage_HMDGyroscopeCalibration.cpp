@@ -11,8 +11,8 @@
 #include "MathEigen.h"
 #include "MathUtility.h"
 
-#include "PSMoveProtocolInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocolInterface.h"
+#include "PSVRProtocol.pb.h"
 #include "Renderer.h"
 #include "UIConstants.h"
 
@@ -33,19 +33,19 @@ const float k_desired_drift_sampling_time = 30.0*1000.f; // milliseconds
 //-- definitions -----
 struct HMDGyroscopeErrorSamples
 {
-    PSMVector3f raw_gyro_samples[k_desired_noise_sample_count];
-	PSMVector3f raw_gyro_bias;
-    PSMVector3f raw_total_gyro_drift;
+    PSVRVector3f raw_gyro_samples[k_desired_noise_sample_count];
+	PSVRVector3f raw_gyro_bias;
+    PSVRVector3f raw_total_gyro_drift;
     std::chrono::time_point<std::chrono::high_resolution_clock> sampleStartTime;
     int sample_count;
 
-    float raw_variance; // Max sensor variance (raw_sensor_units/s/s for DS4, rad/s/s for PSMove)
-    float raw_drift; // Max drift rate (raw_sensor_units/s for DS4, rad/s for PSMove)
+    float raw_variance; // Max sensor variance (raw_sensor_units/s/s for DS4, rad/s/s for PSVR)
+    float raw_drift; // Max drift rate (raw_sensor_units/s for DS4, rad/s for PSVR)
 
     void clear()
     {
-		raw_gyro_bias = *k_psm_float_vector3_zero;
-        raw_total_gyro_drift= *k_psm_float_vector3_zero;
+		raw_gyro_bias = *k_PSVR_float_vector3_zero;
+        raw_total_gyro_drift= *k_PSVR_float_vector3_zero;
 		raw_variance = 0.f;
 		raw_drift = 0.f;
 		sample_count= 0;
@@ -59,43 +59,43 @@ struct HMDGyroscopeErrorSamples
         // Compute the mean of the error samples, where "error" = abs(omega_sample)
         // If we took the mean of the signed omega samples we'd get a value very 
         // close to zero since the the gyro at rest over a short period has mean-zero noise
-        PSMVector3f mean_gyro_abs_error= *k_psm_float_vector3_zero;
-		raw_gyro_bias = *k_psm_float_vector3_zero;
+        PSVRVector3f mean_gyro_abs_error= *k_PSVR_float_vector3_zero;
+		raw_gyro_bias = *k_PSVR_float_vector3_zero;
         for (int sample_index = 0; sample_index < sample_count; sample_index++)
         {
-			PSMVector3f signed_error_sample = raw_gyro_samples[sample_index];
-            PSMVector3f unsigned_error_sample= PSM_Vector3fAbs(&signed_error_sample);
+			PSVRVector3f signed_error_sample = raw_gyro_samples[sample_index];
+            PSVRVector3f unsigned_error_sample= PSVR_Vector3fAbs(&signed_error_sample);
 
-            mean_gyro_abs_error= PSM_Vector3fAdd(&mean_gyro_abs_error, &unsigned_error_sample);
-			raw_gyro_bias = PSM_Vector3fAdd(&raw_gyro_bias, &signed_error_sample);
+            mean_gyro_abs_error= PSVR_Vector3fAdd(&mean_gyro_abs_error, &unsigned_error_sample);
+			raw_gyro_bias = PSVR_Vector3fAdd(&raw_gyro_bias, &signed_error_sample);
         }
-        mean_gyro_abs_error= PSM_Vector3fUnsafeScalarDivide(&mean_gyro_abs_error, N);
-		raw_gyro_bias = PSM_Vector3fUnsafeScalarDivide(&raw_gyro_bias, N);
+        mean_gyro_abs_error= PSVR_Vector3fUnsafeScalarDivide(&mean_gyro_abs_error, N);
+		raw_gyro_bias = PSVR_Vector3fUnsafeScalarDivide(&raw_gyro_bias, N);
 
         // Compute the variance of the (unsigned) sample error, where "error" = abs(omega_sample)
-        PSMVector3f var_abs_error= *k_psm_float_vector3_zero;
+        PSVRVector3f var_abs_error= *k_PSVR_float_vector3_zero;
         for (int sample_index = 0; sample_index < sample_count; sample_index++)
         {
-            PSMVector3f unsigned_error_sample= PSM_Vector3fAbs(&raw_gyro_samples[sample_index]);
-            PSMVector3f diff_from_mean= PSM_Vector3fSubtract(&unsigned_error_sample, &mean_gyro_abs_error);
-			PSMVector3f diff_from_mean_sqr= PSM_Vector3fSquare(&diff_from_mean);
+            PSVRVector3f unsigned_error_sample= PSVR_Vector3fAbs(&raw_gyro_samples[sample_index]);
+            PSVRVector3f diff_from_mean= PSVR_Vector3fSubtract(&unsigned_error_sample, &mean_gyro_abs_error);
+			PSVRVector3f diff_from_mean_sqr= PSVR_Vector3fSquare(&diff_from_mean);
 
-            var_abs_error= PSM_Vector3fAdd(&var_abs_error, &diff_from_mean_sqr);
+            var_abs_error= PSVR_Vector3fAdd(&var_abs_error, &diff_from_mean_sqr);
         }
-        var_abs_error= PSM_Vector3fUnsafeScalarDivide(&var_abs_error, N - 1);
+        var_abs_error= PSVR_Vector3fUnsafeScalarDivide(&var_abs_error, N - 1);
 
         // Use the max variance of all three axes (should be close)
-        raw_variance= PSM_Vector3fMaxValue(&var_abs_error);
+        raw_variance= PSVR_Vector3fMaxValue(&var_abs_error);
 
         // Compute the max drift rate we got across a three axis
-        PSMVector3f drift_rate= PSM_Vector3fUnsafeScalarDivide(&raw_total_gyro_drift, sampleDurationSeconds);
-		PSMVector3f drift_rate_abs= PSM_Vector3fAbs(&drift_rate);
-        raw_drift= PSM_Vector3fMaxValue(&drift_rate_abs);
+        PSVRVector3f drift_rate= PSVR_Vector3fUnsafeScalarDivide(&raw_total_gyro_drift, sampleDurationSeconds);
+		PSVRVector3f drift_rate_abs= PSVR_Vector3fAbs(&drift_rate);
+        raw_drift= PSVR_Vector3fMaxValue(&drift_rate_abs);
     }
 };
 
 //-- private methods -----
-static void drawHMD(PSMHeadMountedDisplay *hmdView, const glm::mat4 &transform);
+static void drawHMD(PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform);
 
 //-- public methods -----
 AppStage_HMDGyroscopeCalibration::AppStage_HMDGyroscopeCalibration(App *app)
@@ -133,34 +133,34 @@ void AppStage_HMDGyroscopeCalibration::enter()
     // Initialize the hmd state
     assert(hmdInfo->HmdID != -1);
     assert(m_hmdView == nullptr);
-	PSM_AllocateHmdListener(hmdInfo->HmdID);
-	m_hmdView = PSM_GetHmd(hmdInfo->HmdID);
+	PSVR_AllocateHmdListener(hmdInfo->HmdID);
+	m_hmdView = PSVR_GetHmd(hmdInfo->HmdID);
 
-    m_lastRawGyroscope = *k_psm_int_vector3_zero;
+    m_lastRawGyroscope = *k_PSVR_int_vector3_zero;
     m_lastHMDSeqNum = -1;
 
-    m_lastCalibratedAccelerometer = *k_psm_float_vector3_zero;
-    m_lastCalibratedGyroscope = *k_psm_float_vector3_zero;
+    m_lastCalibratedAccelerometer = *k_PSVR_float_vector3_zero;
+    m_lastCalibratedGyroscope = *k_PSVR_float_vector3_zero;
 
     m_stableStartTime = std::chrono::time_point<std::chrono::high_resolution_clock>();
     m_bIsStable= false;
 
     // Start streaming in controller data
     assert(!m_isHMDStreamActive);
-	PSMRequestID requestId;
-	PSM_StartHmdDataStreamAsync(
+	PSVRRequestID requestId;
+	PSVR_StartHmdDataStreamAsync(
 		m_hmdView->HmdID, 
-		PSMStreamFlags_includePositionData | // used for correcting yaw drift
-		PSMStreamFlags_includeCalibratedSensorData | 
-		PSMStreamFlags_includeRawSensorData, 
+		PSVRStreamFlags_includePositionData | // used for correcting yaw drift
+		PSVRStreamFlags_includeCalibratedSensorData | 
+		PSVRStreamFlags_includeRawSensorData, 
 		&requestId);
-	PSM_RegisterCallback(requestId, &AppStage_HMDGyroscopeCalibration::handle_acquire_hmd, this);
+	PSVR_RegisterCallback(requestId, &AppStage_HMDGyroscopeCalibration::handle_acquire_hmd, this);
 }
 
 void AppStage_HMDGyroscopeCalibration::exit()
 {
     assert(m_hmdView != nullptr);
-    PSM_FreeHmdListener(m_hmdView->HmdID);
+    PSVR_FreeHmdListener(m_hmdView->HmdID);
     m_hmdView = nullptr;
     m_menuState = eCalibrationMenuState::inactive;
 
@@ -179,11 +179,11 @@ void AppStage_HMDGyroscopeCalibration::update()
     {
         switch(m_hmdView->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
-                const PSMMorpheusRawSensorData &rawSensorData =					
+                const PSVRMorpheusRawSensorData &rawSensorData =					
                     m_hmdView->HmdState.MorpheusState.RawSensorData;
-                const PSMMorpheusCalibratedSensorData &calibratedSensorData =
+                const PSVRMorpheusCalibratedSensorData &calibratedSensorData =
                     m_hmdView->HmdState.MorpheusState.CalibratedSensorData;
 
                 m_lastRawGyroscope = rawSensorData.Gyroscope;
@@ -191,7 +191,7 @@ void AppStage_HMDGyroscopeCalibration::update()
                 m_lastCalibratedAccelerometer = calibratedSensorData.Accelerometer;
             }
             break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
                 m_lastRawGyroscope = {0, 0, 0};
                 m_lastCalibratedGyroscope = {0, 0, 0};
@@ -236,7 +236,7 @@ void AppStage_HMDGyroscopeCalibration::update()
     case eCalibrationMenuState::waitForStable:
         {
 			bool bIsStable= false;
-			bool bCanBeStable= PSM_GetIsHmdStable(m_hmdView->HmdID, &bIsStable) == PSMResult_Success;
+			bool bCanBeStable= PSVR_GetIsHmdStable(m_hmdView->HmdID, &bIsStable) == PSVRResult_Success;
 
             if (bCanBeStable && bIsStable)
             {
@@ -265,21 +265,21 @@ void AppStage_HMDGyroscopeCalibration::update()
                 }
             }
         } break;
-    case eCalibrationMenuState::measureBiasAndDrift: // PSMove and DS4
+    case eCalibrationMenuState::measureBiasAndDrift: // PSVR and DS4
         {
 			bool bIsStable= false;
-			bool bCanBeStable= PSM_GetIsHmdStable(m_hmdView->HmdID, &bIsStable) == PSMResult_Success;
+			bool bCanBeStable= PSVR_GetIsHmdStable(m_hmdView->HmdID, &bIsStable) == PSVRResult_Success;
 
             if (bCanBeStable && bIsStable)
             {
                 const std::chrono::duration<float, std::milli> sampleDurationMilli = now - m_errorSamples->sampleStartTime;
                 const float deltaTimeSeconds= sampleTimeDeltaMilli.count()/1000.f;
-				const PSMVector3f raw_gyro= PSM_Vector3iCastToFloat(&m_lastRawGyroscope);
+				const PSVRVector3f raw_gyro= PSVR_Vector3iCastToFloat(&m_lastRawGyroscope);
 
                 // Accumulate the drift total
                 if (deltaTimeSeconds > 0.f)
                 {
-                    m_errorSamples->raw_total_gyro_drift= PSM_Vector3fScaleAndAdd(&raw_gyro, deltaTimeSeconds, &m_errorSamples->raw_total_gyro_drift);
+                    m_errorSamples->raw_total_gyro_drift= PSVR_Vector3fScaleAndAdd(&raw_gyro, deltaTimeSeconds, &m_errorSamples->raw_total_gyro_drift);
                 }
 
                 // Record the next noise sample
@@ -326,8 +326,8 @@ void AppStage_HMDGyroscopeCalibration::render()
 
 	switch (m_hmdView->HmdType)
 	{
-	case PSMHmd_Morpheus:
-	case PSMHmd_Virtual:
+	case PSVRHmd_Morpheus:
+	case PSVRHmd_Virtual:
 		hmdTransform = glm::scale(glm::mat4(1.f), glm::vec3(modelScale, modelScale, modelScale));
 		break;
 	}
@@ -347,7 +347,7 @@ void AppStage_HMDGyroscopeCalibration::render()
                 const float renderScale = 200.f;
                 glm::mat4 renderScaleMatrix = 
                     glm::scale(glm::mat4(1.f), glm::vec3(renderScale, renderScale, renderScale));
-                glm::vec3 g= psm_vector3f_to_glm_vec3(m_lastCalibratedAccelerometer);
+                glm::vec3 g= PSVR_vector3f_to_glm_vec3(m_lastCalibratedAccelerometer);
 
                 drawArrow(
                     renderScaleMatrix,
@@ -365,10 +365,10 @@ void AppStage_HMDGyroscopeCalibration::render()
     case eCalibrationMenuState::test:
         {
             // Get the orientation of the controller in world space (OpenGL Coordinate System)
-			PSMQuatf orientation;
-			if (PSM_GetHmdOrientation(m_hmdView->HmdID, &orientation) == PSMResult_Success)
+			PSVRQuatf orientation;
+			if (PSVR_GetHmdOrientation(m_hmdView->HmdID, &orientation) == PSVRResult_Success)
 			{
-				glm::quat q= psm_quatf_to_glm_quat(orientation);
+				glm::quat q= PSVR_quatf_to_glm_quat(orientation);
 				glm::mat4 worldSpaceOrientation= glm::mat4_cast(q);
 				glm::mat4 worldTransform = glm::scale(worldSpaceOrientation, glm::vec3(modelScale, modelScale, modelScale));
 
@@ -549,14 +549,14 @@ void AppStage_HMDGyroscopeCalibration::renderUI()
 
 //-- private methods -----
 void AppStage_HMDGyroscopeCalibration::request_set_gyroscope_calibration(
-	const PSMVector3f &raw_bias,
+	const PSVRVector3f &raw_bias,
     const float raw_drift, 
     const float raw_variance)
 {
-    RequestPtr request(new PSMoveProtocol::Request());
-    request->set_type(PSMoveProtocol::Request_RequestType_SET_HMD_GYROSCOPE_CALIBRATION);
+    RequestPtr request(new PSVRProtocol::Request());
+    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_GYROSCOPE_CALIBRATION);
 
-    PSMoveProtocol::Request_RequestSetHMDGyroscopeCalibration *calibration =
+    PSVRProtocol::Request_RequestSetHMDGyroscopeCalibration *calibration =
         request->mutable_set_hmd_gyroscope_calibration_request();
 
     calibration->set_hmd_id(m_hmdView->HmdID);
@@ -567,16 +567,16 @@ void AppStage_HMDGyroscopeCalibration::request_set_gyroscope_calibration(
     calibration->set_raw_drift(raw_drift);
     calibration->set_raw_variance(raw_variance);
 
-	PSM_SendOpaqueRequest(&request, nullptr);
+	PSVR_SendOpaqueRequest(&request, nullptr);
 }
 
 void AppStage_HMDGyroscopeCalibration::handle_acquire_hmd(
-    const PSMResponseMessage *response,
+    const PSVRResponseMessage *response,
     void *userdata)
 {
     AppStage_HMDGyroscopeCalibration *thisPtr = reinterpret_cast<AppStage_HMDGyroscopeCalibration *>(userdata);
 
-    if (response->result_code == PSMResult_Success)
+    if (response->result_code == PSVRResult_Success)
     {
         thisPtr->m_isHMDStreamActive = true;
         thisPtr->m_lastHMDSeqNum = -1;
@@ -590,23 +590,23 @@ void AppStage_HMDGyroscopeCalibration::handle_acquire_hmd(
 
 void AppStage_HMDGyroscopeCalibration::request_exit_to_app_stage(const char *app_stage_name)
 {
-    PSMRequestID request_id;
-    PSM_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
-    PSM_EatResponse(request_id);
+    PSVRRequestID request_id;
+    PSVR_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
+    PSVR_EatResponse(request_id);
 
     m_isHMDStreamActive= false;
     m_app->setAppStage(app_stage_name);
 }
 
 //-- private methods -----
-static void drawHMD(PSMHeadMountedDisplay *hmdView, const glm::mat4 &transform)
+static void drawHMD(PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform)
 {
     switch(hmdView->HmdType)
     {
-    case PSMHmd_Morpheus:
+    case PSVRHmd_Morpheus:
         drawMorpheusModel(transform, glm::vec3(1.f, 1.f, 1.f));
         break;
-    case PSMHmd_Virtual:
+    case PSVRHmd_Virtual:
         drawVirtualHMDModel(transform, glm::vec3(1.f, 1.f, 1.f));
         break;
     }

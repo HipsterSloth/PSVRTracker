@@ -13,42 +13,42 @@
 #endif
 
 // -- macros -----
-#define IS_VALID_TRACKER_INDEX(x) ((x) >= 0 && (x) < PSMOVESERVICE_MAX_TRACKER_COUNT)
-#define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSMOVESERVICE_MAX_HMD_COUNT)
+#define IS_VALID_TRACKER_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_TRACKER_COUNT)
+#define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_HMD_COUNT)
 
 // -- constants ----
-const PSMVector3f k_identity_gravity_calibration_direction= {0.f, 1.f, 0.f};
+const PSVRVector3f k_identity_gravity_calibration_direction= {0.f, 1.f, 0.f};
 
 // -- private data ---
 PSVRService *g_psvr_service= nullptr;
 PSVRClient *g_psvr_client= nullptr;
 
 // -- public interface -----
-const char* PSM_GetClientVersionString()
+const char* PSVR_GetClientVersionString()
 {
-    const char *version_string= PSM_PROTOCOL_VERSION_STRING;
+    const char *version_string= PSVR_PROTOCOL_VERSION_STRING;
 
     return version_string;
 }
 
-bool PSM_GetIsInitialized()
+bool PSVR_GetIsInitialized()
 {
 	return g_psvr_client != nullptr && g_psvr_service != nullptr;
 }
 
-bool PSM_HasTrackerListChanged()
+bool PSVR_HasTrackerListChanged()
 {
 	return g_psvr_client != nullptr && g_psvr_client->pollHasTrackerListChanged();
 }
 
-bool PSM_HasHMDListChanged()
+bool PSVR_HasHMDListChanged()
 {
 	return g_psvr_client != nullptr && g_psvr_client->pollHasHMDListChanged();
 }
 
-PSMResult PSM_Initialize(PSVRLogSeverityLevel log_level)
+PSVRResult PSVR_Initialize(PSVRLogSeverityLevel log_level)
 {
-	PSMResult result= PSMResult_Success;
+	PSVRResult result= PSVRResult_Success;
 
 	if (g_psvr_service == nullptr || !g_psvr_service->getIsInitialized())
 	{
@@ -61,11 +61,11 @@ PSMResult PSM_Initialize(PSVRLogSeverityLevel log_level)
 		{
 			delete g_psvr_service;
 			g_psvr_service= nullptr;
-			result= PSMResult_Error;
+			result= PSVRResult_Error;
 		}
 	}
 	
-	if (result == PSMResult_Success)
+	if (result == PSVRResult_Success)
 	{
 		if (g_psvr_client == nullptr || !g_psvr_client->getIsInitialized())
 		{
@@ -78,7 +78,7 @@ PSMResult PSM_Initialize(PSVRLogSeverityLevel log_level)
 			{
 				delete g_psvr_client;
 				g_psvr_client= nullptr;
-				result= PSMResult_Error;
+				result= PSVRResult_Error;
 			}
 		}
 	}
@@ -86,9 +86,9 @@ PSMResult PSM_Initialize(PSVRLogSeverityLevel log_level)
     return result;
 }
 
-PSMResult PSM_GetServiceVersionString(char *out_version_string, size_t max_version_string)
+PSVRResult PSVR_GetServiceVersionString(char *out_version_string, size_t max_version_string)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr)
     {
@@ -100,9 +100,9 @@ PSMResult PSM_GetServiceVersionString(char *out_version_string, size_t max_versi
     return result;
 }
 
-PSMResult PSM_Shutdown()
+PSVRResult PSVR_Shutdown()
 {
-	PSMResult result= PSMResult_Error;
+	PSVRResult result= PSVRResult_Error;
 
 	if (g_psvr_client != nullptr)
 	{
@@ -111,7 +111,7 @@ PSMResult PSM_Shutdown()
 		delete g_psvr_client;
 		g_psvr_client= nullptr;
 
-		result= PSMResult_Success;
+		result= PSVRResult_Success;
 	}	
 	
 	if (g_psvr_service != nullptr)
@@ -121,31 +121,31 @@ PSMResult PSM_Shutdown()
 		delete g_psvr_service;
 		g_psvr_service= nullptr;
 
-		result= PSMResult_Success;
+		result= PSVRResult_Success;
 	}	
 
     return result;
 }
 
-PSMResult PSM_Update()
+PSVRResult PSVR_Update()
 {
-    PSMResult result = PSMResult_Error;
+    PSVRResult result = PSVRResult_Error;
 
-    if (PSM_UpdateNoPollMessages() == PSMResult_Success)
+    if (PSVR_UpdateNoPollMessages() == PSVRResult_Success)
     {
 		// Process all events and responses
 		// Any incoming events become status flags we can poll (ex: pollHasConnectionStatusChanged)
 		g_psvr_client->process_messages();
 
-        result= PSMResult_Success;
+        result= PSVRResult_Success;
     }
 
     return result;
 }
 
-PSMResult PSM_UpdateNoPollMessages()
+PSVRResult PSVR_UpdateNoPollMessages()
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
 	if (g_psvr_service != nullptr)
 	{
@@ -155,7 +155,7 @@ PSMResult PSM_UpdateNoPollMessages()
 		{
 			g_psvr_client->update();
 
-			result= PSMResult_Success;
+			result= PSVRResult_Success;
 		}
 	}	
 
@@ -163,7 +163,7 @@ PSMResult PSM_UpdateNoPollMessages()
 }
 
 /// Tracker Pool
-PSMTracker *PSM_GetTracker(PSMTrackerID tracker_id)
+PSVRTracker *PSVR_GetTracker(PSVRTrackerID tracker_id)
 {
     if (g_psvr_client != nullptr)
         return g_psvr_client->get_tracker_view(tracker_id);
@@ -171,73 +171,73 @@ PSMTracker *PSM_GetTracker(PSMTrackerID tracker_id)
         return nullptr;
 }
 
-PSMResult PSM_AllocateTrackerListener(PSMTrackerID tracker_id, const PSMClientTrackerInfo *tracker_info)
+PSVRResult PSVR_AllocateTrackerListener(PSVRTrackerID tracker_id, const PSVRClientTrackerInfo *tracker_info)
 {
     if (g_psvr_client != nullptr)
-	    return g_psvr_client->allocate_tracker_listener(*tracker_info) ? PSMResult_Success : PSMResult_Error;
+	    return g_psvr_client->allocate_tracker_listener(*tracker_info) ? PSVRResult_Success : PSVRResult_Error;
     else
-        return PSMResult_Error;
+        return PSVRResult_Error;
 }
 
-PSMResult PSM_FreeTrackerListener(PSMTrackerID tracker_id)
+PSVRResult PSVR_FreeTrackerListener(PSVRTrackerID tracker_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
 		g_psvr_client->free_tracker_listener(tracker_id);
-        result= PSMResult_Success;
+        result= PSVRResult_Success;
     }
 
     return result;
 }
 
 /// Tracker State Methods
-PSMResult PSM_GetTrackerScreenSize(PSMTrackerID tracker_id, PSMVector2f *out_screen_size)
+PSVRResult PSVR_GetTrackerScreenSize(PSVRTrackerID tracker_id, PSVRVector2f *out_screen_size)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
-    if (g_psm_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    if (g_PSVR_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        PSMTracker *tracker= g_psm_client->get_tracker_view(tracker_id);
+        PSVRTracker *tracker= g_PSVR_client->get_tracker_view(tracker_id);
 
         switch (tracker->tracker_info.tracker_intrinsics.intrinsics_type)
         {
-        case PSMTrackerIntrinsics::PSM_STEREO_TRACKER_INTRINSICS:
+        case PSVRTrackerIntrinsics::PSVR_STEREO_TRACKER_INTRINSICS:
             out_screen_size->x= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_width;
             out_screen_size->y= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_height;
             break;
-        case PSMTrackerIntrinsics::PSM_MONO_TRACKER_INTRINSICS:
+        case PSVRTrackerIntrinsics::PSVR_MONO_TRACKER_INTRINSICS:
             out_screen_size->x= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_width;
             out_screen_size->y= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_height;
             break;
         }
         
-        result= PSMResult_Success;
+        result= PSVRResult_Success;
     }
 
     return result;
 }
 
-PSMResult PSM_GetTrackerIntrinsics(PSMTrackerID tracker_id, PSMTrackerIntrinsics *out_intrinsics)
+PSVRResult PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrinsics *out_intrinsics)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
-    if (g_psm_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    if (g_PSVR_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		PSMTracker *tracker= g_psm_client->get_tracker_view(tracker_id);
+		PSVRTracker *tracker= g_PSVR_client->get_tracker_view(tracker_id);
 
         *out_intrinsics= tracker->tracker_info.tracker_intrinsics;
-		result= PSMResult_Success;
+		result= PSVRResult_Success;
 	}
 
 	return result;
 }
 
 /// Tracker Requests
-PSMResult PSM_GetTrackerList(PSMTrackerList *out_tracker_list)
+PSVRResult PSVR_GetTrackerList(PSVRTrackerList *out_tracker_list)
 {
-    PSMResult result_code= PSMResult_Error;
+    PSVRResult result_code= PSVRResult_Error;
 
     if (g_psvr_service != nullptr)
     {
@@ -247,9 +247,9 @@ PSMResult PSM_GetTrackerList(PSMTrackerList *out_tracker_list)
     return result_code;
 }
 
-PSMResult PSM_StartTrackerDataStream(PSMTrackerID tracker_id)
+PSVRResult PSVR_StartTrackerDataStream(PSVRTrackerID tracker_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
@@ -259,9 +259,9 @@ PSMResult PSM_StartTrackerDataStream(PSMTrackerID tracker_id)
     return result;
 }
 
-PSMResult PSM_StopTrackerDataStream(PSMTrackerID tracker_id)
+PSVRResult PSVR_StopTrackerDataStream(PSVRTrackerID tracker_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
@@ -271,9 +271,9 @@ PSMResult PSM_StopTrackerDataStream(PSMTrackerID tracker_id)
     return result;
 }
 
-PSMResult PSM_GetTrackingSpaceSettings(PSMTrackingSpace *out_tracking_space)
+PSVRResult PSVR_GetTrackingSpaceSettings(PSVRTrackingSpace *out_tracking_space)
 {
-    PSMResult result_code= PSMResult_Error;
+    PSVRResult result_code= PSVRResult_Error;
 
     if (g_psvr_service != nullptr)
     {
@@ -283,48 +283,48 @@ PSMResult PSM_GetTrackingSpaceSettings(PSMTrackingSpace *out_tracking_space)
     return result_code;
 }
 
-PSMResult PSM_OpenTrackerVideoStream(PSMTrackerID tracker_id)
+PSVRResult PSVR_OpenTrackerVideoStream(PSVRTrackerID tracker_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        result= g_psvr_client->open_video_stream(tracker_id) ? PSMResult_Success : PSMResult_Error;
+        result= g_psvr_client->open_video_stream(tracker_id) ? PSVRResult_Success : PSVRResult_Error;
     }
 
     return result;
 }
 
-PSMResult PSM_CloseTrackerVideoStream(PSMTrackerID tracker_id)
+PSVRResult PSVR_CloseTrackerVideoStream(PSVRTrackerID tracker_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
 		g_psvr_client->close_video_stream(tracker_id);
-		result= PSMResult_Success;
+		result= PSVRResult_Success;
     }
 
     return result;
 }
 
-PSMResult PSM_GetTrackerVideoFrameSectionCount(PSMTrackerID tracker_id, int *out_section_count)
+PSVRResult PSVR_GetTrackerVideoFrameSectionCount(PSVRTrackerID tracker_id, int *out_section_count)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_section_count != nullptr);
 
-    if (g_psm_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    if (g_PSVR_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        *out_section_count= g_psm_client->get_video_frame_section_count(tracker_id);
-		result= PSMResult_Success;
+        *out_section_count= g_PSVR_client->get_video_frame_section_count(tracker_id);
+		result= PSVRResult_Success;
     }
 
     return result;
 }
 
-PSMResult PSM_GetTrackerVideoFrameBuffer(PSMTrackerID tracker_id, PSMVideoFrameSection section_index, const unsigned char **out_buffer)
+PSVRResult PSVR_GetTrackerVideoFrameBuffer(PSVRTrackerID tracker_id, PSVRVideoFrameSection section_index, const unsigned char **out_buffer)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_buffer != nullptr);
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
@@ -333,39 +333,39 @@ PSMResult PSM_GetTrackerVideoFrameBuffer(PSMTrackerID tracker_id, PSMVideoFrameS
 		if (buffer != nullptr)
 		{
 			*out_buffer= buffer;
-			result= PSMResult_Success;
+			result= PSVRResult_Success;
 		}
     }
 
     return result;
 }
 
-PSMResult PSM_GetTrackerFrustum(PSMTrackerID tracker_id, PSMFrustum *out_frustum)
+PSVRResult PSVR_GetTrackerFrustum(PSVRTrackerID tracker_id, PSVRFrustum *out_frustum)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_frustum != nullptr);
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		const PSMTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
-		const PSMClientTrackerInfo *tracker_info= &tracker->tracker_info;
-		PSM_FrustumSetPose(out_frustum, &tracker_info->tracker_pose);
+		const PSVRTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
+		const PSVRClientTrackerInfo *tracker_info= &tracker->tracker_info;
+		PSVR_FrustumSetPose(out_frustum, &tracker_info->tracker_pose);
 
 		// Convert the FOV angles to radians for rendering purposes
-        const PSMMonoTrackerIntrinsics &mono_intrinsics= tracker_info->tracker_intrinsics.intrinsics.mono;
+        const PSVRMonoTrackerIntrinsics &mono_intrinsics= tracker_info->tracker_intrinsics.intrinsics.mono;
 		out_frustum->HFOV = mono_intrinsics.hfov * k_degrees_to_radians;
 		out_frustum->VFOV = mono_intrinsics.vfov * k_degrees_to_radians;
 		out_frustum->zNear = mono_intrinsics.znear;
 		out_frustum->zFar = mono_intrinsics.zfar;
 
-		result= PSMResult_Success;
+		result= PSVRResult_Success;
 	}
 
     return result;
 }
 
 /// HMD Pool
-PSMHeadMountedDisplay *PSM_GetHmd(PSMHmdID hmd_id)
+PSVRHeadMountedDisplay *PSVR_GetHmd(PSVRHmdID hmd_id)
 {
     if (g_psvr_client != nullptr)
 	    return g_psvr_client->get_hmd_view(hmd_id);
@@ -373,23 +373,23 @@ PSMHeadMountedDisplay *PSM_GetHmd(PSMHmdID hmd_id)
         return nullptr;
 }
 
-PSMResult PSM_AllocateHmdListener(PSMHmdID hmd_id)
+PSVRResult PSVR_AllocateHmdListener(PSVRHmdID hmd_id)
 {
     if (g_psvr_client != nullptr)
-	    return g_psvr_client->allocate_hmd_listener(hmd_id) ? PSMResult_Success : PSMResult_Error;
+	    return g_psvr_client->allocate_hmd_listener(hmd_id) ? PSVRResult_Success : PSVRResult_Error;
     else
-        return PSMResult_Error;
+        return PSVRResult_Error;
 }
 
-PSMResult PSM_FreeHmdListener(PSMHmdID hmd_id)
+PSVRResult PSVR_FreeHmdListener(PSVRHmdID hmd_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
 		g_psvr_client->free_hmd_listener(hmd_id);
 
-        result= PSMResult_Success;
+        result= PSVRResult_Success;
     }
 
     return result;
@@ -397,27 +397,27 @@ PSMResult PSM_FreeHmdListener(PSMHmdID hmd_id)
 }
 
 /// HMD State Methods
-PSMResult PSM_GetHmdOrientation(PSMHmdID hmd_id, PSMQuatf *out_orientation)
+PSVRResult PSVR_GetHmdOrientation(PSVRHmdID hmd_id, PSVRQuatf *out_orientation)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_orientation);
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {		
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
-				PSMMorpheus State= hmd->HmdState.MorpheusState;
+				PSVRMorpheus State= hmd->HmdState.MorpheusState;
 				*out_orientation = State.Pose.Orientation;
 
-				result= State.bIsOrientationValid ? PSMResult_Success : PSMResult_Error;
+				result= State.bIsOrientationValid ? PSVRResult_Success : PSVRResult_Error;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
-				result= PSMResult_Error;
+				result= PSVRResult_Error;
             } break;
         }
     }
@@ -425,30 +425,30 @@ PSMResult PSM_GetHmdOrientation(PSMHmdID hmd_id, PSMQuatf *out_orientation)
     return result;
 }
 
-PSMResult PSM_GetHmdPosition(PSMHmdID hmd_id, PSMVector3f *out_position)
+PSVRResult PSVR_GetHmdPosition(PSVRHmdID hmd_id, PSVRVector3f *out_position)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_position);
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
-				PSMMorpheus State= hmd->HmdState.MorpheusState;
+				PSVRMorpheus State= hmd->HmdState.MorpheusState;
 				*out_position = State.Pose.Position;
 
-				result= State.bIsPositionValid ? PSMResult_Success : PSMResult_Error;
+				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
-				PSMVirtualHMD State= hmd->HmdState.VirtualHMDState;
+				PSVRVirtualHMD State= hmd->HmdState.VirtualHMDState;
 				*out_position = State.Pose.Position;
 
-				result= State.bIsPositionValid ? PSMResult_Success : PSMResult_Error;
+				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
             } break;
         }
     }
@@ -456,30 +456,30 @@ PSMResult PSM_GetHmdPosition(PSMHmdID hmd_id, PSMVector3f *out_position)
     return result;
 }
 
-PSMResult PSM_GetHmdPose(PSMHmdID hmd_id, PSMPosef *out_pose)
+PSVRResult PSVR_GetHmdPose(PSVRHmdID hmd_id, PSVRPosef *out_pose)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_pose);
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
-				PSMMorpheus State= hmd->HmdState.MorpheusState;
+				PSVRMorpheus State= hmd->HmdState.MorpheusState;
 				*out_pose = State.Pose;
 
-				result= (State.bIsOrientationValid && State.bIsPositionValid) ? PSMResult_Success : PSMResult_Error;
+				result= (State.bIsOrientationValid && State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
-				PSMVirtualHMD State= hmd->HmdState.VirtualHMDState;
+				PSVRVirtualHMD State= hmd->HmdState.VirtualHMDState;
 				*out_pose = State.Pose;
 
-				result= (State.bIsPositionValid) ? PSMResult_Success : PSMResult_Error;
+				result= (State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
             } break;
         }
     }
@@ -487,39 +487,39 @@ PSMResult PSM_GetHmdPose(PSMHmdID hmd_id, PSMPosef *out_pose)
     return result;
 }
 
-PSMResult PSM_GetIsHmdStable(PSMHmdID hmd_id, bool *out_is_stable)
+PSVRResult PSVR_GetIsHmdStable(PSVRHmdID hmd_id, bool *out_is_stable)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_is_stable);
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
 				const float k_cosine_20_degrees = 0.9396926f;
 
 				// Get the direction the gravity vector should be pointing 
 				// while the controller is in cradle pose.
-				const PSMVector3f acceleration_direction = hmd->HmdState.MorpheusState.CalibratedSensorData.Accelerometer;
+				const PSVRVector3f acceleration_direction = hmd->HmdState.MorpheusState.CalibratedSensorData.Accelerometer;
 				float acceleration_magnitude;
-				PSM_Vector3fNormalizeWithDefaultGetLength(&acceleration_direction, k_psm_float_vector3_zero, &acceleration_magnitude);
+				PSVR_Vector3fNormalizeWithDefaultGetLength(&acceleration_direction, k_PSVR_float_vector3_zero, &acceleration_magnitude);
 
 				*out_is_stable =
 					is_nearly_equal(1.f, acceleration_magnitude, 0.1f) &&
-					PSM_Vector3fDot(&k_identity_gravity_calibration_direction, &acceleration_direction) >= k_cosine_20_degrees;
+					PSVR_Vector3fDot(&k_identity_gravity_calibration_direction, &acceleration_direction) >= k_cosine_20_degrees;
 
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
                 // Virtual HMD can never be stable
 				*out_is_stable = false;
 
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
             } break;
         }
     }
@@ -527,26 +527,26 @@ PSMResult PSM_GetIsHmdStable(PSMHmdID hmd_id, bool *out_is_stable)
     return result;
 }
 
-PSMResult PSM_GetIsHmdTracking(PSMHmdID hmd_id, bool *out_is_tracking)
+PSVRResult PSVR_GetIsHmdTracking(PSVRHmdID hmd_id, bool *out_is_tracking)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 	assert(out_is_tracking);
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
 				*out_is_tracking = hmd->HmdState.MorpheusState.bIsCurrentlyTracking;
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
 				*out_is_tracking = hmd->HmdState.VirtualHMDState.bIsCurrentlyTracking;
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
             } break;
         }
     }
@@ -554,22 +554,22 @@ PSMResult PSM_GetIsHmdTracking(PSMHmdID hmd_id, bool *out_is_tracking)
     return result;
 }
 
-PSMResult PSM_GetHmdPixelLocationOnTracker(PSMHmdID hmd_id, PSMTrackingProjectionCount projection_index, PSMTrackerID *outTrackerId, PSMVector2f *outLocation)
+PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProjectionCount projection_index, PSVRTrackerID *outTrackerId, PSVRVector2f *outLocation)
 {
-	PSMResult result= PSMResult_Error;
+	PSVRResult result= PSVRResult_Error;
 	
-    if (g_psm_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    if (g_PSVR_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
-		PSMRawTrackerData *trackerData= nullptr;
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+		PSVRRawTrackerData *trackerData= nullptr;
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
 				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
 				trackerData= &hmd->HmdState.VirtualHMDState.RawTrackerData;
             } break;
@@ -581,31 +581,31 @@ PSMResult PSM_GetHmdPixelLocationOnTracker(PSMHmdID hmd_id, PSMTrackingProjectio
                 *outTrackerId = trackerData->TrackerID;
             if (outLocation)            
                 *outLocation = trackerData->ScreenLocations[projection_index];
-			result= PSMResult_Success;
+			result= PSVRResult_Success;
 		}
 	}
 
     return result;
 }
 
-PSMResult PSM_GetHmdPositionOnTracker(PSMHmdID hmd_id, PSMTrackerID *outTrackerId, PSMVector3f *outPosition)
+PSVRResult PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRVector3f *outPosition)
 {
 	assert(outPosition);
     assert(outTrackerId);
-	PSMResult result= PSMResult_Error;
+	PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
-		PSMRawTrackerData *trackerData= nullptr;
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+		PSVRRawTrackerData *trackerData= nullptr;
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
 				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
 				trackerData= &hmd->HmdState.VirtualHMDState.RawTrackerData;
             } break;
@@ -615,31 +615,31 @@ PSMResult PSM_GetHmdPositionOnTracker(PSMHmdID hmd_id, PSMTrackerID *outTrackerI
 		{
             *outTrackerId = trackerData->TrackerID;
 			*outPosition = trackerData->RelativePositionCm;
-			result= PSMResult_Success;
+			result= PSVRResult_Success;
         }
 	}
 
     return result;
 }
 
-PSMResult PSM_GetHmdOrientationOnTracker(PSMHmdID hmd_id, PSMTrackerID *outTrackerId, PSMQuatf *outOrientation)
+PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRQuatf *outOrientation)
 {
 	assert(outOrientation);
     assert(outTrackerId);
-	PSMResult result= PSMResult_Error;
+	PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
-		PSMRawTrackerData *trackerData= nullptr;
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+		PSVRRawTrackerData *trackerData= nullptr;
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
 				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
 				trackerData= nullptr;
             } break;
@@ -649,31 +649,31 @@ PSMResult PSM_GetHmdOrientationOnTracker(PSMHmdID hmd_id, PSMTrackerID *outTrack
 		{
             *outTrackerId = trackerData->TrackerID;
 			*outOrientation = trackerData->RelativeOrientation;
-			result= PSMResult_Success;
+			result= PSVRResult_Success;
         }
 	}
 
     return result;
 }
 
-PSMResult PSM_GetHmdProjectionOnTracker(PSMHmdID hmd_id, PSMTrackerID *outTrackerId, PSMTrackingProjection *outProjection)
+PSVRResult PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRTrackingProjection *outProjection)
 {
 	assert(outProjection);
     assert(outTrackerId);
-	PSMResult result= PSMResult_Error;
+	PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
-		PSMRawTrackerData *trackerData= nullptr;
+        PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
+		PSVRRawTrackerData *trackerData= nullptr;
         
         switch (hmd->HmdType)
         {
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
             {
 				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
             } break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
             {
 				trackerData= &hmd->HmdState.VirtualHMDState.RawTrackerData;
             } break;
@@ -683,16 +683,16 @@ PSMResult PSM_GetHmdProjectionOnTracker(PSMHmdID hmd_id, PSMTrackerID *outTracke
 		{
             *outTrackerId= trackerData->TrackerID;
 			*outProjection = trackerData->TrackingProjection;
-			result= PSMResult_Success;
+			result= PSVRResult_Success;
         }
 	}
 
     return result;
 }
 
-PSMResult PSM_GetHmdTrackingShape(PSMHmdID hmd_id, PSMTrackingShape *out_shape)
+PSVRResult PSVR_GetHmdTrackingShape(PSVRHmdID hmd_id, PSVRTrackingShape *out_shape)
 {
-	PSMResult result= PSMResult_Error;
+	PSVRResult result= PSVRResult_Error;
 	
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
@@ -703,9 +703,9 @@ PSMResult PSM_GetHmdTrackingShape(PSMHmdID hmd_id, PSMTrackingShape *out_shape)
 }
 
 /// HMD Requests
-PSMResult PSM_GetHmdList(PSMHmdList *out_hmd_list)
+PSVRResult PSVR_GetHmdList(PSVRHmdList *out_hmd_list)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr)
     {
@@ -715,9 +715,9 @@ PSMResult PSM_GetHmdList(PSMHmdList *out_hmd_list)
     return result;
 }
 
-PSMResult PSM_StartHmdDataStream(PSMHmdID hmd_id, unsigned int data_stream_flags)
+PSVRResult PSVR_StartHmdDataStream(PSVRHmdID hmd_id, unsigned int data_stream_flags)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
@@ -727,9 +727,9 @@ PSMResult PSM_StartHmdDataStream(PSMHmdID hmd_id, unsigned int data_stream_flags
     return result;
 }
 
-PSMResult PSM_StopHmdDataStream(PSMHmdID hmd_id)
+PSVRResult PSVR_StopHmdDataStream(PSVRHmdID hmd_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
@@ -739,9 +739,9 @@ PSMResult PSM_StopHmdDataStream(PSMHmdID hmd_id)
     return result;
 }
 
-PSMResult PSM_SetHmdDataStreamTrackerIndex(PSMHmdID hmd_id, PSMTrackerID tracker_id)
+PSVRResult PSVR_SetHmdDataStreamTrackerIndex(PSVRHmdID hmd_id, PSVRTrackerID tracker_id)
 {
-    PSMResult result= PSMResult_Error;
+    PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && 
         IS_VALID_HMD_INDEX(hmd_id) &&

@@ -17,8 +17,8 @@
 
 #include <imgui.h>
 
-#include "psmovebody_3dmodel.h"
-#include "psmovebulb_3dmodel.h"
+#include "PSVRbody_3dmodel.h"
+#include "PSVRbulb_3dmodel.h"
 #include "psnavi_3dmodel.h"
 #include "ps3eye_3dmodel.h"
 #include "ds4body_3dmodel.h"
@@ -44,7 +44,7 @@ static const float k_camera_z_far= 5000.f;
 
 static const ImVec4 k_clear_color = ImColor(114, 144, 154);
 
-static const glm::vec3 k_psmove_frustum_color = glm::vec3(0.1f, 0.7f, 0.3f);
+static const glm::vec3 k_PSVR_frustum_color = glm::vec3(0.1f, 0.7f, 0.3f);
 
 //-- statics -----
 Renderer *Renderer::m_instance= NULL;
@@ -104,7 +104,7 @@ bool Renderer::init()
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
-		snprintf(szWindowTitle, sizeof(szWindowTitle), "PSMove Config Tool v%s", PSM_RELEASE_VERSION_STRING);
+		snprintf(szWindowTitle, sizeof(szWindowTitle), "PSVR Config Tool v%s", PSVR_RELEASE_VERSION_STRING);
         m_window = SDL_CreateWindow(szWindowTitle,
             SDL_WINDOWPOS_CENTERED,
             SDL_WINDOWPOS_CENTERED,
@@ -376,11 +376,11 @@ void Renderer::renderEnd()
 }
 
 //-- Drawing Methods -----
-PSMVector2f remapPointIntoSubWindow(
+PSVRVector2f remapPointIntoSubWindow(
     const float screenWidth, const float screenHeight,
     const float windowLeft, const float windowTop,
     const float windowRight, const float windowBottom,
-    const PSMVector2f &in_point)
+    const PSVRVector2f &in_point)
 {
     const float u= in_point.x / screenWidth;
     const float v= in_point.y / screenHeight;
@@ -680,7 +680,7 @@ void drawPointCloudProjection(
     const float windowX0, const float windowY0,
     const float windowX1, const float windowY1,
     const glm::vec3 &color,
-    const PSMVector2f *points, const int point_count, const float point_size)
+    const PSVRVector2f *points, const int point_count, const float point_size)
 {
     drawPointCloudProjectionInSubWindow(
         trackerWidth, trackerHeight,
@@ -695,7 +695,7 @@ void drawPointCloudProjectionInSubWindow(
     const float windowX0, const float windowY0,
     const float windowX1, const float windowY1,
     const glm::vec3 &color,
-    const PSMVector2f *points, const int point_count, const float point_size)
+    const PSVRVector2f *points, const int point_count, const float point_size)
 {
 	assert(Renderer::getIsRenderingStage());
 
@@ -718,7 +718,7 @@ void drawPointCloudProjectionInSubWindow(
 	glLineWidth(2.f);
 	for (int point_index = 0; point_index < point_count; ++point_index)
 	{
-		const PSMVector2f *point = &points[point_index];
+		const PSVRVector2f *point = &points[point_index];
         const glm::vec3 vertex(point->x, point->y, 0.5f);
         const glm::vec3 remappedVertex=
             remapPointIntoSubWindow(
@@ -932,7 +932,7 @@ void drawWireframeTriangle(
 }
 
 
-void drawTransformedFrustum(const glm::mat4 &transform, const PSMFrustum *frustum, const glm::vec3 &color)
+void drawTransformedFrustum(const glm::mat4 &transform, const PSVRFrustum *frustum, const glm::vec3 &color)
 {
     assert(Renderer::getIsRenderingStage());
 
@@ -1342,14 +1342,14 @@ void drawOpenCVChessBoardInSubWindow(
     glPopMatrix();
 }
 
-void drawPoseArrayStrip(const PSMPosef *poses, const int poseCount, const glm::vec3 &color)
+void drawPoseArrayStrip(const PSVRPosef *poses, const int poseCount, const glm::vec3 &color)
 {
     glColor3fv(glm::value_ptr(color));
     glBegin(GL_LINE_STRIP);
 
     for (int sampleIndex = 0; sampleIndex < poseCount; ++sampleIndex)
     {
-        const PSMPosef &pose = poses[sampleIndex];
+        const PSVRPosef &pose = poses[sampleIndex];
 
         glVertex3f(pose.Position.x, pose.Position.y, pose.Position.z);
     }
@@ -1382,11 +1382,11 @@ void drawPS3EyeModel(const glm::mat4 &transform)
     glBindTexture(GL_TEXTURE_2D, 0); 
 }
 
-void drawPSMoveModel(const glm::mat4 &transform, const glm::vec3 &color)
+void drawPSVRModel(const glm::mat4 &transform, const glm::vec3 &color)
 {
     assert(Renderer::getIsRenderingStage());
 
-    int textureID= AssetManager::getInstance()->getPSMoveTextureAsset()->texture_id;
+    int textureID= AssetManager::getInstance()->getPSVRTextureAsset()->texture_id;
 
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -1397,14 +1397,14 @@ void drawPSMoveModel(const glm::mat4 &transform, const glm::vec3 &color)
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         
         glColor3f(1.f, 1.f, 1.f);
-        glVertexPointer(3, GL_FLOAT, 0, psmovebodyVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, psmovebodyTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, psmovebodyNumVerts);
+        glVertexPointer(3, GL_FLOAT, 0, PSVRbodyVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbodyTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, PSVRbodyNumVerts);
 
         glColor3fv(glm::value_ptr(color));
-        glVertexPointer(3, GL_FLOAT, 0, psmovebulbVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, psmovebulbTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, psmovebulbNumVerts);
+        glVertexPointer(3, GL_FLOAT, 0, PSVRbulbVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbulbTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, PSVRbulbNumVerts);
 
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1485,14 +1485,14 @@ void drawVirtualControllerModel(const glm::mat4 &transform, const glm::vec3 &col
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         
         glColor3f(1.f, 1.f, 1.f);
-        glVertexPointer(3, GL_FLOAT, 0, psmovebodyVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, psmovebodyTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, psmovebodyNumVerts);
+        glVertexPointer(3, GL_FLOAT, 0, PSVRbodyVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbodyTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, PSVRbodyNumVerts);
 
         glColor3fv(glm::value_ptr(color));
-        glVertexPointer(3, GL_FLOAT, 0, psmovebulbVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, psmovebulbTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, psmovebulbNumVerts);
+        glVertexPointer(3, GL_FLOAT, 0, PSVRbulbVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbulbTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, PSVRbulbNumVerts);
 
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1503,32 +1503,32 @@ void drawVirtualControllerModel(const glm::mat4 &transform, const glm::vec3 &col
     glBindTexture(GL_TEXTURE_2D, 0); 
 }
 
-void drawTrackerList(const PSMClientTrackerInfo *trackerList, const int trackerCount)
+void drawTrackerList(const PSVRClientTrackerInfo *trackerList, const int trackerCount)
 {
-	glm::mat4 psmove_tracking_space_to_chaperone_space = glm::mat4(1.f);
+	glm::mat4 PSVR_tracking_space_to_chaperone_space = glm::mat4(1.f);
 
 
 	// Draw the frustum for each tracking camera.
-	// The frustums are defined in PSMove tracking space.
+	// The frustums are defined in PSVR tracking space.
 	// We need to transform them into chaperone space to display them along side the HMD.
 	for (int tracker_index = 0; tracker_index < trackerCount; ++tracker_index)
 	{
-		const PSMClientTrackerInfo *trackerInfo= &trackerList[tracker_index];
-		const PSMPosef tracker_pose = trackerInfo->tracker_pose;
-		const glm::mat4 chaperoneSpaceTransform = psm_posef_to_glm_mat4(tracker_pose);
+		const PSVRClientTrackerInfo *trackerInfo= &trackerList[tracker_index];
+		const PSVRPosef tracker_pose = trackerInfo->tracker_pose;
+		const glm::mat4 chaperoneSpaceTransform = PSVR_posef_to_glm_mat4(tracker_pose);
 
-		PSMFrustum frustum;
+		PSVRFrustum frustum;
 
-		PSM_FrustumSetPose(&frustum, &tracker_pose);
+		PSVR_FrustumSetPose(&frustum, &tracker_pose);
 
 		// Convert the FOV angles to radians for rendering purposes
-        const PSMMonoTrackerIntrinsics &mono_intrinsics= trackerInfo->tracker_intrinsics.intrinsics.mono;
+        const PSVRMonoTrackerIntrinsics &mono_intrinsics= trackerInfo->tracker_intrinsics.intrinsics.mono;
 		frustum.HFOV = mono_intrinsics.hfov * k_degrees_to_radians;
 		frustum.VFOV = mono_intrinsics.vfov * k_degrees_to_radians;
 		frustum.zNear = mono_intrinsics.znear;
 		frustum.zFar = mono_intrinsics.zfar;
 
-		drawTransformedFrustum(psmove_tracking_space_to_chaperone_space, &frustum, k_psmove_frustum_color);
+		drawTransformedFrustum(PSVR_tracking_space_to_chaperone_space, &frustum, k_PSVR_frustum_color);
 		drawTransformedAxes(chaperoneSpaceTransform, 20.f);
 	}
 }
@@ -1567,7 +1567,7 @@ void drawVirtualHMDModel(const glm::mat4 &transform, const glm::vec3 &color)
     assert(Renderer::getIsRenderingStage());
 
     int dk2TextureID= AssetManager::getInstance()->getDK2TextureAsset()->texture_id;
-    int psMoveTextureID= AssetManager::getInstance()->getPSMoveTextureAsset()->texture_id;
+    int PSVRTextureID= AssetManager::getInstance()->getPSVRTextureAsset()->texture_id;
 
     glBindTexture(GL_TEXTURE_2D, dk2TextureID);
 
@@ -1587,7 +1587,7 @@ void drawVirtualHMDModel(const glm::mat4 &transform, const glm::vec3 &color)
 
     glPopMatrix();
 
-    glBindTexture(GL_TEXTURE_2D, psMoveTextureID);
+    glBindTexture(GL_TEXTURE_2D, PSVRTextureID);
 
     glPushMatrix();
         glMultMatrixf(glm::value_ptr(transform));
@@ -1598,9 +1598,9 @@ void drawVirtualHMDModel(const glm::mat4 &transform, const glm::vec3 &color)
         glColor3fv(glm::value_ptr(color));
         glTranslatef(0.f, -2.f, 0.f);
         glRotatef(90.f, 1.f, 0.f, 0.f);
-        glVertexPointer(3, GL_FLOAT, 0, psmovebulbVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, psmovebulbTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, psmovebulbNumVerts);
+        glVertexPointer(3, GL_FLOAT, 0, PSVRbulbVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbulbTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, PSVRbulbNumVerts);
 
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);

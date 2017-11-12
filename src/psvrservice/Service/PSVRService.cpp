@@ -28,7 +28,7 @@ PSVRService::PSVRService()
     // Manages all control and bulk transfer requests in another thread
     m_usb_device_manager= new USBDeviceManager;
 
-    // Keep track of currently connected devices (PSMove controllers, cameras, HMDs)
+    // Keep track of currently connected devices (PSVR controllers, cameras, HMDs)
     m_device_manager= new DeviceManager();
 
     // Generates responses from incoming requests sent to the network manager
@@ -50,10 +50,10 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 	bool success= true;
    
 	// initialize logging system
-	log_init(log_level, "PSMoveService.log");
+	log_init(log_level, "PSVRSERVICE.log");
 
 	// Start the service app
-	SERVER_LOG_INFO("main") << "Starting PSVRService v" << PSM_RELEASE_VERSION_STRING << " (protocol v" << PSM_PROTOCOL_VERSION_STRING << ")";	   
+	SERVER_LOG_INFO("main") << "Starting PSVRService v" << PSVR_RELEASE_VERSION_STRING << " (protocol v" << PSVR_PROTOCOL_VERSION_STRING << ")";	   
    
 	/** Setup the usb async transfer thread before we attempt to initialize the trackers */
 	if (success)

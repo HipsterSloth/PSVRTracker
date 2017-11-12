@@ -1,5 +1,5 @@
-#ifndef PSMOVE_CONFIG_H
-#define PSMOVE_CONFIG_H
+#ifndef PSVR_CONFIG_H
+#define PSVR_CONFIG_H
 
 //-- includes -----
 #include <string>
@@ -9,9 +9,9 @@
 extern const struct CommonHSVColorRange *k_default_color_presets;
 
 //-- definitions -----
-class PSMoveConfig {
+class PSVRConfig {
 public:
-    PSMoveConfig(const std::string &fnamebase = std::string("PSMoveConfig"));
+    PSVRConfig(const std::string &fnamebase = std::string("PSVRConfig"));
     void save();
     bool load();
     
@@ -46,10 +46,10 @@ private:
     const std::string getConfigPath();
 };
 /*
-Note that PSMoveConfig is an abstract class because it has 2 pure virtual functions.
+Note that PSVRConfig is an abstract class because it has 2 pure virtual functions.
 Child classes must add public member variables that store the config data,
 as well as implement config2ptree and ptree2config that use pt.put() and
 pt.get(), respectively, to convert between member variables and the
 property tree. See tests/test_config.cpp for an example.
 */
-#endif // PSMOVE_CONFIG_H
+#endif // PSVR_CONFIG_H

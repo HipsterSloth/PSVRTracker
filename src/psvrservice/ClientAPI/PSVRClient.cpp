@@ -12,17 +12,17 @@
 #endif
 
 //-- typedefs -----
-typedef std::deque<PSMEventMessage> t_message_queue;
+typedef std::deque<PSVREventMessage> t_message_queue;
 
 // -- macros -----
-#define IS_VALID_TRACKER_INDEX(x) ((x) >= 0 && (x) < PSMOVESERVICE_MAX_TRACKER_COUNT)
-#define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSMOVESERVICE_MAX_HMD_COUNT)
+#define IS_VALID_TRACKER_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_TRACKER_COUNT)
+#define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_HMD_COUNT)
 
 // -- prototypes -----
-static void applyTrackerDataFrame(const TrackerDataPacket& tracker_packet, PSMTracker *tracker);
-static void applyHmdDataFrame(const HMDDataPacket& hmd_packet, PSMHeadMountedDisplay *hmd);
-static void applyMorpheusDataFrame(const HMDDataPacket& hmd_packet, PSMMorpheus *morpheus);
-static void applyVirtualHMDDataFrame(const HMDDataPacket& hmd_packet, PSMVirtualHMD *virtualHMD);
+static void applyTrackerDataFrame(const TrackerDataPacket& tracker_packet, PSVRTracker *tracker);
+static void applyHmdDataFrame(const HMDDataPacket& hmd_packet, PSVRHeadMountedDisplay *hmd);
+static void applyMorpheusDataFrame(const HMDDataPacket& hmd_packet, PSVRMorpheus *morpheus);
+static void applyVirtualHMDDataFrame(const HMDDataPacket& hmd_packet, PSVRVirtualHMD *virtualHMD);
 
 // -- methods -----
 PSVRClient::PSVRClient(class ServiceRequestHandler *request_handler)
@@ -55,7 +55,7 @@ bool PSVRClient::pollHasHMDListChanged()
 	return bHasHMDListChanged; 
 }
 
-// -- ClientPSMoveAPI System -----
+// -- ClientPSVRAPI System -----
 bool PSVRClient::startup(e_log_severity_level log_level)
 {
     bool success = true;
@@ -68,18 +68,18 @@ bool PSVRClient::startup(e_log_severity_level log_level)
 
 	SERVER_LOG_INFO("PSVRClient") << "Successfully initialized PSVRClient" << std::endl;
 
-	memset(m_trackers, 0, sizeof(PSMTracker)*PSMOVESERVICE_MAX_TRACKER_COUNT);
-	for (PSMTrackerID tracker_id= 0; tracker_id < PSMOVESERVICE_MAX_TRACKER_COUNT; ++tracker_id)    
+	memset(m_trackers, 0, sizeof(PSVRTracker)*PSVRSERVICE_MAX_TRACKER_COUNT);
+	for (PSVRTrackerID tracker_id= 0; tracker_id < PSVRSERVICE_MAX_TRACKER_COUNT; ++tracker_id)    
 	{
 		m_trackers[tracker_id].tracker_info.tracker_id= tracker_id;
-		m_trackers[tracker_id].tracker_info.tracker_type= PSMTracker_None;
+		m_trackers[tracker_id].tracker_info.tracker_type= PSVRTracker_None;
 	}
 
-	memset(m_HMDs, 0, sizeof(PSMHeadMountedDisplay)*PSMOVESERVICE_MAX_HMD_COUNT);
-	for (PSMHmdID hmd_id= 0; hmd_id < PSMOVESERVICE_MAX_HMD_COUNT; ++hmd_id)    
+	memset(m_HMDs, 0, sizeof(PSVRHeadMountedDisplay)*PSVRSERVICE_MAX_HMD_COUNT);
+	for (PSVRHmdID hmd_id= 0; hmd_id < PSVRSERVICE_MAX_HMD_COUNT; ++hmd_id)    
 	{
 		m_HMDs[hmd_id].HmdID= hmd_id;
-		m_HMDs[hmd_id].HmdType= PSMHmd_None;
+		m_HMDs[hmd_id].HmdType= PSVRHmd_None;
 	}
 
     return success;
@@ -96,7 +96,7 @@ void PSVRClient::update()
 
 void PSVRClient::process_messages()
 {
-    PSMMessage message;
+    PSVRMessage message;
     while(poll_next_message(&message, sizeof(message)))
     {
 		// Only handle events
@@ -104,17 +104,17 @@ void PSVRClient::process_messages()
     }
 }
 
-bool PSVRClient::poll_next_message(PSMMessage *message, size_t message_size)
+bool PSVRClient::poll_next_message(PSVRMessage *message, size_t message_size)
 {
     bool bHasMessage = false;
 
     if (m_message_queue.size() > 0)
     {
-        const PSMMessage &first = m_message_queue.front();
+        const PSVRMessage &first = m_message_queue.front();
 
-        assert(sizeof(PSMMessage) == message_size);
+        assert(sizeof(PSVRMessage) == message_size);
         assert(message != nullptr);
-        memcpy(message, &first, sizeof(PSMMessage));
+        memcpy(message, &first, sizeof(PSVRMessage));
 
         m_message_queue.pop_front();
 
@@ -140,18 +140,18 @@ void PSVRClient::shutdown()
     m_event_reference_cache.clear();
 }
 
-// -- ClientPSMoveAPI Requests -----
-bool PSVRClient::allocate_tracker_listener(const PSMClientTrackerInfo &trackerInfo)
+// -- ClientPSVRAPI Requests -----
+bool PSVRClient::allocate_tracker_listener(const PSVRClientTrackerInfo &trackerInfo)
 {
     bool bSuccess= false;
 
     if (IS_VALID_TRACKER_INDEX(trackerInfo.tracker_id))
     {
-        PSMTracker *tracker= &m_trackers[trackerInfo.tracker_id];
+        PSVRTracker *tracker= &m_trackers[trackerInfo.tracker_id];
 
 		if (tracker->listener_count == 0)
 		{
-			memset(tracker, 0, sizeof(PSMTracker));
+			memset(tracker, 0, sizeof(PSVRTracker));
             tracker->tracker_info= trackerInfo;
         }
 
@@ -162,41 +162,41 @@ bool PSVRClient::allocate_tracker_listener(const PSMClientTrackerInfo &trackerIn
     return bSuccess;
 }
 
-void PSVRClient::free_tracker_listener(PSMTrackerID tracker_id)
+void PSVRClient::free_tracker_listener(PSVRTrackerID tracker_id)
 {
 	if (IS_VALID_TRACKER_INDEX(tracker_id))
 	{
-		PSMTracker *tracker= &m_trackers[tracker_id];
+		PSVRTracker *tracker= &m_trackers[tracker_id];
 
 		assert(tracker->listener_count > 0);
 		--tracker->listener_count;
 
 		if (tracker->listener_count <= 0)
 		{
-			memset(tracker, 0, sizeof(PSMTracker));
+			memset(tracker, 0, sizeof(PSVRTracker));
 			tracker->tracker_info.tracker_id= tracker_id;
-			tracker->tracker_info.tracker_type= PSMTracker_None;
+			tracker->tracker_info.tracker_type= PSVRTracker_None;
 		}
 	}
 }
 
-PSMTracker* PSVRClient::get_tracker_view(PSMTrackerID tracker_id)
+PSVRTracker* PSVRClient::get_tracker_view(PSVRTrackerID tracker_id)
 {
 	return IS_VALID_TRACKER_INDEX(tracker_id) ? &m_trackers[tracker_id] : nullptr;
 }
 
-bool PSVRClient::open_video_stream(PSMTrackerID tracker_id)
+bool PSVRClient::open_video_stream(PSVRTrackerID tracker_id)
 {
     bool bSuccess = false;
 
 	if (IS_VALID_TRACKER_INDEX(tracker_id))
 	{
-		PSMTracker *tracker= &m_trackers[tracker_id];
+		PSVRTracker *tracker= &m_trackers[tracker_id];
 
 		if (tracker->opaque_shared_video_frame_buffer == nullptr)
 		{
 			SharedVideoFrameBuffer *shared_buffer= nullptr;
-			if (g_psvr_service->get_shared_video_frame_buffer(tracker_id, &shared_buffer) == PSMResult_Success)
+			if (g_psvr_service->get_shared_video_frame_buffer(tracker_id, &shared_buffer) == PSVRResult_Success)
 			{				
 				tracker->opaque_shared_video_frame_buffer= shared_buffer;
 				bSuccess = true;
@@ -217,23 +217,23 @@ bool PSVRClient::open_video_stream(PSMTrackerID tracker_id)
     return bSuccess;
 }
 
-void PSVRClient::close_video_stream(PSMTrackerID tracker_id)
+void PSVRClient::close_video_stream(PSVRTrackerID tracker_id)
 {
 	if (IS_VALID_TRACKER_INDEX(tracker_id))
 	{
-		PSMTracker *tracker= &m_trackers[tracker_id];
+		PSVRTracker *tracker= &m_trackers[tracker_id];
 
 		tracker->opaque_shared_video_frame_buffer = nullptr;
 	}
 }
 
-const unsigned char *PSVRClient::get_video_frame_buffer(PSMTrackerID tracker_id) const
+const unsigned char *PSVRClient::get_video_frame_buffer(PSVRTrackerID tracker_id) const
 {
 	const unsigned char *buffer= nullptr;
 
 	if (IS_VALID_TRACKER_INDEX(tracker_id))
 	{
-		const PSMTracker *tracker= &m_trackers[tracker_id];
+		const PSVRTracker *tracker= &m_trackers[tracker_id];
 
 		if (tracker->opaque_shared_video_frame_buffer != nullptr)
 		{
@@ -247,19 +247,19 @@ const unsigned char *PSVRClient::get_video_frame_buffer(PSMTrackerID tracker_id)
 	return buffer;
 }
     
-bool PSVRClient::allocate_hmd_listener(PSMHmdID hmd_id)
+bool PSVRClient::allocate_hmd_listener(PSVRHmdID hmd_id)
 {
     bool bSuccess= false;
 
     if (IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= &m_HMDs[hmd_id];
+        PSVRHeadMountedDisplay *hmd= &m_HMDs[hmd_id];
 
         if (hmd->ListenerCount == 0)
         {
-			memset(hmd, 0, sizeof(PSMHeadMountedDisplay));
+			memset(hmd, 0, sizeof(PSVRHeadMountedDisplay));
             hmd->HmdID= hmd_id;
-            hmd->HmdType = PSMHmd_None;
+            hmd->HmdType = PSVRHmd_None;
         }
 
         ++hmd->ListenerCount;
@@ -269,25 +269,25 @@ bool PSVRClient::allocate_hmd_listener(PSMHmdID hmd_id)
     return bSuccess;
 }
 
-void PSVRClient::free_hmd_listener(PSMHmdID hmd_id)
+void PSVRClient::free_hmd_listener(PSVRHmdID hmd_id)
 {
     if (IS_VALID_HMD_INDEX(hmd_id))
     {
-        PSMHeadMountedDisplay *hmd= &m_HMDs[hmd_id];
+        PSVRHeadMountedDisplay *hmd= &m_HMDs[hmd_id];
 
         assert(hmd->ListenerCount > 0);
         --hmd->ListenerCount;
 
         if (hmd->ListenerCount <= 0)
         {
-            memset(hmd, 0, sizeof(PSMHeadMountedDisplay));
+            memset(hmd, 0, sizeof(PSVRHeadMountedDisplay));
             hmd->HmdID= hmd_id;
-            hmd->HmdType= PSMHmd_None;
+            hmd->HmdType= PSVRHmd_None;
         }
     }
 }
 
-PSMHeadMountedDisplay* PSVRClient::get_hmd_view(PSMHmdID hmd_id)
+PSVRHeadMountedDisplay* PSVRClient::get_hmd_view(PSVRHmdID hmd_id)
 {
 	return IS_VALID_HMD_INDEX(hmd_id) ? &m_HMDs[hmd_id] : nullptr;
 }
@@ -300,7 +300,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
     case DeviceCategory_TRACKER:
         {
             const TrackerDataPacket& tracker_packet = data_frame->device.tracker_data_packet;
-			const PSMTrackerID tracker_id= tracker_packet.tracker_id();
+			const PSVRTrackerID tracker_id= tracker_packet.tracker_id();
 
             SERVER_LOG_TRACE("handle_data_frame")
                 << "received data frame for TrackerID: "
@@ -308,7 +308,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
 
 			if (IS_VALID_TRACKER_INDEX(tracker_id))
 			{
-				PSMTracker *tracker= get_tracker_view(tracker_id);
+				PSVRTracker *tracker= get_tracker_view(tracker_id);
 
 				applyTrackerDataFrame(tracker_packet, tracker);
 			}
@@ -316,7 +316,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
     case DeviceCategory_HMD:
         {
             const v& hmd_packet = data_frame->device.hmd_data_packet;
-			const PSMHmdID hmd_id= hmd_packet.hmd_id;
+			const PSVRHmdID hmd_id= hmd_packet.hmd_id;
 
             SERVER_LOG_TRACE("handle_data_frame")
                 << "received data frame for HmdID: "
@@ -325,7 +325,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
 
 			if (IS_VALID_HMD_INDEX(hmd_id))
 			{
-				PSMHeadMountedDisplay *hmd= get_hmd_view(hmd_id);
+				PSVRHeadMountedDisplay *hmd= get_hmd_view(hmd_id);
 
 				applyHmdDataFrame(hmd_packet, hmd);
 			}
@@ -335,7 +335,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
 
 static void applyTrackerDataFrame(
 	const TrackerDataPacket& tracker_packet, 
-	PSMTracker *tracker)
+	PSVRTracker *tracker)
 {
 	assert(tracker_packet.tracker_id == tracker->tracker_info.tracker_id);
 
@@ -365,8 +365,8 @@ static void applyTrackerDataFrame(
 }
 
 static void applyHmdDataFrame(
-	const PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket& hmd_packet, 
-	PSMHeadMountedDisplay *hmd)
+	const PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket& hmd_packet, 
+	PSVRHeadMountedDisplay *hmd)
 {
 	// Ignore old packets
 	if (hmd_packet.sequence_num() <= hmd->OutputSequenceNum)
@@ -402,10 +402,10 @@ static void applyHmdDataFrame(
 
     switch (hmd->hmd_type) 
 	{
-        case PSMHmd_Morpheus:
+        case PSVRHmd_Morpheus:
 			applyMorpheusDataFrame(hmd_packet, &hmd->HmdState.MorpheusState);
             break;
-        case PSMHmd_Virtual:
+        case PSVRHmd_Virtual:
 			applyVirtualHMDDataFrame(hmd_packet, &hmd->HmdState.VirtualHMDState);
             break;            
         default:
@@ -414,8 +414,8 @@ static void applyHmdDataFrame(
 }
 
 static void applyMorpheusDataFrame(
-	const PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket& hmd_packet,
-	PSMMorpheus *morpheus)
+	const PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket& hmd_packet,
+	PSVRMorpheus *morpheus)
 {
     const auto &morpheus_data_frame = hmd_packet.morpheus_state();
 
@@ -447,7 +447,7 @@ static void applyMorpheusDataFrame(
 	}
 	else
 	{
-		memset(&morpheus->RawSensorData, 0, sizeof(PSMMorpheusRawSensorData));
+		memset(&morpheus->RawSensorData, 0, sizeof(PSVRMorpheusRawSensorData));
 	}
 
 	if (morpheus_data_frame.has_calibrated_sensor_data())
@@ -464,15 +464,15 @@ static void applyMorpheusDataFrame(
 	}
 	else
 	{
-		memset(&morpheus->CalibratedSensorData, 0, sizeof(PSMMorpheusCalibratedSensorData));
+		memset(&morpheus->CalibratedSensorData, 0, sizeof(PSVRMorpheusCalibratedSensorData));
 	}
 
 	if (morpheus_data_frame.has_raw_tracker_data())
 	{
 		const auto &raw_tracker_data = morpheus_data_frame.raw_tracker_data();
 
-		const PSMoveProtocol::Pixel &locationOnTracker = raw_tracker_data.screen_location();
-		const PSMoveProtocol::Position &positionOnTrackerCm = raw_tracker_data.relative_position_cm();
+		const PSVRProtocol::Pixel &locationOnTracker = raw_tracker_data.screen_location();
+		const PSVRProtocol::Position &positionOnTrackerCm = raw_tracker_data.relative_position_cm();
 
 		morpheus->RawTrackerData.TrackerID = raw_tracker_data.tracker_id();
 		morpheus->RawTrackerData.ScreenLocation = {locationOnTracker.x(), locationOnTracker.y()};
@@ -482,29 +482,29 @@ static void applyMorpheusDataFrame(
 
 		if (raw_tracker_data.has_projected_point_cloud())
 		{
-			const PSMoveProtocol::Polygon &protocolPointCloud = raw_tracker_data.projected_point_cloud();
-			PSMTrackingProjection &projection = morpheus->RawTrackerData.TrackingProjection;
+			const PSVRProtocol::Polygon &protocolPointCloud = raw_tracker_data.projected_point_cloud();
+			PSVRTrackingProjection &projection = morpheus->RawTrackerData.TrackingProjection;
 
 			projection.shape.pointcloud.point_count = std::min(protocolPointCloud.vertices_size(), 7);
 			for (int point_index = 0; point_index < projection.shape.pointcloud.point_count; ++point_index)
 			{
-				const PSMoveProtocol::Pixel &point= protocolPointCloud.vertices(point_index);
+				const PSVRProtocol::Pixel &point= protocolPointCloud.vertices(point_index);
 
 				projection.shape.pointcloud.points[point_index].x = point.x();
 				projection.shape.pointcloud.points[point_index].y = point.y();
 			}					
-			projection.shape_type = PSMTrackingProjection::PSMShape_PointCloud;
+			projection.shape_type = PSVRTrackingProjection::PSVRShape_PointCloud;
 		}
 		else
 		{
-			PSMTrackingProjection &projection = morpheus->RawTrackerData.TrackingProjection;
+			PSVRTrackingProjection &projection = morpheus->RawTrackerData.TrackingProjection;
 
-			projection.shape_type = PSMTrackingProjection::PSMShape_INVALID_PROJECTION;
+			projection.shape_type = PSVRTrackingProjection::PSVRShape_INVALID_PROJECTION;
 		}
 	}
 	else
 	{
-		memset(&morpheus->RawTrackerData, 0, sizeof(PSMRawTrackerData));
+		memset(&morpheus->RawTrackerData, 0, sizeof(PSVRRawTrackerData));
 	}
 
 	if (morpheus_data_frame.has_physics_data())
@@ -529,13 +529,13 @@ static void applyMorpheusDataFrame(
 	}
 	else
 	{
-		memset(&morpheus->PhysicsData, 0, sizeof(PSMPhysicsData));
+		memset(&morpheus->PhysicsData, 0, sizeof(PSVRPhysicsData));
 	}
 }
 
 static void applyVirtualHMDDataFrame(
-	const PSMoveProtocol::DeviceOutputDataFrame_HMDDataPacket& hmd_packet,
-	PSMVirtualHMD *virtualHMD)
+	const PSVRProtocol::DeviceOutputDataFrame_HMDDataPacket& hmd_packet,
+	PSVRVirtualHMD *virtualHMD)
 {
     const auto &virtual_hmd_data_frame = hmd_packet.virtual_hmd_state();
 
@@ -556,8 +556,8 @@ static void applyVirtualHMDDataFrame(
 	{
 		const auto &raw_tracker_data = virtual_hmd_data_frame.raw_tracker_data();
 
-		const PSMoveProtocol::Pixel &locationOnTracker = raw_tracker_data.screen_location();
-		const PSMoveProtocol::Position &positionOnTrackerCm = raw_tracker_data.relative_position_cm();
+		const PSVRProtocol::Pixel &locationOnTracker = raw_tracker_data.screen_location();
+		const PSVRProtocol::Position &positionOnTrackerCm = raw_tracker_data.relative_position_cm();
 
 		virtualHMD->RawTrackerData.TrackerID = raw_tracker_data.tracker_id();
 		virtualHMD->RawTrackerData.ScreenLocation = {locationOnTracker.x(), locationOnTracker.y()};
@@ -567,26 +567,26 @@ static void applyVirtualHMDDataFrame(
 
 		if (raw_tracker_data.has_projected_sphere())
 		{
-			const PSMoveProtocol::Ellipse &protocolEllipse = raw_tracker_data.projected_sphere();
-			PSMTrackingProjection &projection = virtualHMD->RawTrackerData.TrackingProjection;
+			const PSVRProtocol::Ellipse &protocolEllipse = raw_tracker_data.projected_sphere();
+			PSVRTrackingProjection &projection = virtualHMD->RawTrackerData.TrackingProjection;
 
 			projection.shape.ellipse.center.x = protocolEllipse.center().x();
 			projection.shape.ellipse.center.y = protocolEllipse.center().y();
 			projection.shape.ellipse.half_x_extent = protocolEllipse.half_x_extent();
 			projection.shape.ellipse.half_y_extent = protocolEllipse.half_y_extent();
 			projection.shape.ellipse.angle = protocolEllipse.angle();
-			projection.shape_type = PSMTrackingProjection::PSMShape_Ellipse;
+			projection.shape_type = PSVRTrackingProjection::PSVRShape_Ellipse;
 		}
 		else
 		{
-			PSMTrackingProjection &projection = virtualHMD->RawTrackerData.TrackingProjection;
+			PSVRTrackingProjection &projection = virtualHMD->RawTrackerData.TrackingProjection;
 
-			projection.shape_type = PSMTrackingProjection::PSMShape_INVALID_PROJECTION;
+			projection.shape_type = PSVRTrackingProjection::PSVRShape_INVALID_PROJECTION;
 		}
 	}
 	else
 	{
-		memset(&virtualHMD->RawTrackerData, 0, sizeof(PSMRawTrackerData));
+		memset(&virtualHMD->RawTrackerData, 0, sizeof(PSVRRawTrackerData));
 	}
 
 	if (virtual_hmd_data_frame.has_physics_data())
@@ -611,7 +611,7 @@ static void applyVirtualHMDDataFrame(
 	}
 	else
 	{
-		memset(&virtualHMD->PhysicsData, 0, sizeof(PSMPhysicsData));
+		memset(&virtualHMD->PhysicsData, 0, sizeof(PSVRPhysicsData));
 	}
 }
 
@@ -620,16 +620,16 @@ void PSVRClient::handle_notification(ResponsePtr notification)
 {
     assert(notification->request_id() == -1);
 
-    PSMEventMessage::eEventType specificEventType= PSMEventMessage::PSMEvent_opaqueServiceEvent;
+    PSVREventMessage::eEventType specificEventType= PSVREventMessage::PSVREvent_opaqueServiceEvent;
 
     // See if we can translate this to an event type a client without protocol access can see
     switch(notification->type())
     {
-    case PSMoveProtocol::Response_ResponseType_TRACKER_LIST_UPDATED:
-        specificEventType = PSMEventMessage::PSMEvent_trackerListUpdated;
+    case PSVRProtocol::Response_ResponseType_TRACKER_LIST_UPDATED:
+        specificEventType = PSVREventMessage::PSVREvent_trackerListUpdated;
         break;
-    case PSMoveProtocol::Response_ResponseType_HMD_LIST_UPDATED:
-        specificEventType = PSMEventMessage::PSMEvent_hmdListUpdated;
+    case PSVRProtocol::Response_ResponseType_HMD_LIST_UPDATED:
+        specificEventType = PSVREventMessage::PSVREvent_hmdListUpdated;
         break;
     }
 
@@ -639,15 +639,15 @@ void PSVRClient::handle_notification(ResponsePtr notification)
 // Message Helpers
 //-----------------
 void PSVRClient::process_event_message(
-	const PSMEventMessage *event_message)
+	const PSVREventMessage *event_message)
 {
     switch (event_message->event_type)
     {
     // Service Events
-    case PSMEventMessage::PSMEvent_trackerListUpdated:
+    case PSVREventMessage::PSVREvent_trackerListUpdated:
         m_bHasTrackerListChanged= true;
         break;
-    case PSMEventMessage::PSMEvent_hmdListUpdated:
+    case PSVREventMessage::PSVREvent_hmdListUpdated:
         m_bHasHMDListChanged= true;
         break;
     default:
@@ -657,13 +657,13 @@ void PSVRClient::process_event_message(
 }
 
 void PSVRClient::enqueue_event_message(
-    PSMEventMessage::eEventType event_type,
+    PSVREventMessage::eEventType event_type,
     ResponsePtr event)
 {
-    PSMMessage message;
+    PSVRMessage message;
 
-    memset(&message, 0, sizeof(PSMMessage));
-    message.payload_type = PSMMessage::_messagePayloadType_Event;
+    memset(&message, 0, sizeof(PSVRMessage));
+    message.payload_type = PSVRMessage::_messagePayloadType_Event;
     message.event_data.event_type= event_type;
 
     // Maintain a reference to the event until the next update
@@ -673,7 +673,7 @@ void PSVRClient::enqueue_event_message(
         // If we just add the given event smart pointer to the reference cache
         // we'll be storing a reference to the shared m_packed_response on the client network manager
         // which gets constantly overwritten with new incoming events.
-        ResponsePtr eventCopy(new PSMoveProtocol::Response(*event.get()));
+        ResponsePtr eventCopy(new PSVRProtocol::Response(*event.get()));
 
         //NOTE: This pointer is only safe until the next update call to update is made
         message.event_data.event_data_handle = static_cast<const void *>(eventCopy.get());

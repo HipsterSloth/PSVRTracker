@@ -559,7 +559,7 @@ eigen_alignment_project_ellipse(Eigen::Vector3f *sphere_center,
 
 
 // Comments reference diagram in "Analytic solution after ellipse fitting"
-// from: https://github.com/cboulay/PSMoveService/wiki/Optical-Tracker-Algorithms
+// from: https://github.com/cboulay/PSVRSERVICE/wiki/Optical-Tracker-Algorithms
 void
 eigen_alignment_fit_focal_cone_to_sphere(
     const EigenFitEllipse &ellipse_projection,

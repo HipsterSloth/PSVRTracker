@@ -54,21 +54,21 @@ enum ProcessNoiseEnum
 };
 
 
-enum PSMoveMeasurementEnum {
-    PSMOVE_ACCELEROMETER_X, // gravity units
-    PSMOVE_ACCELEROMETER_Y,
-    PSMOVE_ACCELEROMETER_Z,
-    PSMOVE_GYROSCOPE_X, // rad / s
-    PSMOVE_GYROSCOPE_Y,
-    PSMOVE_GYROSCOPE_Z,
-    PSMOVE_MAGNETOMETER_X,
-    PSMOVE_MAGNETOMETER_Y,
-    PSMOVE_MAGNETOMETER_Z,
-    PSMOVE_OPTICAL_POSITION_X, // meters
-    PSMOVE_OPTICAL_POSITION_Y,
-    PSMOVE_OPTICAL_POSITION_Z,
+enum PSVRMeasurementEnum {
+    PSVR_ACCELEROMETER_X, // gravity units
+    PSVR_ACCELEROMETER_Y,
+    PSVR_ACCELEROMETER_Z,
+    PSVR_GYROSCOPE_X, // rad / s
+    PSVR_GYROSCOPE_Y,
+    PSVR_GYROSCOPE_Z,
+    PSVR_MAGNETOMETER_X,
+    PSVR_MAGNETOMETER_Y,
+    PSVR_MAGNETOMETER_Z,
+    PSVR_OPTICAL_POSITION_X, // meters
+    PSVR_OPTICAL_POSITION_Y,
+    PSVR_OPTICAL_POSITION_Z,
 
-    PSMOVE_MEASUREMENT_PARAMETER_COUNT
+    PSVR_MEASUREMENT_PARAMETER_COUNT
 };
 
 enum DS4MeasurementEnum {
@@ -415,18 +415,18 @@ PoseStateVector convert_noise_to_state_vector(const PoseNoiseVector &noise_vecto
 	return result;
 }
 
-class PSMove_MeasurementVector : public Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, 1>
+class PSVR_MeasurementVector : public Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, 1>
 {
 public:
-	PSMove_MeasurementVector(void) : Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, 1>()
+	PSVR_MeasurementVector(void) : Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, 1>()
 	{ }
 
 	template<typename OtherDerived>
-	PSMove_MeasurementVector(const Eigen::MatrixBase<OtherDerived>& other) : Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, 1>(other)
+	PSVR_MeasurementVector(const Eigen::MatrixBase<OtherDerived>& other) : Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, 1>(other)
 	{ }
 
 	template<typename OtherDerived>
-	PSMove_MeasurementVector& operator= (const Eigen::MatrixBase<OtherDerived>& other)
+	PSVR_MeasurementVector& operator= (const Eigen::MatrixBase<OtherDerived>& other)
 	{
 		this->Base::operator=(other);
 		return *this;
@@ -434,47 +434,47 @@ public:
 
     // Accessors
     Eigen::Vector3d get_accelerometer() const {
-        return Eigen::Vector3d((*this)[PSMOVE_ACCELEROMETER_X], (*this)[PSMOVE_ACCELEROMETER_Y], (*this)[PSMOVE_ACCELEROMETER_Z]);
+        return Eigen::Vector3d((*this)[PSVR_ACCELEROMETER_X], (*this)[PSVR_ACCELEROMETER_Y], (*this)[PSVR_ACCELEROMETER_Z]);
     }
     Eigen::Vector3d get_gyroscope() const {
-        return Eigen::Vector3d((*this)[PSMOVE_GYROSCOPE_X], (*this)[PSMOVE_GYROSCOPE_Y], (*this)[PSMOVE_GYROSCOPE_Z]);
+        return Eigen::Vector3d((*this)[PSVR_GYROSCOPE_X], (*this)[PSVR_GYROSCOPE_Y], (*this)[PSVR_GYROSCOPE_Z]);
     }
     Eigen::Vector3d get_magnetometer() const {
-        return Eigen::Vector3d((*this)[PSMOVE_MAGNETOMETER_X], (*this)[PSMOVE_MAGNETOMETER_Y], (*this)[PSMOVE_MAGNETOMETER_Z]);
+        return Eigen::Vector3d((*this)[PSVR_MAGNETOMETER_X], (*this)[PSVR_MAGNETOMETER_Y], (*this)[PSVR_MAGNETOMETER_Z]);
     }
     Eigen::Vector3d get_optical_position() const {
-        return Eigen::Vector3d((*this)[PSMOVE_OPTICAL_POSITION_X], (*this)[PSMOVE_OPTICAL_POSITION_Y], (*this)[PSMOVE_OPTICAL_POSITION_Z]);
+        return Eigen::Vector3d((*this)[PSVR_OPTICAL_POSITION_X], (*this)[PSVR_OPTICAL_POSITION_Y], (*this)[PSVR_OPTICAL_POSITION_Z]);
     }
 
     // Mutators
     void set_accelerometer(const Eigen::Vector3d &a) {
-        (*this)[PSMOVE_ACCELEROMETER_X] = a.x(); (*this)[PSMOVE_ACCELEROMETER_Y] = a.y(); (*this)[PSMOVE_ACCELEROMETER_Z] = a.z();
+        (*this)[PSVR_ACCELEROMETER_X] = a.x(); (*this)[PSVR_ACCELEROMETER_Y] = a.y(); (*this)[PSVR_ACCELEROMETER_Z] = a.z();
     }
     void set_gyroscope(const Eigen::Vector3d &g) {
-        (*this)[PSMOVE_GYROSCOPE_X] = g.x(); (*this)[PSMOVE_GYROSCOPE_Y] = g.y(); (*this)[PSMOVE_GYROSCOPE_Z] = g.z();
+        (*this)[PSVR_GYROSCOPE_X] = g.x(); (*this)[PSVR_GYROSCOPE_Y] = g.y(); (*this)[PSVR_GYROSCOPE_Z] = g.z();
     }
     void set_optical_position(const Eigen::Vector3d &p) {
-        (*this)[PSMOVE_OPTICAL_POSITION_X] = p.x(); (*this)[PSMOVE_OPTICAL_POSITION_Y] = p.y(); (*this)[PSMOVE_OPTICAL_POSITION_Z] = p.z();
+        (*this)[PSVR_OPTICAL_POSITION_X] = p.x(); (*this)[PSVR_OPTICAL_POSITION_Y] = p.y(); (*this)[PSVR_OPTICAL_POSITION_Z] = p.z();
     }
     void set_magnetometer(const Eigen::Vector3d &m) {
-        (*this)[PSMOVE_MAGNETOMETER_X] = m.x(); (*this)[PSMOVE_MAGNETOMETER_Y] = m.y(); (*this)[PSMOVE_MAGNETOMETER_Z] = m.z();
+        (*this)[PSVR_MAGNETOMETER_X] = m.x(); (*this)[PSVR_MAGNETOMETER_Y] = m.y(); (*this)[PSVR_MAGNETOMETER_Z] = m.z();
     }
 
-	PSMove_MeasurementVector negate() const
+	PSVR_MeasurementVector negate() const
 	{
-		// for the PSMove measurement the negation can be computed 
+		// for the PSVR measurement the negation can be computed 
 		// with simple vector negation
 		return (*this) * -1.0;
 	}
 
 	template <int SIGMA_POINT_COUNT>
-	static PSMove_MeasurementVector computeWeightedMeasurementAverage(
-		const Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, SIGMA_POINT_COUNT>& measurement_matrix,
+	static PSVR_MeasurementVector computeWeightedMeasurementAverage(
+		const Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, SIGMA_POINT_COUNT>& measurement_matrix,
 		const Eigen::Matrix<double, SIGMA_POINT_COUNT, 1> &weight_vector)
 	{
 		// Use efficient matrix x vector computation to compute a weighted average of the sigma point samples
 		// (No orientation stored in measurement means this can be simple)
-		PSMove_MeasurementVector result= measurement_matrix * weight_vector;
+		PSVR_MeasurementVector result= measurement_matrix * weight_vector;
 
 		return result;
 	}
@@ -594,12 +594,12 @@ public:
 };
 
 /**
-* @brief Measurement model for measuring PSMove controller
+* @brief Measurement model for measuring PSVR controller
 *
-* This is the measurement model for measuring the position and magnetometer of the PSMove controller.
+* This is the measurement model for measuring the position and magnetometer of the PSVR controller.
 * The measurement is given by the optical trackers.
 */
-class PSMove_MeasurementModel
+class PSVR_MeasurementModel
 {
 public:
     void init(const PoseFilterConstants &constants)
@@ -625,36 +625,36 @@ public:
 		Eigen::Vector3d acc_drift = constants.position_constants.accelerometer_drift.cast<double>();
 		Eigen::Vector3d gyro_drift = constants.orientation_constants.gyro_drift.cast<double>();
 		Eigen::Vector3d mag_drift = constants.orientation_constants.magnetometer_drift.cast<double>();
-		R_mu(PSMOVE_ACCELEROMETER_X, 1) = acc_drift.x();
-		R_mu(PSMOVE_ACCELEROMETER_Y, 1) = acc_drift.y();
-		R_mu(PSMOVE_ACCELEROMETER_Z, 1) = acc_drift.z();
-		R_mu(PSMOVE_GYROSCOPE_X, 1) = gyro_drift.x();
-		R_mu(PSMOVE_GYROSCOPE_Y, 1) = gyro_drift.y();
-		R_mu(PSMOVE_GYROSCOPE_Z, 1) = gyro_drift.z();
-		R_mu(PSMOVE_MAGNETOMETER_X, 1) = mag_drift.x();
-		R_mu(PSMOVE_MAGNETOMETER_Y, 1) = mag_drift.y();
-		R_mu(PSMOVE_MAGNETOMETER_Z, 1) = mag_drift.z();
-		R_mu(PSMOVE_OPTICAL_POSITION_X, 1) = 0.0;
-		R_mu(PSMOVE_OPTICAL_POSITION_Y, 1) = 0.0;
-		R_mu(PSMOVE_OPTICAL_POSITION_Z, 1) = 0.0;
+		R_mu(PSVR_ACCELEROMETER_X, 1) = acc_drift.x();
+		R_mu(PSVR_ACCELEROMETER_Y, 1) = acc_drift.y();
+		R_mu(PSVR_ACCELEROMETER_Z, 1) = acc_drift.z();
+		R_mu(PSVR_GYROSCOPE_X, 1) = gyro_drift.x();
+		R_mu(PSVR_GYROSCOPE_Y, 1) = gyro_drift.y();
+		R_mu(PSVR_GYROSCOPE_Z, 1) = gyro_drift.z();
+		R_mu(PSVR_MAGNETOMETER_X, 1) = mag_drift.x();
+		R_mu(PSVR_MAGNETOMETER_Y, 1) = mag_drift.y();
+		R_mu(PSVR_MAGNETOMETER_Z, 1) = mag_drift.z();
+		R_mu(PSVR_OPTICAL_POSITION_X, 1) = 0.0;
+		R_mu(PSVR_OPTICAL_POSITION_Y, 1) = 0.0;
+		R_mu(PSVR_OPTICAL_POSITION_Z, 1) = 0.0;
 
 
         // Update the measurement covariance R
-        R_cov = Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, PSMOVE_MEASUREMENT_PARAMETER_COUNT>::Zero();
+        R_cov = Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, PSVR_MEASUREMENT_PARAMETER_COUNT>::Zero();
 
 		// Only diagonals used so no need to compute Cholesky
-		R_cov(PSMOVE_ACCELEROMETER_X, PSMOVE_ACCELEROMETER_X) = sqrt(R_SCALE*constants.position_constants.accelerometer_variance.x());
-		R_cov(PSMOVE_ACCELEROMETER_Y, PSMOVE_ACCELEROMETER_Y) = sqrt(R_SCALE*constants.position_constants.accelerometer_variance.y());
-		R_cov(PSMOVE_ACCELEROMETER_Z, PSMOVE_ACCELEROMETER_Z) = sqrt(R_SCALE*constants.position_constants.accelerometer_variance.z());
-		R_cov(PSMOVE_GYROSCOPE_X, PSMOVE_GYROSCOPE_X)= sqrt(R_SCALE*constants.orientation_constants.gyro_variance.x());
-		R_cov(PSMOVE_GYROSCOPE_Y, PSMOVE_GYROSCOPE_Y)= sqrt(R_SCALE*constants.orientation_constants.gyro_variance.y());
-		R_cov(PSMOVE_GYROSCOPE_Z, PSMOVE_GYROSCOPE_Z)= sqrt(R_SCALE*constants.orientation_constants.gyro_variance.z());
-		R_cov(PSMOVE_MAGNETOMETER_X, PSMOVE_MAGNETOMETER_X) = sqrt(R_SCALE*constants.orientation_constants.magnetometer_variance.x());
-		R_cov(PSMOVE_MAGNETOMETER_Y, PSMOVE_MAGNETOMETER_Y) = sqrt(R_SCALE*constants.orientation_constants.magnetometer_variance.y());
-		R_cov(PSMOVE_MAGNETOMETER_Z, PSMOVE_MAGNETOMETER_Z) = sqrt(R_SCALE*constants.orientation_constants.magnetometer_variance.z());
-		R_cov(PSMOVE_OPTICAL_POSITION_X, PSMOVE_OPTICAL_POSITION_X) = sqrt(R_SCALE*position_variance_m_sqr);
-		R_cov(PSMOVE_OPTICAL_POSITION_Y, PSMOVE_OPTICAL_POSITION_Y) = sqrt(R_SCALE*position_variance_m_sqr);
-		R_cov(PSMOVE_OPTICAL_POSITION_Z, PSMOVE_OPTICAL_POSITION_Z) = sqrt(R_SCALE*position_variance_m_sqr);
+		R_cov(PSVR_ACCELEROMETER_X, PSVR_ACCELEROMETER_X) = sqrt(R_SCALE*constants.position_constants.accelerometer_variance.x());
+		R_cov(PSVR_ACCELEROMETER_Y, PSVR_ACCELEROMETER_Y) = sqrt(R_SCALE*constants.position_constants.accelerometer_variance.y());
+		R_cov(PSVR_ACCELEROMETER_Z, PSVR_ACCELEROMETER_Z) = sqrt(R_SCALE*constants.position_constants.accelerometer_variance.z());
+		R_cov(PSVR_GYROSCOPE_X, PSVR_GYROSCOPE_X)= sqrt(R_SCALE*constants.orientation_constants.gyro_variance.x());
+		R_cov(PSVR_GYROSCOPE_Y, PSVR_GYROSCOPE_Y)= sqrt(R_SCALE*constants.orientation_constants.gyro_variance.y());
+		R_cov(PSVR_GYROSCOPE_Z, PSVR_GYROSCOPE_Z)= sqrt(R_SCALE*constants.orientation_constants.gyro_variance.z());
+		R_cov(PSVR_MAGNETOMETER_X, PSVR_MAGNETOMETER_X) = sqrt(R_SCALE*constants.orientation_constants.magnetometer_variance.x());
+		R_cov(PSVR_MAGNETOMETER_Y, PSVR_MAGNETOMETER_Y) = sqrt(R_SCALE*constants.orientation_constants.magnetometer_variance.y());
+		R_cov(PSVR_MAGNETOMETER_Z, PSVR_MAGNETOMETER_Z) = sqrt(R_SCALE*constants.orientation_constants.magnetometer_variance.z());
+		R_cov(PSVR_OPTICAL_POSITION_X, PSVR_OPTICAL_POSITION_X) = sqrt(R_SCALE*position_variance_m_sqr);
+		R_cov(PSVR_OPTICAL_POSITION_Y, PSVR_OPTICAL_POSITION_Y) = sqrt(R_SCALE*position_variance_m_sqr);
+		R_cov(PSVR_OPTICAL_POSITION_Z, PSVR_OPTICAL_POSITION_Z) = sqrt(R_SCALE*position_variance_m_sqr);
 	}
 
     /**
@@ -667,12 +667,12 @@ public:
     * @param [in] x The system state in current time-step
     * @returns The (predicted) sensor measurement for the system state
     */
-    PSMove_MeasurementVector observation_function(const PoseStateVector& state, const PSMove_MeasurementVector &observation_noise) const
+    PSVR_MeasurementVector observation_function(const PoseStateVector& state, const PSVR_MeasurementVector &observation_noise) const
     {
-        PSMove_MeasurementVector predicted_measurement;
+        PSVR_MeasurementVector predicted_measurement;
 
 		// Extract the observation bias
-		const PSMove_MeasurementVector &observation_bias = R_mu;
+		const PSVR_MeasurementVector &observation_bias = R_mu;
 		const Eigen::Vector3d accel_bias = observation_bias.get_accelerometer();
 		const Eigen::Vector3d mag_bias = observation_bias.get_magnetometer();
 		const Eigen::Vector3d gyro_bias = observation_bias.get_gyroscope();
@@ -721,10 +721,10 @@ public:
     Eigen::Vector3d identity_magnetometer_direction;
 
 	//! Measurement noise mean
-	Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, 1> R_mu;
+	Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, 1> R_mu;
 
 	//! Measurement noise covariance
-	Eigen::Matrix<double, PSMOVE_MEASUREMENT_PARAMETER_COUNT, PSMOVE_MEASUREMENT_PARAMETER_COUNT> R_cov;
+	Eigen::Matrix<double, PSVR_MEASUREMENT_PARAMETER_COUNT, PSVR_MEASUREMENT_PARAMETER_COUNT> R_cov;
 };
 
 /**
@@ -1436,10 +1436,10 @@ public:
 	}
 };
 
-class PSMoveKalmanPoseFilterImpl : public KalmanPoseFilterImpl
+class PSVRKalmanPoseFilterImpl : public KalmanPoseFilterImpl
 {
 public:
-	PoseSRUFK<PSMove_MeasurementModel, PSMove_MeasurementVector> srukf;
+	PoseSRUFK<PSVR_MeasurementModel, PSVR_MeasurementVector> srukf;
 
 	void init(
 		const PoseFilterConstants &constants) override
@@ -1704,38 +1704,38 @@ void KalmanPoseFilterDS4::update(const float delta_time, const PoseFilterPacket 
 	m_filter->state = srukf.x;
 }
 
-//-- PSMovePoseKalmanFilter --
-bool KalmanPoseFilterPSMove::init(
+//-- PSVRPoseKalmanFilter --
+bool KalmanPoseFilterPSVR::init(
 	const PoseFilterConstants &constants)
 {
 	KalmanPoseFilter::init(constants);
 
-	PSMoveKalmanPoseFilterImpl *filter = new PSMoveKalmanPoseFilterImpl();
+	PSVRKalmanPoseFilterImpl *filter = new PSVRKalmanPoseFilterImpl();
 	filter->init(constants);
 	m_filter = filter;
 
 	return true;
 }
 
-bool KalmanPoseFilterPSMove::init(
+bool KalmanPoseFilterPSVR::init(
 	const PoseFilterConstants &constants,
 	const Eigen::Vector3f &position,
 	const Eigen::Quaternionf &orientation)
 {
     KalmanPoseFilter::init(constants, position, orientation);
 
-    PSMoveKalmanPoseFilterImpl *filter = new PSMoveKalmanPoseFilterImpl();
+    PSVRKalmanPoseFilterImpl *filter = new PSVRKalmanPoseFilterImpl();
     filter->init(constants, position, orientation);
     m_filter = filter;
 
     return true;
 }
 
-void KalmanPoseFilterPSMove::update(const float delta_time, const PoseFilterPacket &packet)
+void KalmanPoseFilterPSVR::update(const float delta_time, const PoseFilterPacket &packet)
 {
-	PSMoveKalmanPoseFilterImpl *psmoveFilterImpl = static_cast<PSMoveKalmanPoseFilterImpl *>(m_filter);
-	PoseSRUFK<PSMove_MeasurementModel, PSMove_MeasurementVector> &srukf = psmoveFilterImpl->srukf;
-	PSMove_MeasurementModel &measurement_model = srukf.measurement_model;
+	PSVRKalmanPoseFilterImpl *PSVRFilterImpl = static_cast<PSVRKalmanPoseFilterImpl *>(m_filter);
+	PoseSRUFK<PSVR_MeasurementModel, PSVR_MeasurementVector> &srukf = PSVRFilterImpl->srukf;
+	PSVR_MeasurementModel &measurement_model = srukf.measurement_model;
 
     if (m_filter->bIsValid)
     {
@@ -1744,7 +1744,7 @@ void KalmanPoseFilterPSMove::update(const float delta_time, const PoseFilterPack
 
         // Project the current state onto a predicted measurement as a default
         // in case no observation is available
-        PSMove_MeasurementVector measurement = measurement_model.observation_function(srukf.x, PSMove_MeasurementVector::Zero());
+        PSVR_MeasurementVector measurement = measurement_model.observation_function(srukf.x, PSVR_MeasurementVector::Zero());
 
         // Accelerometer, magnetometer and gyroscope measurements are always available
         measurement.set_accelerometer(packet.imu_accelerometer_g_units.cast<double>());
@@ -1779,7 +1779,7 @@ void KalmanPoseFilterPSMove::update(const float delta_time, const PoseFilterPack
         srukf.x.setZero();
         srukf.x.set_quaternion(Eigen::Quaterniond::Identity());
 
-		// We always "see" the orientation measurements for the PSMove (MARG state)
+		// We always "see" the orientation measurements for the PSVR (MARG state)
 		m_filter->bSeenOrientationMeasurement= true;
 
 		if (packet.tracking_projection_area_px_sqr > 0.f)

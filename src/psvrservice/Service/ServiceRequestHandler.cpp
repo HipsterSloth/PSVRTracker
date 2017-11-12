@@ -163,7 +163,7 @@ public:
     }    
 	
     // -- tracker requests -----
-    PSMResult get_tracker_list(PSMTrackerList *out_tracker_list)
+    PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list)
     {
         for (int tracker_id = 0; tracker_id < m_deviceManager->getTrackerViewMaxCount(); ++tracker_id)
         {
@@ -171,15 +171,15 @@ public:
 
             if (tracker_view->getIsOpen())
             {
-                PSMClientTrackerInfo *tracker_info = out_tracker_list->trackers[++out_tracker_list->count];
+                PSVRClientTrackerInfo *tracker_info = out_tracker_list->trackers[++out_tracker_list->count];
 
                 switch (tracker_view->getTrackerDeviceType())
                 {
                 case CommonControllerState::PS3EYE:
-                    tracker_info->tracker_type= PSMTracker_PS3Eye;
+                    tracker_info->tracker_type= PSVRTracker_PS3Eye;
                     break;
                 case CommonControllerState::PS4CAMERA:
-                    tracker_info->tracker_type= PSMTracker_PS4Camera;
+                    tracker_info->tracker_type= PSVRTracker_PS4Camera;
                     break;					
                 default:
                     assert(0 && "Unhandled tracker type");
@@ -188,10 +188,10 @@ public:
                 switch (tracker_view->getTrackerDriverType())
                 {
                 case ITrackerInterface::Libusb:
-                    tracker_info->tracker_driver= PSMDriver_LIBUSB;
+                    tracker_info->tracker_driver= PSVRDriver_LIBUSB;
                     break;
                 case ITrackerInterface::Generic_Webcam:
-                    tracker_info->tracker_driver= PSMDriver_GENERIC_WEBCAM;
+                    tracker_info->tracker_driver= PSVRDriver_GENERIC_WEBCAM;
                     break;
                 default:
                     assert(0 && "Unhandled tracker type");
@@ -210,13 +210,13 @@ public:
 
         list->set_global_forward_degrees(m_deviceManager->m_tracker_manager->getConfig().global_forward_degrees);
         
-		return PSMResult_Success;
+		return PSVRResult_Success;
     }
 
-    PSMResult start_tracker_data_stream(
-		PSMTrackerID tracker_id)
+    PSVRResult start_tracker_data_stream(
+		PSVRTrackerID tracker_id)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -238,17 +238,17 @@ public:
                 tracker_view->startSharedMemoryVideoStream();
 
                 // Return the name of the shared memory block the video frames will be written to
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult stop_tracker_data_stream(
-        PSMTrackerID tracker_id)
+    PSVRResult stop_tracker_data_stream(
+        PSVRTrackerID tracker_id)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 		
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -268,16 +268,16 @@ public:
                 // Decrement the number of stream listeners
                 tracker_view->stopSharedMemoryVideoStream();
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 	
-	PSMResult get_shared_video_frame_buffer(PSMTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer)
+	PSVRResult get_shared_video_frame_buffer(PSVRTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer)
 	{
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
 		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -286,16 +286,16 @@ public:
             {
 				*out_shared_buffer= tracker_view->getSharedVideoFrameBuffer();
 				
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
             }
         }
 		
 		return result;		
 	}
 
-    PSMResult get_tracker_settings(PSMTrackerID tracker_id, PSMHmdID hmd_id, PSMClientTrackerSettings *out_settings)
+    PSVRResult get_tracker_settings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
 		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -313,20 +313,20 @@ public:
                 tracker_view->gatherTrackerOptions(settings);
 				tracker_view->gatherTrackingColorPresets(hmd_view, settings);
 				
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_frame_width(
-		const PSMTrackerID tracker_id, 
+    PSVRResult set_tracker_frame_width(
+		const PSVRTrackerID tracker_id, 
 		const float desired_frame_width, 
 		const bool bSaveSetting,
 		float *out_result_frame_width)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
 		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -349,20 +349,20 @@ public:
                 // Return back the actual frame width that got set
                 *out_result_frame_width= static_cast<float>(tracker_view->getFrameWidth());
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_frame_height(
-		const PSMTrackerID tracker_id, 
+    PSVRResult set_tracker_frame_height(
+		const PSVRTrackerID tracker_id, 
 		const float desired_frame_height, 
 		const bool bSaveSetting,
 		float *out_result_frame_height)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 		
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -385,20 +385,20 @@ public:
                 // Return back the actual frame height that got set
                 *out_result_frame_height= static_cast<float>(tracker_view->getFrameHeight());
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_frame_rate(
-		const PSMTrackerID tracker_id, 
+    PSVRResult set_tracker_frame_rate(
+		const PSVRTrackerID tracker_id, 
 		const float desired_frame_rate, 
 		const bool bSaveSetting,
 		float *out_result_frame_rate)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 		
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -421,20 +421,20 @@ public:
                 // Return back the actual frame rate that got set
                 *out_result_frame_rate= static_cast<float>(tracker_view->getFrameRate());
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_exposure(
-		const PSMTrackerID tracker_id, 
+    PSVRResult set_tracker_exposure(
+		const PSVRTrackerID tracker_id, 
 		const float desired_exposure, 
 		const bool bSaveSetting,
 		float *out_result_exposure)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
 		if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -457,20 +457,20 @@ public:
                 // Return back the actual exposure that got set
                 *out_result_exposure= static_cast<float>(tracker_view->getExposure());
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_gain(
-		const PSMTrackerID tracker_id, 
+    PSVRResult set_tracker_gain(
+		const PSVRTrackerID tracker_id, 
 		const float desired_gain, 
 		const bool bSaveSetting,
 		float *out_result_gain)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 		
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -493,20 +493,20 @@ public:
                 // Return back the actual gain that got set
                 *out_result_gain= static_cast<float>(tracker_view->getGain());
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_option(
-		const PSMTrackerID tracker_id,
+    PSVRResult set_tracker_option(
+		const PSVRTrackerID tracker_id,
         const std::string &option_name,
 		const int desired_option_index,
 		int *out_new_option_index)
     {
-        PSMResult result= PSMResult_Error;
+        PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -519,7 +519,7 @@ public:
                     tracker_view->getOptionIndex(option_name, *out_new_option_index);
                     tracker_view->saveSettings();
 
-                    result= PSMResult_Success;
+                    result= PSVRResult_Success;
                 }
             }
 		}
@@ -527,14 +527,14 @@ public:
 		return result;
     }
 
-    PSMResult set_tracker_color_preset(
-        const PSMTrackerID tracker_id,
-		const PSMHmdID hmd_id,
-		const PSMTrackingColorType color_type,
-		const PSMHSVColorRange *desired_range,
-        PSMHSVColorRange *out_result_range)
+    PSVRResult set_tracker_color_preset(
+        const PSVRTrackerID tracker_id,
+		const PSVRHmdID hmd_id,
+		const PSVRTrackingColorType color_type,
+		const PSVR_HSVColorRange *desired_range,
+        PSVR_HSVColorRange *out_result_range)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 		
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -548,18 +548,18 @@ public:
 				// Read back what actually got set
 				tracker_view->getHMDTrackingColorPreset(hmd_view, color_type, out_result_range);
 				
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_pose(
-        const PSMTrackerID tracker_id,
-        const PSMPosef *pose)
+    PSVRResult set_tracker_pose(
+        const PSVRTrackerID tracker_id,
+        const PSVRPosef *pose)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -569,18 +569,18 @@ public:
                 tracker_view->setTrackerPose(pose);
                 tracker_view->saveSettings();
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_tracker_intrinsics(
-        const PSMTrackerID tracker_id,
-        const PSMTrackerIntrinsics *tracker_intrinsics)
+    PSVRResult set_tracker_intrinsics(
+        const PSVRTrackerID tracker_id,
+        const PSVRTrackerIntrinsics *tracker_intrinsics)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 		
         if (ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
         {
@@ -590,23 +590,23 @@ public:
                 tracker_view->setCameraIntrinsics(tracker_intrinsics);
                 tracker_view->saveSettings();
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 				
 		return result;		
     }
 
-    PSMResult get_tracking_space_settings(
-        PSMTrackingSpace *out_tracking_space)
+    PSVRResult get_tracking_space_settings(
+        PSVRTrackingSpace *out_tracking_space)
     {
-		memset(out_tracking_space, 0, sizeof(PSMTrackingSpace));
+		memset(out_tracking_space, 0, sizeof(PSVRTrackingSpace));
         out_tracking_space->global_forward_degrees= m_deviceManager->m_tracker_manager->getConfig().global_forward_degrees;
 		
-        return PSMResult_Success;
+        return PSVRResult_Success;
     }
     // -- hmd requests -----
-    inline ServerHMDView *get_hmd_view_or_null(PSMHmdID hmd_id)
+    inline ServerHMDView *get_hmd_view_or_null(PSVRHmdID hmd_id)
     {
         ServerHMDView *hmd_view = nullptr;
 
@@ -623,8 +623,8 @@ public:
         return hmd_view;
     }
 
-    PSMResult get_hmd_list(
-        PSMHmdList *out_hmd_list)
+    PSVRResult get_hmd_list(
+        PSVRHmdList *out_hmd_list)
     {
         for (int hmd_id = 0; hmd_id < m_deviceManager->getHMDViewMaxCount(); ++hmd_id)
         {
@@ -632,7 +632,7 @@ public:
 
             if (hmd_view->getIsOpen() && out_hmd_list->count < PSVRSERVICE_MAX_HMD_COUNT)
             {
-                PSMHmdList *hmd_info = &out_hmd_list->hmds[hmd_id];
+                PSVRHmdList *hmd_info = &out_hmd_list->hmds[hmd_id];
 
                 switch (hmd_view->getHMDDeviceType())
                 {
@@ -641,7 +641,7 @@ public:
                         const MorpheusHMD *morpheusHMD= hmd_view->castCheckedConst<MorpheusHMD>();
                         const MorpheusHMDConfig *config= morpheusHMD->getConfig();
 
-                        hmd_info->hmd_type= PSMoveProtocol::Morpheus;
+                        hmd_info->hmd_type= PSVRProtocol::Morpheus;
                         hmd_info->prediction_time= config->prediction_time;
 						strncpy(hmd_info->orientation_filter, config->orientation_filter, sizeof(hmd_info->orientation_filter));
 						strncpy(hmd_info->position_filter, config->position_filter_type, sizeof(hmd_info->position_filter));
@@ -652,7 +652,7 @@ public:
                         const VirtualHMD *virtualHMD= hmd_view->castCheckedConst<VirtualHMD>();
                         const VirtualHMDConfig *config= virtualHMD->getConfig();
 
-                        hmd_info->hmd_type= PSMoveProtocol::VirtualHMD;
+                        hmd_info->hmd_type= PSVRProtocol::VirtualHMD;
                         hmd_info->prediction_time= config->prediction_time;
                         strncpy(hmd_info->position_filter, config->position_filter_type, sizeof(hmd_info->position_filter));
                     }
@@ -667,12 +667,12 @@ public:
             }
         }
 
-        return PSMResult_Success;
+        return PSVRResult_Success;
     }
 	
-	PSMResult get_hmd_tracking_shape(PSMHmdID hmd_id, PSMTrackingShape *out_shape)
+	PSVRResult get_hmd_tracking_shape(PSVRHmdID hmd_id, PSVRTrackingShape *out_shape)
 	{
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
@@ -687,10 +687,10 @@ public:
 		return result;
 	}
 
-    PSMResult start_hmd_data_stream(
-        const PSMHmdID hmd_id)
+    PSVRResult start_hmd_data_stream(
+        const PSVRHmdID hmd_id)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
@@ -737,17 +737,17 @@ public:
                 }
 
                 // Return the name of the shared memory block the video frames will be written to
-				result= PSMResult_Success;
+				result= PSVRResult_Success;
 			}
         }
 
 		return result;
     }
 
-    PSMResult stop_hmd_data_stream(
-        const PSMHmdID hmd_id)
+    PSVRResult stop_hmd_data_stream(
+        const PSVRHmdID hmd_id)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()))
         {
@@ -770,18 +770,18 @@ public:
                 m_peristentRequestState->active_hmd_streams.set(hmd_id, false);
                 m_peristentRequestState->active_hmd_stream_info[hmd_id].Clear();
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 
 		return result;
     }
 
-    PSMResult set_hmd_led_tracking_color(
-        const PSMHmdID hmd_id,
-		const PSMTrackingColorType new_color_id)
+    PSVRResult set_hmd_led_tracking_color(
+        const PSVRHmdID hmd_id,
+		const PSVRTrackingColorType new_color_id)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -803,7 +803,7 @@ public:
                 {
                     // Assign the new color to ourselves
                     HmdView->setTrackingColorID(newColorID);
-                    result= PSMResult_Success;
+                    result= PSVRResult_Success;
                 }
                 else
                 {
@@ -818,12 +818,12 @@ public:
 		return result;
     }
 
-    PSMResult set_hmd_accelerometer_calibration(
-        const PSMHmdID hmd_id,
-		const PSMVector3f &measured_g,
+    PSVRResult set_hmd_accelerometer_calibration(
+        const PSVRHmdID hmd_id,
+		const PSVRVector3f &measured_g,
 		const float raw_variance)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         ServerHMDViewPtr HMDView = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -848,19 +848,19 @@ public:
             // Reset the orientation filter state the calibration changed
             poseFilter->resetState();
 
-            result= PSMResult_Success;
+            result= PSVRResult_Success;
         }
 
 		return result;
     }
 
-    PSMResult set_hmd_gyroscope_calibration(
-        const PSMHmdID hmd_id,
-		const PSMVector3f &raw_gyro_bias,
+    PSVRResult set_hmd_gyroscope_calibration(
+        const PSVRHmdID hmd_id,
+		const PSVRVector3f &raw_gyro_bias,
 		const float raw_variance,
 		const float raw_drift)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         ServerHMDViewPtr HMDView = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -877,17 +877,17 @@ public:
             // Reset the orientation filter state the calibration changed
             HMDView->getPoseFilterMutable()->resetState();
 
-            result= PSMResult_Success;
+            result= PSVRResult_Success;
         }
 
 		return result;
     }
 
-    PSMResult set_hmd_orientation_filter(
-        const PSMHmdID hmd_id,
+    PSVRResult set_hmd_orientation_filter(
+        const PSVRHmdID hmd_id,
 		const std::string orientation_filter)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -906,18 +906,18 @@ public:
                     HmdView->resetPoseFilter();
                 }
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_hmd_position_filter(
-        const PSMHmdID hmd_id,
+    PSVRResult set_hmd_position_filter(
+        const PSVRHmdID hmd_id,
 		const std::string position_filter)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
 
@@ -936,7 +936,7 @@ public:
                     HmdView->resetPoseFilter();
                 }
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
             else if (HmdView->getHMDDeviceType() == CommonDeviceState::VirtualHMD)
             {
@@ -951,21 +951,21 @@ public:
                     HmdView->resetPoseFilter();
                 }
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_hmd_prediction_time(
-        const PSMHmdID hmd_id,
+    PSVRResult set_hmd_prediction_time(
+        const PSVRHmdID hmd_id,
 		const float hmd_prediction_time)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
-        const PSMoveProtocol::Request_RequestSetHMDPredictionTime &request =
+        const PSVRProtocol::Request_RequestSetHMDPredictionTime &request =
             context.request->request_set_hmd_prediction_time();
 
         if (HmdView && HmdView->getIsOpen())
@@ -981,7 +981,7 @@ public:
                     config->save();
                 }
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
             else if (HmdView->getHMDDeviceType() == CommonDeviceState::VirtualHMD)
             {
@@ -994,18 +994,18 @@ public:
                     config->save();
                 }
 
-                result= PSMResult_Success;
+                result= PSVRResult_Success;
             }
         }
 		
 		return result;
     }
 
-    PSMResult set_hmd_data_stream_tracker_index(
-		const PSMTrackerID tracker_id,
-        const PSMHmdID hmd_id)
+    PSVRResult set_hmd_data_stream_tracker_index(
+		const PSVRTrackerID tracker_id,
+        const PSVRHmdID hmd_id)
     {
-		PSMResult result= PSMResult_Error;
+		PSVRResult result= PSVRResult_Error;
 
         if (ServerUtility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()) &&
             ServerUtility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
@@ -1017,20 +1017,20 @@ public:
 
             streamInfo.selected_tracker_index= tracker_id;
 
-            result= PSMResult_Success;
+            result= PSVRResult_Success;
         }
 		
 		return result;
     }
 
-    PSMResult get_service_version(
+    PSVRResult get_service_version(
         char *out_version_string, 
 		size_t max_version_string)
     {
         // Return the protocol version
-        strncpy(out_version_string, PSM_PROTOCOL_VERSION_STRING, max_version_string);
+        strncpy(out_version_string, PSVR_PROTOCOL_VERSION_STRING, max_version_string);
 		
-		return PSMResult_Success;
+		return PSVRResult_Success;
     }
 
 private:

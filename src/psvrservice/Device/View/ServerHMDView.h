@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include "ServerDeviceView.h"
-#include "PSMoveProtocolInterface.h"
+#include "PSVRProtocolInterface.h"
 #include <cstring>
 
 // -- pre-declarations -----

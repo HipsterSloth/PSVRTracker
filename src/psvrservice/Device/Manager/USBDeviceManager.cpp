@@ -31,7 +31,7 @@ const char * k_winusb_api_name= "winusb_api";
 const int USBManagerConfig::CONFIG_VERSION = 1;
 
 USBManagerConfig::USBManagerConfig(const std::string &fnamebase)
-    : PSMoveConfig(fnamebase)
+    : PSVRConfig(fnamebase)
 {
 	usb_api_name= k_libusb_api_name;
 	enable_usb_transfers= true;

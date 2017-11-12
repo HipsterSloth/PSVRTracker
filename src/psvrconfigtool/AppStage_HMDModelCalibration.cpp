@@ -11,8 +11,8 @@
 #include "MathUtility.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSMoveProtocolInterface.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocolInterface.h"
+#include "PSVRProtocol.pb.h"
 #include "SharedTrackerState.h"
 #include "Logger.h"
 #include "MathGLM.h"
@@ -21,7 +21,7 @@
 #include "SDL_keycode.h"
 #include "SDL_opengl.h"
 
-#include "PSMoveClient_CAPI.h"
+#include "PSVRClient_CAPI.h"
 
 #include <imgui.h>
 #include <sstream>
@@ -55,15 +55,15 @@ static const float k_default_epipolar_correspondance_tolerance_px = 1.0f;
 static const float k_led_bucket_snap_distance = 3.0f; // cm
 static const double k_max_allowed_icp_alignment_error= 10.0;
 
-static const glm::vec3 k_psmove_frustum_color = glm::vec3(0.1f, 0.7f, 0.3f);
-static const glm::vec3 k_psmove_frustum_color_no_track = glm::vec3(1.0f, 0.f, 0.f);
+static const glm::vec3 k_PSVR_frustum_color = glm::vec3(0.1f, 0.7f, 0.3f);
+static const glm::vec3 k_PSVR_frustum_color_no_track = glm::vec3(1.0f, 0.f, 0.f);
 
 //-- private methods -----
-static PSMVector2f projectTrackerRelativePositionOnTracker(
-    const PSMVector3f &trackerRelativePosition,
-    const PSMMatrix3d &camera_matrix,
-    const PSMDistortionCoefficients &distortion_coefficients);
-static void drawHMD(const PSMHeadMountedDisplay *hmdView, const glm::mat4 &transform, const glm::vec3 &color);
+static PSVRVector2f projectTrackerRelativePositionOnTracker(
+    const PSVRVector3f &trackerRelativePosition,
+    const PSVRMatrix3d &camera_matrix,
+    const PSVRDistortionCoefficients &distortion_coefficients);
+static void drawHMD(const PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform, const glm::vec3 &color);
 
 //-- private structures -----
 namespace RigidMotionEstimator
@@ -176,24 +176,24 @@ struct StereoCameraSectionState
         }
     }
 
-    void applyIntrinsics(const PSMTrackerIntrinsics &intrinsics, const PSMVideoFrameSection section_index)
+    void applyIntrinsics(const PSVRTrackerIntrinsics &intrinsics, const PSVRVideoFrameSection section_index)
     {
         frameWidth= static_cast<int>(intrinsics.intrinsics.stereo.pixel_width);
         frameHeight= static_cast<int>(intrinsics.intrinsics.stereo.pixel_height);
 
         switch (section_index)
         {
-        case PSMVideoFrameSection_Left:
-            intrinsic_matrix= psmove_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.left_camera_matrix);
-            rectification_rotation= psmove_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.left_rectification_rotation);
-            rectification_projection= psmove_matrix3x4_to_cv_mat34d(intrinsics.intrinsics.stereo.left_rectification_projection);
-            distortion_coeffs= psm_distortion_to_cv_vec5(intrinsics.intrinsics.stereo.left_distortion_coefficients);
+        case PSVRVideoFrameSection_Left:
+            intrinsic_matrix= PSVR_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.left_camera_matrix);
+            rectification_rotation= PSVR_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.left_rectification_rotation);
+            rectification_projection= PSVR_matrix3x4_to_cv_mat34d(intrinsics.intrinsics.stereo.left_rectification_projection);
+            distortion_coeffs= PSVR_distortion_to_cv_vec5(intrinsics.intrinsics.stereo.left_distortion_coefficients);
             break;
-        case PSMVideoFrameSection_Right:
-            intrinsic_matrix= psmove_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.right_camera_matrix);
-            rectification_rotation= psmove_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.right_rectification_rotation);
-            rectification_projection= psmove_matrix3x4_to_cv_mat34d(intrinsics.intrinsics.stereo.right_rectification_projection);
-            distortion_coeffs= psm_distortion_to_cv_vec5(intrinsics.intrinsics.stereo.right_distortion_coefficients);
+        case PSVRVideoFrameSection_Right:
+            intrinsic_matrix= PSVR_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.right_camera_matrix);
+            rectification_rotation= PSVR_matrix3x3_to_cv_mat33d(intrinsics.intrinsics.stereo.right_rectification_rotation);
+            rectification_projection= PSVR_matrix3x4_to_cv_mat34d(intrinsics.intrinsics.stereo.right_rectification_projection);
+            distortion_coeffs= PSVR_distortion_to_cv_vec5(intrinsics.intrinsics.stereo.right_distortion_coefficients);
             break;
         default:
             break;
@@ -222,7 +222,7 @@ struct StereoCameraSectionState
             *distortionMapX, *distortionMapY);
     }
 
-    inline cv::Matx51d psm_distortion_to_cv_vec5(const PSMDistortionCoefficients &distortion_coeffs)
+    inline cv::Matx51d PSVR_distortion_to_cv_vec5(const PSVRDistortionCoefficients &distortion_coeffs)
     {
         cv::Matx51d cv_distortion_coeffs;
         cv_distortion_coeffs(0, 0)= distortion_coeffs.k1;
@@ -251,7 +251,7 @@ struct StereoCameraSectionState
 
 struct StereoCameraState
 {
-    PSMTracker *trackerView;
+    PSVRTracker *trackerView;
     StereoCameraSectionState sections[2];
 
     // Stereo Calibration state
@@ -262,26 +262,26 @@ struct StereoCameraState
     void init()
     {
         trackerView= nullptr;
-        sections[PSMVideoFrameSection_Left].init();
-        sections[PSMVideoFrameSection_Right].init();
+        sections[PSVRVideoFrameSection_Left].init();
+        sections[PSVRVideoFrameSection_Right].init();
         memset(this, 0, sizeof(StereoCameraState));
         tolerance = k_default_epipolar_correspondance_tolerance_px;
     }
 
-    void applyIntrinsics(const PSMTrackerIntrinsics &intrinsics)
+    void applyIntrinsics(const PSVRTrackerIntrinsics &intrinsics)
     {
-        sections[PSMVideoFrameSection_Left].applyIntrinsics(intrinsics, PSMVideoFrameSection_Left);
-        sections[PSMVideoFrameSection_Right].applyIntrinsics(intrinsics, PSMVideoFrameSection_Right);
+        sections[PSVRVideoFrameSection_Left].applyIntrinsics(intrinsics, PSVRVideoFrameSection_Left);
+        sections[PSVRVideoFrameSection_Right].applyIntrinsics(intrinsics, PSVRVideoFrameSection_Right);
 
-        F_ab= psm_matrix3d_to_eigen_matrix3f(intrinsics.intrinsics.stereo.fundamental_matrix);
-        Q= psm_matrix4d_to_eigen_matrix4d(intrinsics.intrinsics.stereo.reprojection_matrix);
+        F_ab= PSVR_matrix3d_to_eigen_matrix3f(intrinsics.intrinsics.stereo.fundamental_matrix);
+        Q= PSVR_matrix4d_to_eigen_matrix4d(intrinsics.intrinsics.stereo.reprojection_matrix);
 
     }
 
     void dispose()
     {
-        sections[PSMVideoFrameSection_Left].dispose();
-        sections[PSMVideoFrameSection_Right].dispose();
+        sections[PSVRVideoFrameSection_Left].dispose();
+        sections[PSVRVideoFrameSection_Right].dispose();
     }
 
     bool do_points_correspond(
@@ -350,7 +350,7 @@ class HMDModelState
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    HMDModelState(const PSMTrackingShape *hmd_tracking_shape)
+    HMDModelState(const PSVRTrackingShape *hmd_tracking_shape)
         : m_expectedLEDCount(0)
         , m_seenLEDCount(0)
         , m_totalLEDSampleCount(0)
@@ -359,7 +359,7 @@ public:
     {
         const int model_point_count= hmd_tracking_shape->shape.pointcloud.point_count;
 
-        assert(hmd_tracking_shape->shape_type == PSMTrackingShape_PointCloud);
+        assert(hmd_tracking_shape->shape_type == PSVRTrackingShape_PointCloud);
         assert(hmd_tracking_shape->shape.pointcloud.point_count > 0);
 
         m_expectedLEDCount= hmd_tracking_shape->shape.pointcloud.point_count;
@@ -374,7 +374,7 @@ public:
         m_modelVertices.resize(model_point_count);
         for (int source_index = 0; source_index < model_point_count; ++source_index)
         {
-            const PSMVector3f &point= hmd_tracking_shape->shape.pointcloud.points[source_index];
+            const PSVRVector3f &point= hmd_tracking_shape->shape.pointcloud.points[source_index];
 
             m_modelVertices[source_index]= Eigen::Vector3f(point.x, point.y, point.z);
         }
@@ -387,7 +387,7 @@ public:
         m_icpModelVertices.resize(Eigen::NoChange, hmd_tracking_shape->shape.pointcloud.point_count);
         for (int source_index = 0; source_index < hmd_tracking_shape->shape.pointcloud.point_count; ++source_index)
         {
-            const PSMVector3f &point= hmd_tracking_shape->shape.pointcloud.points[source_index];
+            const PSVRVector3f &point= hmd_tracking_shape->shape.pointcloud.points[source_index];
 
             m_icpModelVertices(0, source_index) = point.x;
             m_icpModelVertices(1, source_index) = point.y;
@@ -425,7 +425,7 @@ public:
         return m_bIsModelToSourceTransformValid;
     }
 
-    void recordSamples(PSMHeadMountedDisplay *hmd_view, StereoCameraState *stereo_camera_state)
+    void recordSamples(PSVRHeadMountedDisplay *hmd_view, StereoCameraState *stereo_camera_state)
     {
         #if 0
         if (triangulateHMDProjections(hmd_view, stereo_camera_state, m_lastTriangulatedPoints))
@@ -505,7 +505,7 @@ public:
         #endif
     }
 
-    void updateHmdTransform(PSMHeadMountedDisplay *hmd_view, StereoCameraState *stereo_camera_state)
+    void updateHmdTransform(PSVRHeadMountedDisplay *hmd_view, StereoCameraState *stereo_camera_state)
     {
         // Use stereo camera projections to triangulate the tracking LED positions
         if (triangulateHMDProjections(hmd_view, stereo_camera_state, m_lastTriangulatedPoints))
@@ -514,15 +514,15 @@ public:
         }
     }
 
-    void render2DState(const PSMTracker *trackerView, const float gl_top_y, const float gl_bottom_y) const
+    void render2DState(const PSVRTracker *trackerView, const float gl_top_y, const float gl_bottom_y) const
     {
-        PSMVector2f tracker_size;
-        PSM_GetTrackerScreenSize(trackerView->tracker_info.tracker_id, &tracker_size);
+        PSVRVector2f tracker_size;
+        PSVR_GetTrackerScreenSize(trackerView->tracker_info.tracker_id, &tracker_size);
 
-        PSMTrackerIntrinsics intrinsics;
-        PSM_GetTrackerIntrinsics(trackerView->tracker_info.tracker_id, &intrinsics);
-        assert(intrinsics.intrinsics_type == PSMTrackerIntrinsics::PSM_STEREO_TRACKER_INTRINSICS);
-        const PSMStereoTrackerIntrinsics &stereo_intrinsics= intrinsics.intrinsics.stereo;
+        PSVRTrackerIntrinsics intrinsics;
+        PSVR_GetTrackerIntrinsics(trackerView->tracker_info.tracker_id, &intrinsics);
+        assert(intrinsics.intrinsics_type == PSVRTrackerIntrinsics::PSVR_STEREO_TRACKER_INTRINSICS);
+        const PSVRStereoTrackerIntrinsics &stereo_intrinsics= intrinsics.intrinsics.stereo;
 
         const float top_y_fraction= 1.f - ((gl_top_y + 1.f) / 2.f); // [1,-1] -> [0, 1]
         const float bottom_y_fraction= 1.f - ((gl_bottom_y + 1.f) / 2.f); // [1,-1] -> [0, 1]
@@ -538,16 +538,16 @@ public:
         const float rightX0= midX, rightY0= topY;
         const float rightX1= rightX, rightY1= bottomY;
 
-        PSMVector2f left_projections[k_max_projection_points];
-        PSMVector2f right_projections[k_max_projection_points];
-        PSMVector2f correlation_lines[2*k_max_projection_points];
+        PSVRVector2f left_projections[k_max_projection_points];
+        PSVRVector2f right_projections[k_max_projection_points];
+        PSVRVector2f correlation_lines[2*k_max_projection_points];
         int point_count = static_cast<int>(m_lastTriangulatedPoints.size());
 
         // Draw the label for the correlation line showing disparity and z-values
         for (int point_index = 0; point_index < point_count; ++point_index)
         {
             const CorrelatedPixelPair &pair= m_lastTriangulatedPoints[point_index];
-            const PSMVector3f worldPosition= eigen_vector3f_to_psm_vector3f(pair.triangulated_point_cm);
+            const PSVRVector3f worldPosition= eigen_vector3f_to_PSVR_vector3f(pair.triangulated_point_cm);
 
             left_projections[point_index] = 
                 projectTrackerRelativePositionOnTracker(
@@ -560,12 +560,12 @@ public:
                     stereo_intrinsics.right_camera_matrix,
                     stereo_intrinsics.right_distortion_coefficients);
             
-            const PSMVector2f remappedLeftPixel= remapPointIntoSubWindow(
+            const PSVRVector2f remappedLeftPixel= remapPointIntoSubWindow(
                 tracker_size.x, tracker_size.y,
                 leftX0, leftY0,
                 leftX1, leftY1,
                 pair.left_pixel);
-            const PSMVector2f remappedRightPixel= remapPointIntoSubWindow(
+            const PSVRVector2f remappedRightPixel= remapPointIntoSubWindow(
                 tracker_size.x, tracker_size.y,
                 rightX0, rightY0,
                 rightX1, rightY1,
@@ -602,7 +602,7 @@ public:
         //    right_projections, point_count, 6.f);
     }
 
-    void render3DState(const PSMTracker *trackerView, const PSMHeadMountedDisplay *hmdView)
+    void render3DState(const PSVRTracker *trackerView, const PSVRHeadMountedDisplay *hmdView)
     {
         // Draw the origin axes
         drawTransformedAxes(glm::mat4(1.0f), 100.f);
@@ -611,48 +611,48 @@ public:
         const int correlated_point_count = static_cast<int>(m_lastTriangulatedPoints.size());
         if (correlated_point_count > 0)
         {
-            PSMVector3f source_points[k_max_projection_points];
+            PSVRVector3f source_points[k_max_projection_points];
 
             for (int point_index = 0; point_index < correlated_point_count; ++point_index)
             {
                 const CorrelatedPixelPair &pair= m_lastTriangulatedPoints[point_index];
             
-                source_points[point_index]= eigen_vector3f_to_psm_vector3f(pair.triangulated_point_cm);
+                source_points[point_index]= eigen_vector3f_to_PSVR_vector3f(pair.triangulated_point_cm);
             }
 
             drawPointCloud(glm::mat4(1.f), glm::vec3(1.f, 1.f, 0.f), (float *)source_points, correlated_point_count);
         }
 
         // Draw the frustum for each tracking camera.
-        // The frustums are defined in PSMove tracking space.
+        // The frustums are defined in PSVR tracking space.
         // We need to transform them into chaperone space to display them along side the HMD.
         if (trackerView != nullptr)
         {
-            const PSMPosef psm_pose = trackerView->tracker_info.tracker_pose;
-            const glm::mat4 glm_pose = psm_posef_to_glm_mat4(psm_pose);
+            const PSVRPosef PSVR_pose = trackerView->tracker_info.tracker_pose;
+            const glm::mat4 glm_pose = PSVR_posef_to_glm_mat4(PSVR_pose);
 
-            PSMFrustum frustum;
-            PSM_GetTrackerFrustum(trackerView->tracker_info.tracker_id, &frustum);
+            PSVRFrustum frustum;
+            PSVR_GetTrackerFrustum(trackerView->tracker_info.tracker_id, &frustum);
 
             // use color depending on tracking status
             glm::vec3 color;
             bool bIsTracking;
-            if (PSM_GetIsHmdTracking(hmdView->HmdID, &bIsTracking) == PSMResult_Success)
+            if (PSVR_GetIsHmdTracking(hmdView->HmdID, &bIsTracking) == PSVRResult_Success)
             {
                 if (bIsTracking && 
-                    PSM_GetHmdPixelLocationOnTracker(hmdView->HmdID, LEFT_PROJECTION_INDEX, nullptr, nullptr) == PSMResult_Success &&
-                    PSM_GetHmdPixelLocationOnTracker(hmdView->HmdID, RIGHT_PROJECTION_INDEX, nullptr, nullptr) == PSMResult_Success)
+                    PSVR_GetHmdPixelLocationOnTracker(hmdView->HmdID, LEFT_PROJECTION_INDEX, nullptr, nullptr) == PSVRResult_Success &&
+                    PSVR_GetHmdPixelLocationOnTracker(hmdView->HmdID, RIGHT_PROJECTION_INDEX, nullptr, nullptr) == PSVRResult_Success)
                 {
-                    color = k_psmove_frustum_color;
+                    color = k_PSVR_frustum_color;
                 }
                 else
                 {
-                    color = k_psmove_frustum_color_no_track;
+                    color = k_PSVR_frustum_color_no_track;
                 }
             }
             else
             {
-                color = k_psmove_frustum_color_no_track;
+                color = k_PSVR_frustum_color_no_track;
             }
             drawTransformedFrustum(glm::mat4(1.f), &frustum, color);
 
@@ -663,12 +663,12 @@ public:
         if (getHmdTransform(glm_hmd_transform))
         {
             const int model_point_count= (int)m_icpModelVertices.cols();
-            PSMVector3f model_points[k_max_projection_points];
+            PSVRVector3f model_points[k_max_projection_points];
             for (int point_index = 0; point_index < model_point_count; ++point_index)
             {
                 const Eigen::Vector3f model_point= m_icpModelVertices.col(point_index).cast<float>();
 
-                model_points[point_index]= eigen_vector3f_to_psm_vector3f(model_point);
+                model_points[point_index]= eigen_vector3f_to_PSVR_vector3f(model_point);
             }
 
             // Draw the model points at the HMD transform
@@ -696,8 +696,8 @@ protected:
 
     struct CorrelatedPixelPair
     {
-        PSMVector2f left_pixel;
-        PSMVector2f right_pixel;
+        PSVRVector2f left_pixel;
+        PSVRVector2f right_pixel;
         float disparity;
         Eigen::Vector3f triangulated_point_cm;
     };
@@ -746,36 +746,36 @@ protected:
         }
     }
 
-    inline PSMVector2f PSM_computeCentroid2d(const PSMVector2f *points, const int point_count)
+    inline PSVRVector2f PSVR_computeCentroid2d(const PSVRVector2f *points, const int point_count)
     {
-        PSMVector2f center= {0.f, 0.f};
+        PSVRVector2f center= {0.f, 0.f};
 
         for (int point_index = 0; point_index < point_count; ++point_index)
         {
-            center= PSM_Vector2fAdd(&center, &points[point_index]);
+            center= PSVR_Vector2fAdd(&center, &points[point_index]);
         }
         
-        center= PSM_Vector2fSafeScalarDivide(&center, (float)point_count, k_psm_float_vector2_zero);
+        center= PSVR_Vector2fSafeScalarDivide(&center, (float)point_count, k_PSVR_float_vector2_zero);
 
         return center;
     }
 
     inline void translatePoints2d(
-        const PSMVector2f *in_points,
+        const PSVRVector2f *in_points,
         const int point_count,
-        const PSMVector2f *direction, 
+        const PSVRVector2f *direction, 
         const float scale, 
-        PSMVector2f *out_points)
+        PSVRVector2f *out_points)
     {
         for (int point_index = 0; point_index < point_count; ++point_index)
         {
-            out_points[point_index]= PSM_Vector2fScaleAndAdd(&in_points[point_index], scale, direction);
+            out_points[point_index]= PSVR_Vector2fScaleAndAdd(&in_points[point_index], scale, direction);
         }
     }
 
     inline int findClosestPoint2d(
-        const PSMVector2f *test_point, 
-        const PSMVector2f *points, 
+        const PSVRVector2f *test_point, 
+        const PSVRVector2f *points, 
         const int point_count)
     {
         int best_index= -1;
@@ -783,7 +783,7 @@ protected:
 
         for (int test_index = 0; test_index < point_count; ++test_index)
         {
-            const float sqrd_dist= PSM_Vector2fDistanceSquared(test_point, &points[test_index]);
+            const float sqrd_dist= PSVR_Vector2fDistanceSquared(test_point, &points[test_index]);
 
             if (sqrd_dist < best_sqrd_dist)
             {
@@ -799,12 +799,12 @@ protected:
 
     void findAllEpipolarCorrelations(
         const StereoCameraState *stereo_tracker_state,
-        const PSMTrackingProjection *trackingProjection,
+        const PSVRTrackingProjection *trackingProjection,
         std::vector<t_point_index_pair> &out_epipolar_pairs)
     {
         // Undistorted/rectified points
-        const PSMVector2f *leftPoints = trackingProjection->projections[LEFT_PROJECTION_INDEX].shape.pointcloud.points;
-        const PSMVector2f *rightPoints = trackingProjection->projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.points;
+        const PSVRVector2f *leftPoints = trackingProjection->projections[LEFT_PROJECTION_INDEX].shape.pointcloud.points;
+        const PSVRVector2f *rightPoints = trackingProjection->projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.points;
         const int leftPointCount = trackingProjection->projections[LEFT_PROJECTION_INDEX].shape.pointcloud.point_count;
         const int rightPointCount = trackingProjection->projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.point_count;
 
@@ -812,12 +812,12 @@ protected:
         // try and find the corresponding point in the projection B
         for (int leftPointIndex = 0; leftPointIndex < leftPointCount; ++leftPointIndex)
         {
-            const PSMVector2f &leftPoint = leftPoints[leftPointIndex];
+            const PSVRVector2f &leftPoint = leftPoints[leftPointIndex];
             const cv::Mat cvLeftPoint = cv::Mat(cv::Point2f(leftPoint.x, leftPoint.y));
 
             for (int rightPointIndex = 0; rightPointIndex < rightPointCount; ++rightPointIndex)
             {
-                const PSMVector2f &rightPoint = rightPoints[rightPointIndex];
+                const PSVRVector2f &rightPoint = rightPoints[rightPointIndex];
                 cv::Mat cvRightPoint = cv::Mat(cv::Point2f(rightPoint.x, rightPoint.y));
 
                 if (stereo_tracker_state->do_points_correspond(cvLeftPoint, cvRightPoint, stereo_tracker_state->tolerance))
@@ -830,25 +830,25 @@ protected:
 
     int align2DPointCloudsUsingCorrelation(
         const StereoCameraState *stereo_tracker_state,
-        const PSMTrackingProjection *trackingProjection,
+        const PSVRTrackingProjection *trackingProjection,
         const std::vector<t_point_index_pair> &epipolar_pairs,
         const t_point_index_pair &test_correlation,
         std::vector<int> &out_left_to_right_point_correspondence,
         float &out_matching_error)
     {
         // Undistorted/rectified points
-        const PSMVector2f *leftPoints = trackingProjection->projections[LEFT_PROJECTION_INDEX].shape.pointcloud.points;
-        const PSMVector2f *rightPoints = trackingProjection->projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.points;
+        const PSVRVector2f *leftPoints = trackingProjection->projections[LEFT_PROJECTION_INDEX].shape.pointcloud.points;
+        const PSVRVector2f *rightPoints = trackingProjection->projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.points;
         const int leftPointCount = trackingProjection->projections[LEFT_PROJECTION_INDEX].shape.pointcloud.point_count;
         const int rightPointCount = trackingProjection->projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.point_count;
 
         // Treat the correlation points to the origin
-        const PSMVector2f leftOrigin= leftPoints[test_correlation.first];
-        const PSMVector2f rightOrigin= rightPoints[test_correlation.second];
+        const PSVRVector2f leftOrigin= leftPoints[test_correlation.first];
+        const PSVRVector2f rightOrigin= rightPoints[test_correlation.second];
 
         // Recenter the projection points about the origin
-        PSMVector2f recenteredLeftPoints[MAX_POINT_CLOUD_POINT_COUNT];
-        PSMVector2f recenteredRightPoints[MAX_POINT_CLOUD_POINT_COUNT];
+        PSVRVector2f recenteredLeftPoints[MAX_POINT_CLOUD_POINT_COUNT];
+        PSVRVector2f recenteredRightPoints[MAX_POINT_CLOUD_POINT_COUNT];
         translatePoints2d(leftPoints, leftPointCount, &leftOrigin, -1.f, recenteredLeftPoints);
         translatePoints2d(rightPoints, rightPointCount, &rightOrigin, -1.f, recenteredRightPoints);
 
@@ -864,19 +864,19 @@ protected:
         // try and find the corresponding point in the right tracking projection
         for (int leftPointIndex = 0; leftPointIndex < leftPointCount; ++leftPointIndex)
         {
-            const PSMVector2f recenteredLeftPoint = recenteredLeftPoints[leftPointIndex];
+            const PSVRVector2f recenteredLeftPoint = recenteredLeftPoints[leftPointIndex];
 
             // Find the closest point on the same epipolar line
             int bestRightPointIndex= -1;
-            PSMVector2f bestRightPoint;
+            PSVRVector2f bestRightPoint;
             float bestSqrdDist= k_real_max;
             for (const t_point_index_pair &epipolar_pair : epipolar_pairs)
             {
                 if (epipolar_pair.first == leftPointIndex)
                 {
                     const int rightPointIndex= epipolar_pair.second;
-                    const PSMVector2f recenteredRightPoint = recenteredRightPoints[rightPointIndex];
-                    const float sqrdDist= PSM_Vector2fDistanceSquared(&recenteredLeftPoint, &recenteredRightPoint);
+                    const PSVRVector2f recenteredRightPoint = recenteredRightPoints[rightPointIndex];
+                    const float sqrdDist= PSVR_Vector2fDistanceSquared(&recenteredLeftPoint, &recenteredRightPoint);
 
                     if (sqrdDist < bestSqrdDist)
                     {
@@ -899,7 +899,7 @@ protected:
         // try and find the corresponding point in the left tracking projection
         for (int rightPointIndex = 0; rightPointIndex < rightPointCount; ++rightPointIndex)
         {
-            const PSMVector2f recenteredRightPoint = recenteredRightPoints[rightPointIndex];
+            const PSVRVector2f recenteredRightPoint = recenteredRightPoints[rightPointIndex];
 
             // Find the closest point on the same epipolar line
             int bestLeftPointIndex= -1;
@@ -909,8 +909,8 @@ protected:
                 if (epipolar_pair.second == rightPointIndex)
                 {
                     const int leftPointIndex= epipolar_pair.first;
-                    const PSMVector2f recenteredLeftPoint = recenteredLeftPoints[leftPointIndex];
-                    const float sqrdDist= PSM_Vector2fDistanceSquared(&recenteredLeftPoint, &recenteredRightPoint);
+                    const PSVRVector2f recenteredLeftPoint = recenteredLeftPoints[leftPointIndex];
+                    const float sqrdDist= PSVR_Vector2fDistanceSquared(&recenteredLeftPoint, &recenteredRightPoint);
 
                     if (sqrdDist < bestSqrdDist)
                     {
@@ -954,7 +954,7 @@ protected:
 
     bool findBest2DPointCloudCorrelation(
         const StereoCameraState *stereo_tracker_state,
-        const PSMTrackingProjection *trackingProjection,
+        const PSVRTrackingProjection *trackingProjection,
         std::vector<int> &bestLeftToRightPointCorrespondence)
     {
         std::vector<t_point_index_pair> epipolar_pairs;
@@ -989,30 +989,30 @@ protected:
     }
 
     bool triangulateHMDProjections(
-        PSMHeadMountedDisplay *hmd_view, 
+        PSVRHeadMountedDisplay *hmd_view, 
         StereoCameraState *stereo_tracker_state,
         std::vector<CorrelatedPixelPair> &out_triangulated_points)
     {
-        const PSMTracker *TrackerView = stereo_tracker_state->trackerView;
-        PSMTrackingProjection trackingProjection;
+        const PSVRTracker *TrackerView = stereo_tracker_state->trackerView;
+        PSVRTrackingProjection trackingProjection;
         
         out_triangulated_points.clear();
         
         // Triangulate tracking LEDs that both cameras can see
         bool bIsTracking= false;
-        if (PSM_GetIsHmdTracking(hmd_view->HmdID, &bIsTracking) == PSMResult_Success)
+        if (PSVR_GetIsHmdTracking(hmd_view->HmdID, &bIsTracking) == PSVRResult_Success)
         {
-            PSMTrackerID selected_tracker_id= -1;
+            PSVRTrackerID selected_tracker_id= -1;
 
             if (bIsTracking &&
-                PSM_GetHmdProjectionOnTracker(hmd_view->HmdID, &selected_tracker_id, &trackingProjection) == PSMResult_Success)
+                PSVR_GetHmdProjectionOnTracker(hmd_view->HmdID, &selected_tracker_id, &trackingProjection) == PSVRResult_Success)
             {
-                assert(trackingProjection.shape_type == PSMShape_PointCloud);
+                assert(trackingProjection.shape_type == PSVRShape_PointCloud);
                 assert(trackingProjection.projection_count == STEREO_PROJECTION_COUNT);
 
                 // Undistorted/rectified points
-                const PSMVector2f *leftPoints = trackingProjection.projections[LEFT_PROJECTION_INDEX].shape.pointcloud.points;
-                const PSMVector2f *rightPoints = trackingProjection.projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.points;
+                const PSVRVector2f *leftPoints = trackingProjection.projections[LEFT_PROJECTION_INDEX].shape.pointcloud.points;
+                const PSVRVector2f *rightPoints = trackingProjection.projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.points;
                 const int leftPointCount = trackingProjection.projections[LEFT_PROJECTION_INDEX].shape.pointcloud.point_count;
                 const int rightPointCount = trackingProjection.projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.point_count;
 
@@ -1031,10 +1031,10 @@ protected:
                         if (rightPointIndex == -1)
                             continue;
                     
-                        const PSMVector2f &leftPoint = leftPoints[leftPointIndex];
+                        const PSVRVector2f &leftPoint = leftPoints[leftPointIndex];
                         const cv::Mat cvLeftPoint = cv::Mat(cv::Point2f(leftPoint.x, leftPoint.y));
 
-                        const PSMVector2f &rightPoint = rightPoints[rightPointIndex];
+                        const PSVRVector2f &rightPoint = rightPoints[rightPointIndex];
                         cv::Mat cvRightPoint = cv::Mat(cv::Point2f(rightPoint.x, rightPoint.y));
 
                         // Compute the horizontal pixel disparity between the left and right corresponding pixels
@@ -1062,7 +1062,7 @@ protected:
                                     (float)(homogeneus_point.x() / w),
                                     (float)(-homogeneus_point.y() / w), // Q matrix has flipped Y-axis
                                     (float)(homogeneus_point.z() / w));
-                                pair.triangulated_point_cm= triangulated_point_mm * PSM_MILLIMETERS_TO_CENTIMETERS;
+                                pair.triangulated_point_cm= triangulated_point_mm * PSVR_MILLIMETERS_TO_CENTIMETERS;
 
                                 // Add to the list of world space points we saw this frame
                                 out_triangulated_points.push_back(pair);
@@ -1516,7 +1516,7 @@ protected:
     }
 
 private:
-    PSMTrackingShape m_currentTrackingShape;
+    PSVRTrackingShape m_currentTrackingShape;
 
     std::vector<CorrelatedPixelPair> m_lastTriangulatedPoints;
     int m_expectedLEDCount;
@@ -1668,7 +1668,7 @@ void AppStage_HMDModelCalibration::render()
         } break;
     case eMenuState::calibrate:
         {
-            const PSMTracker *TrackerView = m_stereoTrackerState->trackerView;
+            const PSVRTracker *TrackerView = m_stereoTrackerState->trackerView;
 
             // Draw the video from the PoV of the current tracker
             render_tracker_video(0.5f, -0.5f);
@@ -1679,7 +1679,7 @@ void AppStage_HMDModelCalibration::render()
         } break;
     case eMenuState::test:
         {
-            const PSMTracker *trackerView = m_stereoTrackerState->trackerView;
+            const PSVRTracker *trackerView = m_stereoTrackerState->trackerView;
 
             switch (m_testRenderMode)
             {
@@ -1826,14 +1826,14 @@ void AppStage_HMDModelCalibration::renderUI()
         // display tracking quality
         if (m_stereoTrackerState != nullptr)
         {
-            const PSMTracker *trackerView = m_stereoTrackerState->trackerView;
+            const PSVRTracker *trackerView = m_stereoTrackerState->trackerView;
 
             bool bIsTracking;
-            if (PSM_GetIsHmdTracking(m_hmdView->HmdID, &bIsTracking) == PSMResult_Success)
+            if (PSVR_GetIsHmdTracking(m_hmdView->HmdID, &bIsTracking) == PSVRResult_Success)
             {
                 if (bIsTracking && 
-                    PSM_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, LEFT_PROJECTION_INDEX, nullptr, nullptr) == PSMResult_Success &&
-                    PSM_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, RIGHT_PROJECTION_INDEX, nullptr, nullptr) == PSMResult_Success)
+                    PSVR_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, LEFT_PROJECTION_INDEX, nullptr, nullptr) == PSVRResult_Success &&
+                    PSVR_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, RIGHT_PROJECTION_INDEX, nullptr, nullptr) == PSVRResult_Success)
                 {
                     ImGui::Text("Tracking OK");
                 }
@@ -1901,14 +1901,14 @@ void AppStage_HMDModelCalibration::renderUI()
         // display tracking quality
         if (m_stereoTrackerState != nullptr)
         {
-            const PSMTracker *trackerView = m_stereoTrackerState->trackerView;
+            const PSVRTracker *trackerView = m_stereoTrackerState->trackerView;
 
             bool bIsTracking;
-            if (PSM_GetIsHmdTracking(m_hmdView->HmdID, &bIsTracking) == PSMResult_Success)
+            if (PSVR_GetIsHmdTracking(m_hmdView->HmdID, &bIsTracking) == PSVRResult_Success)
             {
                 if (bIsTracking && 
-                    PSM_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, LEFT_PROJECTION_INDEX, nullptr, nullptr) == PSMResult_Success &&
-                    PSM_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, RIGHT_PROJECTION_INDEX, nullptr, nullptr) == PSMResult_Success)
+                    PSVR_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, LEFT_PROJECTION_INDEX, nullptr, nullptr) == PSVRResult_Success &&
+                    PSVR_GetHmdPixelLocationOnTracker(m_hmdView->HmdID, RIGHT_PROJECTION_INDEX, nullptr, nullptr) == PSVRResult_Success)
                 {
                     ImGui::Text("Tracking OK");
                 }
@@ -2020,37 +2020,37 @@ void AppStage_HMDModelCalibration::update_tracker_video()
 {
     // Render the latest from the currently active tracker
     if (m_stereoTrackerState->trackerView != nullptr &&
-        PSM_PollTrackerVideoStream(m_stereoTrackerState->trackerView->tracker_info.tracker_id))
+        PSVR_PollTrackerVideoStream(m_stereoTrackerState->trackerView->tracker_info.tracker_id))
     {
         const unsigned char *buffer= nullptr;
 
-        if (PSM_GetTrackerVideoFrameBuffer(
+        if (PSVR_GetTrackerVideoFrameBuffer(
                 m_stereoTrackerState->trackerView->tracker_info.tracker_id, 
-                PSMVideoFrameSection_Left, 
-                &buffer) == PSMResult_Success)
+                PSVRVideoFrameSection_Left, 
+                &buffer) == PSVRResult_Success)
         {
-            m_stereoTrackerState->sections[PSMVideoFrameSection_Left].applyVideoFrame(buffer);
+            m_stereoTrackerState->sections[PSVRVideoFrameSection_Left].applyVideoFrame(buffer);
         }
 
-        if (PSM_GetTrackerVideoFrameBuffer(
+        if (PSVR_GetTrackerVideoFrameBuffer(
                 m_stereoTrackerState->trackerView->tracker_info.tracker_id, 
-                PSMVideoFrameSection_Right, 
-                &buffer) == PSMResult_Success)
+                PSVRVideoFrameSection_Right, 
+                &buffer) == PSVRResult_Success)
         {
-            m_stereoTrackerState->sections[PSMVideoFrameSection_Right].applyVideoFrame(buffer);
+            m_stereoTrackerState->sections[PSVRVideoFrameSection_Right].applyVideoFrame(buffer);
         }
     }
 }
 
 void AppStage_HMDModelCalibration::render_tracker_video(const float top_y, const float bottom_y)
 {
-    if (m_stereoTrackerState->sections[PSMVideoFrameSection_Left].textureAsset != nullptr &&
-        m_stereoTrackerState->sections[PSMVideoFrameSection_Left].textureAsset != nullptr)
+    if (m_stereoTrackerState->sections[PSVRVideoFrameSection_Left].textureAsset != nullptr &&
+        m_stereoTrackerState->sections[PSVRVideoFrameSection_Left].textureAsset != nullptr)
     {
         // Draw the two video feeds on the top half of the screen
         drawFullscreenStereoTexture(
-            m_stereoTrackerState->sections[PSMVideoFrameSection_Left].textureAsset->texture_id, 
-            m_stereoTrackerState->sections[PSMVideoFrameSection_Right].textureAsset->texture_id,
+            m_stereoTrackerState->sections[PSVRVideoFrameSection_Left].textureAsset->texture_id, 
+            m_stereoTrackerState->sections[PSVRVideoFrameSection_Right].textureAsset->texture_id,
             top_y, bottom_y);
     }
 }
@@ -2067,11 +2067,11 @@ void AppStage_HMDModelCalibration::release_devices()
 
     if (m_hmdView != nullptr)
     {
-        PSMRequestID request_id;
-        PSM_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
-        PSM_EatResponse(request_id);
+        PSVRRequestID request_id;
+        PSVR_StopHmdDataStreamAsync(m_hmdView->HmdID, &request_id);
+        PSVR_EatResponse(request_id);
 
-        PSM_FreeHmdListener(m_hmdView->HmdID);
+        PSVR_FreeHmdListener(m_hmdView->HmdID);
         m_hmdView = nullptr;
     }
 
@@ -2081,13 +2081,13 @@ void AppStage_HMDModelCalibration::release_devices()
 
         if (m_stereoTrackerState->trackerView != nullptr)
         {
-            PSM_CloseTrackerVideoStream(m_stereoTrackerState->trackerView->tracker_info.tracker_id);
+            PSVR_CloseTrackerVideoStream(m_stereoTrackerState->trackerView->tracker_info.tracker_id);
 
-            PSMRequestID request_id;
-            PSM_StopTrackerDataStreamAsync(m_stereoTrackerState->trackerView->tracker_info.tracker_id, &request_id);
-            PSM_EatResponse(request_id);
+            PSVRRequestID request_id;
+            PSVR_StopTrackerDataStreamAsync(m_stereoTrackerState->trackerView->tracker_info.tracker_id, &request_id);
+            PSVR_EatResponse(request_id);
 
-            PSM_FreeTrackerListener(m_stereoTrackerState->trackerView->tracker_info.tracker_id);
+            PSVR_FreeTrackerListener(m_stereoTrackerState->trackerView->tracker_info.tracker_id);
         }
     }
 
@@ -2108,38 +2108,38 @@ void AppStage_HMDModelCalibration::request_hmd_list()
         m_menuState = AppStage_HMDModelCalibration::pendingHmdListRequest;
 
         // Request a list of controllers back from the server
-        PSMRequestID requestId;
-        PSM_GetHmdListAsync(&requestId);
-        PSM_RegisterCallback(requestId, AppStage_HMDModelCalibration::handle_hmd_list_response, this);
+        PSVRRequestID requestId;
+        PSVR_GetHmdListAsync(&requestId);
+        PSVR_RegisterCallback(requestId, AppStage_HMDModelCalibration::handle_hmd_list_response, this);
     }
 }
 
 void AppStage_HMDModelCalibration::handle_hmd_list_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
-    const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_message->opaque_response_handle);
-    const PSMoveProtocol::Request *request = GET_PSMOVEPROTOCOL_REQUEST(response_message->opaque_request_handle);
+    const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_message->opaque_response_handle);
+    const PSVRProtocol::Request *request = GET_PSVRPROTOCOL_REQUEST(response_message->opaque_request_handle);
 
     AppStage_HMDModelCalibration *thisPtr = static_cast<AppStage_HMDModelCalibration *>(userdata);
 
-    const PSMResult ResultCode = response_message->result_code;
+    const PSVRResult ResultCode = response_message->result_code;
 
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
-        assert(response_message->payload_type == PSMResponseMessage::_responsePayloadType_HmdList);
-        const PSMHmdList *hmd_list = &response_message->payload.hmd_list;
+        assert(response_message->payload_type == PSVRResponseMessage::_responsePayloadType_HmdList);
+        const PSVRHmdList *hmd_list = &response_message->payload.hmd_list;
 
-        PSMHmdID trackedHmdId = thisPtr->m_overrideHmdId;
+        PSVRHmdID trackedHmdId = thisPtr->m_overrideHmdId;
 
         if (trackedHmdId == -1)
         {
             for (int list_index = 0; list_index < hmd_list->count; ++list_index)
             {
-                if (hmd_list->hmd_type[list_index] == PSMHmd_Morpheus)
+                if (hmd_list->hmd_type[list_index] == PSVRHmd_Morpheus)
                 {
                     trackedHmdId = hmd_list->hmd_id[list_index];
                     break;
@@ -2151,8 +2151,8 @@ void AppStage_HMDModelCalibration::handle_hmd_list_response(
         {
             // Allocate an HMD view to track HMD state
             assert(thisPtr->m_hmdView == nullptr);
-            PSM_AllocateHmdListener(trackedHmdId);
-            thisPtr->m_hmdView = PSM_GetHmd(trackedHmdId);
+            PSVR_AllocateHmdListener(trackedHmdId);
+            thisPtr->m_hmdView = PSVR_GetHmd(trackedHmdId);
 
             // Request the tracking shape so that we know how many LEDs we are looking for
             thisPtr->request_hmd_tracking_shape(trackedHmdId);
@@ -2163,46 +2163,46 @@ void AppStage_HMDModelCalibration::handle_hmd_list_response(
         }
     } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->setState(AppStage_HMDModelCalibration::failedHmdListRequest);
         } break;
     }
 }
 
-void AppStage_HMDModelCalibration::request_hmd_tracking_shape(PSMHmdID HmdID)
+void AppStage_HMDModelCalibration::request_hmd_tracking_shape(PSVRHmdID HmdID)
 {
     if (m_menuState != AppStage_HMDModelCalibration::pendingHmdShapeRequest)
     {
         m_menuState = AppStage_HMDModelCalibration::pendingHmdShapeRequest;
 
-        PSMRequestID requestId;
-        PSM_GetHmdTrackingShapeAsync(HmdID, &requestId);
-        PSM_RegisterCallback(requestId, AppStage_HMDModelCalibration::handle_hmd_tracking_shape_response, this);
+        PSVRRequestID requestId;
+        PSVR_GetHmdTrackingShapeAsync(HmdID, &requestId);
+        PSVR_RegisterCallback(requestId, AppStage_HMDModelCalibration::handle_hmd_tracking_shape_response, this);
     }
 }
 
 void AppStage_HMDModelCalibration::handle_hmd_tracking_shape_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
-    const PSMoveProtocol::Response *response = GET_PSMOVEPROTOCOL_RESPONSE(response_message->opaque_response_handle);
-    const PSMoveProtocol::Request *request = GET_PSMOVEPROTOCOL_REQUEST(response_message->opaque_request_handle);
+    const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_message->opaque_response_handle);
+    const PSVRProtocol::Request *request = GET_PSVRPROTOCOL_REQUEST(response_message->opaque_request_handle);
 
     AppStage_HMDModelCalibration *thisPtr = static_cast<AppStage_HMDModelCalibration *>(userdata);
 
-    const PSMResult ResultCode = response_message->result_code;
+    const PSVRResult ResultCode = response_message->result_code;
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
-        assert(response_message->payload_type == PSMResponseMessage::_responsePayloadType_HmdTrackingShape);
-        const PSMTrackingShape *hmd_tracking_shape = &response_message->payload.hmd_tracking_shape;
+        assert(response_message->payload_type == PSVRResponseMessage::_responsePayloadType_HmdTrackingShape);
+        const PSVRTrackingShape *hmd_tracking_shape = &response_message->payload.hmd_tracking_shape;
 
-        if (hmd_tracking_shape->shape_type == PSMTrackingShape_PointCloud)
+        if (hmd_tracking_shape->shape_type == PSVRTrackingShape_PointCloud)
         {
             // Create a model for the HMD that corresponds to the tracking geometry we are looking for
             assert(thisPtr->m_hmdModelState == nullptr);
@@ -2218,9 +2218,9 @@ void AppStage_HMDModelCalibration::handle_hmd_tracking_shape_response(
         }
     } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->setState(AppStage_HMDModelCalibration::failedHmdListRequest);
         } break;
@@ -2232,35 +2232,35 @@ void AppStage_HMDModelCalibration::request_start_hmd_stream(int HmdID)
     // Start receiving data from the controller
     setState(AppStage_HMDModelCalibration::pendingHmdStartRequest);
 
-    PSMRequestID requestId;
-    PSM_StartHmdDataStreamAsync(
+    PSVRRequestID requestId;
+    PSVR_StartHmdDataStreamAsync(
         HmdID, 
-        PSMStreamFlags_includePositionData |
-        PSMStreamFlags_includeRawTrackerData |
-        PSMStreamFlags_disableROI, 
+        PSVRStreamFlags_includePositionData |
+        PSVRStreamFlags_includeRawTrackerData |
+        PSVRStreamFlags_disableROI, 
         &requestId);
-    PSM_RegisterCallback(requestId, &AppStage_HMDModelCalibration::handle_start_hmd_response, this);
+    PSVR_RegisterCallback(requestId, &AppStage_HMDModelCalibration::handle_start_hmd_response, this);
 
 }
 
 void AppStage_HMDModelCalibration::handle_start_hmd_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_HMDModelCalibration *thisPtr = static_cast<AppStage_HMDModelCalibration *>(userdata);
 
-    const PSMResult ResultCode = response_message->result_code;
+    const PSVRResult ResultCode = response_message->result_code;
 
     switch (ResultCode)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
         thisPtr->request_tracker_list();
     } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
     {
         thisPtr->setState(AppStage_HMDModelCalibration::failedHmdStartRequest);
     } break;
@@ -2273,25 +2273,25 @@ void AppStage_HMDModelCalibration::request_tracker_list()
     {
         setState(eMenuState::pendingTrackerListRequest);
 
-        // Tell the psmove service that we we want a list of trackers connected to this machine
-        PSMRequestID requestId;
-        PSM_GetTrackerListAsync(&requestId);
-        PSM_RegisterCallback(requestId, AppStage_HMDModelCalibration::handle_tracker_list_response, this);
+        // Tell the PSVR service that we we want a list of trackers connected to this machine
+        PSVRRequestID requestId;
+        PSVR_GetTrackerListAsync(&requestId);
+        PSVR_RegisterCallback(requestId, AppStage_HMDModelCalibration::handle_tracker_list_response, this);
     }
 }
 
 void AppStage_HMDModelCalibration::handle_tracker_list_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_HMDModelCalibration *thisPtr = static_cast<AppStage_HMDModelCalibration *>(userdata);
 
     switch (response_message->result_code)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
-        assert(response_message->payload_type == PSMResponseMessage::_responsePayloadType_TrackerList);
-        const PSMTrackerList &tracker_list = response_message->payload.tracker_list;
+        assert(response_message->payload_type == PSVRResponseMessage::_responsePayloadType_TrackerList);
+        const PSVRTrackerList &tracker_list = response_message->payload.tracker_list;
         
         if (thisPtr->setup_stereo_tracker(tracker_list))
         {
@@ -2303,9 +2303,9 @@ void AppStage_HMDModelCalibration::handle_tracker_list_response(
         }
     } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->m_failureDetails = "Server Failure";
             thisPtr->setState(eMenuState::failedTrackerListRequest);
@@ -2313,7 +2313,7 @@ void AppStage_HMDModelCalibration::handle_tracker_list_response(
     }
 }
 
-bool AppStage_HMDModelCalibration::setup_stereo_tracker(const PSMTrackerList &tracker_list)
+bool AppStage_HMDModelCalibration::setup_stereo_tracker(const PSVRTrackerList &tracker_list)
 {
     bool bSuccess = true;
 
@@ -2323,9 +2323,9 @@ bool AppStage_HMDModelCalibration::setup_stereo_tracker(const PSMTrackerList &tr
         int stereo_tracker_index= -1;
         for (int tracker_index = 0; tracker_index < tracker_list.count; ++tracker_index)
         {
-            const PSMClientTrackerInfo *tracker_info = &tracker_list.trackers[tracker_index];
+            const PSVRClientTrackerInfo *tracker_info = &tracker_list.trackers[tracker_index];
 
-            if (tracker_info->tracker_intrinsics.intrinsics_type == PSMTrackerIntrinsics::PSM_STEREO_TRACKER_INTRINSICS)
+            if (tracker_info->tracker_intrinsics.intrinsics_type == PSVRTrackerIntrinsics::PSVR_STEREO_TRACKER_INTRINSICS)
             {
                 stereo_tracker_index= tracker_index;
                 break;
@@ -2334,15 +2334,15 @@ bool AppStage_HMDModelCalibration::setup_stereo_tracker(const PSMTrackerList &tr
 
         if (stereo_tracker_index != -1)
         {
-            const PSMClientTrackerInfo *tracker_info = &tracker_list.trackers[stereo_tracker_index];
-            const PSMTrackerIntrinsics &intrinsics= tracker_info->tracker_intrinsics;
+            const PSVRClientTrackerInfo *tracker_info = &tracker_list.trackers[stereo_tracker_index];
+            const PSVRTrackerIntrinsics &intrinsics= tracker_info->tracker_intrinsics;
 
             // Allocate tracker view for the stereo camera
-            PSM_AllocateTrackerListener(tracker_info->tracker_id, tracker_info);
+            PSVR_AllocateTrackerListener(tracker_info->tracker_id, tracker_info);
 
             m_stereoTrackerState->init();
             m_stereoTrackerState->applyIntrinsics(intrinsics);
-            m_stereoTrackerState->trackerView= PSM_GetTracker(tracker_info->tracker_id);
+            m_stereoTrackerState->trackerView= PSVR_GetTracker(tracker_info->tracker_id);
 
             // Start streaming tracker video
             request_tracker_start_stream(m_stereoTrackerState->trackerView);
@@ -2358,34 +2358,34 @@ bool AppStage_HMDModelCalibration::setup_stereo_tracker(const PSMTrackerList &tr
 }
 
 void AppStage_HMDModelCalibration::request_tracker_start_stream(
-    PSMTracker *tracker_view)
+    PSVRTracker *tracker_view)
 {
     setState(eMenuState::pendingTrackerStartRequest);
 
     // Request data to start streaming to the tracker
-    PSMRequestID requestID;
-    PSM_StartTrackerDataStreamAsync(
+    PSVRRequestID requestID;
+    PSVR_StartTrackerDataStreamAsync(
         tracker_view->tracker_info.tracker_id, 
         &requestID);
-    PSM_RegisterCallback(requestID, AppStage_HMDModelCalibration::handle_tracker_start_stream_response, this);
+    PSVR_RegisterCallback(requestID, AppStage_HMDModelCalibration::handle_tracker_start_stream_response, this);
 }
 
 void AppStage_HMDModelCalibration::handle_tracker_start_stream_response(
-    const PSMResponseMessage *response_message,
+    const PSVRResponseMessage *response_message,
     void *userdata)
 {
     AppStage_HMDModelCalibration *thisPtr = static_cast<AppStage_HMDModelCalibration *>(userdata);
 
     switch (response_message->result_code)
     {
-    case PSMResult_Success:
+    case PSVRResult_Success:
     {
         // Get the tracker ID this request was for
-        const PSMoveProtocol::Request *request = GET_PSMOVEPROTOCOL_REQUEST(response_message->opaque_request_handle);
+        const PSVRProtocol::Request *request = GET_PSVRPROTOCOL_REQUEST(response_message->opaque_request_handle);
         const int tracker_id = request->request_start_tracker_data_stream().tracker_id();
 
         // Open the shared memory that the video stream is being written to
-        if (PSM_OpenTrackerVideoStream(tracker_id) == PSMResult_Success)
+        if (PSVR_OpenTrackerVideoStream(tracker_id) == PSVRResult_Success)
         {   
             thisPtr->handle_all_devices_ready();
         }
@@ -2395,9 +2395,9 @@ void AppStage_HMDModelCalibration::handle_tracker_start_stream_response(
         }
     } break;
 
-    case PSMResult_Error:
-    case PSMResult_Canceled:
-    case PSMResult_Timeout:
+    case PSVRResult_Error:
+    case PSVRResult_Canceled:
+    case PSVRResult_Timeout:
         {
             thisPtr->setState(eMenuState::failedTrackerStartRequest);
         } break;
@@ -2415,10 +2415,10 @@ void AppStage_HMDModelCalibration::handle_all_devices_ready()
 }
 
 //-- private methods -----
-static PSMVector2f projectTrackerRelativePositionOnTracker(
-    const PSMVector3f &trackerRelativePosition,
-    const PSMMatrix3d &camera_matrix,
-    const PSMDistortionCoefficients &distortion_coefficients)
+static PSVRVector2f projectTrackerRelativePositionOnTracker(
+    const PSVRVector3f &trackerRelativePosition,
+    const PSVRMatrix3d &camera_matrix,
+    const PSVRDistortionCoefficients &distortion_coefficients)
 {
     cv::Mat cvDistCoeffs(5, 1, cv::DataType<double>::type);
     cvDistCoeffs.at<double>(0) = distortion_coefficients.k1;
@@ -2440,25 +2440,25 @@ static PSMVector2f projectTrackerRelativePositionOnTracker(
             (double)trackerRelativePosition.z));
 
     // Compute the camera intrinsic matrix in opencv format
-    cv::Matx33d cvCameraMatrix = psmove_matrix3x3_to_cv_mat33d(camera_matrix);
+    cv::Matx33d cvCameraMatrix = PSVR_matrix3x3_to_cv_mat33d(camera_matrix);
 
     // Projected point 
     std::vector<cv::Point2d> projectedPoints;
     cv::projectPoints(cvObjectPoints, rvec, tvec, cvCameraMatrix, cvDistCoeffs, projectedPoints);
 
-    PSMVector2f screenLocation = {(float)projectedPoints[0].x, (float)projectedPoints[0].y};
+    PSVRVector2f screenLocation = {(float)projectedPoints[0].x, (float)projectedPoints[0].y};
 
     return screenLocation;
 }
 
-static void drawHMD(const PSMHeadMountedDisplay *hmdView, const glm::mat4 &transform, const glm::vec3 &color)
+static void drawHMD(const PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform, const glm::vec3 &color)
 {
     switch (hmdView->HmdType)
     {
-    case PSMHmd_Morpheus:
+    case PSVRHmd_Morpheus:
         drawMorpheusModel(transform, color);
         break;
-    case PSMHmd_Virtual:
+    case PSVRHmd_Virtual:
         const glm::mat4 offset_transform = glm::translate(transform, glm::vec3(0.f, 0.f, 10.f));
         drawMorpheusModel(offset_transform, color);
         //drawVirtualHMDModel(transform, glm::vec3(0.f, 0.f, 1.f));

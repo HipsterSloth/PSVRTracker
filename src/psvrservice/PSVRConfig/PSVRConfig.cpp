@@ -1,4 +1,4 @@
-#include "PSMoveConfig.h"
+#include "PSVRConfig.h"
 #include "DeviceInterface.h"
 #include "ServerUtility.h"
 #include <boost/filesystem.hpp>
@@ -21,13 +21,13 @@ const CommonHSVColorRange g_default_color_presets[] = {
 };
 const CommonHSVColorRange *k_default_color_presets = g_default_color_presets;
 
-PSMoveConfig::PSMoveConfig(const std::string &fnamebase)
+PSVRConfig::PSVRConfig(const std::string &fnamebase)
 : ConfigFileBase(fnamebase)
 {
 }
 
 const std::string
-PSMoveConfig::getConfigPath()
+PSVRConfig::getConfigPath()
 {
     const char *homedir;
 #ifdef _WIN32
@@ -40,12 +40,12 @@ PSMoveConfig::getConfigPath()
     homedir = getenv("HOME");
     // if run as root, use system-wide data directory
     if (geteuid() == 0) {
-        homedir = "/etc/psmoveservice";
+        homedir = "/etc/PSVRSERVICE";
     }
 #endif
     
     boost::filesystem::path configpath(homedir);
-    configpath /= "PSMoveService";
+    configpath /= "PSVRSERVICE";
     boost::filesystem::create_directory(configpath);
     configpath /= ConfigFileBase + ".json";
     std::cout << "Config file name: " << configpath << std::endl;
@@ -53,13 +53,13 @@ PSMoveConfig::getConfigPath()
 }
 
 void
-PSMoveConfig::save()
+PSVRConfig::save()
 {
     boost::property_tree::write_json(getConfigPath(), config2ptree());
 }
 
 bool
-PSMoveConfig::load()
+PSVRConfig::load()
 {
     bool bLoadedOk = false;
     boost::property_tree::ptree pt;
@@ -76,7 +76,7 @@ PSMoveConfig::load()
 }
 
 void
-PSMoveConfig::writeColorPropertyPresetTable(
+PSVRConfig::writeColorPropertyPresetTable(
 	const CommonHSVColorRangeTable *table,
     boost::property_tree::ptree &pt)
 {
@@ -91,7 +91,7 @@ PSMoveConfig::writeColorPropertyPresetTable(
 }
 
 void
-PSMoveConfig::readColorPropertyPresetTable(
+PSVRConfig::readColorPropertyPresetTable(
 	const boost::property_tree::ptree &pt,
 	CommonHSVColorRangeTable *table)
 {
@@ -106,7 +106,7 @@ PSMoveConfig::readColorPropertyPresetTable(
 }
 
 void
-PSMoveConfig::writeTrackingColor(
+PSVRConfig::writeTrackingColor(
 	boost::property_tree::ptree &pt,
 	int tracking_color_id)
 {
@@ -139,7 +139,7 @@ PSMoveConfig::writeTrackingColor(
 }
 
 int 
-PSMoveConfig::readTrackingColor(
+PSVRConfig::readTrackingColor(
 	const boost::property_tree::ptree &pt)
 {
 	std::string tracking_color_string = pt.get<std::string>("tracking_color", "invalid");
@@ -197,7 +197,7 @@ writeColorPropertyPreset(
 }
 
 void
-PSMoveConfig::writeColorPreset(
+PSVRConfig::writeColorPreset(
     boost::property_tree::ptree &pt,
     const char *profile_name,
     const char *color_name,
@@ -236,7 +236,7 @@ readColorPropertyPreset(
 }
 
 void
-PSMoveConfig::readColorPreset(
+PSVRConfig::readColorPreset(
     const boost::property_tree::ptree &pt,
     const char *profile_name,
     const char *color_name,

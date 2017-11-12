@@ -4,7 +4,7 @@
 
 #ifndef __CLIENTGEOMETRY_CAPI_H
 #define __CLIENTGEOMETRY_CAPI_H
-#include "PSMoveClient_export.h"
+#include "PSVRClient_export.h"
 #include <stdbool.h>
 //cut_before
 
@@ -17,52 +17,52 @@
 
 //-- constants -----
 /// Conversion factor to go from meters to centimeters
-#define PSM_METERS_TO_CENTIMETERS  100.f
+#define PSVR_METERS_TO_CENTIMETERS  100.f
 
 /// Conversion factor to go from centimeters to meters
-#define PSM_CENTIMETERS_TO_METERS  0.01f
+#define PSVR_CENTIMETERS_TO_METERS  0.01f
 
 /// Conversion factor to go from millimeters to centimeters
-#define PSM_MILLIMETERS_TO_CENTIMETERS  0.1f
+#define PSVR_MILLIMETERS_TO_CENTIMETERS  0.1f
 
 /// Conversion factor to go from centimeters to millimeters
-#define PSM_CENTIMETERS_TO_MILLIMETERS  10.f
+#define PSVR_CENTIMETERS_TO_MILLIMETERS  10.f
 
 /// A 2D vector with float components.
 typedef struct
 {
     float x, y;
-} PSMVector2f;
+} PSVRVector2f;
 
 /// A 3D vector with double components.
 typedef struct
 {
     double x, y, z;
-} PSMVector3d;
+} PSVRVector3d;
 
 /// A 1D range of values.
 typedef struct
 {
     float center, range;
-} PSMRangef;
+} PSVRRangef;
 
 /// A 3D vector with float components.
 typedef struct
 {
     float x, y, z;
-} PSMVector3f;
+} PSVRVector3f;
 
 /// A 3D vector with int components.
 typedef struct
 {
     int x, y, z;
-} PSMVector3i;
+} PSVRVector3i;
 
 /// A 4D vector with double components.
 typedef struct
 {
     double x, y, z, w;
-} PSMVector4d;
+} PSVRVector4d;
 
 /** A 3x3 matrix with float components
 	storage is row major order: [x0,x1,x2,y0,y1,y1,z0,z1,z2]
@@ -70,7 +70,7 @@ typedef struct
 typedef struct
 {
     float m[3][3]; 
-} PSMMatrix3f;
+} PSVRMatrix3f;
 
 /** A 3x3 matrix with double components
 	storage is row major order: [x0,x1,x2,y0,y1,y2,z0,z1,z2]
@@ -78,7 +78,7 @@ typedef struct
 typedef struct
 {
     double m[3][3]; 
-} PSMMatrix3d;
+} PSVRMatrix3d;
 
 /** A 3x4 matrix with double components
 	storage is row major order: [x0,x1,x2,x3,y0,y1,y2,y3,z0,z1,z2,z3]
@@ -86,7 +86,7 @@ typedef struct
 typedef struct
 {
     double m[3][4]; 
-} PSMMatrix34d;
+} PSVRMatrix34d;
 
 /** A 4x4 matrix with double components
 	storage is row major order: [x0,x1,x2,x3,y0,y1,y2,y3,z0,z1,z2,z3,w0,w1,w2,w3]
@@ -94,60 +94,60 @@ typedef struct
 typedef struct
 {
     double m[4][4]; 
-} PSMMatrix4d;
+} PSVRMatrix4d;
 
 /// A quaternion rotation.
 typedef struct
 {
     float w, x, y, z;
-} PSMQuatf;
+} PSVRQuatf;
 
 /// Position and orientation together.
 typedef struct
 {
-    PSMVector3f  Position;
-    PSMQuatf     Orientation;
-} PSMPosef;
+    PSVRVector3f  Position;
+    PSVRQuatf     Orientation;
+} PSVRPosef;
 
 /// A camera frustum
 typedef struct
 {
-    PSMVector3f origin; 	///< frustum tip world location, in cm
-    PSMVector3f forward; 	///< forward axis of the frustum
-	PSMVector3f left; 		///< left axis of the frustum
-	PSMVector3f up; 		///< up axis of the frustum
+    PSVRVector3f origin; 	///< frustum tip world location, in cm
+    PSVRVector3f forward; 	///< forward axis of the frustum
+	PSVRVector3f left; 		///< left axis of the frustum
+	PSVRVector3f up; 		///< up axis of the frustum
     float HFOV; 			///< horizontal field of view, in radians
 	float VFOV; 			///< vertical field of fiew, in radians
     float zNear; 			///< near plane distance of frustum, in cm
 	float zFar; 			///< far place distance of frustum, in cm
-} PSMFrustum;
+} PSVRFrustum;
 
 typedef enum 
 {
 	TRIANGLE_POINT_COUNT = 3,
 	QUAD_POINT_COUNT = 4,
 	MAX_POINT_CLOUD_POINT_COUNT= 9
-} PSMTrackingShapeConstants;
+} PSVRTrackingShapeConstants;
 
 typedef struct
 {
     union{
         struct {
-            PSMVector2f center;
+            PSVRVector2f center;
             float half_x_extent;
             float half_y_extent;
             float angle;
         } ellipse;
         struct {
-            PSMVector2f triangle[TRIANGLE_POINT_COUNT];
-			PSMVector2f quad[QUAD_POINT_COUNT];
+            PSVRVector2f triangle[TRIANGLE_POINT_COUNT];
+			PSVRVector2f quad[QUAD_POINT_COUNT];
         } lightbar;
 		struct {
-			PSMVector2f points[MAX_POINT_CLOUD_POINT_COUNT];
+			PSVRVector2f points[MAX_POINT_CLOUD_POINT_COUNT];
 			int point_count;
 		} pointcloud;
     } shape;
-} PSMTrackingProjectionData;
+} PSVRTrackingProjectionData;
 
 typedef enum
 {
@@ -159,33 +159,33 @@ typedef enum
 
     MAX_PROJECTION_COUNT = 2,
     PRIMARY_PROJECTION_INDEX = LEFT_PROJECTION_INDEX,
-} PSMTrackingProjectionCount;
+} PSVRTrackingProjectionCount;
 
 
 typedef enum 
 {
-    PSMShape_INVALID_PROJECTION = -1,
-    PSMShape_Ellipse,					///< The 2D projection of a sphere (think conic section)
-    PSMShape_LightBar,					///< The 2D projection of a 3D quad (bounding shape of DS4 lightbar) 
-    PSMShape_PointCloud					///< The 2D projection of a 3D point cloud (Morpheus tracking lights)
-} PSMProjectionShapeType;
+    PSVRShape_INVALID_PROJECTION = -1,
+    PSVRShape_Ellipse,					///< The 2D projection of a sphere (think conic section)
+    PSVRShape_LightBar,					///< The 2D projection of a 3D quad (bounding shape of DS4 lightbar) 
+    PSVRShape_PointCloud					///< The 2D projection of a 3D point cloud (Morpheus tracking lights)
+} PSVRProjectionShapeType;
 
 
 /// The projection of a tracking shape onto the image plane of a mono or stereo tracker video feed
 typedef struct
 {
-    PSMTrackingProjectionData projections[MAX_PROJECTION_COUNT];
-    PSMTrackingProjectionCount projection_count;
-    PSMProjectionShapeType shape_type;
-} PSMTrackingProjection;
+    PSVRTrackingProjectionData projections[MAX_PROJECTION_COUNT];
+    PSVRTrackingProjectionCount projection_count;
+    PSVRProjectionShapeType shape_type;
+} PSVRTrackingProjection;
 
 typedef enum 
 {
-    PSMTrackingShape_INVALID = -1,
-    PSMTrackingShape_Sphere,
-    PSMTrackingShape_LightBar,
-    PSMTrackingShape_PointCloud
-} PSMTrackingShapeType;
+    PSVRTrackingShape_INVALID = -1,
+    PSVRTrackingShape_Sphere,
+    PSVRTrackingShape_LightBar,
+    PSVRTrackingShape_PointCloud
+} PSVRTrackingShapeType;
 
 /// A tracking shape of a controller or HMD
 typedef struct
@@ -195,239 +195,239 @@ typedef struct
             float radius;
         } sphere;
         struct {
-            PSMVector3f triangle[TRIANGLE_POINT_COUNT];
-			PSMVector3f quad[QUAD_POINT_COUNT];
+            PSVRVector3f triangle[TRIANGLE_POINT_COUNT];
+			PSVRVector3f quad[QUAD_POINT_COUNT];
         } lightbar;
 		struct {
-			PSMVector3f points[MAX_POINT_CLOUD_POINT_COUNT];
+			PSVRVector3f points[MAX_POINT_CLOUD_POINT_COUNT];
 			int point_count;
 		} pointcloud;
     } shape;
-    PSMTrackingShapeType shape_type;
-} PSMTrackingShape;
+    PSVRTrackingShapeType shape_type;
+} PSVRTrackingShape;
 
 // Interface
 //----------
 
-// PSMVector2f Methods
+// PSVRVector2f Methods
 
 /// Adds two 2D vectors together
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fAdd(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fAdd(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Subtracts one 2D vector from another 2D vector
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fSubtract(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fSubtract(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Scales a 2D vector by a scalar
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fScale(const PSMVector2f *v, const float s);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fScale(const PSVRVector2f *v, const float s);
 /// Scales a 2D vector by a scalar and then adds a vector to the scaled result
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fScaleAndAdd(const PSMVector2f *v, const float s, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fScaleAndAdd(const PSVRVector2f *v, const float s, const PSVRVector2f *b);
 /// Divides each component of a 2D vector by a scalar without checking for divide-by-zero
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fUnsafeScalarDivide(const PSMVector2f *numerator, const float divisor);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fUnsafeScalarDivide(const PSVRVector2f *numerator, const float divisor);
 /// Divides each component of a 2D vector by the corresponding componenet of another vector without checking for a divide-by-zero
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fUnsafeVectorDivide(const PSMVector2f *numerator, const PSMVector2f *divisor);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fUnsafeVectorDivide(const PSVRVector2f *numerator, const PSVRVector2f *divisor);
 /// Divides each component of a 2D vector by a scalar, returning a default vector in the case of divide by zero
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fSafeScalarDivide(const PSMVector2f *numerator, const float divisor, const PSMVector2f *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fSafeScalarDivide(const PSVRVector2f *numerator, const float divisor, const PSVRVector2f *default_result);
 /// Divides each component of a 2D vector by another vector, returning a default value for each component in the case of divide by zero
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fSafeVectorDivide(const PSMVector2f *numerator, const PSMVector2f *divisor, const PSMVector2f *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fSafeVectorDivide(const PSVRVector2f *numerator, const PSVRVector2f *divisor, const PSVRVector2f *default_result);
 /// Computes the absolute value of each component
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fAbs(const PSMVector2f *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fAbs(const PSVRVector2f *v);
 /// Squares each component of a vector
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fSquare(const PSMVector2f *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fSquare(const PSVRVector2f *v);
 /// Computes the length of a given vector
-PSM_PUBLIC_FUNCTION(float) PSM_Vector2fLength(const PSMVector2f *v);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fLength(const PSVRVector2f *v);
 /// Computes the normalized version of a vector, returning a default vector in the event of a near zero length vector
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fNormalizeWithDefault(const PSMVector2f *v, const PSMVector2f *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fNormalizeWithDefault(const PSVRVector2f *v, const PSVRVector2f *default_result);
 /// Computes the minimum component of a given vector
-PSM_PUBLIC_FUNCTION(float) PSM_Vector2fMinValue(const PSMVector2f *v);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fMinValue(const PSVRVector2f *v);
 /// Computes the maximum component of a given vector
-PSM_PUBLIC_FUNCTION(float) PSM_Vector2fMaxValue(const PSMVector2f *v);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fMaxValue(const PSVRVector2f *v);
 /// Computes the 2D dot product of two vectors
-PSM_PUBLIC_FUNCTION(float) PSM_Vector2fDot(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fDot(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Computes the 2D squared distance between two vectors
-PSM_PUBLIC_FUNCTION(float) PSM_Vector2fDistanceSquared(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fDistanceSquared(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Computes the 2D squared between two vectors
-PSM_PUBLIC_FUNCTION(float) PSM_Vector2fDistance(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fDistance(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Computes the min value of two vectors along each component
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fMin(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fMin(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Computes the max value of two vectors along each component
-PSM_PUBLIC_FUNCTION(PSMVector2f) PSM_Vector2fMax(const PSMVector2f *a, const PSMVector2f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fMax(const PSVRVector2f *a, const PSVRVector2f *b);
 
-// PSMVector3f Methods
+// PSVRVector3f Methods
 
 /// Adds two 3D vectors together
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fAdd(const PSMVector3f *a, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fAdd(const PSVRVector3f *a, const PSVRVector3f *b);
 /// Subtracts one 3D vector from another 3D vector
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fSubtract(const PSMVector3f *a, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fSubtract(const PSVRVector3f *a, const PSVRVector3f *b);
 /// Scales a 3D vector by a scalar
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fScale(const PSMVector3f *v, const float s);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fScale(const PSVRVector3f *v, const float s);
 /// Scales a 3D vector by a scalar and then adds a vector to the scaled result
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fScaleAndAdd(const PSMVector3f *v, const float s, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fScaleAndAdd(const PSVRVector3f *v, const float s, const PSVRVector3f *b);
 /// Divides each component of a 3D vector by a scalar without checking for divide-by-zero
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fUnsafeScalarDivide(const PSMVector3f *numerator, const float divisor);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fUnsafeScalarDivide(const PSVRVector3f *numerator, const float divisor);
 /// Divides each component of a 3D vector by the corresponding componenet of another vector without checking for a divide-by-zero
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fUnsafeVectorDivide(const PSMVector3f *numerator, const PSMVector3f *divisor);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fUnsafeVectorDivide(const PSVRVector3f *numerator, const PSVRVector3f *divisor);
 /// Divides each component of a 3D vector by a scalar, returning a default vector in the case of divide by zero
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fSafeScalarDivide(const PSMVector3f *numerator, const float divisor, const PSMVector3f *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fSafeScalarDivide(const PSVRVector3f *numerator, const float divisor, const PSVRVector3f *default_result);
 /// Divides each component of a 2D vector by another vector, returning a default value for each component in the case of divide by zero
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fSafeVectorDivide(const PSMVector3f *numerator, const PSMVector3f *divisor, const PSMVector3f *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fSafeVectorDivide(const PSVRVector3f *numerator, const PSVRVector3f *divisor, const PSVRVector3f *default_result);
 /// Computes the absolute value of each component
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fAbs(const PSMVector3f *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fAbs(const PSVRVector3f *v);
 /// Squares each component of a vector
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fSquare(const PSMVector3f *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fSquare(const PSVRVector3f *v);
 /// Computes the length of a given vector
-PSM_PUBLIC_FUNCTION(float) PSM_Vector3fLength(const PSMVector3f *v);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector3fLength(const PSVRVector3f *v);
 /// Computes the normalized version of a vector, returning a default vector in the event of a near zero length vector
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fNormalizeWithDefault(const PSMVector3f *v, const PSMVector3f *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fNormalizeWithDefault(const PSVRVector3f *v, const PSVRVector3f *default_result);
 /// Computes the normalized version of a vector and its original length, returning a default vector in the event of a near zero length vector
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fNormalizeWithDefaultGetLength(const PSMVector3f *v, const PSMVector3f *default_result, float *out_length);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fNormalizeWithDefaultGetLength(const PSVRVector3f *v, const PSVRVector3f *default_result, float *out_length);
 /// Computes the minimum component of a given vector
-PSM_PUBLIC_FUNCTION(float) PSM_Vector3fMinValue(const PSMVector3f *v);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector3fMinValue(const PSVRVector3f *v);
 /// Computes the maximum component of a given vector
-PSM_PUBLIC_FUNCTION(float) PSM_Vector3fMaxValue(const PSMVector3f *v);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector3fMaxValue(const PSVRVector3f *v);
 /// Computes the 3D dot product of two vectors
-PSM_PUBLIC_FUNCTION(float) PSM_Vector3fDot(const PSMVector3f *a, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(float) PSVR_Vector3fDot(const PSVRVector3f *a, const PSVRVector3f *b);
 /// Compute the 3D cross product of two vectors
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fCross(const PSMVector3f *a, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fCross(const PSVRVector3f *a, const PSVRVector3f *b);
 /// Computes the min value of two vectors along each component
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fMin(const PSMVector3f *a, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fMin(const PSVRVector3f *a, const PSVRVector3f *b);
 /// Computes the max value of two vectors along each component
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3fMax(const PSMVector3f *a, const PSMVector3f *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3fMax(const PSVRVector3f *a, const PSVRVector3f *b);
 
-// PSMVector3i Methods
+// PSVRVector3i Methods
 
 /// Adds two 3D vectors together
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iAdd(const PSMVector3i *a, const PSMVector3i *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iAdd(const PSVRVector3i *a, const PSVRVector3i *b);
 /// Subtracts one 3D vector from another 3D vector
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iSubtract(const PSMVector3i *a, const PSMVector3i *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iSubtract(const PSVRVector3i *a, const PSVRVector3i *b);
 /// Divides each component of a 3D vector by a scalar without checking for divide-by-zero
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iUnsafeScalarDivide(const PSMVector3i *numerator, const int divisor);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iUnsafeScalarDivide(const PSVRVector3i *numerator, const int divisor);
 /// Divides each component of a 3D vector by the corresponding componenet of another vector without checking for a divide-by-zero
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iUnsafeVectorDivide(const PSMVector3i *numerator, const PSMVector3i *divisor);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iUnsafeVectorDivide(const PSVRVector3i *numerator, const PSVRVector3i *divisor);
 /// Divides each component of a 3D vector by a scalar, returning a default vector in the case of divide by zero
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iSafeScalarDivide(const PSMVector3i *numerator, const int divisor, const PSMVector3i *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iSafeScalarDivide(const PSVRVector3i *numerator, const int divisor, const PSVRVector3i *default_result);
 /// Divides each component of a 2D vector by another vector, returning a default value for each component in the case of divide by zero
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iSafeVectorDivide(const PSMVector3i *numerator, const PSMVector3i *divisor, const PSMVector3i *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iSafeVectorDivide(const PSVRVector3i *numerator, const PSVRVector3i *divisor, const PSVRVector3i *default_result);
 /// Computes the absolute value of each component
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iAbs(const PSMVector3i *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iAbs(const PSVRVector3i *v);
 /// Squares each component of a vector
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iSquare(const PSMVector3i *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iSquare(const PSVRVector3i *v);
 /// Computes the squared-length of a given vector
-PSM_PUBLIC_FUNCTION(int) PSM_Vector3iLengthSquared(const PSMVector3i *v);
+PSVR_PUBLIC_FUNCTION(int) PSVR_Vector3iLengthSquared(const PSVRVector3i *v);
 /// Computes the minimum component of a given vector
-PSM_PUBLIC_FUNCTION(int) PSM_Vector3iMinValue(const PSMVector3i *v);
+PSVR_PUBLIC_FUNCTION(int) PSVR_Vector3iMinValue(const PSVRVector3i *v);
 /// Computes the maximum component of a given vector
-PSM_PUBLIC_FUNCTION(int) PSM_Vector3iMaxValue(const PSMVector3i *v);
+PSVR_PUBLIC_FUNCTION(int) PSVR_Vector3iMaxValue(const PSVRVector3i *v);
 /// Computes the min value of two vectors along each component
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iMin(const PSMVector3i *a, const PSMVector3i *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iMin(const PSVRVector3i *a, const PSVRVector3i *b);
 /// Computes the max value of two vectors along each component
-PSM_PUBLIC_FUNCTION(PSMVector3i) PSM_Vector3iMax(const PSMVector3i *a, const PSMVector3i *b);
+PSVR_PUBLIC_FUNCTION(PSVRVector3i) PSVR_Vector3iMax(const PSVRVector3i *a, const PSVRVector3i *b);
 /// Convertes a 3D int vector to a 3D float vector
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Vector3iCastToFloat(const PSMVector3i *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Vector3iCastToFloat(const PSVRVector3i *v);
 
-// PSMQuatf Methods
+// PSVRQuatf Methods
 
 /// Construct a quaternion from raw w, x, y, and z components
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfCreate(float w, float x, float y, float z);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfCreate(float w, float x, float y, float z);
 /// Construct a quaternion rotation from rotations about the X, Y, and Z axis
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfCreateFromAngles(const PSMVector3f *eulerAngles);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfCreateFromAngles(const PSVRVector3f *eulerAngles);
 /// Component-wise add two quaternions together (used by numerical integration)
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfAdd(const PSMQuatf *a, const PSMQuatf *b);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfAdd(const PSVRQuatf *a, const PSVRQuatf *b);
 /// Scale all components of a quaternion by a scalar (used by numerical integration)
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfScale(const PSMQuatf *q, const float s);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfScale(const PSVRQuatf *q, const float s);
 /// Compute the multiplication of two quaterions
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfMultiply(const PSMQuatf *a, const PSMQuatf *b);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfMultiply(const PSVRQuatf *a, const PSVRQuatf *b);
 /// Divide all components of a quaternion by a scalar without checking for divide by zero
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfUnsafeScalarDivide(const PSMQuatf *q, const float s);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfUnsafeScalarDivide(const PSVRQuatf *q, const float s);
 /// Divide all components of a quaternion by a scalar, returning a default quaternion in case of a degenerate quaternion
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfSafeScalarDivide(const PSMQuatf *q, const float s, const PSMQuatf *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfSafeScalarDivide(const PSVRQuatf *q, const float s, const PSVRQuatf *default_result);
 /// Compute the complex conjegate of a quaternion (negate imaginary components)
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfConjugate(const PSMQuatf *q);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfConjugate(const PSVRQuatf *q);
 /// Concatenate a second quaternion's rotation on to the end of a first quaternion's quaterion (just a quaternion multiplication)
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfConcat(const PSMQuatf *first, const PSMQuatf *second);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfConcat(const PSVRQuatf *first, const PSVRQuatf *second);
 /// Rotate a vector by a given quaternion
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_QuatfRotateVector(const PSMQuatf *q, const PSMVector3f *v);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_QuatfRotateVector(const PSVRQuatf *q, const PSVRVector3f *v);
 /// Compute the length of a quaternion (sum of squared components)
-PSM_PUBLIC_FUNCTION(float) PSM_QuatfLength(const PSMQuatf *q);
+PSVR_PUBLIC_FUNCTION(float) PSVR_QuatfLength(const PSVRQuatf *q);
 /// Computes the normalized version of a quaternion, returning a default quaternion in the event of a near zero length quaternion
-PSM_PUBLIC_FUNCTION(PSMQuatf) PSM_QuatfNormalizeWithDefault(const PSMQuatf *q, const PSMQuatf *default_result);
+PSVR_PUBLIC_FUNCTION(PSVRQuatf) PSVR_QuatfNormalizeWithDefault(const PSVRQuatf *q, const PSVRQuatf *default_result);
 
-// PSMMatrix3d Methods
+// PSVRMatrix3d Methods
 /// Create a 3x3 matrix from a set of 3 basis vectors (might not be ortho-normal)
-PSM_PUBLIC_FUNCTION(PSMMatrix3d) PSM_Matrix3dCreate(const PSMVector3d *basis_x, const PSMVector3d *basis_y, const PSMVector3d *basis_z);
+PSVR_PUBLIC_FUNCTION(PSVRMatrix3d) PSVR_Matrix3dCreate(const PSVRVector3d *basis_x, const PSVRVector3d *basis_y, const PSVRVector3d *basis_z);
 /// Extract the x-axis basis vector from a 3x3 matrix
-PSM_PUBLIC_FUNCTION(PSMVector3d) PSM_Matrix3dBasisX(const PSMMatrix3d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector3d) PSVR_Matrix3dBasisX(const PSVRMatrix3d *m);
 /// Extract the y-axis basis vector from a 3x3 matrix
-PSM_PUBLIC_FUNCTION(PSMVector3d) PSM_Matrix3dBasisY(const PSMMatrix3d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector3d) PSVR_Matrix3dBasisY(const PSVRMatrix3d *m);
 /// Extract the z-axis basis vector from a 3x3 matrix
-PSM_PUBLIC_FUNCTION(PSMVector3d) PSM_Matrix3dBasisZ(const PSMMatrix3d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector3d) PSVR_Matrix3dBasisZ(const PSVRMatrix3d *m);
 
-// PSMMatrix3f Methods
+// PSVRMatrix3f Methods
 /// Create a 3x3 matrix from a set of 3 basis vectors (might not be ortho-normal)
-PSM_PUBLIC_FUNCTION(PSMMatrix3f) PSM_Matrix3fCreate(const PSMVector3f *basis_x, const PSMVector3f *basis_y, const PSMVector3f *basis_z);
+PSVR_PUBLIC_FUNCTION(PSVRMatrix3f) PSVR_Matrix3fCreate(const PSVRVector3f *basis_x, const PSVRVector3f *basis_y, const PSVRVector3f *basis_z);
 /// Create a 3x3 rotation matrix from a quaternion
-PSM_PUBLIC_FUNCTION(PSMMatrix3f) PSM_Matrix3fCreateFromQuatf(const PSMQuatf *q);
+PSVR_PUBLIC_FUNCTION(PSVRMatrix3f) PSVR_Matrix3fCreateFromQuatf(const PSVRQuatf *q);
 /// Extract the x-axis basis vector from a 3x3 matrix
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Matrix3fBasisX(const PSMMatrix3f *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Matrix3fBasisX(const PSVRMatrix3f *m);
 /// Extract the y-axis basis vector from a 3x3 matrix
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Matrix3fBasisY(const PSMMatrix3f *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Matrix3fBasisY(const PSVRMatrix3f *m);
 /// Extract the z-axis basis vector from a 3x3 matrix
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_Matrix3fBasisZ(const PSMMatrix3f *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_Matrix3fBasisZ(const PSVRMatrix3f *m);
 
-// PSMMatrix4d Methods
+// PSVRMatrix4d Methods
 /// Create a 4x4 matrix from a set of 4 basis vectors (might not be ortho-normal)
-PSM_PUBLIC_FUNCTION(PSMMatrix4d) PSM_Matrix4dCreate(const PSMVector4d *basis_x, const PSMVector4d *basis_y, const PSMVector4d *basis_z, const PSMVector4d *basis_w);
+PSVR_PUBLIC_FUNCTION(PSVRMatrix4d) PSVR_Matrix4dCreate(const PSVRVector4d *basis_x, const PSVRVector4d *basis_y, const PSVRVector4d *basis_z, const PSVRVector4d *basis_w);
 /// Extract the x-axis basis vector from a 4x4 matrix
-PSM_PUBLIC_FUNCTION(PSMVector4d) PSM_Matrix4dBasisX(const PSMMatrix4d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector4d) PSVR_Matrix4dBasisX(const PSVRMatrix4d *m);
 /// Extract the y-axis basis vector from a 4x4 matrix
-PSM_PUBLIC_FUNCTION(PSMVector4d) PSM_Matrix4dBasisY(const PSMMatrix4d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector4d) PSVR_Matrix4dBasisY(const PSVRMatrix4d *m);
 /// Extract the z-axis basis vector from a 4x4 matrix
-PSM_PUBLIC_FUNCTION(PSMVector4d) PSM_Matrix4dBasisZ(const PSMMatrix4d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector4d) PSVR_Matrix4dBasisZ(const PSVRMatrix4d *m);
 /// Extract the w-axis basis vector from a 4x4 matrix
-PSM_PUBLIC_FUNCTION(PSMVector4d) PSM_Matrix4dBasisW(const PSMMatrix4d *m);
+PSVR_PUBLIC_FUNCTION(PSVRVector4d) PSVR_Matrix4dBasisW(const PSVRMatrix4d *m);
 
-// PSMPosef
+// PSVRPosef
 /// Create a pose from a given position and orientation
-PSM_PUBLIC_FUNCTION(PSMPosef) PSM_PosefCreate(const PSMVector3f *position, const PSMQuatf *orientation);
+PSVR_PUBLIC_FUNCTION(PSVRPosef) PSVR_PosefCreate(const PSVRVector3f *position, const PSVRQuatf *orientation);
 /// Create a pose that inverts the transform (rotation and translation) of a given pose
-PSM_PUBLIC_FUNCTION(PSMPosef) PSM_PosefInverse(const PSMPosef *pose);
+PSVR_PUBLIC_FUNCTION(PSVRPosef) PSVR_PosefInverse(const PSVRPosef *pose);
 /// Concatenate the transformation of one pose onto the transformation of another pose
-PSM_PUBLIC_FUNCTION(PSMPosef) PSM_PosefConcat(const PSMPosef *first, const PSMPosef *second);
+PSVR_PUBLIC_FUNCTION(PSVRPosef) PSVR_PosefConcat(const PSVRPosef *first, const PSVRPosef *second);
 /// Transform point by a pose
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_PosefTransformPoint(const PSMPosef *pose, const PSMVector3f *p);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_PosefTransformPoint(const PSVRPosef *pose, const PSVRVector3f *p);
 /// Transform a point by the inverse of a pose
-PSM_PUBLIC_FUNCTION(PSMVector3f) PSM_PosefInverseTransformPoint(const PSMPosef *pose, const PSMVector3f *p);
+PSVR_PUBLIC_FUNCTION(PSVRVector3f) PSVR_PosefInverseTransformPoint(const PSVRPosef *pose, const PSVRVector3f *p);
 
-// PSMFrustumf
+// PSVRFrustumf
 /// Update the basis (position and orientation) of a fustum to match that of a given pose
-PSM_PUBLIC_FUNCTION(void) PSM_FrustumSetPose(PSMFrustum *frustum, const PSMPosef *pose);
+PSVR_PUBLIC_FUNCTION(void) PSVR_FrustumSetPose(PSVRFrustum *frustum, const PSVRPosef *pose);
 
-// PSMTrackingProjection
+// PSVRTrackingProjection
 /// Compute the area in pixels^2 of a tracking projection
-PSM_PUBLIC_FUNCTION(float) PSM_TrackingProjectionGetArea(const PSMTrackingProjection *proj, const PSMTrackingProjectionCount area_index);
+PSVR_PUBLIC_FUNCTION(float) PSVR_TrackingProjectionGetArea(const PSVRTrackingProjection *proj, const PSVRTrackingProjectionCount area_index);
 
 //-- constants -----
 /// A 2D float vector whose components are all 0.0f
-PSM_PUBLIC_CLASS extern const PSMVector2f *k_psm_float_vector2_zero;
+PSVR_PUBLIC_CLASS extern const PSVRVector2f *k_PSVR_float_vector2_zero;
 /// A 3D integer vector whose components are all 0
-PSM_PUBLIC_CLASS extern const PSMVector3i *k_psm_int_vector3_zero;
+PSVR_PUBLIC_CLASS extern const PSVRVector3i *k_PSVR_int_vector3_zero;
 /// A 3D float vector whose components are all 0.0f
-PSM_PUBLIC_CLASS extern const PSMVector3f *k_psm_float_vector3_zero;
+PSVR_PUBLIC_CLASS extern const PSVRVector3f *k_PSVR_float_vector3_zero;
 /// A 3D integer vector whose components are all 1
-PSM_PUBLIC_CLASS extern const PSMVector3i *k_psm_int_vector3_one;
+PSVR_PUBLIC_CLASS extern const PSVRVector3i *k_PSVR_int_vector3_one;
 /// A 3D float vector whose components are all 1.0f
-PSM_PUBLIC_CLASS extern const PSMVector3f *k_psm_float_vector3_one;
+PSVR_PUBLIC_CLASS extern const PSVRVector3f *k_PSVR_float_vector3_one;
 /// The 3D float vector <1.0f, 0.0f, 0.0f>
-PSM_PUBLIC_CLASS extern const PSMVector3f *k_psm_float_vector3_i;
+PSVR_PUBLIC_CLASS extern const PSVRVector3f *k_PSVR_float_vector3_i;
 /// The 3D float vector <0.0f, 1.0f, 0.0f>
-PSM_PUBLIC_CLASS extern const PSMVector3f *k_psm_float_vector3_j;
+PSVR_PUBLIC_CLASS extern const PSVRVector3f *k_PSVR_float_vector3_j;
 /// The 3D float vector <0.0f, 0.0f, 1.0f>
-PSM_PUBLIC_CLASS extern const PSMVector3f *k_psm_float_vector3_k;
+PSVR_PUBLIC_CLASS extern const PSVRVector3f *k_PSVR_float_vector3_k;
 /// A 3D float vector that represents the world origin <0.f, 0.f, 0.f>
-PSM_PUBLIC_CLASS extern const PSMVector3f *k_psm_position_origin;
+PSVR_PUBLIC_CLASS extern const PSVRVector3f *k_PSVR_position_origin;
 /// The quaterion <1.f, 0.f, 0.f, 0.f> that represents no rotation
-PSM_PUBLIC_CLASS extern const PSMQuatf *k_psm_quaternion_identity;
+PSVR_PUBLIC_CLASS extern const PSVRQuatf *k_PSVR_quaternion_identity;
 /// The 3x3 matrix that represent no transform (diagonal values 1.f, off diagonal values 0.f)
-PSM_PUBLIC_CLASS extern const PSMMatrix3f *k_psm_matrix_identity;
+PSVR_PUBLIC_CLASS extern const PSVRMatrix3f *k_PSVR_matrix_identity;
 /// The pose that represents no transformation (identity quaternion, zero vector)
-PSM_PUBLIC_CLASS extern const PSMPosef *k_psm_pose_identity;
+PSVR_PUBLIC_CLASS extern const PSVRPosef *k_PSVR_pose_identity;
 
 /** 
 @} 

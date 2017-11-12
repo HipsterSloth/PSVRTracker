@@ -4,7 +4,7 @@
 #include "ServerLog.h"
 #include "ServerHMDView.h"
 #include "ServerDeviceView.h"
-#include "PSMoveProtocol.pb.h"
+#include "PSVRProtocol.pb.h"
 #include <boost/foreach.hpp>
 #include "VirtualHMDDeviceEnumerator.h"
 
@@ -13,7 +13,7 @@
 const int HMDManagerConfig::CONFIG_VERSION = 1;
 
 HMDManagerConfig::HMDManagerConfig(const std::string &fnamebase)
-    : PSMoveConfig(fnamebase)
+    : PSVRConfig(fnamebase)
     , virtual_hmd_count(0)
 {
 
@@ -132,5 +132,5 @@ HMDManager::allocate_device_view(int device_id)
 int 
 HMDManager::getListUpdatedResponseType()
 {
-    return (int)PSMoveProtocol::Response_ResponseType_HMD_LIST_UPDATED;
+    return (int)PSVRProtocol::Response_ResponseType_HMD_LIST_UPDATED;
 }
