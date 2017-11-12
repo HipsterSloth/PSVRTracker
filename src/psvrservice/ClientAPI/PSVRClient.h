@@ -10,8 +10,7 @@
 #include <vector>
 
 //-- typedefs -----
-typedef std::deque<PSVRMessage> t_message_queue;
-typedef std::vector<ResponsePtr> t_event_reference_cache;
+typedef std::deque<PSVREventMessage> t_message_queue;
 
 //-- definitions -----
 class PSVRClient : 
@@ -23,12 +22,11 @@ public:
     virtual ~PSVRClient();
 
 	// -- State Queries ----
-	inline bool getIsConnected() const { return m_bIsConnected; }
 	bool pollHasTrackerListChanged();
 	bool pollHasHMDListChanged();
 
     // -- ClientPSVRAPI System -----
-    bool startup(e_log_severity_level log_level);
+    bool startup(PSVRLogSeverityLevel log_level);
     void update();
 	void process_messages();
     bool poll_next_message(PSVREventMessage *message, size_t message_size);
@@ -51,12 +49,11 @@ protected:
     virtual void handle_data_frame(const DeviceOutputDataFrame *data_frame) override;
 
     // INotificationListener
-    virtual void handle_notification(ResponsePtr notification) override;
+    virtual void handle_notification(const PSVREventMessage &response) override;
 
     // Message Helpers
     //-----------------
 	void process_event_message(const PSVREventMessage *event_message);
-    void enqueue_event_message(PSVREventMessage::eEventType event_type, ResponsePtr event);
 
 private:
     //-- Request Handling -----
@@ -75,11 +72,6 @@ private:
     // Queue of message received from the most recent call to update()
     // This queue will be emptied automatically at the next call to update().
     t_message_queue m_message_queue;
-
-    // These vectors are used solely to keep the ref counted pointers to the 
-    // response and event parameter data valid until the next update call.
-    // The message queue contains raw void pointers to the response and event data.
-    t_event_reference_cache m_event_reference_cache;
 };
 
 

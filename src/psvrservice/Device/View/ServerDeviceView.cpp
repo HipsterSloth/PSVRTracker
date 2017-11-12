@@ -68,7 +68,7 @@ bool ServerDeviceView::poll()
 
                 if (m_pollNoDataCount > max_failure)
                 {
-                    SERVER_LOG_INFO("ServerDeviceView::poll") <<
+                    PSVR_LOG_INFO("ServerDeviceView::poll") <<
                         "Device id " << getDeviceID() << 
                         " closing due to no data (" << max_failure << 
                         " failed poll attempts)";
@@ -93,7 +93,7 @@ bool ServerDeviceView::poll()
                 
         case IDeviceInterface::_PollResultFailure:
             {
-                SERVER_LOG_INFO("ServerDeviceView::poll") <<
+                PSVR_LOG_INFO("ServerDeviceView::poll") <<
                     "Device id " << getDeviceID() << " closing due to failed read";
                 close();
                 

@@ -154,13 +154,13 @@ bool PlatformDeviceAPIWin32::startup(IDeviceHotplugListener *broadcaster)
 		}
 		else
 		{
-			SERVER_LOG_ERROR("DeviceHotplugAPIWin32::startup") << "Could not create message window!";
+			PSVR_LOG_ERROR("DeviceHotplugAPIWin32::startup") << "Could not create message window!";
 			bSuccess = false;
 		}
 	}
 	else
 	{
-		SERVER_LOG_WARNING("DeviceHotplugAPIWin32::startup") << "Message handler window already created";
+		PSVR_LOG_WARNING("DeviceHotplugAPIWin32::startup") << "Message handler window already created";
 	}
 
 	return bSuccess;
@@ -344,7 +344,7 @@ static HDEVNOTIFY register_device_class_notification(HWND__* hwnd, const GUID &g
 
 	if (dev_notify == nullptr)
 	{
-		SERVER_LOG_ERROR("RegisterDeviceClassNotification") << "Could not register for device notifications!";
+		PSVR_LOG_ERROR("RegisterDeviceClassNotification") << "Could not register for device notifications!";
 	}
 
 	return dev_notify;

@@ -72,7 +72,7 @@ VirtualHMDConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
     else
     {
-        SERVER_LOG_WARNING("VirtualHMDConfig") <<
+        PSVR_LOG_WARNING("VirtualHMDConfig") <<
             "Config version " << version << " does not match expected version " <<
             VirtualHMDConfig::CONFIG_VERSION << ", Using defaults.";
     }
@@ -93,7 +93,7 @@ VirtualHMD::~VirtualHMD()
 {
     if (getIsOpen())
     {
-        SERVER_LOG_ERROR("~VirtualHMD") << "HMD deleted without calling close() first!";
+        PSVR_LOG_ERROR("~VirtualHMD") << "HMD deleted without calling close() first!";
     }
 }
 
@@ -120,12 +120,12 @@ bool VirtualHMD::open(
 
     if (getIsOpen())
     {
-        SERVER_LOG_WARNING("VirtualHMD::open") << "VirtualHMD(" << cur_dev_path << ") already open. Ignoring request.";
+        PSVR_LOG_WARNING("VirtualHMD::open") << "VirtualHMD(" << cur_dev_path << ") already open. Ignoring request.";
         success = true;
     }
     else
     {
-        SERVER_LOG_INFO("VirtualHMD::open") << "Opening VirtualHMD(" << cur_dev_path << ").";
+        PSVR_LOG_INFO("VirtualHMD::open") << "Opening VirtualHMD(" << cur_dev_path << ").";
 
         device_identifier = cur_dev_path;
         bIsOpen= true;
@@ -155,7 +155,7 @@ void VirtualHMD::close()
     }
     else
     {
-        SERVER_LOG_INFO("VirtualHMD::close") << "MorpheusHMD already closed. Ignoring request.";
+        PSVR_LOG_INFO("VirtualHMD::close") << "MorpheusHMD already closed. Ignoring request.";
     }
 }
 

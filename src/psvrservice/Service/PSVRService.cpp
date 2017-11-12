@@ -53,14 +53,14 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 	log_init(log_level, "PSVRSERVICE.log");
 
 	// Start the service app
-	SERVER_LOG_INFO("main") << "Starting PSVRService v" << PSVR_RELEASE_VERSION_STRING << " (protocol v" << PSVR_PROTOCOL_VERSION_STRING << ")";	   
+	PSVR_LOG_INFO("main") << "Starting PSVRService v" << PSVR_RELEASE_VERSION_STRING << " (protocol v" << PSVR_PROTOCOL_VERSION_STRING << ")";	   
    
 	/** Setup the usb async transfer thread before we attempt to initialize the trackers */
 	if (success)
 	{
 		if (!m_usb_device_manager->startup())
 		{
-			SERVER_LOG_FATAL("PSVRService") << "Failed to initialize the usb async request manager";
+			PSVR_LOG_FATAL("PSVRService") << "Failed to initialize the usb async request manager";
 			success = false;
 		}
 	}
@@ -70,7 +70,7 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 	{
 		if (!m_device_manager->startup())
 		{
-			SERVER_LOG_FATAL("PSVRService") << "Failed to initialize the device manager";
+			PSVR_LOG_FATAL("PSVRService") << "Failed to initialize the device manager";
 			success= false;
 		}
 	}
@@ -80,7 +80,7 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 	{
 		if (!m_request_handler->startup())
 		{
-			SERVER_LOG_FATAL("PSVRService") << "Failed to initialize the service request handler";
+			PSVR_LOG_FATAL("PSVRService") << "Failed to initialize the service request handler";
 			success= false;
 		}
 	}
@@ -103,7 +103,7 @@ void PSVRService::update()
 
 void PSVRService::shutdown()
 {
-	SERVER_LOG_INFO("main") << "Shutting down PSVRService";
+	PSVR_LOG_INFO("main") << "Shutting down PSVRService";
 	
 	// Kill any pending request state
 	m_request_handler->shutdown();

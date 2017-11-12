@@ -13,42 +13,17 @@
 #endif
 
 //-- globals -----
-e_log_severity_level g_min_log_level= _log_severity_level_info;
+PSVRLogSeverityLevel g_min_log_level= PSVRLogSeverityLevel_info;
 std::ostream *g_console_stream= nullptr;
 std::ostream *g_file_stream = nullptr;
 std::mutex *g_logger_mutex = nullptr;
 
 //-- public implementation -----
-void log_init(const std::string &log_level, const std::string &log_filename)
+void log_init(PSVRLogSeverityLevel log_level, const std::string &log_filename)
 {
 	log_dispose();
 
-    g_min_log_level= _log_severity_level_info;
-
-    if (log_level == "trace")
-    {
-        g_min_log_level= _log_severity_level_trace;
-    }
-    else if (log_level == "debug")
-    {
-        g_min_log_level= _log_severity_level_debug;
-    }
-    else if (log_level == "info")
-    {
-        g_min_log_level= _log_severity_level_info;
-    }
-    else if (log_level == "warning")
-    {
-        g_min_log_level= _log_severity_level_warning;
-    }
-    else if (log_level == "error")
-    {
-        g_min_log_level= _log_severity_level_error;
-    }
-    else if (log_level == "fatal")
-    {
-        g_min_log_level= _log_severity_level_fatal;
-    }
+    g_min_log_level= log_level;
 
 	g_console_stream = new std::ostream(std::cout.rdbuf());
 	if (log_filename.length() > 0)
@@ -81,7 +56,7 @@ void log_dispose()
 	}
 }
 
-bool log_can_emit_level(e_log_severity_level level)
+bool log_can_emit_level(PSVRLogSeverityLevel level)
 {
     return (level >= g_min_log_level);
 }

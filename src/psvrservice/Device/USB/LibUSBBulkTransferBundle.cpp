@@ -36,7 +36,7 @@ LibUSBBulkTransferBundle::~LibUSBBulkTransferBundle()
 
     if (m_active_transfer_count > 0)
     {
-        SERVER_MT_LOG_INFO("USBBulkTransferBundle::destructor") << "active transfer count non-zero!";
+        PSVR_MT_LOG__INFO("USBBulkTransferBundle::destructor") << "active transfer count non-zero!";
     }
 }
 

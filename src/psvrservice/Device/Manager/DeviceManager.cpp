@@ -83,7 +83,7 @@ public:
         }
         else
         {
-            SERVER_LOG_WARNING("DeviceManagerConfig") <<
+            PSVR_LOG_WARNING("DeviceManagerConfig") <<
                 "Config version " << version << " does not match expected version " <<
                 (DeviceManagerConfig::CONFIG_VERSION+0) << ", Using defaults.";
         }
@@ -145,11 +145,11 @@ DeviceManager::startup()
 		m_platform_api_type = _eDevicePlatformApiType_Win32;
 		m_platform_api = new PlatformDeviceAPIWin32;
 #endif
-		SERVER_LOG_INFO("DeviceManager::startup") << "Platform Hotplug API is ENABLED";
+		PSVR_LOG_INFO("DeviceManager::startup") << "Platform Hotplug API is ENABLED";
 	}
 	else
 	{
-		SERVER_LOG_INFO("DeviceManager::startup") << "Platform Hotplug API is DISABLED";
+		PSVR_LOG_INFO("DeviceManager::startup") << "Platform Hotplug API is DISABLED";
 	}
 
 	if (m_platform_api != nullptr)

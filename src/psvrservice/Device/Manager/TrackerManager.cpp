@@ -101,7 +101,7 @@ TrackerManagerConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
     else
     {
-        SERVER_LOG_WARNING("TrackerManagerConfig") <<
+        PSVR_LOG_WARNING("TrackerManagerConfig") <<
             "Config version " << version << " does not match expected version " <<
             TrackerManagerConfig::CONFIG_VERSION << ", Using defaults.";
     }

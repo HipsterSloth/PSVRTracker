@@ -50,7 +50,7 @@ struct OrientationFilterState
         }
         else
         {
-            SERVER_LOG_WARNING("OrientationFilter") << "Orientation is NaN!";
+            PSVR_LOG_WARNING("OrientationFilter") << "Orientation is NaN!";
         }
 
         if (eigen_vector3f_is_valid(new_angular_velocity))
@@ -59,7 +59,7 @@ struct OrientationFilterState
         }
         else
         {
-            SERVER_LOG_WARNING("OrientationFilter") << "Angular Velocity is NaN!";
+            PSVR_LOG_WARNING("OrientationFilter") << "Angular Velocity is NaN!";
         }
 
         if (eigen_vector3f_is_valid(new_angular_acceleration))
@@ -68,7 +68,7 @@ struct OrientationFilterState
         }
         else
         {
-            SERVER_LOG_WARNING("OrientationFilter") << "Angular Acceleration is NaN!";
+            PSVR_LOG_WARNING("OrientationFilter") << "Angular Acceleration is NaN!";
         }
 
         // state is valid now that we have had an update

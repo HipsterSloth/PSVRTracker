@@ -2,6 +2,7 @@
 #define LOGGER_H
 
 //-- includes -----
+#include "ClientConstants.h"
 #include <string>
 #include <sstream>
 
@@ -42,9 +43,9 @@ protected:
 };
 
 //-- interface -----
-void log_init(const std::string &log_level, const std::string &log_filename="");
+void log_init(PSVRLogSeverityLevel log_level, const std::string &log_filename="");
 void log_dispose();
-bool log_can_emit_level(e_log_severity_level level);
+bool log_can_emit_level(PSVRLogSeverityLevel level);
 std::string log_get_timestamp_prefix();
 
 //-- macros -----
@@ -53,22 +54,22 @@ std::string log_get_timestamp_prefix();
 
 // Non Thread Safe Logger Macros
 // Almost everything is on the main thread, so you almost always want to use these
-#define SERVER_LOG_TRACE(function_name) SELECT_LOG_STREAM(_log_severity_level_trace) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_LOG_DEBUG(function_name) SELECT_LOG_STREAM(_log_severity_level_debug) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_LOG_INFO(function_name) SELECT_LOG_STREAM(_log_severity_level_info) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_LOG_WARNING(function_name) SELECT_LOG_STREAM(_log_severity_level_warning) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_LOG_ERROR(function_name) SELECT_LOG_STREAM(_log_severity_level_error) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_LOG_FATAL(function_name) SELECT_LOG_STREAM(_log_severity_level_fatal) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_LOG_TRACE(function_name) SELECT_LOG_STREAM(PSVRLogSeverityLevel_trace) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_LOG_DEBUG(function_name) SELECT_LOG_STREAM(PSVRLogSeverityLevel_debug) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_LOG_INFO(function_name) SELECT_LOG_STREAM(PSVRLogSeverityLevel_info) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_LOG_WARNING(function_name) SELECT_LOG_STREAM(PSVRLogSeverityLevel_warning) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_LOG_ERROR(function_name) SELECT_LOG_STREAM(PSVRLogSeverityLevel_error) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_LOG_FATAL(function_name) SELECT_LOG_STREAM(PSVRLogSeverityLevel_fatal) << log_get_timestamp_prefix() << function_name << " - "
 
 // Thread Safe Logger Macros
 // Uses thread safe locking before appending data to the logging stream
 // Only use this when logging from other threads
-#define SERVER_MT_LOG_TRACE(function_name) SELECT_MT_LOG_STREAM(_log_severity_level_trace) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_MT_LOG_DEBUG(function_name) SELECT_MT_LOG_STREAM(_log_severity_level_debug) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_MT_LOG_INFO(function_name) SELECT_MT_LOG_STREAM(_log_severity_level_info) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_MT_LOG_WARNING(function_name) SELECT_MT_LOG_STREAM(_log_severity_level_warning) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_MT_LOG_ERROR(function_name) SELECT_MT_LOG_STREAM(_log_severity_level_error) << log_get_timestamp_prefix() << function_name << " - "
-#define SERVER_MT_LOG_FATAL(function_name) SELECT_MT_LOG_STREAM(_log_severity_level_fatal) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_MT_LOG_TRACE(function_name) SELECT_MT_LOG_STREAM(PSVRLogSeverityLevel_trace) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_MT_LOG_DEBUG(function_name) SELECT_MT_LOG_STREAM(PSVRLogSeverityLevel_debug) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_MT_LOG_INFO(function_name) SELECT_MT_LOG_STREAM(PSVRLogSeverityLevel_info) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_MT_LOG_WARNING(function_name) SELECT_MT_LOG_STREAM(PSVRLogSeverityLevel_warning) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_MT_LOG_ERROR(function_name) SELECT_MT_LOG_STREAM(PSVRLogSeverityLevel_error) << log_get_timestamp_prefix() << function_name << " - "
+#define PSVR_MT_LOG_FATAL(function_name) SELECT_MT_LOG_STREAM(PSVRLogSeverityLevel_fatal) << log_get_timestamp_prefix() << function_name << " - "
  
 #endif  // LOGGER_H
 

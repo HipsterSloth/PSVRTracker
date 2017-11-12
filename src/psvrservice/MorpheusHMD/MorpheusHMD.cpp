@@ -299,7 +299,7 @@ MorpheusHMDConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
     else
     {
-        SERVER_LOG_WARNING("MorpheusHMDConfig") <<
+        PSVR_LOG_WARNING("MorpheusHMDConfig") <<
             "Config version " << version << " does not match expected version " <<
             MorpheusHMDConfig::CONFIG_VERSION << ", Using defaults.";
     }
@@ -378,7 +378,7 @@ MorpheusHMD::~MorpheusHMD()
 {
     if (getIsOpen())
     {
-        SERVER_LOG_ERROR("~MorpheusHMD") << "HMD deleted without calling close() first!";
+        PSVR_LOG_ERROR("~MorpheusHMD") << "HMD deleted without calling close() first!";
     }
 
     delete InData;
@@ -408,12 +408,12 @@ bool MorpheusHMD::open(
 
     if (getIsOpen())
     {
-        SERVER_LOG_WARNING("MorpheusHMD::open") << "MorpheusHMD(" << cur_dev_path << ") already open. Ignoring request.";
+        PSVR_LOG_WARNING("MorpheusHMD::open") << "MorpheusHMD(" << cur_dev_path << ") already open. Ignoring request.";
         success = true;
     }
     else
     {
-		SERVER_LOG_INFO("MorpheusHMD::open") << "Opening MorpheusHMD(" << cur_dev_path << ").";
+		PSVR_LOG_INFO("MorpheusHMD::open") << "Opening MorpheusHMD(" << cur_dev_path << ").";
 
 		USBContext->device_identifier = cur_dev_path;
 
@@ -439,7 +439,7 @@ bool MorpheusHMD::open(
 		}
 		else
 		{
-			SERVER_LOG_WARNING("MorpheusHMD::open") << "Morpheus command interface is flagged as DISABLED.";
+			PSVR_LOG_WARNING("MorpheusHMD::open") << "Morpheus command interface is flagged as DISABLED.";
 		}
 
         if (getIsOpen())  // Controller was opened and has an index
@@ -465,7 +465,7 @@ bool MorpheusHMD::open(
         }
         else
         {
-            SERVER_LOG_ERROR("MorpheusHMD::open") << "Failed to open MorpheusHMD(" << cur_dev_path << ")";
+            PSVR_LOG_ERROR("MorpheusHMD::open") << "Failed to open MorpheusHMD(" << cur_dev_path << ")";
 			close();
         }
     }
@@ -479,13 +479,13 @@ void MorpheusHMD::close()
     {
 		if (USBContext->sensor_device_handle != nullptr)
 		{
-			SERVER_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD sensor interface(" << USBContext->sensor_device_path << ")";
+			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD sensor interface(" << USBContext->sensor_device_path << ")";
 			hid_close(USBContext->sensor_device_handle);
 		}
 
 		if (USBContext->usb_device_handle != nullptr)
 		{
-			SERVER_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD command interface";
+			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD command interface";
 			morpheus_set_headset_power(USBContext, false);
 			morpheus_close_usb_device(USBContext);
 		}
@@ -495,7 +495,7 @@ void MorpheusHMD::close()
     }
     else
     {
-        SERVER_LOG_INFO("MorpheusHMD::close") << "MorpheusHMD already closed. Ignoring request.";
+        PSVR_LOG_INFO("MorpheusHMD::close") << "MorpheusHMD already closed. Ignoring request.";
     }
 }
 
@@ -574,7 +574,7 @@ MorpheusHMD::poll()
 				// Device no longer in valid state.
 				if (valid_error_mesg)
 				{
-					SERVER_LOG_ERROR("PSVRController::readDataIn") << "HID ERROR: " << hidapi_err_mbs;
+					PSVR_LOG_ERROR("PSVRController::readDataIn") << "HID ERROR: " << hidapi_err_mbs;
 				}
 				result = IHMDInterface::_PollResultFailure;
 
@@ -691,7 +691,7 @@ static bool morpheus_open_usb_device(
 	}
 	else
 	{
-		SERVER_LOG_ERROR("morpeus_open_usb_device") << "libusb context initialization failed!";
+		PSVR_LOG_ERROR("morpeus_open_usb_device") << "libusb context initialization failed!";
 		bSuccess = false;
 	}
 
@@ -704,7 +704,7 @@ static bool morpheus_open_usb_device(
 
 		if (morpheus_context->usb_device_handle == nullptr)
 		{
-			SERVER_LOG_ERROR("morpeus_open_usb_device") << "Morpheus USB device not found!";
+			PSVR_LOG_ERROR("morpeus_open_usb_device") << "Morpheus USB device not found!";
 			bSuccess = false;
 		}
 	}
@@ -719,7 +719,7 @@ static bool morpheus_open_usb_device(
 
 		if (result != LIBUSB_SUCCESS) 
 		{
-			SERVER_LOG_ERROR("morpeus_open_usb_device") << "Failed to retrieve Morpheus usb config descriptor";
+			PSVR_LOG_ERROR("morpeus_open_usb_device") << "Failed to retrieve Morpheus usb config descriptor";
 			bSuccess = false;
 		}
 	}
@@ -738,18 +738,18 @@ static bool morpheus_open_usb_device(
 			result = libusb_kernel_driver_active(morpheus_context->usb_device_handle, interface_index);
 			if (result < 0) 
 			{
-				SERVER_LOG_ERROR("morpeus_open_usb_device") << "USB Interface #"<< interface_index <<" driver status failed";
+				PSVR_LOG_ERROR("morpeus_open_usb_device") << "USB Interface #"<< interface_index <<" driver status failed";
 				bSuccess = false;
 			}
 
 			if (bSuccess && result == 1)
 			{
-				SERVER_LOG_ERROR("morpeus_open_usb_device") << "Detach kernel driver on interface #" << interface_index;
+				PSVR_LOG_ERROR("morpeus_open_usb_device") << "Detach kernel driver on interface #" << interface_index;
 
 				result = libusb_detach_kernel_driver(morpheus_context->usb_device_handle, interface_index);
 				if (result != LIBUSB_SUCCESS) 
 				{
-					SERVER_LOG_ERROR("morpeus_open_usb_device") << "Interface #" << interface_index << " detach failed";
+					PSVR_LOG_ERROR("morpeus_open_usb_device") << "Interface #" << interface_index << " detach failed";
 					bSuccess = false;
 				}
 			}
@@ -762,7 +762,7 @@ static bool morpheus_open_usb_device(
 			}
 			else
 			{
-				SERVER_LOG_ERROR("morpeus_open_usb_device") << "Interface #" << interface_index << " claim failed";
+				PSVR_LOG_ERROR("morpeus_open_usb_device") << "Interface #" << interface_index << " claim failed";
 				bSuccess = false;
 			}
 		}

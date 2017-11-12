@@ -13,6 +13,7 @@
 #include "ServerDeviceView.h"
 #include "ServerTrackerView.h"
 #include "ServerHMDView.h"
+#include "ServiceVersion.h"
 #include "TrackerManager.h"
 #include "Utility.h"
 #include "VirtualController.h"
@@ -713,7 +714,7 @@ public:
                 streamInfo.include_raw_tracker_data = request.include_raw_tracker_data();
                 streamInfo.disable_roi = request.disable_roi();
 
-                SERVER_LOG_INFO("ServerRequestHandler") << "Start hmd(" << hmd_id << ") stream ("
+                PSVR_LOG_INFO("ServerRequestHandler") << "Start hmd(" << hmd_id << ") stream ("
                     << "pos=" << streamInfo.include_position_data
                     << ",phys=" << streamInfo.include_physics_data
                     << ",raw_sens=" << streamInfo.include_raw_sensor_data
@@ -1013,7 +1014,7 @@ public:
             ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
             HMDStreamInfo &streamInfo = m_peristentRequestState->active_hmd_stream_info[hmd_id];
 
-            SERVER_LOG_INFO("ServerRequestHandler") << "Set hmd(" << hmd_id << ") stream tracker id: " << tracker_id;
+            PSVR_LOG_INFO("ServerRequestHandler") << "Set hmd(" << hmd_id << ") stream tracker id: " << tracker_id;
 
             streamInfo.selected_tracker_index= tracker_id;
 
@@ -1028,7 +1029,7 @@ public:
 		size_t max_version_string)
     {
         // Return the protocol version
-        strncpy(out_version_string, PSVR_PROTOCOL_VERSION_STRING, max_version_string);
+        strncpy(out_version_string, PSVR_SERVICE_VERSION_STRING, max_version_string);
 		
 		return PSVRResult_Success;
     }

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <memory>
+#include <assert.h>
 
 #ifdef _MSC_VER
 	#pragma warning(disable:4996)  // ignore strncpy warning
@@ -56,7 +57,7 @@ bool PSVRClient::pollHasHMDListChanged()
 }
 
 // -- ClientPSVRAPI System -----
-bool PSVRClient::startup(e_log_severity_level log_level)
+bool PSVRClient::startup(PSVRLogSeverityLevel log_level)
 {
     bool success = true;
 
@@ -66,7 +67,7 @@ bool PSVRClient::startup(e_log_severity_level log_level)
 	m_bHasTrackerListChanged= false;
 	m_bHasHMDListChanged= false;
 
-	SERVER_LOG_INFO("PSVRClient") << "Successfully initialized PSVRClient" << std::endl;
+	PSVR_LOG_INFO("PSVRClient") << "Successfully initialized PSVRClient" << std::endl;
 
 	memset(m_trackers, 0, sizeof(PSVRTracker)*PSVRSERVICE_MAX_TRACKER_COUNT);
 	for (PSVRTrackerID tracker_id= 0; tracker_id < PSVRSERVICE_MAX_TRACKER_COUNT; ++tracker_id)    
@@ -302,7 +303,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
             const TrackerDataPacket& tracker_packet = data_frame->device.tracker_data_packet;
 			const PSVRTrackerID tracker_id= tracker_packet.tracker_id();
 
-            SERVER_LOG_TRACE("handle_data_frame")
+            PSVR_LOG_TRACE("handle_data_frame")
                 << "received data frame for TrackerID: "
                 << tracker_id << std::endl;
 
@@ -318,7 +319,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame *data_frame)
             const v& hmd_packet = data_frame->device.hmd_data_packet;
 			const PSVRHmdID hmd_id= hmd_packet.hmd_id;
 
-            SERVER_LOG_TRACE("handle_data_frame")
+            PSVR_LOG_TRACE("handle_data_frame")
                 << "received data frame for HmdID: "
                 << hmd_packet.hmd_id
                 << ". Ignoring." << std::endl;
@@ -616,24 +617,9 @@ static void applyVirtualHMDDataFrame(
 }
 
 // INotificationListener
-void PSVRClient::handle_notification(ResponsePtr notification)
+void PSVRClient::handle_notification(const PSVREventMessage &event)
 {
-    assert(notification->request_id() == -1);
-
-    PSVREventMessage::eEventType specificEventType= PSVREventMessage::PSVREvent_opaqueServiceEvent;
-
-    // See if we can translate this to an event type a client without protocol access can see
-    switch(notification->type())
-    {
-    case PSVRProtocol::Response_ResponseType_TRACKER_LIST_UPDATED:
-        specificEventType = PSVREventMessage::PSVREvent_trackerListUpdated;
-        break;
-    case PSVRProtocol::Response_ResponseType_HMD_LIST_UPDATED:
-        specificEventType = PSVREventMessage::PSVREvent_hmdListUpdated;
-        break;
-    }
-
-    enqueue_event_message(specificEventType, notification);
+    m_message_queue.push_back(event);
 }
 
 // Message Helpers
@@ -654,37 +640,4 @@ void PSVRClient::process_event_message(
         assert(0 && "unreachable");
         break;
     }
-}
-
-void PSVRClient::enqueue_event_message(
-    PSVREventMessage::eEventType event_type,
-    ResponsePtr event)
-{
-    PSVRMessage message;
-
-    memset(&message, 0, sizeof(PSVRMessage));
-    message.payload_type = PSVRMessage::_messagePayloadType_Event;
-    message.event_data.event_type= event_type;
-
-    // Maintain a reference to the event until the next update
-    if (event)
-    {
-        // Create a smart pointer to a new copy of the event.
-        // If we just add the given event smart pointer to the reference cache
-        // we'll be storing a reference to the shared m_packed_response on the client network manager
-        // which gets constantly overwritten with new incoming events.
-        ResponsePtr eventCopy(new PSVRProtocol::Response(*event.get()));
-
-        //NOTE: This pointer is only safe until the next update call to update is made
-        message.event_data.event_data_handle = static_cast<const void *>(eventCopy.get());
-
-        m_event_reference_cache.push_back(eventCopy);
-    }
-    else
-    {
-        message.event_data.event_data_handle = nullptr;
-    }
-
-    // Add the message to the message queue
-    m_message_queue.push_back(message);
 }

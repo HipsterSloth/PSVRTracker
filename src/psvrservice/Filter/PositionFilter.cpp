@@ -73,7 +73,7 @@ struct PositionFilterState
 		}
 		else
 		{
-			SERVER_LOG_WARNING("PositionFilter") << "Position is NaN!";
+			PSVR_LOG_WARNING("PositionFilter") << "Position is NaN!";
 		}
 
 		if (eigen_vector3f_is_valid(new_velocity_m_per_sec))
@@ -82,7 +82,7 @@ struct PositionFilterState
 		}
 		else
 		{
-			SERVER_LOG_WARNING("PositionFilter") << "Velocity is NaN!";
+			PSVR_LOG_WARNING("PositionFilter") << "Velocity is NaN!";
 		}
 
 		if (eigen_vector3f_is_valid(new_acceleration_m_per_sec_sqr))
@@ -91,7 +91,7 @@ struct PositionFilterState
 		}
 		else
 		{
-			SERVER_LOG_WARNING("PositionFilter") << "Acceleration is NaN!";
+			PSVR_LOG_WARNING("PositionFilter") << "Acceleration is NaN!";
 		}
 
 		if (eigen_vector3f_is_valid(new_accelerometer_g_units))
@@ -100,7 +100,7 @@ struct PositionFilterState
 		}
 		else
 		{
-			SERVER_LOG_WARNING("PositionFilter") << "Accelerometer is NaN!";
+			PSVR_LOG_WARNING("PositionFilter") << "Accelerometer is NaN!";
 		}
 
 		if (eigen_vector3f_is_valid(new_accelerometer_derivative_g_per_sec))
@@ -109,7 +109,7 @@ struct PositionFilterState
 		}
 		else
 		{
-			SERVER_LOG_WARNING("PositionFilter") << "AccelerometerDerivative is NaN!";
+			PSVR_LOG_WARNING("PositionFilter") << "AccelerometerDerivative is NaN!";
 		}
 
         // state is valid now that we have had an update

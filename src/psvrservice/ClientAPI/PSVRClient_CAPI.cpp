@@ -24,13 +24,6 @@ PSVRService *g_psvr_service= nullptr;
 PSVRClient *g_psvr_client= nullptr;
 
 // -- public interface -----
-const char* PSVR_GetClientVersionString()
-{
-    const char *version_string= PSVR_PROTOCOL_VERSION_STRING;
-
-    return version_string;
-}
-
 bool PSVR_GetIsInitialized()
 {
 	return g_psvr_client != nullptr && g_psvr_service != nullptr;
@@ -86,7 +79,7 @@ PSVRResult PSVR_Initialize(PSVRLogSeverityLevel log_level)
     return result;
 }
 
-PSVRResult PSVR_GetServiceVersionString(char *out_version_string, size_t max_version_string)
+PSVRResult PSVR_GetVersionString(char *out_version_string, size_t max_version_string)
 {
     PSVRResult result= PSVRResult_Error;
 

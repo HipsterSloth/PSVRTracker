@@ -413,11 +413,6 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_Update();
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_UpdateNoPollEvents();
 
 // System State Queries
-/** \brief Get the client API version string 
-	\return A zero-terminated version string of the format "Product.Major-Phase Minor.Release.Hotfix", ex: "0.9-alpha 8.1.0"
- */
-PSVR_PUBLIC_FUNCTION(const char*) PSVR_GetClientVersionString();
-
 /** \brief Get the API initialization status
 	\return true if the client API is initialized
  */
@@ -443,14 +438,11 @@ PSVR_PUBLIC_FUNCTION(bool) PSVR_HasHMDListChanged();
 
 // System Queries
 /** \brief Get the client API version string from PSVRService
-	Sends a request to PSVRService to get the protocol version.
-	This should be compared against the version returned from \ref PSVR_GetClientVersionString() as a way to verify
-	that the an outdated client isn't being used with PSVRService.
 	\param[out] out_version_string The string buffer to write the version into
 	\param max_version_string The size of the output buffer
 	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetServiceVersionString(char *out_version_string, size_t max_version_string);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetVersionString(char *out_version_string, size_t max_version_string);
 
 // Message Handling API
 /** \brief Retrieve the next message from the message queue.

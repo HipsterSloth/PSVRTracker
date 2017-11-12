@@ -24,7 +24,7 @@ bool SharedVideoFrameBuffer::initialize(const char *buffer_name, int width, int 
 
 	if (m_buffer == nullptr)
 	{			
-		SERVER_LOG_INFO("SharedVideoFrameBuffer::initialize()") << "Allocating video frame buffer: " << buffer_name;
+		PSVR_LOG_INFO("SharedVideoFrameBuffer::initialize()") << "Allocating video frame buffer: " << buffer_name;
 
 		size_t buffer_size= computeVideoBufferSize(stride, height);
 		m_buffer= new unsigned char[buffer_size];
@@ -47,7 +47,7 @@ void SharedVideoFrameBuffer::dispose()
 {
 	if (m_buffer != nullptr)
 	{
-		SERVER_LOG_INFO("SharedVideoFrameBuffer::dispose()") << "Deallocating video frame buffer: " << buffer_name;
+		PSVR_LOG_INFO("SharedVideoFrameBuffer::dispose()") << "Deallocating video frame buffer: " << buffer_name;
 		
 		delete[] m_buffer;
 		m_buffer = nullptr;

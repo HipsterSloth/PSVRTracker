@@ -41,7 +41,7 @@ HMDManagerConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
     else
     {
-        SERVER_LOG_WARNING("HMDManagerConfig") <<
+        PSVR_LOG_WARNING("HMDManagerConfig") <<
             "Config version " << version << " does not match expected version " <<
             HMDManagerConfig::CONFIG_VERSION << ", Using defaults.";
     }

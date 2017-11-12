@@ -145,7 +145,7 @@ bool TrackerDeviceEnumerator::testUSBEnumerator()
 		}
 		else
 		{
-			SERVER_LOG_INFO("TrackerDeviceEnumerator") << "Skipping device (" <<  USBPath << ") - " << errorReason;
+			PSVR_LOG_INFO("TrackerDeviceEnumerator") << "Skipping device (" <<  USBPath << ") - " << errorReason;
 		}
 	}
 

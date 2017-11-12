@@ -901,7 +901,7 @@ pose_filter_factory(
 	}
 	else
 	{
-		SERVER_LOG_INFO("pose_filter_factory()") <<
+		PSVR_LOG_INFO("pose_filter_factory()") <<
 			"Unknown position filter type: " << position_filter_type << ". Using default.";
 
 		// fallback to a default based on hmd type
@@ -940,7 +940,7 @@ pose_filter_factory(
 	}
 	else
 	{
-		SERVER_LOG_INFO("pose_filter_factory()") <<
+		PSVR_LOG_INFO("pose_filter_factory()") <<
 			"Unknown orientation filter type: " << orientation_filter_type << ". Using default.";
 
 		// fallback to a default based on controller type

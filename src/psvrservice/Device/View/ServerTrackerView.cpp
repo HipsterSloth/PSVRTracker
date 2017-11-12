@@ -63,7 +63,7 @@ public:
 
         try
         {
-            SERVER_LOG_INFO("SharedMemory::initialize()") << "Allocating shared memory: " << shared_memory_name;
+            PSVR_LOG_INFO("SharedMemory::initialize()") << "Allocating shared memory: " << shared_memory_name;
 
             // Remember the name of the shared memory
             m_shared_memory_name = shared_memory_name;
@@ -107,7 +107,7 @@ public:
         catch (boost::interprocess::interprocess_exception* e)
         {
             dispose();
-            SERVER_LOG_ERROR("SharedMemory::initialize()") << "Failed to allocated shared memory: " << m_shared_memory_name
+            PSVR_LOG_ERROR("SharedMemory::initialize()") << "Failed to allocated shared memory: " << m_shared_memory_name
                 << ", reason: " << e->what();
         }
 
@@ -134,7 +134,7 @@ public:
 
         if (!boost::interprocess::shared_memory_object::remove(m_shared_memory_name))
         {
-            SERVER_LOG_ERROR("SharedMemory::dispose") << "Failed to free shared memory: " << m_shared_memory_name;
+            PSVR_LOG_ERROR("SharedMemory::dispose") << "Failed to free shared memory: " << m_shared_memory_name;
         }
     }
 
@@ -844,7 +844,7 @@ bool ServerTrackerView::open(const class DeviceEnumerator *enumerator)
                 delete m_shared_memory_accesor;
                 m_shared_memory_accesor = nullptr;
 
-                SERVER_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
+                PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
             }
 
             // Allocate the OpenCV scratch buffers used for finding tracking blobs
@@ -852,7 +852,7 @@ bool ServerTrackerView::open(const class DeviceEnumerator *enumerator)
         }
         else
         {
-            SERVER_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
+            PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
         }
     }
 
@@ -1014,7 +1014,7 @@ void ServerTrackerView::setFrameWidth(double value, bool bUpdateConfig)
             delete m_shared_memory_accesor;
             m_shared_memory_accesor = nullptr;
 
-            SERVER_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
+            PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
         }
 
         // Allocate the OpenCV scratch buffers used for finding tracking blobs
@@ -1022,7 +1022,7 @@ void ServerTrackerView::setFrameWidth(double value, bool bUpdateConfig)
     }
     else
     {
-        SERVER_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
+        PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
     }
 }
 
@@ -1062,7 +1062,7 @@ void ServerTrackerView::setFrameHeight(double value, bool bUpdateConfig)
             delete m_shared_memory_accesor;
             m_shared_memory_accesor = nullptr;
 
-            SERVER_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
+            PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
         }
 
         // Allocate the OpenCV scratch buffers used for finding tracking blobs
@@ -1070,7 +1070,7 @@ void ServerTrackerView::setFrameHeight(double value, bool bUpdateConfig)
     }
     else
     {
-        SERVER_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
+        PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
     }
 }
 
@@ -2486,7 +2486,7 @@ static bool computeBestFitTriangleForContour(
     }
     catch( cv::Exception& e )
     {
-        SERVER_LOG_INFO("computeBestFitTriangleForContour") << e.what();
+        PSVR_LOG_INFO("computeBestFitTriangleForContour") << e.what();
         return false;
     }
 

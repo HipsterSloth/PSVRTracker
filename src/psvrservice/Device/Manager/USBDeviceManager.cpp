@@ -61,7 +61,7 @@ USBManagerConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
     else
     {
-        SERVER_LOG_WARNING("USBManagerConfig") <<
+        PSVR_LOG_WARNING("USBManagerConfig") <<
             "Config version " << version << " does not match expected version " <<
             USBManagerConfig::CONFIG_VERSION << ", Using defaults.";
     }
@@ -100,40 +100,40 @@ public:
 		{
 			if (cfg.usb_api_name == k_nullusb_api_name)
 			{
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Requested NullUSBApi";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Requested NullUSBApi";
 				m_api_type= _USBApiType_NullUSB;
 			}
 			else if (cfg.usb_api_name == k_libusb_api_name)
 			{
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Requested LibUSBApi";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Requested LibUSBApi";
 				m_api_type= _USBApiType_LibUSB;
 			}
 			else if (cfg.usb_api_name == k_winusb_api_name)
 			{
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Requested WinUSBApi";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Requested WinUSBApi";
 				m_api_type= _USBApiType_WinUSB;
 			}
 			else
 			{
-				SERVER_LOG_WARNING("USBAsyncRequestManager::startup") << "Requested unknown usb_api: \'" << cfg.usb_api_name << "\'. Defaulting to " << k_libusb_api_name;
+				PSVR_LOG_WARNING("USBAsyncRequestManager::startup") << "Requested unknown usb_api: \'" << cfg.usb_api_name << "\'. Defaulting to " << k_libusb_api_name;
 				m_api_type= _USBApiType_LibUSB;
 			}
 
 			switch (m_api_type)
 			{
 			case _USBApiType_NullUSB:
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Creating NullUSBApi";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating NullUSBApi";
 				m_usb_api = new NullUSBApi;
 				break;
 			case _USBApiType_LibUSB:
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi";
 				m_usb_api = new LibUSBApi;
 				break;
 			case _USBApiType_WinUSB:
 				//###HipsterSloth $TODO actually implement WinUSB interface
-				//SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Creating WinUSBApi";
+				//PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating WinUSBApi";
 				//m_usb_api = new WinUSBApi;
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi (WinUSBApi not yet implemented)";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi (WinUSBApi not yet implemented)";
 				m_usb_api = new LibUSBApi;
 				break;
 			default:
@@ -143,16 +143,16 @@ public:
 
 			if (m_usb_api->startup())
 			{
-				SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Initialized USB API";
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Initialized USB API";
 			}
 			else
 			{
-				SERVER_LOG_ERROR("USBAsyncRequestManager::startup") << "Failed to initialize USB API";
+				PSVR_LOG_ERROR("USBAsyncRequestManager::startup") << "Failed to initialize USB API";
 			}
 		}
 		else
 		{
-			SERVER_LOG_WARNING("USBAsyncRequestManager::startup") << "USB API aready initialized";
+			PSVR_LOG_WARNING("USBAsyncRequestManager::startup") << "USB API aready initialized";
 		}
 
         return bSuccess;
@@ -390,7 +390,7 @@ protected:
     {
         if (!m_thread_started)
         {
-            SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Starting USB event thread";
+            PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Starting USB event thread";
             m_worker_thread = std::thread(&USBDeviceManagerImpl::workerThreadFunc, this);
             m_thread_started = true;
         }
@@ -782,14 +782,14 @@ protected:
         {
             if (!m_exit_signaled)
             {
-                SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "Stopping USB event thread...";
+                PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Stopping USB event thread...";
                 m_exit_signaled = true;
                 m_worker_thread.join();
-                SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "USB event thread stopped";
+                PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "USB event thread stopped";
             }
             else
             {
-                SERVER_LOG_INFO("USBAsyncRequestManager::startup") << "USB event thread already stopped";
+                PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "USB event thread already stopped";
             }
 
             m_thread_started = false;
@@ -848,7 +848,7 @@ USBDeviceManager::~USBDeviceManager()
 {
     if (m_instance != NULL)
     {
-        SERVER_LOG_ERROR("~USBAsyncRequestManager()") << "USB Async Request Manager deleted without shutdown() getting called first";
+        PSVR_LOG_ERROR("~USBAsyncRequestManager()") << "USB Async Request Manager deleted without shutdown() getting called first";
     }
 
     if (m_implementation_ptr != nullptr)

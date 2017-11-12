@@ -146,7 +146,7 @@ PS3EyeTrackerConfig::ptree2config(const boost::property_tree::ptree &pt)
 		}
 		else
 		{
-			SERVER_LOG_WARNING("PS3EyeTrackerConfig") <<
+			PSVR_LOG_WARNING("PS3EyeTrackerConfig") <<
 				"Config version " << lens_calibration_version << " does not match expected version " <<
 				PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION << ", Using defaults.";
 		}
@@ -192,7 +192,7 @@ PS3EyeTrackerConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
     else
     {
-        SERVER_LOG_WARNING("PS3EyeTrackerConfig") <<
+        PSVR_LOG_WARNING("PS3EyeTrackerConfig") <<
             "Config version " << config_version << " does not match expected version " <<
             PS3EyeTrackerConfig::CONFIG_VERSION << ", Using defaults.";
     }
@@ -270,7 +270,7 @@ PS3EyeTracker::~PS3EyeTracker()
 {
     if (getIsOpen())
     {
-        SERVER_LOG_ERROR("~PS3EyeTracker") << "Tracker deleted without calling close() first!";
+        PSVR_LOG_ERROR("~PS3EyeTracker") << "Tracker deleted without calling close() first!";
     }
 }
 
@@ -321,14 +321,14 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
     
     if (getIsOpen())
     {
-        SERVER_LOG_WARNING("PS3EyeTracker::open") << "PS3EyeTracker(" << cur_dev_path << ") already open. Ignoring request.";
+        PSVR_LOG_WARNING("PS3EyeTracker::open") << "PS3EyeTracker(" << cur_dev_path << ") already open. Ignoring request.";
         bSuccess = true;
     }
     else
     {
         const int camera_index = tracker_enumerator->get_camera_index();
 
-        SERVER_LOG_INFO("PS3EyeTracker::open") << "Opening PS3EyeTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
+        PSVR_LOG_INFO("PS3EyeTracker::open") << "Opening PS3EyeTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
 
         VideoCapture = new PSEyeVideoCapture(camera_index);
 
@@ -340,7 +340,7 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
         }
         else
         {
-            SERVER_LOG_ERROR("PS3EyeTracker::open") << "Failed to open PS3EyeTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
+            PSVR_LOG_ERROR("PS3EyeTracker::open") << "Failed to open PS3EyeTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
 
             close();
         }
@@ -502,7 +502,7 @@ bool PS3EyeTracker::getVideoFrameDimensions(
             else
             {
                 // Assume RGB?
-                SERVER_LOG_ERROR("PS3EyeTracker::getVideoFrameDimensions") << "Unknown video format for camera" << USBDevicePath << ")";
+                PSVR_LOG_ERROR("PS3EyeTracker::getVideoFrameDimensions") << "Unknown video format for camera" << USBDevicePath << ")";
                 bytes_per_pixel = 3;
             }
 

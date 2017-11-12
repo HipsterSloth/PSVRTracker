@@ -157,7 +157,7 @@ DeviceTypeManager::update_connected_devices()
                             const char *device_type_name =
                                 CommonDeviceState::getDeviceTypeString(availableDeviceView->getDevice()->getDeviceType());
 
-                            SERVER_LOG_INFO("DeviceTypeManager::update_connected_devices") <<
+                            PSVR_LOG_INFO("DeviceTypeManager::update_connected_devices") <<
                                 "Device device_id " << device_id_ << " (" << device_type_name << ") opened";
 
                             // Mark the device as having showed up in the enumerator
@@ -168,13 +168,13 @@ DeviceTypeManager::update_connected_devices()
                         }
                         else
                         {
-                            SERVER_LOG_ERROR("DeviceTypeManager::update_connected_devices") << 
+                            PSVR_LOG_ERROR("DeviceTypeManager::update_connected_devices") << 
                                 "Device device_id " << device_id_ << " (" << enumerator->get_path() << ") failed to open!";
                         }
                     }
                     else
                     {
-                        SERVER_LOG_ERROR("DeviceTypeManager::update_connected_devices") << 
+                        PSVR_LOG_ERROR("DeviceTypeManager::update_connected_devices") << 
                             "Can't connect any more new devices. Too many open device.";
                         break;
                     }
@@ -199,7 +199,7 @@ DeviceTypeManager::update_connected_devices()
                 const char *device_type_name =
                     CommonDeviceState::getDeviceTypeString(existingDevice->getDevice()->getDeviceType());
 
-                SERVER_LOG_WARNING("DeviceTypeManager::update_connected_devices") << "Closing device "
+                PSVR_LOG_WARNING("DeviceTypeManager::update_connected_devices") << "Closing device "
                     << device_id << " (" << device_type_name << ") since it's no longer in the device list.";
                 existingDevice->close();
                 bSendControllerUpdatedNotification = true;

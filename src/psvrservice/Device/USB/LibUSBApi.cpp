@@ -74,7 +74,7 @@ USBDeviceEnumerator* LibUSBApi::device_enumerator_create()
 
 	if (libusb_get_device_list(m_apiContext->lib_usb_context, &libusb_enumerator->device_list) < 0)
 	{
-		SERVER_LOG_INFO("usb_enumerate") << "Unable to fetch device list.";
+		PSVR_LOG_INFO("usb_enumerate") << "Unable to fetch device list.";
 	}
 
 	return libusb_enumerator;
@@ -167,16 +167,16 @@ USBDeviceState *LibUSBApi::open_usb_device(USBDeviceEnumerator* enumerator)
 				libusb_device_state->is_interface_claimed = true;
 				bOpened = true;
 
-				SERVER_LOG_INFO("USBAsyncRequestManager::openUSBDevice") << "Successfully opened device " << libusb_device_state->public_handle;
+				PSVR_LOG_INFO("USBAsyncRequestManager::openUSBDevice") << "Successfully opened device " << libusb_device_state->public_handle;
 			}
 			else
 			{
-				SERVER_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to claim USB device: " << libusb_error_name(res);
+				PSVR_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to claim USB device: " << libusb_error_name(res);
 			}
 		}
 		else
 		{
-			SERVER_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to open USB device: " << libusb_error_name(res);
+			PSVR_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to open USB device: " << libusb_error_name(res);
 		}
 
 		if (!bOpened)
@@ -197,14 +197,14 @@ void LibUSBApi::close_usb_device(USBDeviceState* device_state)
 
 		if (libusb_device_state->is_interface_claimed)
 		{
-			SERVER_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Released USB interface on handle " << libusb_device_state->public_handle;
+			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Released USB interface on handle " << libusb_device_state->public_handle;
 			libusb_release_interface(libusb_device_state->device_handle, 0);
 			libusb_device_state->is_interface_claimed = false;
 		}
 
 		if (libusb_device_state->device_handle != nullptr)
 		{
-			SERVER_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Close USB device on handle " << libusb_device_state->public_handle;
+			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Close USB device on handle " << libusb_device_state->public_handle;
 			libusb_close(libusb_device_state->device_handle);
 			libusb_device_state->device_handle = nullptr;
 		}
