@@ -5,15 +5,15 @@
 #include "LibUSBBulkTransferBundle.h"
 #include "LibUSBApi.h"
 #include "NullUSBApi.h"
-#include "ServerLog.h"
-#include "ServerUtility.h"
+#include "Logger.h"
+#include "Utility.h"
 
 #include <atomic>
 #include <thread>
 #include <vector>
 #include <map>
 
-#include <boost/lockfree/spsc_queue.hpp>
+#include "readerwriterqueue.h" // lockfree queue
 
 //-- typedefs -----
 typedef std::map<t_usb_device_handle, USBDeviceState *> t_usb_device_map;
@@ -37,27 +37,27 @@ USBManagerConfig::USBManagerConfig(const std::string &fnamebase)
 	enable_usb_transfers= true;
 };
 
-const boost::property_tree::ptree
-USBManagerConfig::config2ptree()
+const configuru::Config
+USBManagerConfig::writeToJSON()
 {
-    boost::property_tree::ptree pt;
-
-    pt.put("version", USBManagerConfig::CONFIG_VERSION);
-	pt.put("usb_api", usb_api_name);
-	pt.put("enable_usb_transfers", enable_usb_transfers);
+    configuru::Config pt{
+        {"version", USBManagerConfig::CONFIG_VERSION},
+	    {"usb_api", usb_api_name},
+	    {"enable_usb_transfers", enable_usb_transfers}
+    };
 
     return pt;
 }
 
 void
-USBManagerConfig::ptree2config(const boost::property_tree::ptree &pt)
+USBManagerConfig::readFromJSON(const configuru::Config &pt)
 {
-    version = pt.get<int>("version", 0);
+    version = pt.get_or<int>("version", 0);
 
     if (version == USBManagerConfig::CONFIG_VERSION)
     {
-		usb_api_name = pt.get<std::string>("usb_api", usb_api_name);
-		enable_usb_transfers = pt.get<bool>("enable_usb_transfers", enable_usb_transfers);
+		usb_api_name = pt.get_or<std::string>("usb_api", usb_api_name);
+		enable_usb_transfers = pt.get_or<bool>("enable_usb_transfers", enable_usb_transfers);
     }
     else
     {
@@ -270,10 +270,10 @@ public:
 		{
 			USBTransferRequestState requestState = {request, callback};
 
-			if (request_queue.push(requestState))
+			if (request_queue.enqueue(requestState))
 			{
 				// Give the other thread a chance to process the request
-				ServerUtility::sleep_ms(10);
+				Utility::sleep_ms(10);
 				bAddedRequest= true;
 			}
 		}
@@ -382,7 +382,7 @@ public:
 			--m_active_interrupt_transfers;
 		}
 
-		result_queue.push(state);
+		result_queue.enqueue(state);
 	}
 
 protected:
@@ -402,7 +402,7 @@ protected:
 
         // Process incoming USB transfer requests
 		USBTransferRequestState requestState;
-        while (request_queue.pop(requestState))
+        while (request_queue.try_dequeue(requestState))
         {
             switch (requestState.request.request_type)
             {
@@ -450,7 +450,7 @@ protected:
         USBTransferResultState resultState;
 
         // Process all pending results
-        while (result_queue.pop(resultState))
+        while (result_queue.try_dequeue(resultState))
         {
             // Fire the callback on the result
             resultState.callback(resultState.result);
@@ -493,7 +493,7 @@ protected:
 
     void workerThreadFunc()
     {
-        ServerUtility::set_current_thread_name("USB Async Worker Thread");
+        Utility::set_current_thread_name("USB Async Worker Thread");
 
         // Stay in the message loop until asked to exit by the main thread
         while (!m_exit_signaled)
@@ -813,8 +813,8 @@ private:
 	IUSBApi *m_usb_api;
     bool m_bUseMultithreading;
     std::atomic_bool m_exit_signaled;
-    boost::lockfree::spsc_queue<USBTransferRequestState, boost::lockfree::capacity<128> > request_queue;
-    boost::lockfree::spsc_queue<USBTransferResultState, boost::lockfree::capacity<128> > result_queue;
+    moodycamel::ReaderWriterQueue<USBTransferRequestState, 128> request_queue;
+    moodycamel::ReaderWriterQueue<USBTransferResultState, 128> result_queue;
 
     // Worker thread state
     std::vector<IUSBBulkTransferBundle *> m_active_bulk_transfer_bundles;
@@ -951,7 +951,7 @@ USBTransferResult usb_device_submit_transfer_request_blocking(const USBTransferR
 	while (bIsPending)
 	{
 		// Give the worker thread a chance to do work
-		ServerUtility::sleep_ms(1);
+		Utility::sleep_ms(1);
 
 		// Poll to see if the transfer completed
 		// (will execute the callback on completion)
