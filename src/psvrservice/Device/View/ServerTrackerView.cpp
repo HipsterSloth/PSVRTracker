@@ -10,9 +10,11 @@
 #include "PS3EyeTracker.h"
 #include "Utility.h"
 #include "Logger.h"
+#include "MathTypeConversion.h"
 #include "ServiceRequestHandler.h"
 #include "TrackerManager.h"
 #include "PoseFilterInterface.h"
+#include "VirtualStereoTracker.h"
 
 #include <memory>
 
@@ -38,127 +40,6 @@ template<typename t_opencv_contour_type>
 cv::Point2f computeSafeCenterOfMassForContour(const t_opencv_contour_type &contour);
 
 //-- private methods -----
-class SharedVideoFrameReadWriteAccessor
-{
-public:
-    SharedVideoFrameReadWriteAccessor()
-        : m_shared_memory_object(nullptr)
-        , m_region(nullptr)
-    {}
-
-    ~SharedVideoFrameReadWriteAccessor()
-    {
-        dispose();
-    }
-
-    bool initialize(const char *shared_memory_name, int width, int height, int stride)
-    {
-        bool bSuccess = false;
-
-        try
-        {
-            PSVR_LOG_INFO("SharedMemory::initialize()") << "Allocating shared memory: " << shared_memory_name;
-
-            // Remember the name of the shared memory
-            m_shared_memory_name = shared_memory_name;
-
-            // Make sure the shared memory block has been removed first
-            boost::interprocess::shared_memory_object::remove(shared_memory_name);
-
-            // Allow non admin-level processed to access the shared memory
-            boost::interprocess::permissions permissions;
-            permissions.set_unrestricted();
-
-            // Create the shared memory object
-            m_shared_memory_object =
-                new boost::interprocess::shared_memory_object(
-                    boost::interprocess::create_only,
-                    shared_memory_name,
-                    boost::interprocess::read_write,
-                    permissions);
-
-            // Resize the shared memory
-            m_shared_memory_object->truncate(SharedVideoFrameHeader::computeTotalSize(stride, width));
-
-            // Map all of the shared memory for read/write access
-            m_region = new boost::interprocess::mapped_region(*m_shared_memory_object, boost::interprocess::read_write);
-
-            // Initialize the shared memory (call constructor using placement new)
-            // This make sure the mutex has the constructor called on it.
-            SharedVideoFrameHeader *frameState = new (getFrameHeader()) SharedVideoFrameHeader();
-            
-            frameState->width = width;
-            frameState->height = height;
-            frameState->stride = stride;
-            frameState->frame_index = 0;
-            std::memset(
-                frameState->getBufferMutable(),
-                0,
-                SharedVideoFrameHeader::computeVideoBufferSize(stride, height));
-
-            bSuccess = true;
-        }
-        catch (boost::interprocess::interprocess_exception* e)
-        {
-            dispose();
-            PSVR_LOG_ERROR("SharedMemory::initialize()") << "Failed to allocated shared memory: " << m_shared_memory_name
-                << ", reason: " << e->what();
-        }
-
-        return bSuccess;
-    }
-
-    void dispose()
-    {
-        if (m_region != nullptr)
-        {
-            // Call the destructor manually on the frame header since it was constructed via placement new
-            // This will make sure the mutex has the destructor called on it.
-            getFrameHeader()->~SharedVideoFrameHeader();
-            
-            delete m_region;
-            m_region = nullptr;
-        }
-
-        if (m_shared_memory_object != nullptr)
-        {
-            delete m_shared_memory_object;
-            m_shared_memory_object = nullptr;
-        }
-
-        if (!boost::interprocess::shared_memory_object::remove(m_shared_memory_name))
-        {
-            PSVR_LOG_ERROR("SharedMemory::dispose") << "Failed to free shared memory: " << m_shared_memory_name;
-        }
-    }
-
-    void writeVideoFrame(const unsigned char *buffer)
-    {
-        SharedVideoFrameHeader *sharedFrameState = getFrameHeader();
-        boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(sharedFrameState->mutex);
-
-        size_t buffer_size = 
-            SharedVideoFrameHeader::computeVideoBufferSize(sharedFrameState->stride, sharedFrameState->height);
-        size_t total_shared_mem_size =
-            SharedVideoFrameHeader::computeTotalSize(sharedFrameState->stride, sharedFrameState->height);
-        assert(m_region->get_size() >= total_shared_mem_size);
-
-        ++sharedFrameState->frame_index;
-        std::memcpy(sharedFrameState->getBufferMutable(), buffer, buffer_size);
-    }
-
-protected:
-    SharedVideoFrameHeader *getFrameHeader()
-    {
-        return reinterpret_cast<SharedVideoFrameHeader *>(m_region->get_address());
-    }
-
-private:
-    const char *m_shared_memory_name;
-    boost::interprocess::shared_memory_object *m_shared_memory_object;
-    boost::interprocess::mapped_region *m_region;
-};
-
 struct OpenCVPlane2D
 {
     cv::Point2f origin;
@@ -329,8 +210,9 @@ int OpenCVBGRToHSVMapper::m_refCount= 0;
 class OpenCVBufferState
 {
 public:
-    OpenCVBufferState(ITrackerInterface *device)
-        : bgrBuffer(nullptr)
+    OpenCVBufferState(ITrackerInterface *device, PSVRVideoFrameSection _section)
+        : section(_section)
+        , bgrBuffer(nullptr)
         , bgrShmemBuffer(nullptr)
         , hsvBuffer(nullptr)
         , gsLowerBuffer(nullptr)
@@ -625,17 +507,17 @@ public:
 
                 //Create cv::ellipse from pose_estimate
                 cv::Point ell_center(
-                    static_cast<int>(pose_projection.shape.ellipse.center.x),
-                    static_cast<int>(pose_projection.shape.ellipse.center.y));
+                    static_cast<int>(pose_projection.projections[section].shape.ellipse.center.x),
+                    static_cast<int>(pose_projection.projections[section].shape.ellipse.center.y));
                 cv::Size ell_size(
-                    static_cast<int>(pose_projection.shape.ellipse.half_x_extent),
-                    static_cast<int>(pose_projection.shape.ellipse.half_y_extent));
+                    static_cast<int>(pose_projection.projections[section].shape.ellipse.half_x_extent),
+                    static_cast<int>(pose_projection.projections[section].shape.ellipse.half_y_extent));
 
                 //Draw ellipse on bgrShmemBuffer
                 cv::ellipse(*bgrShmemBuffer,
                     ell_center,
                     ell_size,
-                    pose_projection.shape.ellipse.angle,
+                    pose_projection.projections[section].shape.ellipse.angle,
                     0, 360, cv::Scalar(0, 0, 255));
                 cv::drawMarker(*bgrShmemBuffer, ell_center, cv::Scalar(0, 0, 255), 0,
                     (ell_size.height < ell_size.width) ? ell_size.height * 2 : ell_size.width * 2);
@@ -644,29 +526,29 @@ public:
             {
                 int prev_point_index;
 
-                prev_point_index = PSVRTrackingShape::QuadVertexCount - 1;
-                for (int point_index = 0; point_index < PSVRTrackingShape::QuadVertexCount; ++point_index)
+                prev_point_index = QUAD_POINT_COUNT - 1;
+                for (int point_index = 0; point_index < QUAD_POINT_COUNT; ++point_index)
                 {
                     cv::Point pt1(
-                        static_cast<int>(pose_projection.shape.lightbar.quad[prev_point_index].x),
-                        static_cast<int>(pose_projection.shape.lightbar.quad[prev_point_index].y));
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.quad[prev_point_index].x),
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.quad[prev_point_index].y));
                     cv::Point pt2(
-                        static_cast<int>(pose_projection.shape.lightbar.quad[point_index].x),
-                        static_cast<int>(pose_projection.shape.lightbar.quad[point_index].y));
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.quad[point_index].x),
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.quad[point_index].y));
                     cv::line(*bgrShmemBuffer, pt1, pt2, cv::Scalar(0, 0, 255));
 
                     prev_point_index = point_index;
                 }
 
-                prev_point_index = PSVRTrackingShape::TriVertexCount - 1;
-                for (int point_index = 0; point_index < PSVRTrackingShape::TriVertexCount; ++point_index)
+                prev_point_index = TRIANGLE_POINT_COUNT - 1;
+                for (int point_index = 0; point_index < TRIANGLE_POINT_COUNT; ++point_index)
                 {
                     cv::Point pt1(
-                        static_cast<int>(pose_projection.shape.lightbar.triangle[prev_point_index].x),
-                        static_cast<int>(pose_projection.shape.lightbar.triangle[prev_point_index].y));
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.triangle[prev_point_index].x),
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.triangle[prev_point_index].y));
                     cv::Point pt2(
-                        static_cast<int>(pose_projection.shape.lightbar.triangle[point_index].x),
-                        static_cast<int>(pose_projection.shape.lightbar.triangle[point_index].y));
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.triangle[point_index].x),
+                        static_cast<int>(pose_projection.projections[section].shape.lightbar.triangle[point_index].y));
                     cv::line(*bgrShmemBuffer, pt1, pt2, cv::Scalar(0, 0, 255));
 
                     prev_point_index = point_index;
@@ -675,11 +557,11 @@ public:
             } break;
         case PSVRShape_PointCloud:
             {
-                for (int point_index = 0; point_index < pose_projection.shape.points.point_count; ++point_index)
+                for (int point_index = 0; point_index < pose_projection.projections[section].shape.pointcloud.point_count; ++point_index)
                 {
                     cv::Point pt(
-                        static_cast<int>(pose_projection.shape.points.point[point_index].x),
-                        static_cast<int>(pose_projection.shape.points.point[point_index].y));
+                        static_cast<int>(pose_projection.projections[section].shape.pointcloud.points[point_index].x),
+                        static_cast<int>(pose_projection.projections[section].shape.pointcloud.points[point_index].y));
                     cv::drawMarker(*bgrShmemBuffer, pt, cv::Scalar(0, 0, 255));
                 }
             } break;
@@ -688,6 +570,8 @@ public:
             break;
         }		
     }
+
+    PSVRVideoFrameSection section;
 
     int frameWidth;
     int frameHeight;
@@ -712,28 +596,24 @@ static void computeOpenCVCameraExtrinsicMatrix(const ITrackerInterface *tracker_
                                                       cv::Matx34f &extrinsicOut);
 cv::Mat cvDistCoeffs = cv::Mat(4, 1, cv::DataType<float>::type, 0.f);
 static void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
+                                               PSVRVideoFrameSection section,
                                                cv::Matx33f &intrinsicOut,
                                                cv::Matx<float, 5, 1> &distortionOut);
-static cv::Matx34f computeOpenCVCameraPinholeMatrix(const ITrackerInterface *tracker_device);
-static bool computeTrackerRelativeLightBarProjection(
-    const PSVRTrackingShape *tracking_shape,
-    const t_opencv_float_contour &opencv_contour,
-    PSVRTrackingProjection *out_projection);
-static bool computeTrackerRelativeLightBarPose(
+static bool computeOpenCVCameraRectification(const ITrackerInterface *tracker_device,
+                                               PSVRVideoFrameSection section,
+                                               cv::Matx33d &rotationOut,
+                                               cv::Matx34d &projectionOut);
+static bool computeTrackerRelativePointCloudContourPoseInSection(
     const ITrackerInterface *tracker_device,
     const PSVRTrackingShape *tracking_shape,
-    const PSVRTrackingProjection *projection,
-    const PSVRPosef *tracker_relative_pose_guess,
-    ControllerOpticalPoseEstimation *out_pose_estimate);
-static bool computeTrackerRelativePointCloudContourPose(
-    const ITrackerInterface *tracker_device,
-    const PSVRTrackingShape *tracking_shape,
+	const PSVRVideoFrameSection section,
     const t_opencv_float_contour_list &opencv_contours,
     const PSVRPosef *tracker_relative_pose_guess,
     HMDOpticalPoseEstimation *out_pose_estimate);
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool disabled_roi,
     const ServerTrackerView *tracker,
+    const PSVRVideoFrameSection section,
     const IPoseFilter* pose_filter,
     const PSVRTrackingProjection *prior_tracking_projection,
     const PSVRTrackingShape *tracking_shape);
@@ -768,10 +648,13 @@ ServerTrackerView::ServerTrackerView(const int device_id)
     : ServerDeviceView(device_id)
     , m_shared_memory_accesor(nullptr)
     , m_shared_memory_video_stream_count(0)
-    , m_opencv_buffer_state(nullptr)
     , m_device(nullptr)
 {
     Utility::format_string(m_shared_memory_name, sizeof(m_shared_memory_name), "tracker_view_%d", device_id);
+    for (int i = 0; i < MAX_PROJECTION_COUNT; ++i)
+    {
+        m_opencv_buffer_state[i]= nullptr;
+    }
 }
 
 ServerTrackerView::~ServerTrackerView()
@@ -781,9 +664,12 @@ ServerTrackerView::~ServerTrackerView()
         delete m_shared_memory_accesor;
     }
 
-    if (m_opencv_buffer_state != nullptr)
+    for (int i = 0; i < MAX_PROJECTION_COUNT; ++i)
     {
-        delete m_opencv_buffer_state;
+        if (m_opencv_buffer_state[i] != nullptr)
+        {
+            delete m_opencv_buffer_state[i];
+        }
     }
 
     if (m_device != nullptr)
@@ -804,6 +690,12 @@ ServerTrackerView::getTrackerDriverType() const
     return m_device->getDriverType();
 }
 
+bool 
+ServerTrackerView::getIsStereoCamera() const
+{
+    return m_device->getIsStereoCamera();
+}
+
 std::string
 ServerTrackerView::getUSBDevicePath() const
 {
@@ -822,32 +714,11 @@ bool ServerTrackerView::open(const class DeviceEnumerator *enumerator)
 
     if (bSuccess)
     {
-        int width, height, stride;
+        // Allocate the shared 
+        reallocate_shared_memory();
 
-        // Make sure the shared memory block has been removed first
-        boost::interprocess::shared_memory_object::remove(m_shared_memory_name);
-
-        // Query the video frame first so that we know how big to make the buffer
-        if (m_device->getVideoFrameDimensions(&width, &height, &stride))
-        {
-            assert(m_shared_memory_accesor == nullptr);
-            m_shared_memory_accesor = new SharedVideoFrameReadWriteAccessor();
-
-            if (!m_shared_memory_accesor->initialize(m_shared_memory_name, width, height, stride))
-            {
-                delete m_shared_memory_accesor;
-                m_shared_memory_accesor = nullptr;
-
-                PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
-            }
-
-            // Allocate the OpenCV scratch buffers used for finding tracking blobs
-            m_opencv_buffer_state = new OpenCVBufferState(m_device);
-        }
-        else
-        {
-            PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
-        }
+        // Allocate the open cv buffers used for tracking filtering
+        reallocate_opencv_buffer_state();
     }
 
     return bSuccess;
@@ -859,6 +730,15 @@ void ServerTrackerView::close()
     {
         delete m_shared_memory_accesor;
         m_shared_memory_accesor = nullptr;
+    }
+
+    for (int i = 0; i < MAX_PROJECTION_COUNT; ++i)
+    {
+        if (m_opencv_buffer_state[i] != nullptr)
+        {
+            delete m_opencv_buffer_state[i];
+            m_opencv_buffer_state[i]= nullptr;
+        }
     }
 
     ServerDeviceView::close();
@@ -881,14 +761,37 @@ bool ServerTrackerView::poll()
 
     if (bSuccess && m_device != nullptr)
     {
-        const unsigned char *buffer = m_device->getVideoFrameBuffer();
-
-        if (buffer != nullptr)
+        if (m_device->getIsStereoCamera())
         {
-            // Cache the raw video frame
-            if (m_opencv_buffer_state != nullptr)
+            const unsigned char *left_buffer = m_device->getVideoFrameBuffer(PSVRVideoFrameSection_Left);
+            const unsigned char *right_buffer = m_device->getVideoFrameBuffer(PSVRVideoFrameSection_Right);
+
+            if (left_buffer != nullptr && right_buffer != nullptr)
             {
-                m_opencv_buffer_state->writeVideoFrame(buffer);
+                // Cache the left raw video frame
+                if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr)
+                {
+                    m_opencv_buffer_state[PSVRVideoFrameSection_Left]->writeVideoFrame(left_buffer);
+                }
+
+                // Cache the right raw video frame
+                if (m_opencv_buffer_state[PSVRVideoFrameSection_Right] != nullptr)
+                {
+                    m_opencv_buffer_state[PSVRVideoFrameSection_Right]->writeVideoFrame(right_buffer);
+                }
+            }
+        }
+        else
+        {
+            const unsigned char *buffer = m_device->getVideoFrameBuffer(PSVRVideoFrameSection_Primary);
+
+            if (buffer != nullptr)
+            {
+                // Cache the raw video frame
+                if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
+                {
+                    m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->writeVideoFrame(buffer);
+                }
             }
         }
     }
@@ -896,19 +799,88 @@ bool ServerTrackerView::poll()
     return bSuccess;
 }
 
+void ServerTrackerView::reallocate_shared_memory()
+{
+    int width, height, stride;
+
+    // close buffer
+    if (m_shared_memory_accesor != nullptr)
+    {
+        delete m_shared_memory_accesor;
+        m_shared_memory_accesor = nullptr;
+    }
+
+    // Query the video frame first so that we know how big to make the buffer
+    if (m_device->getVideoFrameDimensions(&width, &height, &stride))
+    {
+        int section_count= m_device->getIsStereoCamera() ? 2 : 1;
+
+        assert(m_shared_memory_accesor == nullptr);
+        m_shared_memory_accesor = new SharedVideoFrameBuffer();
+
+        if (!m_shared_memory_accesor->initialize(m_shared_memory_name, width, height, stride, section_count))
+        {
+            delete m_shared_memory_accesor;
+            m_shared_memory_accesor = nullptr;
+
+            PSVR_LOG_ERROR("ServerTrackerView::reallocate_shared_memory()") << "Failed to allocated shared memory: " << m_shared_memory_name;
+        }
+    }
+}
+
+void ServerTrackerView::reallocate_opencv_buffer_state()
+{
+    // Delete any existing opencv buffers
+    for (int i = 0; i < MAX_PROJECTION_COUNT; ++i)
+    {
+        if (m_opencv_buffer_state[i] != nullptr)
+        {
+            delete m_opencv_buffer_state[i];
+            m_opencv_buffer_state[i]= nullptr;
+        }
+    }
+
+    // Allocate the OpenCV scratch buffers used for finding tracking blobs
+    if (m_device->getIsStereoCamera())
+    {
+        m_opencv_buffer_state[PSVRVideoFrameSection_Left] = 
+            new OpenCVBufferState(m_device, PSVRVideoFrameSection_Left);
+        m_opencv_buffer_state[PSVRVideoFrameSection_Right] = 
+            new OpenCVBufferState(m_device, PSVRVideoFrameSection_Right);
+    }
+    else
+    {
+        m_opencv_buffer_state[PSVRVideoFrameSection_Primary] =
+            new OpenCVBufferState(m_device, PSVRVideoFrameSection_Primary);
+    }
+}
+
 bool ServerTrackerView::allocate_device_interface(const class DeviceEnumerator *enumerator)
 {
+    m_device= ServerTrackerView::allocate_tracker_interface(enumerator);
+
+    return m_device != nullptr;
+}
+
+ITrackerInterface *ServerTrackerView::allocate_tracker_interface(const class DeviceEnumerator *enumerator)
+{
+    ITrackerInterface *tracker_interface= nullptr;
+
     switch (enumerator->get_device_type())
     {
     case CommonDeviceState::PS3EYE:
-    {
-        m_device = new PS3EyeTracker();
-    } break;
+        {
+            tracker_interface = new PS3EyeTracker();
+        } break;
+    case CommonDeviceState::VirtualStereoCamera:
+        {
+            tracker_interface = new VirtualStereoTracker();
+        } break;
     default:
         break;
     }
 
-    return m_device != nullptr;
+    return tracker_interface;
 }
 
 void ServerTrackerView::free_device_interface()
@@ -928,7 +900,21 @@ void ServerTrackerView::publish_device_data_frame()
     // Copy the video frame to shared memory (if requested)
     if (m_shared_memory_accesor != nullptr && m_shared_memory_video_stream_count > 0)
     {
-        m_shared_memory_accesor->writeVideoFrame(m_opencv_buffer_state->bgrShmemBuffer->data);
+        if (m_device->getIsStereoCamera())
+        {
+            m_shared_memory_accesor->writeVideoFrame(
+                PSVRVideoFrameSection_Left, 
+                m_opencv_buffer_state[PSVRVideoFrameSection_Left]->bgrShmemBuffer->data);
+            m_shared_memory_accesor->writeVideoFrame(
+                PSVRVideoFrameSection_Right, 
+                m_opencv_buffer_state[PSVRVideoFrameSection_Right]->bgrShmemBuffer->data);
+        }
+        else
+        {
+            m_shared_memory_accesor->writeVideoFrame(
+                PSVRVideoFrameSection_Primary,
+                m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->bgrShmemBuffer->data);
+        }
     }
     
     // Tell the server request handler we want to send out tracker updates.
@@ -951,6 +937,10 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
     switch (tracker_view->getTrackerDeviceType())
     {
     case CommonDeviceState::PS3EYE:
+        {
+            //TODO: PS3EYE tracker location
+        } break;
+    case CommonDeviceState::VirtualStereoCamera:
         {
             //TODO: PS3EYE tracker location
         } break;
@@ -980,43 +970,12 @@ void ServerTrackerView::setFrameWidth(double value, bool bUpdateConfig)
 {
     if (value == m_device->getFrameWidth()) return;
 
-    // close buffer
-    if (m_shared_memory_accesor != nullptr)
-    {
-        delete m_shared_memory_accesor;
-        m_shared_memory_accesor = nullptr;
-    }
-
     // change frame width
     m_device->setFrameWidth(value, bUpdateConfig);
 
-    // reopen buffer
-    int width, height, stride;
-
-    // Make sure the shared memory block has been removed first
-    boost::interprocess::shared_memory_object::remove(m_shared_memory_name);
-
-    // Query the video frame first so that we know how big to make the buffer
-    if (m_device->getVideoFrameDimensions(&width, &height, &stride))
-    {
-        assert(m_shared_memory_accesor == nullptr);
-        m_shared_memory_accesor = new SharedVideoFrameReadWriteAccessor();
-
-        if (!m_shared_memory_accesor->initialize(m_shared_memory_name, width, height, stride))
-        {
-            delete m_shared_memory_accesor;
-            m_shared_memory_accesor = nullptr;
-
-            PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
-        }
-
-        // Allocate the OpenCV scratch buffers used for finding tracking blobs
-        m_opencv_buffer_state = new OpenCVBufferState(m_device);
-    }
-    else
-    {
-        PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
-    }
+    // Resize the shared memory and opencv buffers
+    reallocate_shared_memory();
+    reallocate_opencv_buffer_state();
 }
 
 double ServerTrackerView::getFrameHeight() const
@@ -1028,43 +987,13 @@ void ServerTrackerView::setFrameHeight(double value, bool bUpdateConfig)
 {
     if (value == m_device->getFrameHeight()) return;
 
-    // close buffer
-    if (m_shared_memory_accesor != nullptr)
-    {
-        delete m_shared_memory_accesor;
-        m_shared_memory_accesor = nullptr;
-    }
-
     // change frame height
     m_device->setFrameHeight(value, bUpdateConfig);
 
-    // reopen buffer
-    int width, height, stride;
+    // Resize the shared memory and opencv buffers
+    reallocate_shared_memory();
+    reallocate_opencv_buffer_state();
 
-    // Make sure the shared memory block has been removed first
-    boost::interprocess::shared_memory_object::remove(m_shared_memory_name);
-
-    // Query the video frame first so that we know how big to make the buffer
-    if (m_device->getVideoFrameDimensions(&width, &height, &stride))
-    {
-        assert(m_shared_memory_accesor == nullptr);
-        m_shared_memory_accesor = new SharedVideoFrameReadWriteAccessor();
-
-        if (!m_shared_memory_accesor->initialize(m_shared_memory_name, width, height, stride))
-        {
-            delete m_shared_memory_accesor;
-            m_shared_memory_accesor = nullptr;
-
-            PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to allocated shared memory: " << m_shared_memory_name;
-        }
-
-        // Allocate the OpenCV scratch buffers used for finding tracking blobs
-        m_opencv_buffer_state = new OpenCVBufferState(m_device);
-    }
-    else
-    {
-        PSVR_LOG_ERROR("ServerTrackerView::open()") << "Failed to video frame dimensions";
-    }
 }
 
 double ServerTrackerView::getFrameRate() const
@@ -1098,29 +1027,15 @@ void ServerTrackerView::setGain(double value, bool bUpdateConfig)
 }
 
 void ServerTrackerView::getCameraIntrinsics(
-    float &outFocalLengthX, float &outFocalLengthY,
-    float &outPrincipalX, float &outPrincipalY,
-    float &outDistortionK1, float &outDistortionK2, float &outDistortionK3,
-    float &outDistortionP1, float &outDistortionP2) const
+    PSVRTrackerIntrinsics &out_tracker_intrinsics) const
 {
-    m_device->getCameraIntrinsics(
-        outFocalLengthX, outFocalLengthY,
-        outPrincipalX, outPrincipalY,
-        outDistortionK1, outDistortionK2, outDistortionK3,
-        outDistortionP1, outDistortionP2);
+    m_device->getCameraIntrinsics(out_tracker_intrinsics);
 }
 
 void ServerTrackerView::setCameraIntrinsics(
-    float focalLengthX, float focalLengthY,
-    float principalX, float principalY,
-    float distortionK1, float distortionK2, float distortionK3,
-    float distortionP1, float distortionP2)
+    const PSVRTrackerIntrinsics &tracker_intrinsics)
 {
-    m_device->setCameraIntrinsics(
-        focalLengthX, focalLengthY,
-        principalX, principalY,
-        distortionK1, distortionK2, distortionK3,
-        distortionP1, distortionP2);
+    m_device->setCameraIntrinsics(tracker_intrinsics);
 }
 
 PSVRPosef ServerTrackerView::getTrackerPose() const
@@ -1154,7 +1069,7 @@ void ServerTrackerView::getZRange(float &outZNear, float &outZFar) const
     m_device->getZRange(outZNear, outZFar);
 }
 
-void ServerTrackerView::gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const
+void ServerTrackerView::gatherTrackerOptions(PSVRClientTrackerSettings* settings) const
 {
     m_device->gatherTrackerOptions(settings);
 }
@@ -1170,41 +1085,12 @@ bool ServerTrackerView::getOptionIndex(const std::string &option_name, int &out_
 }
 
 void ServerTrackerView::gatherTrackingColorPresets(
-    const class ServerControllerView *controller, 
-    PSVRProtocol::Response_ResultTrackerSettings* settings) const
-{
-    std::string controller_id= (controller != nullptr) ? controller->getConfigIdentifier() : "";
-
-    return m_device->gatherTrackingColorPresets(controller_id, settings);
-}
-
-void ServerTrackerView::gatherTrackingColorPresets(
     const class ServerHMDView *hmd,
-    PSVRProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRClientTrackerSettings* settings) const
 {
     std::string hmd_id = (hmd != nullptr) ? hmd->getConfigIdentifier() : "";
 
     return m_device->gatherTrackingColorPresets(hmd_id, settings);
-}
-
-void ServerTrackerView::setControllerTrackingColorPreset(
-    const class ServerControllerView *controller,
-    PSVRTrackingColorType color, 
-    const PSVR_HSVColorRange *preset)
-{
-    std::string controller_id= (controller != nullptr) ? controller->getConfigIdentifier() : "";
-
-    return m_device->setTrackingColorPreset(controller_id, color, preset);
-}
-
-void ServerTrackerView::getControllerTrackingColorPreset(
-    const class ServerControllerView *controller,
-    PSVRTrackingColorType color,
-    PSVR_HSVColorRange *out_preset) const
-{
-    std::string controller_id= (controller != nullptr) ? controller->getConfigIdentifier() : "";
-
-    return m_device->getTrackingColorPreset(controller_id, color, out_preset);
 }
 
 void ServerTrackerView::setHMDTrackingColorPreset(
@@ -1227,194 +1113,63 @@ void ServerTrackerView::getHMDTrackingColorPreset(
     return m_device->getTrackingColorPreset(hmd_id, color, out_preset);
 }
 
-bool
-ServerTrackerView::computeProjectionForController(
-    const ServerControllerView* tracked_controller,
+bool ServerTrackerView::computeProjectionForHMD(
+    const class ServerHMDView* tracked_hmd,
     const PSVRTrackingShape *tracking_shape,
-    ControllerOpticalPoseEstimation *out_pose_estimate)
+    struct HMDOpticalPoseEstimation *out_pose_estimate)
 {
-    bool bSuccess = true;
+    bool bSuccess= false;
 
-    // Get the HSV filter used to find the tracking blob
-    PSVR_HSVColorRange hsvColorRange;
-    if (bSuccess)
+    if (m_device->getIsStereoCamera())
     {
-        PSVRTrackingColorType tracked_color_id = tracked_controller->getTrackingColorID();
+        bool bLeftSuccess=
+            computeProjectionForHmdInSection(
+                tracked_hmd,
+                tracking_shape,
+                PSVRVideoFrameSection_Left,
+                out_pose_estimate);
+        bool bRightSuccess= true;
+            computeProjectionForHmdInSection(
+                tracked_hmd,
+                tracking_shape,
+                PSVRVideoFrameSection_Right,
+                out_pose_estimate);
 
-        if (tracked_color_id != PSVRTrackingColorType_INVALID)
+        if (bLeftSuccess && bRightSuccess)
         {
-            getControllerTrackingColorPreset(tracked_controller, tracked_color_id, &hsvColorRange);
-        }
-        else
-        {
-            bSuccess = false;
-        }
-    }
+            out_pose_estimate->projection.projection_count= STEREO_PROJECTION_COUNT;
 
-    // Compute a region of interest in the tracker buffer around where we expect to find the tracking shape
-    const TrackerManagerConfig &trackerMgrConfig= DeviceManager::getInstance()->m_tracker_manager->getConfig();
-    const bool bRoiDisabled = tracked_controller->getIsROIDisabled() || trackerMgrConfig.disable_roi;
-
-    const ControllerOpticalPoseEstimation *priorPoseEst= 
-        tracked_controller->getTrackerPoseEstimate(this->getDeviceID());
-    const bool bIsTracking = priorPoseEst->bCurrentlyTracking;
-
-    cv::Rect2i ROI= computeTrackerROIForPoseProjection(
-        bRoiDisabled,
-        this,		
-        bIsTracking ? tracked_controller->getPoseFilter() : nullptr,
-        bIsTracking ? &priorPoseEst->projection : nullptr,
-        tracking_shape);
-
-    m_opencv_buffer_state->applyROI(ROI);
-
-    // Find the contour associated with the controller
-    t_opencv_int_contour_list biggest_contours;
-    std::vector<double> contour_areas;
-    if (bSuccess)
-    {
-        bSuccess = m_opencv_buffer_state->computeBiggestNContours(hsvColorRange, biggest_contours, contour_areas, 1);
-    }
-    
-    // Process the contour for its 2D and 3D pose.
-    if (bSuccess)
-    {
-        // Get camera parameters.
-        // Needed for undistortion.
-        cv::Matx33f camera_matrix;
-        cv::Matx<float, 5, 1> distortions;
-        computeOpenCVCameraIntrinsicMatrix(m_device, camera_matrix, distortions);
-                
-        // Compute the tracker relative 3d position of the controller from the contour
-        switch (tracking_shape->shape_type)
-        {
-        // For the sphere projection we can go ahead and compute the full pose estimation now
-        case PSVRTrackingShape_Sphere:
-            {
-                // Compute the convex hull of the contour
-                t_opencv_int_contour convex_contour;
-                cv::convexHull(biggest_contours[0], convex_contour);
-                m_opencv_buffer_state->draw_contour(convex_contour);
-
-                // Convert integer to float
-                t_opencv_float_contour convex_contour_f;
-                cv::Mat(convex_contour).convertTo(convex_contour_f, cv::Mat(convex_contour_f).type());
-
-                // Undistort points
-                t_opencv_float_contour undistort_contour;  //destination for undistorted contour
-                cv::undistortPoints(convex_contour_f, undistort_contour,
-                                    camera_matrix,
-                                    distortions);//,
-                                    //cv::noArray(),
-                                    //camera_matrix);
-                // Note: if we omit the last two arguments, then
-                // undistort_contour points are in 'normalized' space.
-                // i.e., they are relative to their F_PX,F_PY
-                
-                // Compute the sphere center AND the projected ellipse
-                Eigen::Vector3f sphere_center;
-                EigenFitEllipse ellipse_projection;
-
-                std::vector<Eigen::Vector2f> eigen_contour;
-                std::for_each(undistort_contour.begin(),
-                              undistort_contour.end(),
-                              [&eigen_contour](cv::Point2f& p) {
-                                  eigen_contour.push_back(Eigen::Vector2f(p.x, p.y));
-                              });
-                eigen_alignment_fit_focal_cone_to_sphere(eigen_contour.data(),
-                                                         static_cast<int>(eigen_contour.size()),
-                                                         tracking_shape->shape.sphere.radius_cm,
-                                                         1, //I was expecting this to be -1. Is it +1 because we're using -F_PY?
-                                                         &sphere_center,
-                                                         &ellipse_projection);
-                
-                if (ellipse_projection.area > k_real_epsilon)
-                {
-                    //Save the optically-estimate 3D pose.
-                    out_pose_estimate->position_cm.set(sphere_center.x(), sphere_center.y(), sphere_center.z());
-                    out_pose_estimate->bCurrentlyTracking = true;
-                    // Not possible to get an orientation off of a sphere
-                    out_pose_estimate->orientation.clear();
-                    out_pose_estimate->bOrientationValid = false;
-
-                    // Save off the projection of the sphere (an ellipse)
-                    out_pose_estimate->projection.shape.ellipse.angle = ellipse_projection.angle;
-                    out_pose_estimate->projection.screen_area= ellipse_projection.area;
-                    //The ellipse projection is still in normalized space.
-                    //i.e., it is a 2-dimensional ellipse floating somewhere.
-                    //We must reproject it onto the camera.
-                    //TODO: Use opencv's project points instead of manual way below
-                    //because it will account for distortion, at least for the center point.
-                    out_pose_estimate->projection.shape_type = PSVRShape_Ellipse;
-                    out_pose_estimate->projection.shape.ellipse.center.set(
-                        ellipse_projection.center.x()*camera_matrix.val[0] + camera_matrix.val[2],
-                        ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]);
-                    out_pose_estimate->projection.shape.ellipse.half_x_extent = ellipse_projection.extents.x()*camera_matrix.val[0];
-                    out_pose_estimate->projection.shape.ellipse.half_y_extent = ellipse_projection.extents.y()*camera_matrix.val[0];
-                    out_pose_estimate->projection.screen_area=
-                        k_real_pi*out_pose_estimate->projection.shape.ellipse.half_x_extent*out_pose_estimate->projection.shape.ellipse.half_y_extent;
-                
-                    //Draw results onto m_opencv_buffer_state
-                    m_opencv_buffer_state->draw_pose_projection(out_pose_estimate->projection);
-
-                    bSuccess = true;
-                }
-            } break;
-        // For the LightBar projection we only want to compute the projection shape.
-        // The pose estimation is deferred until we know if we can leverage triangulation or not.
-        case PSVRTrackingShape_LightBar:
-            {
-                // Draw the raw source contour
-                m_opencv_buffer_state->draw_contour(biggest_contours[0]);
-
-                // Convert integer contour to float
-                t_opencv_float_contour biggest_contour_f;
-                cv::Mat(biggest_contours[0]).convertTo(biggest_contour_f, cv::Mat(biggest_contour_f).type());
-
-                // Compute an undistorted version of the contour
-                t_opencv_float_contour undistort_contour;
-                cv::undistortPoints(biggest_contour_f, undistort_contour,
-                                    camera_matrix,
-                                    distortions,
-                                    cv::noArray(),
-                                    camera_matrix);
-
-                // Compute the lightbar tracking projection from the undistored contour
-                bSuccess=
-                    computeTrackerRelativeLightBarProjection(
-                        tracking_shape,
-                        undistort_contour,
-                        &out_pose_estimate->projection);
-
-                //Draw results onto m_opencv_buffer_state
-                m_opencv_buffer_state->draw_pose_projection(out_pose_estimate->projection);
-            } break;
-        default:
-            assert(0 && "Unreachable");
-            break;
+            //TODO: Compute pose estimate using stereo triangulation
+	        //4) Find corresponding points on 2d curves using fundamental matrix
+	        //5) Triangulate a single 3d curve
+	        //6) Compute normals on curve
+	        //7) Use SICP::point_to_plane to align model points to triangulated curve points
+		       // a. Use previous frames best fit model as a starting point
+	        //8) Use RigidMotionEstimator::point_to_point(X, U) to find the transform that best aligned the model points with the curve points
+            bSuccess= true;
         }
     }
-
-    // Throw out the result if the contour we found was too small and 
-    // we were using an ROI less that the size of the full screen
-    if (bSuccess && !bRoiDisabled)
+    else
     {
-        float screenWidth, screenHeight;
-        getPixelDimensions(screenWidth, screenHeight);
+        out_pose_estimate->projection.projection_count= MONO_PROJECTION_COUNT;
 
-        if (ROI.width < screenWidth || ROI.height < screenHeight)
-        {
-            bSuccess= out_pose_estimate->projection.screen_area >= trackerMgrConfig.min_valid_projection_area;
-        }
+        bSuccess=
+            computeProjectionForHmdInSection(
+                tracked_hmd,
+                tracking_shape,
+                PSVRVideoFrameSection_Primary,
+                out_pose_estimate);
     }
 
     return bSuccess;
 }
 
-bool ServerTrackerView::computeProjectionForHMD(
-    const class ServerHMDView* tracked_hmd,
+bool
+ServerTrackerView::computeProjectionForHmdInSection(
+    const ServerHMDView* tracked_hmd,
     const PSVRTrackingShape *tracking_shape,
-    struct HMDOpticalPoseEstimation *out_pose_estimate)
+    const PSVRVideoFrameSection section,
+    HMDOpticalPoseEstimation *out_pose_estimate)
 {
     bool bSuccess = true;
 
@@ -1444,11 +1199,12 @@ bool ServerTrackerView::computeProjectionForHMD(
 
     cv::Rect2i ROI = computeTrackerROIForPoseProjection(
         bRoiDisabled,
-        this, 
+        this,
+        section,
         bIsTracking ? tracked_hmd->getPoseFilter() : nullptr,
         bIsTracking ? &priorPoseEst->projection : nullptr,
         tracking_shape);
-    m_opencv_buffer_state->applyROI(ROI);
+    m_opencv_buffer_state[section]->applyROI(ROI);
 
     // Find the N best contours associated with the HMD
     t_opencv_int_contour_list biggest_contours;
@@ -1456,8 +1212,8 @@ bool ServerTrackerView::computeProjectionForHMD(
     if (bSuccess)
     {
         bSuccess = 
-            m_opencv_buffer_state->computeBiggestNContours(
-                hsvColorRange, biggest_contours, contour_areas, PSVRTrackingProjection::MAX_POINT_CLOUD_POINT_COUNT);
+            m_opencv_buffer_state[section]->computeBiggestNContours(
+                hsvColorRange, biggest_contours, contour_areas, MAX_PROJECTION_COUNT);
     }
 
     // Compute the tracker relative 3d position of the controller from the contour
@@ -1465,7 +1221,10 @@ bool ServerTrackerView::computeProjectionForHMD(
     {
         cv::Matx33f camera_matrix;
         cv::Matx<float, 5, 1> distortions;
-        computeOpenCVCameraIntrinsicMatrix(m_device, camera_matrix, distortions);
+        cv::Matx33d rectification_rotation;
+        cv::Matx34d rectification_projection; 
+        computeOpenCVCameraIntrinsicMatrix(m_device, section, camera_matrix, distortions);
+        bool valid_rectification= computeOpenCVCameraRectification(m_device, section, rectification_rotation, rectification_projection);
 
         switch (tracking_shape->shape_type)
         {
@@ -1475,7 +1234,7 @@ bool ServerTrackerView::computeProjectionForHMD(
                 // Compute the convex hull of the contour
                 t_opencv_int_contour convex_contour;
                 cv::convexHull(biggest_contours[0], convex_contour);
-                m_opencv_buffer_state->draw_contour(convex_contour);
+                m_opencv_buffer_state[section]->draw_contour(convex_contour);
 
                 // Convert integer to float
                 t_opencv_float_contour convex_contour_f;
@@ -1483,11 +1242,22 @@ bool ServerTrackerView::computeProjectionForHMD(
 
                 // Undistort points
                 t_opencv_float_contour undistorted_contour;  //destination for undistorted contour
-                cv::undistortPoints(convex_contour_f, undistorted_contour,
-                                    camera_matrix,
-                                    distortions);//,
-                                    //cv::noArray(),
-                                    //camera_matrix);
+                if (valid_rectification)
+                {
+                    cv::undistortPoints(convex_contour_f, undistorted_contour,
+                                        camera_matrix,
+                                        distortions,
+                                        rectification_rotation,
+                                        rectification_projection);
+                }
+                else 
+                {
+                    cv::undistortPoints(convex_contour_f, undistorted_contour,
+                                        camera_matrix,
+                                        distortions,
+                                        cv::noArray(),
+                                        camera_matrix);
+                }
                 // Note: if we omit the last two arguments, then
                 // undistort_contour points are in 'normalized' space.
                 // i.e., they are relative to their F_PX,F_PY
@@ -1504,7 +1274,7 @@ bool ServerTrackerView::computeProjectionForHMD(
                               });
                 eigen_alignment_fit_focal_cone_to_sphere(eigen_contour.data(),
                                                          static_cast<int>(eigen_contour.size()),
-                                                         tracking_shape->shape.sphere.radius_cm,
+                                                         tracking_shape->shape.sphere.radius,
                                                          1, //I was expecting this to be -1. Is it +1 because we're using -F_PY?
                                                          &sphere_center,
                                                          &ellipse_projection);
@@ -1512,31 +1282,32 @@ bool ServerTrackerView::computeProjectionForHMD(
                 if (ellipse_projection.area > k_real_epsilon)
                 {
                     //Save the optically-estimate 3D pose.
-                    out_pose_estimate->position_cm.set(sphere_center.x(), sphere_center.y(), sphere_center.z());
+                    out_pose_estimate->position_cm = eigen_vector3f_to_PSVR_vector3f(sphere_center);
                     out_pose_estimate->bCurrentlyTracking = true;
                     // Not possible to get an orientation off of a sphere
-                    out_pose_estimate->orientation.clear();
+                    out_pose_estimate->orientation= *k_PSVR_quaternion_identity;
                     out_pose_estimate->bOrientationValid = false;
 
                     // Save off the projection of the sphere (an ellipse)
-                    out_pose_estimate->projection.shape.ellipse.angle = ellipse_projection.angle;
-                    out_pose_estimate->projection.screen_area= ellipse_projection.area;
+                    out_pose_estimate->projection.projections[section].shape.ellipse.angle = ellipse_projection.angle;
+                    out_pose_estimate->projection.projections[section].screen_area= ellipse_projection.area;
                     //The ellipse projection is still in normalized space.
                     //i.e., it is a 2-dimensional ellipse floating somewhere.
                     //We must reproject it onto the camera.
                     //TODO: Use opencv's project points instead of manual way below
                     //because it will account for distortion, at least for the center point.
                     out_pose_estimate->projection.shape_type = PSVRShape_Ellipse;
-                    out_pose_estimate->projection.shape.ellipse.center.set(
+                    out_pose_estimate->projection.projections[section].shape.ellipse.center= {
                         ellipse_projection.center.x()*camera_matrix.val[0] + camera_matrix.val[2],
-                        ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]);
-                    out_pose_estimate->projection.shape.ellipse.half_x_extent = ellipse_projection.extents.x()*camera_matrix.val[0];
-                    out_pose_estimate->projection.shape.ellipse.half_y_extent = ellipse_projection.extents.y()*camera_matrix.val[0];
-                    out_pose_estimate->projection.screen_area=
-                        k_real_pi*out_pose_estimate->projection.shape.ellipse.half_x_extent*out_pose_estimate->projection.shape.ellipse.half_y_extent;
+                        ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]};
+                    out_pose_estimate->projection.projections[section].shape.ellipse.half_x_extent = ellipse_projection.extents.x()*camera_matrix.val[0];
+                    out_pose_estimate->projection.projections[section].shape.ellipse.half_y_extent = ellipse_projection.extents.y()*camera_matrix.val[0];
+                    out_pose_estimate->projection.projections[section].screen_area=
+                        k_real_pi*out_pose_estimate->projection.projections[section].shape.ellipse.half_x_extent
+                        *out_pose_estimate->projection.projections[section].shape.ellipse.half_y_extent;
                 
                     //Draw results onto m_opencv_buffer_state
-                    m_opencv_buffer_state->draw_pose_projection(out_pose_estimate->projection);
+                    m_opencv_buffer_state[section]->draw_pose_projection(out_pose_estimate->projection);
 
                     bSuccess = true;
                 }
@@ -1551,71 +1322,50 @@ bool ServerTrackerView::computeProjectionForHMD(
                 for (auto it = biggest_contours.begin(); it != biggest_contours.end(); ++it)
                 {
                     // Draw the source contour
-                    m_opencv_buffer_state->draw_contour(*it);
+                    m_opencv_buffer_state[section]->draw_contour(*it);
 
                     // Convert integer contour to float
                     t_opencv_float_contour biggest_contour_f;
                     cv::Mat(*it).convertTo(biggest_contour_f, cv::Mat(biggest_contour_f).type());
 
                     // Compute an undistorted version of the contour
-                    t_opencv_float_contour undistort_contour;
-                    cv::undistortPoints(biggest_contour_f, undistort_contour,
-                        camera_matrix,
-                        distortions,
-                        cv::noArray(),
-                        camera_matrix);
+                    t_opencv_float_contour undistorted_contour;
+                    if (valid_rectification)
+                    {
+                        cv::undistortPoints(biggest_contour_f, undistorted_contour,
+                                            camera_matrix,
+                                            distortions,
+                                            rectification_rotation,
+                                            rectification_projection);
+                    }
+                    else 
+                    {
+                        cv::undistortPoints(biggest_contour_f, undistorted_contour,
+                                            camera_matrix,
+                                            distortions,
+                                            cv::noArray(),
+                                            camera_matrix);
+                    }
 
-                    undistorted_contours.push_back(biggest_contour_f);
+                    undistorted_contours.push_back(undistorted_contour);
                 }
 
                 bSuccess =
-                    computeTrackerRelativePointCloudContourPose(
+                    computeTrackerRelativePointCloudContourPoseInSection(
                         m_device,
                         tracking_shape,
+                        section,
                         undistorted_contours,
                         prior_post_est->bCurrentlyTracking ? &tracker_pose_guess : nullptr,
                         out_pose_estimate);
 
                 //Draw results onto m_opencv_buffer_state
-                m_opencv_buffer_state->draw_pose_projection(out_pose_estimate->projection);
+                m_opencv_buffer_state[section]->draw_pose_projection(out_pose_estimate->projection);
             } break;
         default:
             assert(0 && "Unreachable");
             break;
         }
-    }
-
-    return bSuccess;
-}
-
-bool 
-ServerTrackerView::computePoseForProjection(
-    const PSVRTrackingProjection *projection,
-    const PSVRTrackingShape *tracking_shape,
-    const PSVRPosef *pose_guess,
-    ControllerOpticalPoseEstimation *out_pose_estimate)
-{
-    bool bSuccess = false;
-
-    switch (projection->shape_type)
-    {
-    case PSVRTrackingShape_Sphere:
-        {
-            // Nothing to do. The pose estimate is already computed in computeProjectionForController()
-            bSuccess = true;
-        } break;
-    case PSVRTrackingShape_LightBar:
-        {
-            bSuccess =
-                computeTrackerRelativeLightBarPose(
-                    m_device,
-                    tracking_shape,
-                    projection,
-                    pose_guess,
-                    out_pose_estimate);
-        } break;
-    default:
-        assert(0 && "Unreachable");
     }
 
     return bSuccess;
@@ -1629,8 +1379,7 @@ ServerTrackerView::computeWorldPosition(
     const glm::mat4 cameraTransform= computeGLMCameraTransformMatrix(m_device);
     const glm::vec4 world_pos = cameraTransform * rel_pos;
     
-    PSVRVector3f result;
-    result.set(world_pos.x, world_pos.y, world_pos.z);
+    PSVRVector3f result= glm_vec3_to_PSVR_vector3f(world_pos);
 
     return result;
 }
@@ -1667,10 +1416,8 @@ ServerTrackerView::computeTrackerPosition(
 {
     const glm::vec4 world_pos(world_relative_position->x, world_relative_position->y, world_relative_position->z, 1.f);
     const glm::mat4 invCameraTransform= glm::inverse(computeGLMCameraTransformMatrix(m_device));
-    const glm::vec4 rel_pos = invCameraTransform * world_pos;
-    
-    PSVRVector3f result;
-    result.set(rel_pos.x, rel_pos.y, rel_pos.z);
+    const glm::vec4 rel_pos = invCameraTransform * world_pos;    
+    const PSVRVector3f result= glm_vec3_to_PSVR_vector3f(rel_pos);
 
     return result;
 }
@@ -1697,238 +1444,14 @@ ServerTrackerView::computeTrackerOrientation(
     return result;
 }
 
-PSVRPosef
-ServerTrackerView::triangulateWorldPose(
-    const ServerTrackerView *tracker, 
-    const PSVRTrackingProjection *tracker_relative_projection,
-    const ServerTrackerView *other_tracker,
-    const PSVRTrackingProjection *other_tracker_relative_projection)
-{
-    assert(tracker_relative_projection->shape_type == other_tracker_relative_projection->shape_type);
-    PSVRPosef pose;
-
-    pose.clear();
-    switch(tracker_relative_projection->shape_type)
-    {
-    case PSVRShape_Ellipse:
-        {
-            pose.PositionCm =
-                triangulateWorldPosition(
-                    tracker,
-                    &tracker_relative_projection->shape.ellipse.center,
-                    other_tracker,
-                    &other_tracker_relative_projection->shape.ellipse.center);
-            pose.Orientation.clear();
-        } break;
-    case PSVRShape_LightBar:
-        {
-            // Copy the lightbar triangle and quad screen space points into flat arrays
-            const int k_vertex_count= PSVRTrackingShape::QuadVertexCount+PSVRTrackingShape::TriVertexCount;
-            PSVRVector2f screen_locations[k_vertex_count];
-            PSVRVector2f other_screen_locations[k_vertex_count];			
-            for (int quad_index = 0; quad_index < PSVRTrackingShape::QuadVertexCount; ++quad_index)
-            {
-                screen_locations[quad_index]= tracker_relative_projection->shape.lightbar.quad[quad_index];
-                other_screen_locations[quad_index]= other_tracker_relative_projection->shape.lightbar.quad[quad_index];
-            }
-            for (int tri_index = 0; tri_index < PSVRTrackingShape::TriVertexCount; ++tri_index)
-            {
-                screen_locations[PSVRTrackingShape::QuadVertexCount + tri_index]= 
-                    tracker_relative_projection->shape.lightbar.triangle[tri_index];
-                other_screen_locations[PSVRTrackingShape::QuadVertexCount + tri_index]=
-                    other_tracker_relative_projection->shape.lightbar.triangle[tri_index];
-            }
-
-            // Triangulate the 7 points on the lightbar
-            Eigen::Vector3f lightbar_points[k_vertex_count];
-            {
-                PSVRVector3f world_positions[k_vertex_count];
-                ServerTrackerView::triangulateWorldPositions(
-                    tracker, 
-                    screen_locations,
-                    other_tracker,
-                    other_screen_locations,
-                    k_vertex_count,
-                    world_positions);
-
-                for (int point_index = 0; point_index < k_vertex_count; ++point_index)
-                {
-                    const PSVRVector3f &p= world_positions[point_index];
-
-                    lightbar_points[point_index]= Eigen::Vector3f(p.x, p.y, p.z);
-                }
-            }
-
-            // Compute best fit plane for the world space light bar points
-            Eigen::Vector3f centroid, normal;
-            if (eigen_alignment_fit_least_squares_plane(
-                    lightbar_points, k_vertex_count,
-                    &centroid, &normal))
-            {
-                // Assume that the normal for the projection should be facing the tracker.
-                // Since the projection is planar and both trackers can see the projection
-                // it doesn't matter which tracker we use for the facing test.
-                {
-                    const PSVRVector3f commonTrackerPosition= tracker->getTrackerPose().PositionCm;
-                    const Eigen::Vector3f trackerPosition(commonTrackerPosition.x, commonTrackerPosition.y, commonTrackerPosition.z);
-                    const Eigen::Vector3f centroidToTracker= trackerPosition - centroid;
-
-                    if (centroidToTracker.dot(normal) < 0.f)
-                    {
-                        normal= -normal;
-                    }
-                }
-
-                // Project the lightbar 
-                float projection_error= eigen_alignment_project_points_on_plane(centroid, normal, lightbar_points, k_vertex_count);
-
-                // Compute the orientation of the lightbar
-                // Forward is the normal vector
-                // Up is defined by the orientation of the lightbar vertices
-                {
-                    const Eigen::Vector3f &mid_left_vertex= 
-                        (lightbar_points[PSVRTrackingShape::QuadVertexUpperLeft] 
-                        + lightbar_points[PSVRTrackingShape::QuadVertexLowerLeft]) / 2.f;
-                    const Eigen::Vector3f &mid_right_vertex =
-                        (lightbar_points[PSVRTrackingShape::QuadVertexUpperRight]
-                        + lightbar_points[PSVRTrackingShape::QuadVertexLowerRight]) / 2.f;
-                    const Eigen::Vector3f right= mid_right_vertex - mid_left_vertex;
-
-                    // Get the global definition of tracking space "forward" and "right"
-                    const TrackerManagerConfig &cfg= DeviceManager::getInstance()->m_tracker_manager->getConfig();
-                    const PSVRVector3f global_forward = cfg.get_global_forward_axis();
-                    const PSVRVector3f global_right = cfg.get_global_right_axis();
-                    const Eigen::Vector3f eigen_global_forward(global_forward.x, global_forward.y, global_forward.z);
-                    const Eigen::Vector3f eigen_global_right(global_right.x, global_right.y, global_right.z);
-
-                    // Compute the rotation that would align the global forward and right 
-                    // with the normal and right vectors computed for the light bar
-                    const Eigen::Quaternionf align_normal_rotation= 
-                        Eigen::Quaternionf::FromTwoVectors(eigen_global_forward, normal);
-                    const Eigen::Vector3f x_axis_in_plane = 
-                        align_normal_rotation * eigen_global_right;
-                    const Eigen::Quaternionf align_right_rotation = 
-                        Eigen::Quaternionf::FromTwoVectors(x_axis_in_plane, right);
-                    const Eigen::Quaternionf q = (align_right_rotation*align_normal_rotation).normalized();
-
-                    pose.Orientation.w= q.w();
-                    pose.Orientation.x= q.x();
-                    pose.Orientation.y= q.y();
-                    pose.Orientation.z= q.z();
-                }
-
-                // Use the centroid as the world pose location
-                pose.PositionCm.x= centroid.x();
-                pose.PositionCm.y= centroid.y();
-                pose.PositionCm.z= centroid.z();
-            }
-            else
-            {
-                pose.clear();
-            }
-        } break;
-    case PSVRShape_PointCloud:
-        {
-            //###HipsterSloth $TODO
-        } break;
-    default:
-        assert(0 && "unreachable");
-    }
-
-    return pose;
-}
-
-PSVRVector3f
-ServerTrackerView::triangulateWorldPosition(
-    const ServerTrackerView *tracker, 
-    const PSVRVector2f *screen_location,
-    const ServerTrackerView *other_tracker,
-    const PSVRVector2f *other_screen_location)
-{
-    float screenWidth, screenHeight;
-    tracker->getPixelDimensions(screenWidth, screenHeight);
-    
-    float otherScreenWidth, otherScreenHeight;
-    tracker->getPixelDimensions(otherScreenWidth, otherScreenHeight);
-
-    cv::Mat projPoints1 = cv::Mat(cv::Point2f(screen_location->x, screen_location->y));
-    cv::Mat projPoints2 = cv::Mat(cv::Point2f(other_screen_location->x, other_screen_location->y));
-
-    // Compute the pinhole camera matrix for each tracker that allows you to raycast
-    // from the tracker center in world space through the screen location, into the world
-    // See: http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
-    cv::Mat projMat1 = cv::Mat(computeOpenCVCameraPinholeMatrix(tracker->m_device));
-    cv::Mat projMat2 = cv::Mat(computeOpenCVCameraPinholeMatrix(other_tracker->m_device));
-
-    // Triangulate the world position from the two cameras
-    cv::Mat point3D(1, 1, CV_32FC4);
-    cv::triangulatePoints(projMat1, projMat2, projPoints1, projPoints2, point3D);
-
-    // Return the world space position
-    PSVRVector3f result;
-    const float w = point3D.at<float>(3, 0);
-    result.x = point3D.at<float>(0, 0) / w;
-    result.y = point3D.at<float>(1, 0) / w;
-    result.z = point3D.at<float>(2, 0) / w;
-
-    return result;
-}
-
-void
-ServerTrackerView::triangulateWorldPositions(
-    const ServerTrackerView *tracker, 
-    const PSVRVector2f *screen_locations,
-    const ServerTrackerView *other_tracker,
-    const PSVRVector2f *other_screen_locations,
-    const int screen_location_count,
-    PSVRVector3f *out_result)
-{
-    float screenWidth, screenHeight;
-    tracker->getPixelDimensions(screenWidth, screenHeight);
-
-    float otherScreenWidth, otherScreenHeight;
-    tracker->getPixelDimensions(otherScreenWidth, otherScreenHeight);
-
-    std::vector<cv::Point2f> projPoints1;
-    std::vector<cv::Point2f> projPoints2;
-    for (int point_index = 0; point_index < screen_location_count; ++point_index)
-    {
-        const PSVRVector2f &p1= screen_locations[point_index];
-        const PSVRVector2f &p2= other_screen_locations[point_index];
-
-        projPoints1.push_back(cv::Point2f(p1.x, p1.y));
-        projPoints2.push_back(cv::Point2f(p2.x, p2.y));
-    }
-
-    // Compute the pinhole camera matrix for each tracker that allows you to raycast
-    // from the tracker center in world space through the screen location, into the world
-    // See: http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
-    cv::Mat projMat1 = cv::Mat(computeOpenCVCameraPinholeMatrix(tracker->m_device));
-    cv::Mat projMat2 = cv::Mat(computeOpenCVCameraPinholeMatrix(other_tracker->m_device));
-
-    // Triangulate the world positions from the two cameras
-    cv::Mat points3D(1, screen_location_count, CV_32FC4);
-    cv::triangulatePoints(projMat1, projMat2, projPoints1, projPoints2, points3D);
-
-    // Return the world space positions
-    for (int point_index = 0; point_index < screen_location_count; ++point_index)
-    {
-        PSVRVector3f &result= out_result[point_index];
-
-        const float w = points3D.at<float>(3, point_index);
-        result.x = points3D.at<float>(0, point_index) / w;
-        result.y = points3D.at<float>(1, point_index) / w;
-        result.z = points3D.at<float>(2, point_index) / w;
-    }
-}
-
-
 std::vector<PSVRVector2f>
-ServerTrackerView::projectTrackerRelativePositions(const std::vector<PSVRVector3f> &objectPositions) const
+ServerTrackerView::projectTrackerRelativePositions(
+	const PSVRVideoFrameSection section,
+	const std::vector<PSVRVector3f> &objectPositions) const
 {
     cv::Matx33f camera_matrix;
     cv::Matx<float, 5, 1> distortions;
-    computeOpenCVCameraIntrinsicMatrix(m_device, camera_matrix, distortions);
+    computeOpenCVCameraIntrinsicMatrix(m_device, section, camera_matrix, distortions);
     
     // Use the identity transform for tracker relative positions
     cv::Mat rvec(3, 1, cv::DataType<double>::type, double(0));
@@ -1953,8 +1476,7 @@ ServerTrackerView::projectTrackerRelativePositions(const std::vector<PSVRVector3
     
     std::vector<PSVRVector2f> screenLocations;
     for (i=0; i<projectedPoints.size(); ++i) {
-        PSVRVector2f thisloc;
-        thisloc.set(projectedPoints[i].x, projectedPoints[i].y);
+        PSVRVector2f thisloc= {projectedPoints[i].x, projectedPoints[i].y};
         screenLocations.push_back(thisloc);
     }
     
@@ -1962,10 +1484,12 @@ ServerTrackerView::projectTrackerRelativePositions(const std::vector<PSVRVector3
 }
 
 PSVRVector2f
-ServerTrackerView::projectTrackerRelativePosition(const PSVRVector3f *trackerRelativePosition) const
+ServerTrackerView::projectTrackerRelativePosition(
+    const PSVRVideoFrameSection section,
+	const PSVRVector3f *trackerRelativePosition) const
 {
     std::vector<PSVRVector3f> trp_vec {*trackerRelativePosition};
-    PSVRVector2f screenLocation = projectTrackerRelativePositions(trp_vec)[0];
+    PSVRVector2f screenLocation = projectTrackerRelativePositions(section, trp_vec)[0];
 
     return screenLocation;
 }
@@ -1988,7 +1512,7 @@ static glm::mat4 computeGLMCameraTransformMatrix(const ITrackerInterface *tracke
 
     const PSVRPosef pose = tracker_device->getTrackerPose();
     const PSVRQuatf &quat = pose.Orientation;
-    const PSVRVector3f &pos = pose.PositionCm;
+    const PSVRVector3f &pos = pose.Position;
 
     const glm::quat glm_quat(quat.w, quat.x, quat.y, quat.z);
     const glm::vec3 glm_pos(pos.x, pos.y, pos.z);
@@ -2010,36 +1534,100 @@ static void computeOpenCVCameraExtrinsicMatrix(const ITrackerInterface *tracker_
 }
 
 static void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
+                                               PSVRVideoFrameSection section,
                                                cv::Matx33f &intrinsicOut,
                                                cv::Matx<float, 5, 1> &distortionOut)
 {
-    tracker_device->getCameraIntrinsics(intrinsicOut(0, 0), intrinsicOut(1, 1),  //F_PX, F_PY
-                                        intrinsicOut(0, 2), intrinsicOut(1, 2), //PrincipalX, Y
-                                        distortionOut(0, 0), distortionOut(1, 0), distortionOut(4, 0), //K1, K2, K3
-                                        distortionOut(2, 0), distortionOut(3, 0));  //P1, P2
-    
-    intrinsicOut(1, 1) *= -1;  //Negate F_PY because the screen coordinate system has +Y down.
+    PSVRTrackerIntrinsics tracker_intrinsics;
+    tracker_device->getCameraIntrinsics(tracker_intrinsics);
 
-    // Fill the rest of the matrix with corrext values.
-                                intrinsicOut(0, 1) = 0.f;
-    intrinsicOut(1, 0) = 0.f;
-    intrinsicOut(2, 0) = 0.f;   intrinsicOut(2, 1) = 0.f;   intrinsicOut(2, 2) = 1.f;
+    PSVRMatrix3d *camera_matrix= nullptr;
+    PSVRDistortionCoefficients *distortion_coefficients= nullptr;
+
+    if (tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+    {
+        if (section == PSVRVideoFrameSection_Left)
+        {
+            camera_matrix= &tracker_intrinsics.intrinsics.stereo.left_camera_matrix;
+            distortion_coefficients = &tracker_intrinsics.intrinsics.stereo.left_distortion_coefficients;
+        }
+        else if (section == PSVRVideoFrameSection_Right)
+        {
+            camera_matrix= &tracker_intrinsics.intrinsics.stereo.right_camera_matrix;
+            distortion_coefficients = &tracker_intrinsics.intrinsics.stereo.right_distortion_coefficients;
+        }
+    }
+    else if (tracker_intrinsics.intrinsics_type == PSVR_MONO_TRACKER_INTRINSICS)
+    {
+        camera_matrix = &tracker_intrinsics.intrinsics.mono.camera_matrix;
+        distortion_coefficients = &tracker_intrinsics.intrinsics.mono.distortion_coefficients;
+    }
+
+    if (camera_matrix != nullptr && distortion_coefficients != nullptr)
+    {
+        double *m= (double *)camera_matrix->m;
+   
+        intrinsicOut(0, 0)= (float)m[0]; intrinsicOut(0, 1)=  (float)m[1]; intrinsicOut(0, 2)= (float)m[2];
+        intrinsicOut(1, 0)= (float)m[3]; intrinsicOut(1, 1)= (float)m[4]; intrinsicOut(1, 2)= (float)m[5]; 
+        intrinsicOut(2, 0)= (float)m[6]; intrinsicOut(2, 1)= (float)m[7];  intrinsicOut(2, 2)= (float)m[8];
+
+        distortionOut(0, 0)= (float)distortion_coefficients->k1;
+        distortionOut(1, 0)= (float)distortion_coefficients->k2;
+        distortionOut(2, 0)= (float)distortion_coefficients->p1;
+        distortionOut(3, 0)= (float)distortion_coefficients->p2;
+        distortionOut(4, 0)= (float)distortion_coefficients->k3;
+    }
 }
 
-static cv::Matx34f computeOpenCVCameraPinholeMatrix(const ITrackerInterface *tracker_device)
+static bool computeOpenCVCameraRectification(const ITrackerInterface *tracker_device,
+                                               PSVRVideoFrameSection section,
+                                               cv::Matx33d &rotationOut,
+                                               cv::Matx34d &projectionOut)
 {
-    cv::Matx34f extrinsic_matrix;
-    computeOpenCVCameraExtrinsicMatrix(tracker_device, extrinsic_matrix);
-    cv::Matx33f intrinsic_matrix;
-    cv::Matx<float, 5, 1> distortion;
-    computeOpenCVCameraIntrinsicMatrix(tracker_device, intrinsic_matrix, distortion);
-    cv::Matx34f pinhole_matrix = intrinsic_matrix * extrinsic_matrix;
+    PSVRTrackerIntrinsics tracker_intrinsics;
+    tracker_device->getCameraIntrinsics(tracker_intrinsics);
 
-    return pinhole_matrix;
+    PSVRMatrix3d *rectification_rotation= nullptr;
+    PSVRMatrix34d *rectification_projection= nullptr;
+
+    if (tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+    {
+        if (section == PSVRVideoFrameSection_Left)
+        {
+            rectification_rotation= &tracker_intrinsics.intrinsics.stereo.left_rectification_rotation;
+            rectification_projection= &tracker_intrinsics.intrinsics.stereo.left_rectification_projection;
+        }
+        else if (section == PSVRVideoFrameSection_Right)
+        {
+            rectification_rotation= &tracker_intrinsics.intrinsics.stereo.right_rectification_rotation;
+            rectification_projection= &tracker_intrinsics.intrinsics.stereo.right_rectification_projection;
+        }
+    }
+
+    if (rectification_rotation != nullptr && rectification_projection != nullptr)
+    {
+        double *r= (double *)rectification_rotation->m;
+        double *p= (double *)rectification_projection->m;
+   
+        rotationOut(0, 0)= (float)r[0]; rotationOut(0, 1)= (float)r[1]; rotationOut(0, 2)= (float)r[2];
+        rotationOut(1, 0)= (float)r[3]; rotationOut(1, 1)= (float)r[4]; rotationOut(1, 2)= (float)r[5]; 
+        rotationOut(2, 0)= (float)r[6]; rotationOut(2, 1)= (float)r[7]; rotationOut(2, 2)= (float)r[8];
+
+        projectionOut(0, 0)= (float)p[0]; projectionOut(0, 1)= (float)p[1]; projectionOut(0, 2)= (float)p[2]; projectionOut(0, 3)= (float)p[3];
+        projectionOut(1, 0)= (float)p[4]; projectionOut(1, 1)= (float)p[5]; projectionOut(1, 2)= (float)p[6]; projectionOut(1, 3)= (float)p[7]; 
+        projectionOut(2, 0)= (float)p[8]; projectionOut(2, 1)= (float)p[9]; projectionOut(2, 2)= (float)p[10]; projectionOut(2, 3)= (float)p[11];
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 static bool computeTrackerRelativeLightBarProjection(
     const PSVRTrackingShape *tracking_shape,
+    const PSVRVideoFrameSection section,
     const t_opencv_float_contour &opencv_contour,
     PSVRTrackingProjection *out_projection)
 {
@@ -2103,160 +1691,26 @@ static bool computeTrackerRelativeLightBarProjection(
         {
             const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
 
-            out_projection->shape.lightbar.triangle[vertex_index] = { cvPoint.x, cvPoint.y };
+            out_projection->projections[section].shape.lightbar.triangle[vertex_index] = { cvPoint.x, cvPoint.y };
         }
 
         for (int vertex_index = 0; vertex_index < 4; ++vertex_index)
         {
             const cv::Point2f &cvPoint = cvImagePoints[vertex_index + 3];
 
-            out_projection->shape.lightbar.quad[vertex_index] = { cvPoint.x, cvPoint.y };
+            out_projection->projections[section].shape.lightbar.quad[vertex_index] = { cvPoint.x, cvPoint.y };
         }
 
-        out_projection->screen_area= projectionArea;
+        out_projection->projections[section].screen_area= projectionArea;
     }
 
     return bValidTrackerProjection;
 }
 
-static bool computeTrackerRelativeLightBarPose(
-    const ITrackerInterface *tracker_device,
-    const PSVRTrackingShape *tracking_shape,
-    const PSVRTrackingProjection *projection,
-    const PSVRPosef *tracker_relative_pose_guess,
-    ControllerOpticalPoseEstimation *out_pose_estimate)
-{
-    assert(tracking_shape->shape_type == PSVRTrackingShape_LightBar);
-    assert(projection->shape_type == PSVRShape_LightBar);
-
-    bool bValidTrackerPose= true;
-    std::vector<cv::Point2f> cvImagePoints;
-
-    for (int vertex_index = 0; vertex_index < 3; ++vertex_index)
-    {
-        const PSVRVector2f &screenLocation= projection->shape.lightbar.triangle[vertex_index];
-
-        cvImagePoints.push_back(cv::Point2f(screenLocation.x, screenLocation.y));
-    }
-
-    for (int vertex_index = 0; vertex_index < 4; ++vertex_index)
-    {
-        const PSVRVector2f &screenLocation = projection->shape.lightbar.quad[vertex_index];
-
-        cvImagePoints.push_back(cv::Point2f(screenLocation.x, screenLocation.y));
-    }
-
-    // Solve the tracking position using solvePnP
-    if (bValidTrackerPose)
-    {
-        // Copy the object/image point mappings into OpenCV format
-        // Assumed vertex order is:
-        // triangle - right, left, bottom
-        // quad - top right, top left, bottom left, bottom right
-        std::vector<cv::Point3f> cvObjectPoints;
-
-        for (int corner_index= 0; corner_index < 3; ++corner_index)
-        {        
-            const PSVRVector3f &corner = tracking_shape->shape.light_bar.triangle[corner_index];
-
-            cvObjectPoints.push_back(cv::Point3f(corner.x, corner.y, corner.z));
-        }
-
-        for (int corner_index= 0; corner_index < 4; ++corner_index)
-        {        
-            const PSVRVector3f &corner = tracking_shape->shape.light_bar.quad[corner_index];
-
-            cvObjectPoints.push_back(cv::Point3f(corner.x, corner.y, corner.z));
-        }
-
-        // Get the tracker "intrinsic" matrix that encodes the camera FOV
-        cv::Matx33f cvCameraMatrix;
-        cv::Matx<float, 5, 1> cvDistCoeffs;
-        computeOpenCVCameraIntrinsicMatrix(tracker_device, cvCameraMatrix, cvDistCoeffs);
-
-        // Fill out the initial guess in OpenCV format for the contour pose
-        // if a guess pose was provided
-        cv::Mat rvec(3, 1, cv::DataType<double>::type);
-        cv::Mat tvec(3, 1, cv::DataType<double>::type);
-
-        bool bUseExtrinsicGuess= false;
-        if (tracker_relative_pose_guess != nullptr)
-        {
-            const float k_max_valid_guess_distance= 300.f; // cm
-            float guess_position_distance_sqrd= 
-                tracker_relative_pose_guess->PositionCm.x*tracker_relative_pose_guess->PositionCm.x
-                + tracker_relative_pose_guess->PositionCm.y*tracker_relative_pose_guess->PositionCm.y
-                + tracker_relative_pose_guess->PositionCm.z*tracker_relative_pose_guess->PositionCm.z;
-
-            if (guess_position_distance_sqrd < k_max_valid_guess_distance*k_max_valid_guess_distance)
-            {
-                // solvePnP expects a rotation as a Rodrigues (AngleAxis) vector
-                commonDeviceOrientationToOpenCVRodrigues(tracker_relative_pose_guess->Orientation, rvec);
-
-                tvec.at<double>(0)= tracker_relative_pose_guess->PositionCm.x;
-                tvec.at<double>(1)= tracker_relative_pose_guess->PositionCm.y;
-                tvec.at<double>(2)= tracker_relative_pose_guess->PositionCm.z;
-
-                bUseExtrinsicGuess= true;
-            }
-        }
-
-        // Solve the Perspective-N-Point problem:
-        // Given a set of 3D points and their corresponding 2D pixel projections,
-        // solve for the object position and orientation that would allow
-        // us to re-project the 3D points back onto the 2D pixel locations
-        if (cv::solvePnP(
-                cvObjectPoints, cvImagePoints, 
-                cvCameraMatrix, cvDistCoeffs, 
-                rvec, tvec, 
-                bUseExtrinsicGuess, cv::SOLVEPNP_ITERATIVE))
-        {
-            float axis_x, axis_y, axis_z, axis_theta;
-            float yaw, pitch, roll;
-
-            // Extract the angle-axis components from the solution OpenCV Rodrigues vector
-            openCVRodriguesToAngleAxis(rvec, axis_x, axis_y, axis_z, axis_theta);
-
-            // Convert the angle-axis rotation into Euler angles (yaw-pitch-roll)
-            angleAxisVectorToEulerAngles(axis_x, axis_y, axis_z, axis_theta, yaw, pitch, roll);
-           
-            //###HipsterSloth $TODO This should be a property of the lightbar tracking shape
-            static const float k_max_valid_tracking_pitch= 30.f*k_degrees_to_radians;
-            static const float k_max_valid_tracking_yaw= 30.f*k_degrees_to_radians;
-
-            // Due to ambiguity of the off the yaw and pitch solution from solvePnP (two possible solutions)
-            // we can't trust anything more than close to straightforward.
-            // Any roll angle is fine though.
-            if (fabsf(yaw) < k_max_valid_tracking_yaw && fabsf(pitch) < k_max_valid_tracking_pitch)
-            {           
-                // Convert the solution angle-axis into a CommonDeviceOrientation
-                angleAxisVectorToCommonDeviceOrientation(axis_x, axis_y, axis_z, axis_theta, out_pose_estimate->orientation);
-                out_pose_estimate->bOrientationValid= true;
-            }
-            else
-            {
-                out_pose_estimate->bOrientationValid= false;
-            }
-
-            // Return the position in the pose
-            {
-                PSVRVector3f &position= out_pose_estimate->position_cm;
-
-                position.x = static_cast<float>(tvec.at<double>(0));
-                position.y = static_cast<float>(tvec.at<double>(1));
-                position.z = static_cast<float>(tvec.at<double>(2));
-            }
-
-            bValidTrackerPose= true;
-        }
-    }
-
-    return bValidTrackerPose;
-}
-
 static bool computeTrackerRelativePointCloudContourPose(
     const ITrackerInterface *tracker_device,
     const PSVRTrackingShape *tracking_shape,
+    const PSVRVideoFrameSection section,
     const t_opencv_float_contour_list &opencv_contours,
     const PSVRPosef *tracker_relative_pose_guess,
     HMDOpticalPoseEstimation *out_pose_estimate)
@@ -2278,8 +1732,8 @@ static bool computeTrackerRelativePointCloudContourPose(
     if (cvImagePoints.size() >= 3)
     {
         //###HipsterSloth $TODO Solve the pose using SoftPOSIT
-        out_pose_estimate->position_cm.clear();
-        out_pose_estimate->orientation.clear();
+        out_pose_estimate->position_cm= *k_PSVR_float_vector3_zero;
+        out_pose_estimate->orientation= *k_PSVR_quaternion_identity;
         out_pose_estimate->bOrientationValid = false;
         bValidTrackerPose = true;
     }
@@ -2296,11 +1750,64 @@ static bool computeTrackerRelativePointCloudContourPose(
         {
             const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
 
-            out_projection->shape.points.point[vertex_index] = {cvPoint.x, cvPoint.y};
+            out_projection->projections[section].shape.pointcloud.points[vertex_index] = {cvPoint.x, cvPoint.y};
         }
 
-        out_projection->shape.points.point_count = imagePointCount;
-        out_projection->screen_area = projectionArea;
+        out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
+        out_projection->projections[section].screen_area = projectionArea;
+    }
+
+    return bValidTrackerPose;
+}
+
+static bool computeTrackerRelativePointCloudContourPoseInSection(
+    const ITrackerInterface *tracker_device,
+    const PSVRTrackingShape *tracking_shape,
+    const PSVRVideoFrameSection section,
+    const t_opencv_float_contour_list &opencv_contours,
+    const PSVRPosef *tracker_relative_pose_guess,
+    HMDOpticalPoseEstimation *out_pose_estimate)
+{
+    assert(tracking_shape->shape_type == PSVRTrackingShape_PointCloud);
+
+    bool bValidTrackerPose = true;
+    float projectionArea = 0.f;
+
+    // Compute centers of mass for the contours
+    t_opencv_float_contour cvImagePoints;
+    for (auto it = opencv_contours.begin(); it != opencv_contours.end(); ++it)
+    {
+        cv::Point2f massCenter= computeSafeCenterOfMassForContour<t_opencv_float_contour>(*it);
+
+        cvImagePoints.push_back(massCenter);
+    }
+
+    if (cvImagePoints.size() >= 3)
+    {
+        //###HipsterSloth $TODO Solve the pose using SoftPOSIT
+        out_pose_estimate->position_cm= *k_PSVR_float_vector3_zero;
+        out_pose_estimate->orientation= *k_PSVR_quaternion_identity;
+        out_pose_estimate->bOrientationValid = false;
+        bValidTrackerPose = true;
+    }
+
+    // Return the projection of the tracking shape
+    if (bValidTrackerPose)
+    {
+        PSVRTrackingProjection *out_projection = &out_pose_estimate->projection;
+        const int imagePointCount = static_cast<int>(cvImagePoints.size());
+
+        out_projection->shape_type = PSVRShape_PointCloud;
+
+        for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
+        {
+            const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
+
+            out_projection->projections[section].shape.pointcloud.points[vertex_index] = {cvPoint.x, cvPoint.y};
+        }
+
+        out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
+        out_projection->projections[section].screen_area = projectionArea;
     }
 
     return bValidTrackerPose;
@@ -2309,6 +1816,7 @@ static bool computeTrackerRelativePointCloudContourPose(
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool roi_disabled,
     const ServerTrackerView *tracker,
+    const PSVRVideoFrameSection section,
     const IPoseFilter* pose_filter,
     const PSVRTrackingProjection *prior_tracking_projection,
     const PSVRTrackingShape *tracking_shape)
@@ -2326,8 +1834,7 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     {
         // Get the (predicted) position in world space.
         Eigen::Vector3f position_cm = pose_filter->getPositionCm(0.f); 
-        PSVRVector3f world_position_cm;
-        world_position_cm.set(position_cm.x(), position_cm.y(), position_cm.z());
+        PSVRVector3f world_position_cm= eigen_vector3f_to_PSVR_vector3f(position_cm);
 
         // Get the (predicted) position in tracker-local space.
         PSVRVector3f tracker_position_cm = tracker->computeTrackerPosition(&world_position_cm);
@@ -2339,52 +1846,52 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
         case PSVRTrackingShape_Sphere:
             {
                 // Simply: center - radius, center + radius.
-                tl.set(tracker_position_cm.x - tracking_shape->shape.sphere.radius_cm,
-                    tracker_position_cm.y + tracking_shape->shape.sphere.radius_cm,
-                    tracker_position_cm.z);
-                br.set(tracker_position_cm.x + tracking_shape->shape.sphere.radius_cm,
-                    tracker_position_cm.y - tracking_shape->shape.sphere.radius_cm,
-                    tracker_position_cm.z);
+                tl= {tracker_position_cm.x - tracking_shape->shape.sphere.radius,
+                    tracker_position_cm.y + tracking_shape->shape.sphere.radius,
+                    tracker_position_cm.z};
+                br= {tracker_position_cm.x + tracking_shape->shape.sphere.radius,
+                    tracker_position_cm.y - tracking_shape->shape.sphere.radius,
+                    tracker_position_cm.z};
             } break;
 
         case PSVRTrackingShape_LightBar:
             {
                 // Compute the bounding radius of the lightbar tracking shape
-                const auto &shape_tl = tracking_shape->shape.light_bar.quad[PSVRTrackingShape::QuadVertexUpperLeft];
-                const auto &shape_br = tracking_shape->shape.light_bar.quad[PSVRTrackingShape::QuadVertexLowerRight];
+                const auto &shape_tl = tracking_shape->shape.lightbar.quad[QUAD_VERTEX_UPPER_LEFT];
+                const auto &shape_br = tracking_shape->shape.lightbar.quad[QUAD_VERTEX_LOWER_RIGHT];
                 const PSVRVector3f half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
                 const auto shape_radius = fmaxf(sqrtf(half_vec.x*half_vec.x + half_vec.y*half_vec.y + half_vec.z*half_vec.z), 1.f);
 
                 // Simply: center - shape_radius, center + shape_radius.
-                tl.set(tracker_position_cm.x - shape_radius,
+                tl= {tracker_position_cm.x - shape_radius,
                     tracker_position_cm.y + shape_radius,
-                    tracker_position_cm.z);
-                br.set(tracker_position_cm.x + shape_radius,
+                    tracker_position_cm.z};
+                br= {tracker_position_cm.x + shape_radius,
                     tracker_position_cm.y - shape_radius,
-                    tracker_position_cm.z);
+                    tracker_position_cm.z};
             } break;
 
         case PSVRTrackingShape_PointCloud:
             {
                 // Compute the bounding radius of the point cloud
-                PSVRVector3f shape_tl = tracking_shape->shape.point_cloud.point[0];
-                PSVRVector3f shape_br = tracking_shape->shape.point_cloud.point[0];
-                for (int point_index = 1; point_index < tracking_shape->shape.point_cloud.point_count; ++point_index)
+                PSVRVector3f shape_tl = tracking_shape->shape.pointcloud.points[0];
+                PSVRVector3f shape_br = tracking_shape->shape.pointcloud.points[0];
+                for (int point_index = 1; point_index < tracking_shape->shape.pointcloud.point_count; ++point_index)
                 {
-                    const PSVRVector3f &point = tracking_shape->shape.point_cloud.point[point_index];
-                    shape_tl.set(fmaxf(shape_tl.x, point.x), fmaxf(shape_tl.y, point.y), fmaxf(shape_tl.z, point.z));
-                    shape_br.set(fminf(shape_br.x, point.x), fminf(shape_br.y, point.y), fminf(shape_br.z, point.z));
+                    const PSVRVector3f &point = tracking_shape->shape.pointcloud.points[point_index];
+                    shape_tl= {fmaxf(shape_tl.x, point.x), fmaxf(shape_tl.y, point.y), fmaxf(shape_tl.z, point.z)};
+                    shape_br= {fminf(shape_br.x, point.x), fminf(shape_br.y, point.y), fminf(shape_br.z, point.z)};
                 }
                 const PSVRVector3f half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
                 const auto shape_radius = fmaxf(sqrtf(half_vec.x*half_vec.x + half_vec.y*half_vec.y + half_vec.z*half_vec.z), 1.f);
 
                 // Simply: center - shape_radius, center + shape_radius.
-                tl.set(tracker_position_cm.x - shape_radius,
+                tl= {tracker_position_cm.x - shape_radius,
                     tracker_position_cm.y + shape_radius,
-                    tracker_position_cm.z);
-                br.set(tracker_position_cm.x + shape_radius,
+                    tracker_position_cm.z};
+                br= {tracker_position_cm.x + shape_radius,
                     tracker_position_cm.y - shape_radius,
-                    tracker_position_cm.z);
+                    tracker_position_cm.z};
             } break;
 
         default:
@@ -2394,37 +1901,36 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
         }
 
         // Extract the pixel projection center from the previous frame's projection.
-        PSVRVector2f projection_pixel_center;
-        projection_pixel_center.clear();
+        PSVRVector2f projection_pixel_center= *k_PSVR_float_vector2_zero;
 
         switch (prior_tracking_projection->shape_type)
         {
         case PSVRShape_Ellipse:
             {
                 // Use the center of the ellipsoid projection for the ROI area
-                projection_pixel_center = prior_tracking_projection->shape.ellipse.center;
+                projection_pixel_center = prior_tracking_projection->projections[section].shape.ellipse.center;
             } break;
 
         case PSVRShape_LightBar:
             {
                 // Use the center of the quad projection for the ROI area
-                const auto proj_tl = prior_tracking_projection->shape.lightbar.quad[PSVRTrackingShape::QuadVertexUpperLeft];
-                const auto proj_br = prior_tracking_projection->shape.lightbar.quad[PSVRTrackingShape::QuadVertexLowerRight];
+                const auto proj_tl = prior_tracking_projection->projections[section].shape.lightbar.quad[QUAD_VERTEX_UPPER_LEFT];
+                const auto proj_br = prior_tracking_projection->projections[section].shape.lightbar.quad[QUAD_VERTEX_LOWER_RIGHT];
 
-                projection_pixel_center.set(0.5f * (proj_tl.x + proj_br.x), 0.5f * (proj_tl.y + proj_br.y));
+                projection_pixel_center= {0.5f * (proj_tl.x + proj_br.x), 0.5f * (proj_tl.y + proj_br.y)};
             } break;
 
         case PSVRShape_PointCloud:
             {
                 // Compute the centroid of the projection pixels
-                for (int point_index = 0; point_index < prior_tracking_projection->shape.points.point_count; ++point_index)
+                for (int point_index = 0; point_index < prior_tracking_projection->projections[section].shape.pointcloud.point_count; ++point_index)
                 {
-                    const auto &pixel = prior_tracking_projection->shape.points.point[point_index];
+                    const auto &pixel = prior_tracking_projection->projections[section].shape.pointcloud.points[point_index];
 
                     projection_pixel_center.x += pixel.x;
                     projection_pixel_center.y += pixel.y;
                 }
-                const float N = static_cast<float>(prior_tracking_projection->shape.points.point_count);
+                const float N = static_cast<float>(prior_tracking_projection->projections[section].shape.pointcloud.point_count);
                 projection_pixel_center.x /= N;
                 projection_pixel_center.y /= N;
             } break;
@@ -2439,7 +1945,7 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
         // The size of the ROI computed by projecting the bounding box 
         {
             std::vector<PSVRVector3f> trps{ tl, br };
-            std::vector<PSVRVector2f> screen_locs = tracker->projectTrackerRelativePositions(trps);
+            std::vector<PSVRVector2f> screen_locs = tracker->projectTrackerRelativePositions(section, trps);
 
             const int proj_min_x = static_cast<int>(std::min(screen_locs[0].x, screen_locs[1].x));
             const int proj_max_x = static_cast<int>(std::max(screen_locs[0].x, screen_locs[1].x));
@@ -2755,11 +2261,11 @@ static void angleAxisVectorToCommonDeviceOrientation(
         }
         else
         {
-            orientation.clear();
+            orientation= *k_PSVR_quaternion_identity;
         }
     }
     else
     {
-        orientation.clear();
+        orientation= *k_PSVR_quaternion_identity;
     }
 }

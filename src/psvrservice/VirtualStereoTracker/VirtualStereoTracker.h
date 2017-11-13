@@ -1,5 +1,5 @@
-#ifndef PS3EYE_TRACKER_H
-#define PS3EYE_TRACKER_H
+#ifndef VIRTUAL_STEREO_TRACKER_H
+#define VIRTUAL_STEREO_TRACKER_H
 
 // -- includes -----
 #include "PSVRConfig.h"
@@ -7,27 +7,20 @@
 #include "DeviceInterface.h"
 #include <string>
 #include <vector>
+#include <array>
 #include <deque>
 
 // -- pre-declarations -----
-namespace PSVRProtocol
+namespace PSMoveProtocol
 {
     class Response_ResultTrackerSettings;
 };
 
 // -- definitions -----
-class PS3EyeTrackerConfig : public PSVRConfig
+class VirtualStereoTrackerConfig : public PSVRConfig
 {
 public:
-    enum eFOVSetting
-    {
-        RedDot, // 56 degree FOV
-        BlueDot, // 75 degree FOV
-        
-        MAX_FOV_SETTINGS
-    };
-
-    PS3EyeTrackerConfig(const std::string &fnamebase = "PS3EyeTrackerConfig");
+    VirtualStereoTrackerConfig(const std::string &fnamebase = "VirtualStereoTrackerConfig");
     
     virtual const configuru::Config writeToJSON();
     virtual void readFromJSON(const configuru::Config &pt);
@@ -37,37 +30,25 @@ public:
     
     bool is_valid;
     long max_poll_failure_count;
-	double frame_width;
-	double frame_height;
+
 	double frame_rate;
     double exposure;
 	double gain;
-    double focalLengthX;
-    double focalLengthY;
-    double principalX;
-    double principalY;
-    double hfov;
-    double vfov;
-    double zNear;
-    double zFar;
-    double distortionK1;
-    double distortionK2;
-    double distortionK3;
-    double distortionP1;
-    double distortionP2;
 
-    eFOVSetting fovSetting;
+    std::string left_camera_usb_path;
+    std::string right_camera_usb_path;
+
+    PSVRStereoTrackerIntrinsics tracker_intrinsics;
     PSVRPosef pose;
 	PSVR_HSVColorRangeTable SharedColorPresets;
 	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
 
     static const int CONFIG_VERSION;
-	static const int LENS_CALIBRATION_VERSION;
 };
 
-struct PS3EyeTrackerState : public CommonDeviceState
+struct VirtualStereoTrackerState : public CommonDeviceState
 {   
-    PS3EyeTrackerState()
+    VirtualStereoTrackerState()
     {
         clear();
     }
@@ -75,17 +56,17 @@ struct PS3EyeTrackerState : public CommonDeviceState
     void clear()
     {
         CommonDeviceState::clear();
-        DeviceType = CommonDeviceState::PS3EYE;
+        DeviceType = CommonDeviceState::VirtualStereoCamera;
     }
 };
 
-class PS3EyeTracker : public ITrackerInterface {
+class VirtualStereoTracker : public ITrackerInterface {
 public:
-    PS3EyeTracker();
-    virtual ~PS3EyeTracker();
+    VirtualStereoTracker();
+    virtual ~VirtualStereoTracker();
         
-    // PSVRTracker
-    bool open(); // Opens the first HID device for the controller
+    // Stereo Tracker
+    bool open(); // Opens the first virtual stereo tracker
     
     // -- IDeviceInterface
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
@@ -96,7 +77,7 @@ public:
     void close() override;
     long getMaxPollFailureCount() const override;
     static CommonDeviceState::eDeviceType getDeviceTypeStatic()
-    { return CommonDeviceState::PS3EYE; }
+    { return CommonDeviceState::VirtualStereoCamera; }
     CommonDeviceState::eDeviceType getDeviceType() const override;
     const CommonDeviceState *getState(int lookBack = 0) const override;
     
@@ -104,7 +85,7 @@ public:
     ITrackerInterface::eDriverType getDriverType() const override;
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
-    bool getIsStereoCamera() const override { return false; }
+    bool getIsStereoCamera() const override { return true; }
     const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const override;
     void loadSettings() override;
     void saveSettings() override;
@@ -132,18 +113,20 @@ public:
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;
 
     // -- Getters
-    inline const PS3EyeTrackerConfig &getConfig() const
+    inline const VirtualStereoTrackerConfig &getConfig() const
     { return cfg; }
 
 private:
-    PS3EyeTrackerConfig cfg;
-    std::string USBDevicePath;
-    class PSEyeVideoCapture *VideoCapture;
-    class PSEyeCaptureData *CaptureData;
+    VirtualStereoTrackerConfig cfg;
+    std::string device_identifier;
+
+    class ITrackerInterface *LeftTracker;
+    class ITrackerInterface *RightTracker;
+    class VirtualStereoCaptureData *CaptureData;
     ITrackerInterface::eDriverType DriverType;    
     
-    // Read Controller State
+    // Read Tracker State
     int NextPollSequenceNumber;
-    std::deque<PS3EyeTrackerState> TrackerStates;
+    std::deque<VirtualStereoTrackerState> TrackerStates;
 };
 #endif // PS3EYE_TRACKER_H

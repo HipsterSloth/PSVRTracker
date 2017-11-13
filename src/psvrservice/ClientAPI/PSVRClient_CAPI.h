@@ -143,6 +143,12 @@ typedef struct
     PSVRMatrix4d reprojection_matrix;  ///< Transform relating pixel x,y + disparity to distance from cameras
 } PSVRStereoTrackerIntrinsics;
 
+typedef enum 
+{
+    PSVR_MONO_TRACKER_INTRINSICS,
+    PSVR_STEREO_TRACKER_INTRINSICS,
+} PSVRTrackerIntrinsicsType;
+
 /// Bundle containing all intrinsic camera properties
 typedef struct 
 {
@@ -151,11 +157,7 @@ typedef struct
         PSVRStereoTrackerIntrinsics stereo;
     } intrinsics;
 
-    enum eTrackerIntrinsicsType
-    {
-        PSVR_MONO_TRACKER_INTRINSICS,
-        PSVR_STEREO_TRACKER_INTRINSICS,
-    } intrinsics_type;
+    PSVRTrackerIntrinsicsType intrinsics_type;
 } PSVRTrackerIntrinsics;
 
 /// Static properties about a tracker

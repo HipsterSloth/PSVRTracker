@@ -20,6 +20,9 @@ public:
     ServerTrackerView(const int device_id);
     ~ServerTrackerView();
 
+    // Used by virtual trackers to allocate child tracker devices
+    static ITrackerInterface *allocate_tracker_interface(const class DeviceEnumerator *enumerator);
+
     bool open(const class DeviceEnumerator *enumerator) override;
     void close() override;
 
@@ -38,6 +41,9 @@ public:
 
     // Returns what type of driver this tracker uses
     ITrackerInterface::eDriverType getTrackerDriverType() const;
+
+    // Returns true if this is a stereo camera
+    bool getIsStereoCamera() const;
 
     // Returns the full usb device path for the controller
     std::string getUSBDevicePath() const;
@@ -63,24 +69,18 @@ public:
     double getGain() const;
     void setGain(double value, bool bUpdateConfig);
     
-    bool computeProjectionForController(
-        const class ServerControllerView* tracked_controller, 
-		const PSVRTrackingShape *tracking_shape,
-        struct ControllerOpticalPoseEstimation *out_pose_estimate);
     bool computeProjectionForHMD(
 		const class ServerHMDView* tracked_hmd,
 		const PSVRTrackingShape *tracking_shape,
 		struct HMDOpticalPoseEstimation *out_pose_estimate);
-    bool computePoseForProjection(
-		const PSVRTrackingProjection *projection,
-		const PSVRTrackingShape *tracking_shape,
-		const PSVRPosef *pose_guess,
-		struct ControllerOpticalPoseEstimation *out_pose_estimate);
     
     std::vector<PSVRVector2f> projectTrackerRelativePositions(
-                                const std::vector<PSVRVector3f> &objectPositions) const;
+		const PSVRVideoFrameSection section,
+        const std::vector<PSVRVector3f> &objectPositions) const;
     
-    PSVRVector2f projectTrackerRelativePosition(const PSVRVector3f *trackerRelativePosition) const;
+    PSVRVector2f projectTrackerRelativePosition(
+		const PSVRVideoFrameSection section,
+		const PSVRVector3f *trackerRelativePosition) const;
     
     PSVRVector3f computeWorldPosition(const PSVRVector3f *tracker_relative_position) const;
     PSVRQuatf computeWorldOrientation(const PSVRQuatf *tracker_relative_orientation) const;
@@ -88,35 +88,8 @@ public:
     PSVRVector3f computeTrackerPosition(const PSVRVector3f *world_relative_position) const;
     PSVRQuatf computeTrackerOrientation(const PSVRQuatf *world_relative_orientation) const;
 
-    /// Given a single screen location on two different trackers, compute the triangulated world space location
-    static PSVRVector3f triangulateWorldPosition(
-        const ServerTrackerView *tracker, const PSVRVector2f *screen_location,
-        const ServerTrackerView *other_tracker, const PSVRVector2f *other_screen_location);
-
-	/// Given a set of screen locations on two different trackers, compute the triangulated world space locations
-	static void triangulateWorldPositions(
-		const ServerTrackerView *tracker, 
-		const PSVRVector2f *screen_locations,
-		const ServerTrackerView *other_tracker,
-		const PSVRVector2f *other_screen_locations,
-		const int screen_location_count,
-		PSVRVector3f *out_result);
-
-    /// Given screen projections on two different trackers, compute the triangulated world space location
-    static PSVRPosef triangulateWorldPose(
-        const ServerTrackerView *tracker, const PSVRTrackingProjection *tracker_relative_projection,
-        const ServerTrackerView *other_tracker, const PSVRTrackingProjection *other_tracker_relative_projection);
-
-    void getCameraIntrinsics(
-        float &outFocalLengthX, float &outFocalLengthY,
-        float &outPrincipalX, float &outPrincipalY,
-        float &outDistortionK1, float &outDistortionK2, float &outDistortionK3,
-        float &outDistortionP1, float &outDistortionP2) const;
-    void setCameraIntrinsics(
-        float focalLengthX, float focalLengthY,
-        float principalX, float principalY,
-        float distortionK1, float distortionK2, float distortionK3,
-        float distortionP1, float distortionP2);
+    void getCameraIntrinsics(PSVRTrackerIntrinsics &out_tracker_intrinsics) const;
+    void setCameraIntrinsics(const PSVRTrackerIntrinsics &tracker_intrinsics);
 
     PSVRPosef getTrackerPose() const;
     void setTrackerPose(const PSVRPosef *pose);
@@ -125,20 +98,19 @@ public:
     void getFOV(float &outHFOV, float &outVFOV) const;
     void getZRange(float &outZNear, float &outZFar) const;
 
-    void gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const;
+    void gatherTrackerOptions(PSVRClientTrackerSettings* settings) const;
     bool setOptionIndex(const std::string &option_name, int option_index);
     bool getOptionIndex(const std::string &option_name, int &out_option_index) const;
 
-    void gatherTrackingColorPresets(const class ServerControllerView *controller, PSVRProtocol::Response_ResultTrackerSettings* settings) const;
-	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSVRProtocol::Response_ResultTrackerSettings* settings) const;
+	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSVRClientTrackerSettings* settings) const;
 
-    void setControllerTrackingColorPreset(const class ServerControllerView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
-    void getControllerTrackingColorPreset(const class ServerControllerView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 
 	void setHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
 	void getHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 
 protected:
+    void reallocate_shared_memory();
+    void reallocate_opencv_buffer_state();
     bool allocate_device_interface(const class DeviceEnumerator *enumerator) override;
     void free_device_interface() override;
     void publish_device_data_frame() override;
@@ -146,11 +118,17 @@ protected:
         const ServerTrackerView *tracker_view, const struct TrackerStreamInfo *stream_info,
         DeviceOutputDataFrame &data_frame);
 
+    bool computeProjectionForHmdInSection(
+        const ServerHMDView* tracked_controller,
+        const PSVRTrackingShape *tracking_shape,
+        const PSVRVideoFrameSection section,
+        HMDOpticalPoseEstimation *out_pose_estimate);
+
 private:
     char m_shared_memory_name[256];
-    class SharedVideoFrameReadWriteAccessor *m_shared_memory_accesor;
+    class SharedVideoFrameBuffer *m_shared_memory_accesor;
     int m_shared_memory_video_stream_count;
-    class OpenCVBufferState *m_opencv_buffer_state;
+    class OpenCVBufferState *m_opencv_buffer_state[MAX_PROJECTION_COUNT];
     ITrackerInterface *m_device;
 };
 

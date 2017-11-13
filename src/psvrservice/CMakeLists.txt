@@ -74,6 +74,8 @@ file(GLOB PSVR_TRACKER_SRC
     "${CMAKE_CURRENT_LIST_DIR}/PSVRTracker/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/PSVRTracker/PSEye/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/PSVRTracker/PSEye/*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/VirtualStereoTracker/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/VirtualStereoTracker/*.h"	
 )
 source_group("Tracker" FILES ${PSVR_TRACKER_SRC})
 
@@ -109,11 +111,12 @@ list(APPEND PSVR_SERVICE_INCL_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/MorpheusHMD
     ${CMAKE_CURRENT_LIST_DIR}/Platform
     ${CMAKE_CURRENT_LIST_DIR}/PSVRConfig
-    ${CMAKE_CURRENT_LIST_DIR}/PSMoveTracker
-    ${CMAKE_CURRENT_LIST_DIR}/PSMoveTracker/PSEye
+    ${CMAKE_CURRENT_LIST_DIR}/PSVRTracker
+    ${CMAKE_CURRENT_LIST_DIR}/PSVRTracker/PSEye
     ${CMAKE_CURRENT_LIST_DIR}/Service
 	${CMAKE_CURRENT_LIST_DIR}/Utils
     ${CMAKE_CURRENT_LIST_DIR}/VirtualHMD
+	${CMAKE_CURRENT_LIST_DIR}/VirtualStereoTracker
 )
 
 # Configuru

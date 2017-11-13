@@ -1138,7 +1138,9 @@ static void generate_morpheus_hmd_data_frame_for_stream(
                         {
                             // Project the 3d camera position back onto the tracker screen
                             raw_tracker_data->ScreenLocations[projection_index] =
-                                tracker_view->projectTrackerRelativePosition(&poseEstimate->position_cm);
+                                tracker_view->projectTrackerRelativePosition(
+                                    (PSVRVideoFrameSection)projection_index, 
+                                    &poseEstimate->position_cm);
                         }
                     }
                 }
@@ -1223,7 +1225,9 @@ static void generate_virtual_hmd_data_frame_for_stream(
                         {
                             // Project the 3d camera position back onto the tracker screen
                             raw_tracker_data->ScreenLocations[projection_index] =
-                                tracker_view->projectTrackerRelativePosition(&poseEstimate->position_cm);
+                                tracker_view->projectTrackerRelativePosition(
+                                    (PSVRVideoFrameSection)projection_index,
+                                    &poseEstimate->position_cm);
                         }
                     }
                 }
