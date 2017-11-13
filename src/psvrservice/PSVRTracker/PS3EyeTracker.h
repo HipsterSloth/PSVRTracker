@@ -57,7 +57,7 @@ public:
     double distortionP2;
 
     eFOVSetting fovSetting;
-    CommonDevicePose pose;
+    PSVRPosef pose;
 	PSVR_HSVColorRangeTable SharedColorPresets;
 	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
 
@@ -104,7 +104,7 @@ public:
     ITrackerInterface::eDriverType getDriverType() const override;
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
-    const unsigned char *getVideoFrameBuffer() const override;
+    const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const override;
     void loadSettings() override;
     void saveSettings() override;
 	void setFrameWidth(double value, bool bUpdateConfig) override;
@@ -117,26 +117,18 @@ public:
     double getExposure() const override;
 	void setGain(double value, bool bUpdateConfig) override;
 	double getGain() const override;
-    void getCameraIntrinsics(
-        float &outFocalLengthX, float &outFocalLengthY,
-        float &outPrincipalX, float &outPrincipalY,
-        float &outDistortionK1, float &outDistortionK2, float &outDistortionK3,
-        float &outDistortionP1, float &outDistortionP2) const override;
-    void setCameraIntrinsics(
-        float focalLengthX, float focalLengthY,
-        float principalX, float principalY,
-        float distortionK1, float distortionK2, float distortionK3,
-        float distortionP1, float distortionP2) override;
-    CommonDevicePose getTrackerPose() const override;
-    void setTrackerPose(const struct CommonDevicePose *pose) override;
+    void getCameraIntrinsics(PSVRTrackerIntrinsics &out_tracker_intrinsics) const override;
+    void setCameraIntrinsics(const PSVRTrackerIntrinsics &tracker_intrinsics) override;
+    PSVRPosef getTrackerPose() const override;
+    void setTrackerPose(const PSVRPosef *pose) override;
     void getFOV(float &outHFOV, float &outVFOV) const override;
     void getZRange(float &outZNear, float &outZFar) const override;
-    void gatherTrackerOptions(PSVRProtocol::Response_ResultTrackerSettings* settings) const override;
+    void gatherTrackerOptions(PSVRClientTrackerSettings* settings) const override;
     bool setOptionIndex(const std::string &option_name, int option_index) override;
     bool getOptionIndex(const std::string &option_name, int &out_option_index) const override;
-    void gatherTrackingColorPresets(const std::string &controller_serial, PSVRProtocol::Response_ResultTrackerSettings* settings) const override;
-    void setTrackingColorPreset(const std::string &controller_serial, eCommonTrackingColorID color, const CommonHSVColorRange *preset) override;
-    void getTrackingColorPreset(const std::string &controller_serial, eCommonTrackingColorID color, CommonHSVColorRange *out_preset) const override;
+    void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const override;
+    void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) override;
+    void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;
 
     // -- Getters
     inline const PS3EyeTrackerConfig &getConfig() const

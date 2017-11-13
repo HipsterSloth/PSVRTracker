@@ -1,39 +1,31 @@
 //-- includes -----
-#include "LibUSBBulkTransferBundle.h"
-#include "LibUSBApi.h"
+#include "WinUSBBulkTransferBundle.h"
+#include "WinUSBApi.h"
 #include "Logger.h"
 #include "Utility.h"
 #include "USBDeviceRequest.h"
+
 #include <assert.h>
 #include <memory>
 #include <cstring>
 
-#ifdef _MSC_VER
-    #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
-    #pragma warning (disable: 4200) // nonstandard extension used: zero-sized array in struct/union (from libusb)
-#endif
-#include "libusb.h"
-
-//-- private methods -----
-static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_transfer);
-
 //-- implementation -----
-LibUSBBulkTransferBundle::LibUSBBulkTransferBundle(
+WinUSBBulkTransferBundle::WinUSBBulkTransferBundle(
 	const USBDeviceState *state,
 	const USBRequestPayload_BulkTransferBundle *request)
     : IUSBBulkTransferBundle(state, request)
 	, m_request(*request)
-    , m_device(static_cast<const LibUSBDeviceState *>(state)->device)
-    , m_device_handle(static_cast<const LibUSBDeviceState *>(state)->device_handle)
+    //, m_device(static_cast<const LibUSBDeviceState *>(state)->device)
+    //, m_device_handle(static_cast<const LibUSBDeviceState *>(state)->device_handle)
     , m_active_transfer_count(0)
     , m_is_canceled(false)
-    , bulk_transfer_requests(nullptr)
+    //, bulk_transfer_requests(nullptr)
     , transfer_buffer(nullptr)
 {
 	
 }
 
-LibUSBBulkTransferBundle::~LibUSBBulkTransferBundle()
+WinUSBBulkTransferBundle::~WinUSBBulkTransferBundle()
 {
     dispose();
 
@@ -43,11 +35,12 @@ LibUSBBulkTransferBundle::~LibUSBBulkTransferBundle()
     }
 }
 
-bool LibUSBBulkTransferBundle::initialize()
+bool WinUSBBulkTransferBundle::initialize()
 {
     bool bSuccess = (m_active_transfer_count == 0);
     uint8_t bulk_endpoint = 0;
 
+#if 0
     // Find the bulk transfer endpoint          
     if (bSuccess)
     {
@@ -119,14 +112,16 @@ bool LibUSBBulkTransferBundle::initialize()
             }
         }
     }
+#endif
 
     return bSuccess;
 }
 
-void LibUSBBulkTransferBundle::dispose()
+void WinUSBBulkTransferBundle::dispose()
 {
     assert(m_active_transfer_count == 0);
 
+#if 0
     for (int transfer_index = 0;
         transfer_index < m_request.in_flight_transfer_packet_count;
         ++transfer_index)
@@ -148,12 +143,14 @@ void LibUSBBulkTransferBundle::dispose()
         free(bulk_transfer_requests);
         bulk_transfer_requests = nullptr;
     }
+#endif
 }
 
-bool LibUSBBulkTransferBundle::startTransfers()
+bool WinUSBBulkTransferBundle::startTransfers()
 {
     bool bSuccess = (m_active_transfer_count == 0 && !m_is_canceled);
 
+#if 0
     // Start the transfers
     if (bSuccess)
     {
@@ -172,19 +169,21 @@ bool LibUSBBulkTransferBundle::startTransfers()
             }
         }
     }
+#endif
 
     return bSuccess;
 }
 
-void LibUSBBulkTransferBundle::notifyActiveTransfersDecremented()
+void WinUSBBulkTransferBundle::notifyActiveTransfersDecremented()
 {
     assert(m_active_transfer_count > 0);
     --m_active_transfer_count;
 }
 
+#if 0
 static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_transfer)
 {
-    LibUSBBulkTransferBundle *bundle = reinterpret_cast<LibUSBBulkTransferBundle*>(bulk_transfer->user_data);
+    WinUSBBulkTransferBundle *bundle = reinterpret_cast<WinUSBBulkTransferBundle*>(bulk_transfer->user_data);
     const auto &request = bundle->getTransferRequest();
     enum libusb_transfer_status status = bulk_transfer->status;
 
@@ -220,13 +219,15 @@ static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_
         bundle->notifyActiveTransfersDecremented();
     }
 }
+#endif
 
-void LibUSBBulkTransferBundle::cancelTransfers()
+void WinUSBBulkTransferBundle::cancelTransfers()
 {
-    assert(bulk_transfer_requests != nullptr);
+    //assert(bulk_transfer_requests != nullptr);
 
     if (!m_is_canceled)
     {
+#if 0
         for (int transfer_index = 0;
             transfer_index < m_request.in_flight_transfer_packet_count;
             ++transfer_index)
@@ -236,69 +237,24 @@ void LibUSBBulkTransferBundle::cancelTransfers()
             assert(bulk_transfer != nullptr);
             libusb_cancel_transfer(bulk_transfer);
         }
+#endif
 
         m_is_canceled = true;
     }
 }
 
-// Search for an input transfer endpoint in the endpoint descriptor
-// of the device interfaces alt_settings
-bool LibUSBBulkTransferBundle::find_bulk_transfer_endpoint(struct libusb_device *device, uint8_t &out_endpoint_addr)
-{
-    bool bSuccess = false;
-    libusb_config_descriptor *config = nullptr;
-
-    libusb_get_active_config_descriptor(device, &config);
-
-    if (config != nullptr)
-    {
-        const libusb_interface_descriptor *altsetting = nullptr;
-
-        for (int i = 0; i < config->bNumInterfaces; i++)
-        {
-            const libusb_interface_descriptor *test_altsetting = config->interface[i].altsetting;
-
-            if (test_altsetting[0].bInterfaceNumber == 0)
-            {
-                altsetting = test_altsetting;
-                break;
-            }
-        }
-
-        if (altsetting != nullptr)
-        {
-            for (int i = 0; i < altsetting->bNumEndpoints; i++)
-            {
-                const libusb_endpoint_descriptor *endpoint_desc = &altsetting->endpoint[i];
-
-                if ((endpoint_desc->bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) == LIBUSB_TRANSFER_TYPE_BULK
-                    && endpoint_desc->wMaxPacketSize != 0)
-                {
-                    out_endpoint_addr = endpoint_desc->bEndpointAddress;
-                    bSuccess = true;
-                    break;
-                }
-            }
-        }
-
-        libusb_free_config_descriptor(config);
-    }
-
-    return bSuccess;
-}
-
 // Accessors
-const USBRequestPayload_BulkTransferBundle &LibUSBBulkTransferBundle::getTransferRequest() const
+const USBRequestPayload_BulkTransferBundle &WinUSBBulkTransferBundle::getTransferRequest() const
 {
 	return m_request;
 }
 
-t_usb_device_handle LibUSBBulkTransferBundle::getUSBDeviceHandle() const
+t_usb_device_handle WinUSBBulkTransferBundle::getUSBDeviceHandle() const
 {
 	return m_request.usb_device_handle;
 }
 
-int LibUSBBulkTransferBundle::getActiveTransferCount() const
+int WinUSBBulkTransferBundle::getActiveTransferCount() const
 {
 	return m_active_transfer_count;
 }

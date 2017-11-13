@@ -1,16 +1,17 @@
 //-- includes -----
 #include "TrackerManager.h"
 #include "TrackerDeviceEnumerator.h"
-#include "ControllerManager.h"
 #include "DeviceManager.h"
 #include "HMDManager.h"
 #include "Logger.h"
-#include "ServerControllerView.h"
 #include "ServerHMDView.h"
 #include "ServerTrackerView.h"
 #include "ServerDeviceView.h"
 #include "MathUtility.h"
-#include "PSVRProtocol.pb.h"
+
+#ifdef _MSC_VER
+    #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
+#endif
 
 //-- constants -----
 
@@ -22,7 +23,6 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
 {
 
 	controller_position_smoothing = 0.f;
-	ignore_pose_from_one_tracker = false;
     optical_tracking_timeout= 100;
 	tracker_sleep_ms = 1;
 	use_bgr_to_hsv_lookup_table = true;
@@ -39,7 +39,7 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
         "default_tracker_profile", 
         sizeof(default_tracker_profile.color_preset_table.table_name));
 	global_forward_degrees = 270.f; // Down -Z by default
-    for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
+    for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
     {
         default_tracker_profile.color_preset_table.color_presets[preset_index] = k_default_color_presets[preset_index];
     }
@@ -51,7 +51,6 @@ TrackerManagerConfig::writeToJSON()
     configuru::Config pt{
         {"version", TrackerManagerConfig::CONFIG_VERSION},
 	    {"controller_position_smoothing", controller_position_smoothing},
-	    {"ignore_pose_from_one_tracker", ignore_pose_from_one_tracker},
         {"optical_tracking_timeout", optical_tracking_timeout},
 	    {"use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table},
 	    {"tracker_sleep_ms", tracker_sleep_ms},
@@ -78,7 +77,6 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
     if (version == TrackerManagerConfig::CONFIG_VERSION)
     {
 		controller_position_smoothing = pt.get_or<float>("controller_position_smoothing", controller_position_smoothing);
-		ignore_pose_from_one_tracker = pt.get_or<bool>("ignore_pose_from_one_tracker", ignore_pose_from_one_tracker);
         optical_tracking_timeout= pt.get_or<int>("optical_tracking_timeout", optical_tracking_timeout);
 		use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
 		tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
@@ -103,40 +101,40 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
     }
 }
 
-CommonDeviceVector 
+PSVRVector3f 
 TrackerManagerConfig::get_global_forward_axis() const
 {
-	return CommonDeviceVector::create(cosf(global_forward_degrees*k_degrees_to_radians), 0.f, sinf(global_forward_degrees*k_degrees_to_radians));
+    return {cosf(global_forward_degrees*k_degrees_to_radians), 0.f, sinf(global_forward_degrees*k_degrees_to_radians)};
 }
 
-CommonDeviceVector 
+PSVRVector3f 
 TrackerManagerConfig::get_global_backward_axis() const
 {
-	return CommonDeviceVector::create(-cosf(global_forward_degrees*k_degrees_to_radians), 0.f, -sinf(global_forward_degrees*k_degrees_to_radians));
+    return {-cosf(global_forward_degrees*k_degrees_to_radians), 0.f, -sinf(global_forward_degrees*k_degrees_to_radians)};
 }
 
-CommonDeviceVector
+PSVRVector3f
 TrackerManagerConfig::get_global_right_axis() const
 {
-	return CommonDeviceVector::create(-sinf(global_forward_degrees*k_degrees_to_radians), 0.f, cosf(global_forward_degrees*k_degrees_to_radians));
+    return {-sinf(global_forward_degrees*k_degrees_to_radians), 0.f, cosf(global_forward_degrees*k_degrees_to_radians)};
 }
 
-CommonDeviceVector
+PSVRVector3f
 TrackerManagerConfig::get_global_left_axis() const
 {
-	return CommonDeviceVector::create(sinf(global_forward_degrees*k_degrees_to_radians), 0.f, -cosf(global_forward_degrees*k_degrees_to_radians));
+    return {sinf(global_forward_degrees*k_degrees_to_radians), 0.f, -cosf(global_forward_degrees*k_degrees_to_radians)};
 }
 
-CommonDeviceVector 
+PSVRVector3f 
 TrackerManagerConfig::get_global_up_axis() const
 {
-	return CommonDeviceVector::create(0.f, 1.f, 0.f);
+    return {0.f, 1.f, 0.f};
 }
 
-CommonDeviceVector 
+PSVRVector3f 
 TrackerManagerConfig::get_global_down_axis() const
 {
-	return CommonDeviceVector::create(0.f, -1.f, 0.f);
+    return {0.f, -1.f, 0.f};
 }
 
 //-- Tracker Manager -----
@@ -163,9 +161,9 @@ TrackerManager::startup()
         mark_tracker_list_dirty();
 
         // Put all of the available tracking colors in the queue
-        for (int color_index = 0; color_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++color_index)
+        for (int color_index = 0; color_index < PSVRTrackingColorType_MaxColorTypes; ++color_index)
         {
-            m_available_color_ids.push_back(static_cast<eCommonTrackingColorID>(color_index));
+            m_available_color_ids.push_back(static_cast<PSVRTrackingColorType>(color_index));
         }
     }
 
@@ -235,14 +233,14 @@ TrackerManager::getTrackerViewPtr(int device_id) const
 
 int TrackerManager::getListUpdatedResponseType()
 {
-	return PSVRProtocol::Response_ResponseType_TRACKER_LIST_UPDATED;
+    return PSVREvent_trackerListUpdated;
 }
 
-eCommonTrackingColorID 
+PSVRTrackingColorType 
 TrackerManager::allocateTrackingColorID()
 {
     assert(m_available_color_ids.size() > 0);
-    eCommonTrackingColorID tracking_color = m_available_color_ids.front();
+    PSVRTrackingColorType tracking_color = m_available_color_ids.front();
 
     m_available_color_ids.pop_front();
 
@@ -250,7 +248,7 @@ TrackerManager::allocateTrackingColorID()
 }
 
 bool 
-TrackerManager::claimTrackingColorID(const ServerControllerView *claiming_controller_view, eCommonTrackingColorID color_id)
+TrackerManager::claimTrackingColorID(const ServerControllerView *claiming_controller_view, PSVRTrackingColorType color_id)
 {
     bool bColorWasInUse = false;
     bool bSuccess= true;
@@ -265,7 +263,7 @@ TrackerManager::claimTrackingColorID(const ServerControllerView *claiming_contro
         {
             if (hmd_view->getTrackingColorID() == color_id)
             {
-                eCommonTrackingColorID newTrackingColor= allocateTrackingColorID();
+                PSVRTrackingColorType newTrackingColor= allocateTrackingColorID();
 
                 if (!hmd_view->setTrackingColorID(newTrackingColor))
                 {
@@ -275,27 +273,6 @@ TrackerManager::claimTrackingColorID(const ServerControllerView *claiming_contro
 
                 bColorWasInUse = true;
                 break;
-            }
-        }
-    }
-
-    // If any other controller has this tracking color, make them pick a new color
-    if (!bColorWasInUse)
-    {
-        // If any other controller has this tracking color, make them pick a new color
-        ControllerManager *controllerManager= DeviceManager::getInstance()->m_controller_manager;
-        for (int device_id = 0; device_id < controllerManager->getMaxDevices(); ++device_id)
-        {
-            ServerControllerViewPtr controller_view = controllerManager->getControllerViewPtr(device_id);
-
-            if (controller_view->getIsOpen() && controller_view.get() != claiming_controller_view)
-            {
-                if (controller_view->getTrackingColorID() == color_id)
-                {
-                    controller_view->setTrackingColorID(allocateTrackingColorID());
-                    bColorWasInUse = true;
-                    break;
-                }
             }
         }
     }
@@ -317,7 +294,7 @@ TrackerManager::claimTrackingColorID(const ServerControllerView *claiming_contro
 }
 
 bool 
-TrackerManager::claimTrackingColorID(const ServerHMDView *claiming_hmd_view, eCommonTrackingColorID color_id)
+TrackerManager::claimTrackingColorID(const ServerHMDView *claiming_hmd_view, PSVRTrackingColorType color_id)
 {
     bool bColorWasInUse = false;
     bool bSuccess= true;
@@ -332,7 +309,7 @@ TrackerManager::claimTrackingColorID(const ServerHMDView *claiming_hmd_view, eCo
         {
             if (hmd_view->getTrackingColorID() == color_id)
             {
-                eCommonTrackingColorID newTrackingColor= allocateTrackingColorID();
+                PSVRTrackingColorType newTrackingColor= allocateTrackingColorID();
 
                 if (!hmd_view->setTrackingColorID(newTrackingColor))
                 {
@@ -342,27 +319,6 @@ TrackerManager::claimTrackingColorID(const ServerHMDView *claiming_hmd_view, eCo
 
                 bColorWasInUse = true;
                 break;
-            }
-        }
-    }
-
-    // If any other controller has this tracking color, make them pick a new color
-    if (!bColorWasInUse)
-    {
-        // If any other controller has this tracking color, make them pick a new color
-        ControllerManager *controllerManager= DeviceManager::getInstance()->m_controller_manager;
-        for (int device_id = 0; device_id < controllerManager->getMaxDevices(); ++device_id)
-        {
-            ServerControllerViewPtr controller_view = controllerManager->getControllerViewPtr(device_id);
-
-            if (controller_view->getIsOpen())
-            {
-                if (controller_view->getTrackingColorID() == color_id)
-                {
-                    controller_view->setTrackingColorID(allocateTrackingColorID());
-                    bColorWasInUse = true;
-                    break;
-                }
             }
         }
     }
@@ -384,7 +340,7 @@ TrackerManager::claimTrackingColorID(const ServerHMDView *claiming_hmd_view, eCo
 }
 
 void 
-TrackerManager::freeTrackingColorID(eCommonTrackingColorID color_id)
+TrackerManager::freeTrackingColorID(PSVRTrackingColorType color_id)
 {
     assert(std::find(m_available_color_ids.begin(), m_available_color_ids.end(), color_id) == m_available_color_ids.end());
     m_available_color_ids.push_back(color_id);

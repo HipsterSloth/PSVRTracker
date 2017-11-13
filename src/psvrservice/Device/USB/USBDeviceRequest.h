@@ -62,19 +62,22 @@ enum eUSBTransferRequestType
 {
 	_USBRequestType_InterruptTransfer,
     _USBRequestType_ControlTransfer,
-    _USBRequestType_StartBulkTransfer,
-    _USBRequestType_CancelBulkTransfer,
+    _USBRequestType_BulkTransfer,
+    _USBRequestType_StartBulkTransferBundle,
+    _USBRequestType_CancelBulkTransferBundle,
 };
 
 enum eUSBTransferResultType
 {
-	_USBResultType_InterrupTransfer,
+	_USBResultType_InterruptTransfer,
     _USBResultType_ControlTransfer,
-    _USBResultType_BulkTransfer
+    _USBResultType_BulkTransfer,
+    _USBResultType_BulkTransferBundle
 };
 
-#define MAX_INTERRUPT_TRANSFER_PAYLOAD 64
-#define MAX_CONTROL_TRANSFER_PAYLOAD 64
+#define MAX_INTERRUPT_TRANSFER_PAYLOAD  64
+#define MAX_CONTROL_TRANSFER_PAYLOAD    64
+#define MAX_BULK_TRANSFER_PAYLOAD       256
 
 //-- typedefs -----
 typedef void(*usb_bulk_transfer_cb_fn)(unsigned char *packet_data, int packet_length, void *userdata);
@@ -105,6 +108,15 @@ struct USBRequestPayload_ControlTransfer
 
 struct USBRequestPayload_BulkTransfer
 {
+	t_usb_device_handle usb_device_handle;
+	unsigned int timeout;
+	unsigned int length;
+	unsigned char data[MAX_BULK_TRANSFER_PAYLOAD];
+	unsigned char endpoint;
+};
+
+struct USBRequestPayload_BulkTransferBundle
+{
     t_usb_device_handle usb_device_handle;
     int transfer_packet_size;
     int in_flight_transfer_packet_count;
@@ -113,7 +125,7 @@ struct USBRequestPayload_BulkTransfer
     bool bAutoResubmit;
 };
 
-struct USBRequestPayload_CancelBulkTransfer
+struct USBRequestPayload_CancelBulkTransferBundle
 {
     t_usb_device_handle usb_device_handle;
 };
@@ -124,17 +136,26 @@ struct USBTransferRequest
     {
 		USBRequestPayload_InterruptTransfer interrupt_transfer;
         USBRequestPayload_ControlTransfer control_transfer;
-        USBRequestPayload_BulkTransfer start_bulk_transfer;
-        USBRequestPayload_CancelBulkTransfer cancel_bulk_transfer;
+        USBRequestPayload_BulkTransfer bulk_transfer;
+        USBRequestPayload_BulkTransferBundle start_bulk_transfer_bundle;
+        USBRequestPayload_CancelBulkTransferBundle cancel_bulk_transfer_bundle;
     } payload;
     eUSBTransferRequestType request_type;
 };
 
 //-- Result Structures --
-struct USBResultPayload_BulkTransfer
+struct USBResultPayload_BulkTransferBundle
 {
     t_usb_device_handle usb_device_handle;
     eUSBResultCode result_code;
+};
+
+struct USBResultPayload_BulkTransfer
+{
+	t_usb_device_handle usb_device_handle;
+	eUSBResultCode result_code;
+	unsigned char data[MAX_BULK_TRANSFER_PAYLOAD];
+	int dataLength;
 };
 
 struct USBResultPayload_ControlTransfer
@@ -160,6 +181,7 @@ struct USBTransferResult
 		USBResultPayload_InterruptTransfer interrupt_transfer;
         USBResultPayload_ControlTransfer control_transfer;
         USBResultPayload_BulkTransfer bulk_transfer;
+        USBResultPayload_BulkTransferBundle bulk_transfer_bundle;
     } payload;
     eUSBTransferResultType result_type;
 };

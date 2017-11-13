@@ -4,6 +4,10 @@
 #include "USBDeviceRequest.h"
 #include "USBDeviceManager.h"
 
+#ifdef _MSC_VER
+    #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
+#endif
+
 //-- public interface -----
 
 //-- NullUSBApi -----
@@ -24,7 +28,7 @@ void NullUSBApi::shutdown()
 {
 }
 
-USBDeviceEnumerator* NullUSBApi::device_enumerator_create()
+USBDeviceEnumerator* NullUSBApi::device_enumerator_create(const DeviceClass deviceClass)
 {
 	USBDeviceEnumerator *nullusb_enumerator = new USBDeviceEnumerator;
 	memset(nullusb_enumerator, 0, sizeof(USBDeviceEnumerator));
@@ -56,7 +60,7 @@ void NullUSBApi::device_enumerator_dispose(USBDeviceEnumerator* enumerator)
 	delete enumerator;
 }
 
-USBDeviceState *NullUSBApi::open_usb_device(USBDeviceEnumerator* enumerator)
+USBDeviceState *NullUSBApi::open_usb_device(USBDeviceEnumerator* enumerator, int interface_index)
 {
 	return nullptr;
 }
@@ -85,7 +89,14 @@ eUSBResultCode NullUSBApi::submit_control_transfer(
 	return _USBResultCode_InvalidAPI;
 }
 
-IUSBBulkTransferBundle *NullUSBApi::allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_BulkTransfer *request)
+eUSBResultCode NullUSBApi::submit_bulk_transfer(
+    const USBDeviceState* device_state,
+    const struct USBTransferRequestState *requestState)
+{
+	return _USBResultCode_InvalidAPI;
+}
+
+IUSBBulkTransferBundle *NullUSBApi::allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_BulkTransferBundle *request)
 {
 	return new NullUSBBulkTransferBundle(device_state, request);
 }
@@ -108,7 +119,7 @@ bool NullUSBApi::get_usb_device_port_path(USBDeviceState* device_state, char *ou
 //-- NullUSBBulkTransferBundle -----
 NullUSBBulkTransferBundle::NullUSBBulkTransferBundle(
 	const USBDeviceState *device_state,
-	const struct USBRequestPayload_BulkTransfer *request)
+	const struct USBRequestPayload_BulkTransferBundle *request)
 	: IUSBBulkTransferBundle(device_state, request)
 	, m_request(*request)
 {
@@ -128,7 +139,7 @@ void NullUSBBulkTransferBundle::cancelTransfers()
 {
 }
 
-const USBRequestPayload_BulkTransfer &NullUSBBulkTransferBundle::getTransferRequest() const
+const USBRequestPayload_BulkTransferBundle &NullUSBBulkTransferBundle::getTransferRequest() const
 {
 	return m_request;
 }

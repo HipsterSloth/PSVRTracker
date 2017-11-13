@@ -24,6 +24,7 @@ public:
 	void shutdown() override;
 
 	// Queries
+    const void* get_device_class_platform_identifier(const DeviceClass deviceClass) const override;
 	bool get_device_property(
 		const DeviceClass deviceClass,
 		const int vendor_id,

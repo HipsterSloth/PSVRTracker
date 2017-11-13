@@ -49,7 +49,7 @@ public:
 		, m_MemberIndex(-1)
 		, m_bNoMoreItems(false)
 	{
-		m_DeviceInfoSetHandle = SetupDiGetClassDevs((LPGUID)&GUID_DEVCLASS_IMAGE, 0, 0, DIGCF_PRESENT);
+		m_DeviceInfoSetHandle = SetupDiGetClassDevs((LPGUID)&m_DeviceClassGUID, 0, 0, DIGCF_PRESENT);
 		m_DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
 
 		if (isValid())
@@ -204,6 +204,28 @@ void PlatformDeviceAPIWin32::shutdown()
 }
 
 // Queries
+const void* PlatformDeviceAPIWin32::get_device_class_platform_identifier(
+    const DeviceClass deviceClass) const
+{
+    const void* result= nullptr;
+
+	switch (deviceClass)
+	{
+	case DeviceClass::DeviceClass_Camera:
+		result = &GUID_DEVCLASS_IMAGE;
+		break;
+	case DeviceClass::DeviceClass_HID:
+		result = &GUID_DEVCLASS_HID;
+		break;
+    case DeviceClass::DeviceClass_RawUSB:
+        result = &GUID_DEVCLASS_USB_RAW;
+	default:
+		assert(0 && "Unhandled device class type");
+	}
+
+    return result;
+}
+
 bool PlatformDeviceAPIWin32::get_device_property(
 	const DeviceClass deviceClass,
 	const int vendor_id,
@@ -213,19 +235,7 @@ bool PlatformDeviceAPIWin32::get_device_property(
 	const int buffer_size)
 {
 	bool success = false;
-	const GUID *deviceClassGUID = NULL;
-
-	switch (deviceClass)
-	{
-	case DeviceClass::DeviceClass_Camera:
-		deviceClassGUID = &GUID_DEVCLASS_IMAGE;
-		break;
-	case DeviceClass::DeviceClass_HID:
-		deviceClassGUID = &GUID_DEVCLASS_HID;
-		break;
-	default:
-		assert(0 && "Unhandled device class type");
-	}
+	const GUID *deviceClassGUID = reinterpret_cast<const GUID *>(get_device_class_platform_identifier(deviceClass));
 
 	if (deviceClassGUID != NULL)
 	{

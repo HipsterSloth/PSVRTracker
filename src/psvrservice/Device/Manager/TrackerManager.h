@@ -46,7 +46,6 @@ public:
     virtual void readFromJSON(const configuru::Config &pt);
 
 	float controller_position_smoothing;
-	bool ignore_pose_from_one_tracker;
     long version;
     int optical_tracking_timeout;
 	int tracker_sleep_ms;
@@ -57,12 +56,12 @@ public:
     TrackerProfile default_tracker_profile;
 	float global_forward_degrees;
 
-	CommonDeviceVector get_global_forward_axis() const;
-	CommonDeviceVector get_global_backward_axis() const;
-	CommonDeviceVector get_global_right_axis() const;
-	CommonDeviceVector get_global_left_axis() const;
-	CommonDeviceVector get_global_up_axis() const;
-	CommonDeviceVector get_global_down_axis() const;
+	PSVRVector3f get_global_forward_axis() const;
+	PSVRVector3f get_global_backward_axis() const;
+	PSVRVector3f get_global_right_axis() const;
+	PSVRVector3f get_global_left_axis() const;
+	PSVRVector3f get_global_up_axis() const;
+	PSVRVector3f get_global_down_axis() const;
 };
 
 class TrackerManager : public DeviceTypeManager
@@ -98,10 +97,10 @@ public:
         return cfg;
     }
 
-    eCommonTrackingColorID allocateTrackingColorID();
-    bool claimTrackingColorID(const class ServerControllerView *controller_view, eCommonTrackingColorID color_id);
-    bool claimTrackingColorID(const class ServerHMDView *hmd_view, eCommonTrackingColorID color_id);
-    void freeTrackingColorID(eCommonTrackingColorID color_id);
+    PSVRTrackingColorType allocateTrackingColorID();
+    bool claimTrackingColorID(const class ServerControllerView *controller_view, PSVRTrackingColorType color_id);
+    bool claimTrackingColorID(const class ServerHMDView *hmd_view, PSVRTrackingColorType color_id);
+    void freeTrackingColorID(PSVRTrackingColorType color_id);
 
 protected:
     bool can_update_connected_devices() override;
@@ -113,7 +112,7 @@ protected:
 	int getListUpdatedResponseType() override;
 
 private:
-    std::deque<eCommonTrackingColorID> m_available_color_ids;
+    std::deque<PSVRTrackingColorType> m_available_color_ids;
     TrackerManagerConfig cfg;
     bool m_tracker_list_dirty;
 };

@@ -1,4 +1,4 @@
-#include "GeometryUtility.h"
+#include "MathTypeConversion.h"
 #include "MathGLM.h"
 
 //-- methods -----

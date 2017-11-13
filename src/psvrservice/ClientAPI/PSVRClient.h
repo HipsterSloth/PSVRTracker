@@ -18,7 +18,7 @@ class PSVRClient :
     public INotificationListener
 {
 public:
-    PSVRClient(class ServiceRequestHandler * request_handler);
+    PSVRClient();
     virtual ~PSVRClient();
 
 	// -- State Queries ----
@@ -26,7 +26,7 @@ public:
 	bool pollHasHMDListChanged();
 
     // -- Client PSVR API System -----
-    bool startup(PSVRLogSeverityLevel log_level);
+    bool startup(PSVRLogSeverityLevel log_level, class ServiceRequestHandler * request_handler);
     void update();
 	void process_messages();
     bool poll_next_message(PSVREventMessage *message, size_t message_size);
@@ -58,7 +58,7 @@ protected:
 
 private:
     //-- Request Handling -----
-    class ServiceRequestHandler *m_requestManager;
+    class ServiceRequestHandler *m_requestHandler;
     
     //-- Tracker Views -----
 	PSVRTracker m_trackers[PSVRSERVICE_MAX_TRACKER_COUNT];

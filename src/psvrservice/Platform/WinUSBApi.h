@@ -1,29 +1,51 @@
-#ifndef LIB_USB_API_H
-#define LIB_USB_API_H
+#ifndef WIN_USB_API_H
+#define WIN_USB_API_H
 
 #include "USBApiInterface.h"
+#include "USBDeviceRequest.h"
 
-struct LibUSBDeviceState : USBDeviceState
+struct WinUSBDeviceState : USBDeviceState
 {
-	struct libusb_device *device;
-	struct libusb_device_handle *device_handle;
-	int claimed_interface_index;
+    std::string device_path;
+    std::string unique_id;
+    void* device_handle;
+    void* interface_handle;
+    unsigned char device_speed;
+    unsigned char bulk_in_pipe;
+    unsigned char bulk_out_pipe;
+    unsigned char interrupt_in_pipe;
+    unsigned char interrupt_out_pipe;
+    unsigned char isochronous_in_pipe;
+    unsigned char isochronous_out_pipe;
+    int product_id;
+    int vendor_id;
+    int composite_interface_index;
 
 	void clear()
 	{
 		USBDeviceState::clear();
 
-		device= nullptr;
-		device_handle= nullptr;
-		claimed_interface_index= -1;
+        device_path= "";
+        unique_id= "";
+        device_handle= (void *)-1;
+        interface_handle= NULL;
+        device_speed= 0;
+        bulk_in_pipe= 0xFF;
+        bulk_out_pipe= 0xFF;
+        interrupt_in_pipe= 0xFF;
+        interrupt_out_pipe= 0xFF;
+        isochronous_in_pipe= 0xFF;
+        isochronous_out_pipe= 0xFF;
+        product_id= -1;
+        vendor_id= -1;
+        composite_interface_index= -1;
 	}
 };
 
-class LibUSBApi : public IUSBApi
+class WinUSBApi : public IUSBApi
 {
 public:
-	LibUSBApi();
-	virtual ~LibUSBApi();
+	WinUSBApi();
 
 	bool startup() override;
 	void poll() override;
@@ -42,15 +64,13 @@ public:
 
 	eUSBResultCode submit_interrupt_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
 	eUSBResultCode submit_control_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
-    eUSBResultCode submit_bulk_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestStateOnHeap) override;
+    eUSBResultCode submit_bulk_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
 	IUSBBulkTransferBundle *allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_BulkTransferBundle *request) override;
 
 	bool get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const override;
 	bool get_usb_device_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 	bool get_usb_device_port_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
-
-private:
-	struct APIContext *m_apiContext;
 };
 
-#endif // USB_API_INTERFACE_H
+#endif // WIN_USB_API_H
+

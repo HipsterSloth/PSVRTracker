@@ -7,6 +7,7 @@ list(APPEND PSVRCONFIGTOOL_INCL_DIRS
     ${EIGEN3_INCLUDE_DIR}
 	${ROOT_DIR}/src/psvrmath/
 	${ROOT_DIR}/src/psvrservice/ClientAPI
+	${ROOT_DIR}/src/psvrservice/Utility
     ${ROOT_DIR}/thirdparty/glm
     ${ROOT_DIR}/thirdparty/stb
     ${ROOT_DIR}/thirdparty/imgui)
@@ -29,6 +30,8 @@ list(APPEND PSVRCONFIGTOOL_REQ_LIBS ${OpenCV_LIBS})
 file(GLOB PSVRConfigTool_SRC
     "${CMAKE_CURRENT_LIST_DIR}/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
+	"${ROOT_DIR}/src/psvrservice/Utility/MathTypeConversion.h"
+	"${ROOT_DIR}/src/psvrservice/Utility/MathTypeConversion.cpp"
     "${ROOT_DIR}/thirdparty/imgui/*.cpp"
 )
 

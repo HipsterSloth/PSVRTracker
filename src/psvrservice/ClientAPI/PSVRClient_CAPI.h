@@ -88,16 +88,6 @@ typedef struct
     PSVRTrackingProjection   TrackingProjection;
 	/// A bitmask of the trackers with valid projections
     unsigned int            ValidTrackerBitmask;
-
-    // Multicam triangulated position and orientation, pre-filtered
-	/// Optically derived world space position of device in cm
-    PSVRVector3f             MulticamPositionCm;
-	/// Optically derived world space orientation of device in cm
-    PSVRQuatf                MulticamOrientation;
-	/// Flag if the world space optical position is valid
-    bool                    bMulticamPositionValid;
-	/// Flag if the world space optical orientation is valid
-    bool                    bMulticamOrientationValid;
 } PSVRRawTrackerData;
 
 /// Radial and tangential lens distortion coefficients computed during lens lens calibration
@@ -279,6 +269,7 @@ typedef struct
 {
     bool                         bIsTrackingEnabled;
     bool                         bIsCurrentlyTracking;
+    bool                         bIsOrientationValid;
     bool                         bIsPositionValid;
     
     PSVRPosef                     Pose;

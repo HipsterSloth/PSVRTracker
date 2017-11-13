@@ -26,9 +26,10 @@ public:
 		, position_variance_exp_fit_a(0.0994158462f)
 		, position_variance_exp_fit_b(-0.000567041978f)
         , prediction_time(0.f)
-		, tracking_color_id(eCommonTrackingColorID::Blue)
-        , bulb_radius(2.25f) // The radius of the PSVR tracking bulb in cm
+		, tracking_color_id(PSVRTrackingColorType_Blue)
     {
+        trackingShape.shape_type= PSVRTrackingShape_Sphere;
+        trackingShape.shape.sphere.radius= 2.25f; // The radius of the psmove tracking bulb in cm
     };
 
     virtual const configuru::Config writeToJSON();
@@ -56,8 +57,8 @@ public:
 
 	float prediction_time;
 
-	eCommonTrackingColorID tracking_color_id;
-    float bulb_radius;
+	PSVRTrackingColorType tracking_color_id;
+    PSVRTrackingShape trackingShape;
 };
 
 struct VirtualHMDState : public CommonHMDState
@@ -103,9 +104,9 @@ public:
 
     // -- IHMDInterface
     std::string getUSBDevicePath() const override;
-	void getTrackingShape(CommonDeviceTrackingShape &outTrackingShape) const override;
-	bool setTrackingColorID(const eCommonTrackingColorID tracking_color_id) override;
-	bool getTrackingColorID(eCommonTrackingColorID &out_tracking_color_id) const override;
+	void getTrackingShape(PSVRTrackingShape &outTrackingShape) const override;
+	bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) override;
+	bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const override;
 	float getPredictionTime() const override;
 
     // -- Getters

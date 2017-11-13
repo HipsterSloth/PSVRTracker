@@ -7,8 +7,8 @@
 #include "MathUtility.h"
 #include "Logger.h"
 #include "Utility.h"
+#include "USBDeviceManager.h"
 #include "hidapi.h"
-#include "libusb.h"
 #include <vector>
 #include <cstdlib>
 #ifdef _WIN32
@@ -17,6 +17,8 @@
 #include <math.h>
 
 //-- constants -----
+#define INTERRUPT_TRANSFER_TIMEOUT	  500 /* timeout in ms */
+
 #define MORPHEUS_VENDOR_ID 0x054c
 #define MORPHEUS_PRODUCT_ID 0x09af
 
@@ -25,10 +27,6 @@
 
 #define MORPHEUS_SENSOR_INTERFACE 4
 #define MORPHEUS_COMMAND_INTERFACE 5
-
-#define MORPHEUS_USB_INTERFACES_MASK_TO_CLAIM ( \
-	(1 << MORPHEUS_COMMAND_INTERFACE) \
-)
 
 #define MORPHEUS_COMMAND_MAGIC 0xAA
 #define MORPHEUS_COMMAND_MAX_PAYLOAD_LEN 60
@@ -71,11 +69,9 @@ public:
     std::string sensor_device_path;
 	hid_device *sensor_device_handle;
 	
-	// LibUSB state
-	libusb_context *usb_context;
-	libusb_device_handle *usb_device_handle;
-	libusb_config_descriptor *usb_device_descriptor;
-	unsigned int usb_claimed_interface_mask;
+	// USB state
+    std::string usb_device_path;
+	t_usb_device_handle usb_device_handle;
 
     MorpheusUSBContext()
     {
@@ -87,10 +83,8 @@ public:
 		device_identifier = "";
         sensor_device_path = "";
 		sensor_device_handle = nullptr;
-		usb_context = nullptr;
-		usb_device_handle = nullptr;
-		usb_device_descriptor = nullptr;
-		usb_claimed_interface_mask = 0;
+        usb_device_path= "";
+        usb_device_handle= k_invalid_usb_device_handle;
     }
 };
 
@@ -202,24 +196,24 @@ MorpheusHMDConfig::writeToJSON()
 	    {"is_valid", is_valid},
 	    {"version", MorpheusHMDConfig::CONFIG_VERSION},
 	    {"disable_command_interface", disable_command_interface},
-	    {"Calibration.Accel.X.k", accelerometer_gain.i},
-	    {"Calibration.Accel.Y.k", accelerometer_gain.j},
-	    {"Calibration.Accel.Z.k", accelerometer_gain.k},
-	    {"Calibration.Accel.X.b", raw_accelerometer_bias.i},
-	    {"Calibration.Accel.Y.b", raw_accelerometer_bias.j},
-	    {"Calibration.Accel.Z.b", raw_accelerometer_bias.k},
+	    {"Calibration.Accel.X.k", accelerometer_gain.x},
+	    {"Calibration.Accel.Y.k", accelerometer_gain.y},
+	    {"Calibration.Accel.Z.k", accelerometer_gain.z},
+	    {"Calibration.Accel.X.b", raw_accelerometer_bias.x},
+	    {"Calibration.Accel.Y.b", raw_accelerometer_bias.y},
+	    {"Calibration.Accel.Z.b", raw_accelerometer_bias.z},
 	    {"Calibration.Accel.Variance", raw_accelerometer_variance},
-	    {"Calibration.Gyro.X.k", gyro_gain.i},
-	    {"Calibration.Gyro.Y.k", gyro_gain.j},
-	    {"Calibration.Gyro.Z.k", gyro_gain.k},
-	    {"Calibration.Gyro.X.b", raw_gyro_bias.i},
-	    {"Calibration.Gyro.Y.b", raw_gyro_bias.j},
-	    {"Calibration.Gyro.Z.b", raw_gyro_bias.k},
+	    {"Calibration.Gyro.X.k", gyro_gain.x},
+	    {"Calibration.Gyro.Y.k", gyro_gain.y},
+	    {"Calibration.Gyro.Z.k", gyro_gain.z},
+	    {"Calibration.Gyro.X.b", raw_gyro_bias.x},
+	    {"Calibration.Gyro.Y.b", raw_gyro_bias.y},
+	    {"Calibration.Gyro.Z.b", raw_gyro_bias.z},
 	    {"Calibration.Gyro.Variance", raw_gyro_variance},
 	    {"Calibration.Gyro.Drift", raw_gyro_drift},
-	    {"Calibration.Identity.Gravity.X", identity_gravity_direction.i},
-	    {"Calibration.Identity.Gravity.Y", identity_gravity_direction.j},
-	    {"Calibration.Identity.Gravity.Z", identity_gravity_direction.k},
+	    {"Calibration.Identity.Gravity.X", identity_gravity_direction.x},
+	    {"Calibration.Identity.Gravity.Y", identity_gravity_direction.y},
+	    {"Calibration.Identity.Gravity.Z", identity_gravity_direction.z},
 	    {"Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a},
 	    {"Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b},
 	    {"Calibration.Orientation.Variance", orientation_variance},
@@ -251,21 +245,21 @@ MorpheusHMDConfig::readFromJSON(const configuru::Config &pt)
 		max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
 
 		// Use the current accelerometer values (constructor defaults) as the default values
-		accelerometer_gain.i = pt.get_or<float>("Calibration.Accel.X.k", accelerometer_gain.i);
-		accelerometer_gain.j = pt.get_or<float>("Calibration.Accel.Y.k", accelerometer_gain.j);
-		accelerometer_gain.k = pt.get_or<float>("Calibration.Accel.Z.k", accelerometer_gain.k);
-		raw_accelerometer_bias.i = pt.get_or<float>("Calibration.Accel.X.b", raw_accelerometer_bias.i);
-		raw_accelerometer_bias.j = pt.get_or<float>("Calibration.Accel.Y.b", raw_accelerometer_bias.j);
-		raw_accelerometer_bias.k = pt.get_or<float>("Calibration.Accel.Z.b", raw_accelerometer_bias.k);
+		accelerometer_gain.x = pt.get_or<float>("Calibration.Accel.X.k", accelerometer_gain.x);
+		accelerometer_gain.y = pt.get_or<float>("Calibration.Accel.Y.k", accelerometer_gain.y);
+		accelerometer_gain.z = pt.get_or<float>("Calibration.Accel.Z.k", accelerometer_gain.z);
+		raw_accelerometer_bias.x = pt.get_or<float>("Calibration.Accel.X.b", raw_accelerometer_bias.x);
+		raw_accelerometer_bias.y = pt.get_or<float>("Calibration.Accel.Y.b", raw_accelerometer_bias.y);
+		raw_accelerometer_bias.z = pt.get_or<float>("Calibration.Accel.Z.b", raw_accelerometer_bias.z);
 		raw_accelerometer_variance = pt.get_or<float>("Calibration.Accel.Variance", raw_accelerometer_variance);
 
 		// Use the current gyroscope values (constructor defaults) as the default values
-		gyro_gain.i = pt.get_or<float>("Calibration.Gyro.X.k", gyro_gain.i);
-		gyro_gain.j = pt.get_or<float>("Calibration.Gyro.Y.k", gyro_gain.j);
-		gyro_gain.k = pt.get_or<float>("Calibration.Gyro.Z.k", gyro_gain.k);
-		raw_gyro_bias.i = pt.get_or<float>("Calibration.Gyro.X.b", raw_gyro_bias.i);
-		raw_gyro_bias.j = pt.get_or<float>("Calibration.Gyro.Y.b", raw_gyro_bias.j);
-		raw_gyro_bias.k = pt.get_or<float>("Calibration.Gyro.Z.b", raw_gyro_bias.k);
+		gyro_gain.x = pt.get_or<float>("Calibration.Gyro.X.k", gyro_gain.x);
+		gyro_gain.y = pt.get_or<float>("Calibration.Gyro.Y.k", gyro_gain.y);
+		gyro_gain.z = pt.get_or<float>("Calibration.Gyro.Z.k", gyro_gain.z);
+		raw_gyro_bias.x = pt.get_or<float>("Calibration.Gyro.X.b", raw_gyro_bias.x);
+		raw_gyro_bias.y = pt.get_or<float>("Calibration.Gyro.Y.b", raw_gyro_bias.y);
+		raw_gyro_bias.z = pt.get_or<float>("Calibration.Gyro.Z.b", raw_gyro_bias.z);
 		raw_gyro_variance = pt.get_or<float>("Calibration.Gyro.Variance", raw_gyro_variance);
 		raw_gyro_drift = pt.get_or<float>("Calibration.Gyro.Drift", raw_gyro_drift);
 
@@ -282,12 +276,12 @@ MorpheusHMDConfig::readFromJSON(const configuru::Config &pt)
 		max_velocity = pt.get_or<float>("PositionFilter.MaxVelocity", max_velocity);
 
 		// Get the calibration direction for "down"
-		identity_gravity_direction.i = pt.get_or<float>("Calibration.Identity.Gravity.X", identity_gravity_direction.i);
-		identity_gravity_direction.j = pt.get_or<float>("Calibration.Identity.Gravity.Y", identity_gravity_direction.j);
-		identity_gravity_direction.k = pt.get_or<float>("Calibration.Identity.Gravity.Z", identity_gravity_direction.k);
+		identity_gravity_direction.x = pt.get_or<float>("Calibration.Identity.Gravity.X", identity_gravity_direction.x);
+		identity_gravity_direction.y = pt.get_or<float>("Calibration.Identity.Gravity.Y", identity_gravity_direction.y);
+		identity_gravity_direction.z = pt.get_or<float>("Calibration.Identity.Gravity.Z", identity_gravity_direction.z);
 
 		// Read the tracking color
-		tracking_color_id = static_cast<eCommonTrackingColorID>(readTrackingColor(pt));
+		tracking_color_id = static_cast<PSVRTrackingColorType>(readTrackingColor(pt));
     }
     else
     {
@@ -322,24 +316,24 @@ void MorpheusHMDSensorFrame::parse_data_input(
 	SequenceNumber = static_cast<int>(raw_seq);
 
 	// Save the raw accelerometer values
-	RawAccel.i = static_cast<int>(raw_accelX);
-	RawAccel.j = static_cast<int>(raw_accelY);
-	RawAccel.k = static_cast<int>(raw_accelZ);
+	RawAccel.x = static_cast<int>(raw_accelX);
+	RawAccel.y = static_cast<int>(raw_accelY);
+	RawAccel.z = static_cast<int>(raw_accelZ);
 
 	// Save the raw gyro values
-	RawGyro.i = static_cast<int>(raw_gyroPitch);
-	RawGyro.j = static_cast<int>(raw_gyroYaw);
-	RawGyro.k = static_cast<int>(raw_gyroRoll);
+	RawGyro.x = static_cast<int>(raw_gyroPitch);
+	RawGyro.y = static_cast<int>(raw_gyroYaw);
+	RawGyro.z = static_cast<int>(raw_gyroRoll);
 
 	// calibrated_acc= (raw_acc - acc_bias) * acc_gain
-	CalibratedAccel.i = (static_cast<float>(raw_accelX) - config->raw_accelerometer_bias.i) * config->accelerometer_gain.i;
-	CalibratedAccel.j = (static_cast<float>(raw_accelY) - config->raw_accelerometer_bias.j) * config->accelerometer_gain.j;
-	CalibratedAccel.k = (static_cast<float>(raw_accelZ) - config->raw_accelerometer_bias.k) * config->accelerometer_gain.k;
+	CalibratedAccel.x = (static_cast<float>(raw_accelX) - config->raw_accelerometer_bias.x) * config->accelerometer_gain.x;
+	CalibratedAccel.y = (static_cast<float>(raw_accelY) - config->raw_accelerometer_bias.y) * config->accelerometer_gain.y;
+	CalibratedAccel.z = (static_cast<float>(raw_accelZ) - config->raw_accelerometer_bias.z) * config->accelerometer_gain.z;
 
 	// calibrated_gyro= (raw_gyro - gyro_bias) * gyro_gain
-	CalibratedGyro.i = (static_cast<float>(raw_gyroPitch) - config->raw_gyro_bias.i) * config->gyro_gain.i;
-	CalibratedGyro.j = (static_cast<float>(raw_gyroYaw) - config->raw_gyro_bias.j) * config->gyro_gain.j;
-	CalibratedGyro.k = (static_cast<float>(raw_gyroRoll) - config->raw_gyro_bias.k) * config->gyro_gain.k;
+	CalibratedGyro.x = (static_cast<float>(raw_gyroPitch) - config->raw_gyro_bias.x) * config->gyro_gain.x;
+	CalibratedGyro.y = (static_cast<float>(raw_gyroYaw) - config->raw_gyro_bias.y) * config->gyro_gain.y;
+	CalibratedGyro.z = (static_cast<float>(raw_gyroRoll) - config->raw_gyro_bias.z) * config->gyro_gain.z;
 }
 
 // -- Morpheus HMD State -----
@@ -406,6 +400,10 @@ bool MorpheusHMD::open(
     else
     {
 		PSVR_LOG_INFO("MorpheusHMD::open") << "Opening MorpheusHMD(" << cur_dev_path << ").";
+		// Load the config file
+		std::string config_name("MorpheusHMDConfig");
+		cfg = MorpheusHMDConfig(config_name);
+        cfg.load();
 
 		USBContext->device_identifier = cur_dev_path;
 
@@ -436,7 +434,7 @@ bool MorpheusHMD::open(
 
         if (getIsOpen())  // Controller was opened and has an index
         {
-			if (USBContext->usb_device_handle != nullptr)
+			if (USBContext->usb_device_handle != k_invalid_usb_device_handle)
 			{
 				if (morpheus_set_headset_power(USBContext, true))
 				{
@@ -467,7 +465,7 @@ bool MorpheusHMD::open(
 
 void MorpheusHMD::close()
 {
-    if (USBContext->sensor_device_handle != nullptr || USBContext->usb_device_handle != nullptr)
+    if (USBContext->sensor_device_handle != nullptr || USBContext->usb_device_handle != k_invalid_usb_device_handle)
     {
 		if (USBContext->sensor_device_handle != nullptr)
 		{
@@ -475,7 +473,7 @@ void MorpheusHMD::close()
 			hid_close(USBContext->sensor_device_handle);
 		}
 
-		if (USBContext->usb_device_handle != nullptr)
+		if (USBContext->usb_device_handle != k_invalid_usb_device_handle)
 		{
 			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD command interface";
 			morpheus_set_headset_power(USBContext, false);
@@ -530,7 +528,7 @@ MorpheusHMD::getUSBDevicePath() const
 bool
 MorpheusHMD::getIsOpen() const
 {
-    return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != nullptr;
+    return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != k_invalid_usb_device_handle;
 }
 
 IControllerInterface::ePollResult
@@ -603,33 +601,44 @@ MorpheusHMD::poll()
 }
 
 void
-MorpheusHMD::getTrackingShape(CommonDeviceTrackingShape &outTrackingShape) const
+MorpheusHMD::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
 {
-	outTrackingShape.shape_type = eCommonTrackingShapeType::PointCloud;
-	//###HipsterSloth TODO: These are just me eye balling the LED centers with a ruler
-	// This should really be computed using the calibration tool
-	outTrackingShape.shape.point_cloud.point[0].set(0.f, 0.f, 0.f); // 0
-	outTrackingShape.shape.point_cloud.point[1].set(8.f, 4.5f, -2.5f); // 1
-	outTrackingShape.shape.point_cloud.point[2].set(9.f, 0.f, -10.f); // 2
-	outTrackingShape.shape.point_cloud.point[3].set(8.f, -4.5f, -2.5f); // 3
-	outTrackingShape.shape.point_cloud.point[4].set(-8.f, 4.5f, -2.5f); // 4
-	outTrackingShape.shape.point_cloud.point[5].set(-9.f, 0.f, -10.f); // 5
-	outTrackingShape.shape.point_cloud.point[6].set(-8.f, -4.5f, -2.5f); // 6
-	outTrackingShape.shape.point_cloud.point[7].set(6.f, -1.f, -24.f); // 7
-	outTrackingShape.shape.point_cloud.point[8].set(-6.f, -1.f, -24.f); // 8
-	outTrackingShape.shape.point_cloud.point_count = 9;
+	outTrackingShape.shape_type = PSVRTrackingShape_PointCloud;
+    //###HipsterSloth: These values came from a 3d morpheus model
+    outTrackingShape.shape.pointcloud.points[0] = {0.00f, 0.00f, 0.00f}; // 0
+    outTrackingShape.shape.pointcloud.points[1] = {7.25f, 4.05f, -3.75f}; // 1
+    outTrackingShape.shape.pointcloud.points[2] = {9.05f, 0.00f, -9.65f}; // 2
+    outTrackingShape.shape.pointcloud.points[3] = {7.25f, -4.05f, -3.75f}; // 3
+    outTrackingShape.shape.pointcloud.points[4] = {-7.25f, 4.05f, -3.75f}; // 4
+    outTrackingShape.shape.pointcloud.points[5] = {-9.05f, 0.00f, -9.65f}; // 5
+    outTrackingShape.shape.pointcloud.points[6] = {-7.25f, -4.05f, -3.75f}; // 6
+    outTrackingShape.shape.pointcloud.points[7] = {5.65f, -1.07f, -27.53f}; // 7
+    outTrackingShape.shape.pointcloud.points[8] = {-5.65f, -1.07f, -27.53f}; // 8
+	//###HipsterSloth: These are just me eye balling the LED centers with a ruler
+    /*
+	outTrackingShape.shape.pointcloud.points[0] = {0.f, 0.f, 0.f}; // 0
+    outTrackingShape.shape.pointcloud.points[1] = {8.f, 4.5f, -2.5f}; // 1
+	outTrackingShape.shape.pointcloud.points[2] = {9.f, 0.f, -10.f}; // 2
+	outTrackingShape.shape.pointcloud.points[3] = {8.f, -4.5f, -2.5f}; // 3
+	outTrackingShape.shape.pointcloud.points[4] = {-8.f, 4.5f, -2.5f}; // 4
+	outTrackingShape.shape.pointcloud.points[5] = {-9.f, 0.f, -10.f}; // 5
+	outTrackingShape.shape.pointcloud.points[6] = {-8.f, -4.5f, -2.5f}; // 6
+	outTrackingShape.shape.pointcloud.points[7] = {6.f, -1.f, -24.f}; // 7
+	outTrackingShape.shape.pointcloud.points[8] = {-6.f, -1.f, -24.f}; // 8
+    */
+	outTrackingShape.shape.pointcloud.point_count = 9;
 }
 
 bool 
-MorpheusHMD::setTrackingColorID(const eCommonTrackingColorID tracking_color_id)
+MorpheusHMD::setTrackingColorID(const PSVRTrackingColorType tracking_color_id)
 {
     return false;
 }
 
 bool 
-MorpheusHMD::getTrackingColorID(eCommonTrackingColorID &out_tracking_color_id) const
+MorpheusHMD::getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const
 {
-	out_tracking_color_id = eCommonTrackingColorID::Blue;
+	out_tracking_color_id = PSVRTrackingColorType_Blue;
 	return true;
 }
 
@@ -657,7 +666,7 @@ long MorpheusHMD::getMaxPollFailureCount() const
 
 void MorpheusHMD::setTrackingEnabled(bool bEnable)
 {
-	if (USBContext->usb_device_handle != nullptr)
+	if (USBContext->usb_device_handle != k_invalid_usb_device_handle)
 	{
 		if (!bIsTracking && bEnable)
 		{
@@ -676,94 +685,59 @@ void MorpheusHMD::setTrackingEnabled(bool bEnable)
 static bool morpheus_open_usb_device(
 	MorpheusUSBContext *morpheus_context)
 {
-	bool bSuccess = true;
-	if (libusb_init(&morpheus_context->usb_context) == LIBUSB_SUCCESS)
-	{
-		libusb_set_debug(morpheus_context->usb_context, 3);
-	}
-	else
-	{
-		PSVR_LOG_ERROR("morpeus_open_usb_device") << "libusb context initialization failed!";
-		bSuccess = false;
-	}
+	bool bSuccess = false;
 
-	if (bSuccess)
-	{
-		morpheus_context->usb_device_handle = 
-			libusb_open_device_with_vid_pid(
-				morpheus_context->usb_context,
-				MORPHEUS_VENDOR_ID, MORPHEUS_PRODUCT_ID);
+    USBDeviceEnumerator* usb_device_enumerator= usb_device_enumerator_allocate(DeviceClass::DeviceClass_RawUSB);
 
-		if (morpheus_context->usb_device_handle == nullptr)
-		{
-			PSVR_LOG_ERROR("morpeus_open_usb_device") << "Morpheus USB device not found!";
-			bSuccess = false;
-		}
-	}
+    if (usb_device_enumerator != nullptr)
+    {
+        while (!bSuccess && usb_device_enumerator_is_valid(usb_device_enumerator))
+        {
+            USBDeviceFilter deviceInfo;
+            if (usb_device_enumerator_get_filter(usb_device_enumerator, deviceInfo) &&
+                deviceInfo.vendor_id == MORPHEUS_VENDOR_ID &&
+                deviceInfo.product_id == MORPHEUS_PRODUCT_ID &&
+                (deviceInfo.interface_mask & (1 << MORPHEUS_COMMAND_INTERFACE)) > 0)
+            {
+                bSuccess= true;
+                break;
+            }
+            else
+            {
+                usb_device_enumerator_next(usb_device_enumerator);
+            }
+        }        
+    }
 
-	if (bSuccess)
-	{
-		libusb_device *device = libusb_get_device(morpheus_context->usb_device_handle);
-		int result = libusb_get_config_descriptor_by_value(
-			device, 
-			MORPHEUS_CONFIGURATION_PSVR, 
-			&morpheus_context->usb_device_descriptor);
+    if (bSuccess)
+    {
+	    const t_usb_device_handle usb_device_handle = usb_device_open(usb_device_enumerator, MORPHEUS_COMMAND_INTERFACE);
+	    if (usb_device_handle != k_invalid_usb_device_handle)
+	    {
+		    PSVR_LOG_INFO("morpeus_open_usb_devicen") << "  Successfully opened USB handle " << usb_device_handle;
 
-		if (result != LIBUSB_SUCCESS) 
-		{
-			PSVR_LOG_ERROR("morpeus_open_usb_device") << "Failed to retrieve Morpheus usb config descriptor";
-			bSuccess = false;
-		}
-	}
+            char szPathBuffer[512];
+            if (usb_device_enumerator_get_path(usb_device_enumerator, szPathBuffer, sizeof(szPathBuffer)))
+            {
+                morpheus_context->usb_device_path = szPathBuffer;
+            }
 
-	for (int interface_index = 0; 
-		 bSuccess && interface_index < morpheus_context->usb_device_descriptor->bNumInterfaces; 
-		 interface_index++) 
-	{
-		int mask = 1 << interface_index;
+		    morpheus_context->usb_device_handle = usb_device_handle;
+	    }
+	    else
+	    {
+		    PSVR_LOG_ERROR("morpeus_open_usb_device") << "  Failed to open USB handle " << usb_device_handle;
+	    }
+    }
+    else
+    {
+        PSVR_LOG_ERROR("morpeus_open_usb_device") << "  Failed to find Morpheus USB command interface (VID:0x054c, PID: 0x09af, Interface: 5)";
+    }
 
-		if (MORPHEUS_USB_INTERFACES_MASK_TO_CLAIM & mask) 
-		{
-			int result = 0;
-
-			#ifndef _WIN32
-			result = libusb_kernel_driver_active(morpheus_context->usb_device_handle, interface_index);
-			if (result < 0) 
-			{
-				PSVR_LOG_ERROR("morpeus_open_usb_device") << "USB Interface #"<< interface_index <<" driver status failed";
-				bSuccess = false;
-			}
-
-			if (bSuccess && result == 1)
-			{
-				PSVR_LOG_ERROR("morpeus_open_usb_device") << "Detach kernel driver on interface #" << interface_index;
-
-				result = libusb_detach_kernel_driver(morpheus_context->usb_device_handle, interface_index);
-				if (result != LIBUSB_SUCCESS) 
-				{
-					PSVR_LOG_ERROR("morpeus_open_usb_device") << "Interface #" << interface_index << " detach failed";
-					bSuccess = false;
-				}
-			}
-			#endif //_WIN32
-
-			result = libusb_claim_interface(morpheus_context->usb_device_handle, interface_index);
-			if (result == LIBUSB_SUCCESS)
-			{
-				morpheus_context->usb_claimed_interface_mask |= mask;
-			}
-			else
-			{
-				PSVR_LOG_ERROR("morpeus_open_usb_device") << "Interface #" << interface_index << " claim failed";
-				bSuccess = false;
-			}
-		}
-	}
-
-	if (!bSuccess)
-	{
-		morpheus_close_usb_device(morpheus_context);
-	}
+    if (usb_device_enumerator != nullptr)
+    {
+        usb_device_enumerator_free(usb_device_enumerator);
+    }
 
 	return bSuccess;
 }
@@ -771,33 +745,11 @@ static bool morpheus_open_usb_device(
 static void morpheus_close_usb_device(
 	MorpheusUSBContext *morpheus_context)
 {
-	for (int interface_index = 0; morpheus_context->usb_claimed_interface_mask != 0; ++interface_index) 
+	if (morpheus_context->usb_device_handle != k_invalid_usb_device_handle)
 	{
-		int interface_mask = 1 << interface_index;
-
-		if ((morpheus_context->usb_claimed_interface_mask & interface_mask) != 0)
-		{
-			libusb_release_interface(morpheus_context->usb_device_handle, interface_index);
-			morpheus_context->usb_claimed_interface_mask &= ~interface_mask;
-		}
-	}
-
-	if (morpheus_context->usb_device_descriptor != nullptr)
-	{
-		libusb_free_config_descriptor(morpheus_context->usb_device_descriptor);
-		morpheus_context->usb_device_descriptor = nullptr;
-	}
-
-	if (morpheus_context->usb_device_handle != nullptr)
-	{
-		libusb_close(morpheus_context->usb_device_handle);
-		morpheus_context->usb_device_handle = nullptr;
-	}
-
-	if (morpheus_context->usb_context != nullptr)
-	{
-		libusb_exit(morpheus_context->usb_context);
-		morpheus_context->usb_context = nullptr;
+		PSVR_LOG_INFO("morpheus_close_usb_device") << "Closing PSNaviController(" << morpheus_context->usb_device_path << ")";
+		usb_device_close(morpheus_context->usb_device_handle);
+		morpheus_context->usb_device_handle = k_invalid_usb_device_handle;
 	}
 }
 
@@ -898,29 +850,48 @@ static bool morpheus_send_command(
 	MorpheusUSBContext *morpheus_context,
 	MorpheusCommand &command)
 {
-	if (morpheus_context->usb_device_handle != nullptr)
-	{
-		const size_t command_length = static_cast<size_t>(command.header.length) + sizeof(command.header);
-		const int endpointAddress =
-			(morpheus_context->usb_device_descriptor->interface[MORPHEUS_COMMAND_INTERFACE]
-				.altsetting[0]
-				.endpoint[0]
-				.bEndpointAddress) & ~MORPHEUS_ENDPOINT_IN;
+    bool bSuccess= false;
 
-		int transferredByteCount = 0;
-		int result =
-			libusb_bulk_transfer(
-				morpheus_context->usb_device_handle,
-				endpointAddress,
-				(unsigned char *)&command,
-				command_length,
-				&transferredByteCount,
-				0);
-
-		return result == LIBUSB_SUCCESS && transferredByteCount == command_length;
-	}
-	else
+	if (morpheus_context->usb_device_handle != k_invalid_usb_device_handle)
 	{
-		return false;
+        const int endpointAddress = 0x84;
+		//const int endpointAddress =
+		//	(morpheus_context->usb_device_descriptor->interface[MORPHEUS_COMMAND_INTERFACE]
+		//		.altsetting[0]
+		//		.endpoint[0]
+		//		.bEndpointAddress) & ~MORPHEUS_ENDPOINT_IN;
+
+        const size_t command_length = static_cast<size_t>(command.header.length) + sizeof(command.header);
+	    int result = 0;
+
+	    USBTransferRequest transfer_request;
+	    transfer_request.request_type = _USBRequestType_InterruptTransfer;
+
+	    USBRequestPayload_InterruptTransfer &interrupt_transfer = transfer_request.payload.interrupt_transfer;
+	    interrupt_transfer.usb_device_handle = morpheus_context->usb_device_handle;
+	    interrupt_transfer.endpoint = endpointAddress;
+	    interrupt_transfer.length = static_cast<unsigned int>(command_length);
+	    interrupt_transfer.timeout = INTERRUPT_TRANSFER_TIMEOUT;
+
+		static_assert(sizeof(transfer_request.payload.bulk_transfer.data) >= sizeof(MorpheusCommand), "bulk_transfer max payload too small for MorpheusCommand");
+		memcpy(transfer_request.payload.interrupt_transfer.data, (unsigned char *)&command, command_length);
+
+	    USBTransferResult transfer_result = usb_device_submit_transfer_request_blocking(transfer_request);
+	    assert(transfer_result.result_type == _USBRequestType_InterruptTransfer);
+
+	    if (transfer_result.payload.interrupt_transfer.result_code == _USBResultCode_Completed)
+	    {
+		    result = transfer_result.payload.interrupt_transfer.dataLength;
+            bSuccess= true;
+	    }
+	    else
+	    {
+		    const char * error_text = usb_device_get_error_string(transfer_result.payload.interrupt_transfer.result_code);
+		    PSVR_LOG_ERROR("morpheus_send_command") << "interrupt transfer failed with error: " << error_text;
+		    result = -static_cast<int>(transfer_result.payload.interrupt_transfer.result_code);
+	    }
 	}
+
+
+    return bSuccess;
 }

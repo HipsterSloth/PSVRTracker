@@ -34,9 +34,57 @@ VirtualHMDConfig::writeToJSON()
         {"Calibration.Time.MeanUpdateTime", mean_update_time_delta},
         {"PositionFilter.FilterType", position_filter_type},
         {"PositionFilter.MaxVelocity", max_velocity},
-        {"prediction_time", prediction_time},
-        {"bulb_radius", bulb_radius}
+        {"prediction_time", prediction_time}
     };
+
+    switch (trackingShape.shape_type)
+    {
+    case PSVRTrackingShape_Sphere:
+        pt["tracking_shape"] = "sphere";
+        pt["bulb.radius"] = trackingShape.shape.sphere.radius;
+        break;
+    case PSVRTrackingShape_LightBar:
+        pt["tracking_shape"]= "light_bar";
+        pt["lightbar.quad.v0.x"]= trackingShape.shape.lightbar.quad[0].x;
+        pt["lightbar.quad.v0.y"]= trackingShape.shape.lightbar.quad[0].y;
+        pt["lightbar.quad.v0.z"]= trackingShape.shape.lightbar.quad[0].z;
+        pt["lightbar.quad.v1.x"]= trackingShape.shape.lightbar.quad[1].x;
+        pt["lightbar.quad.v1.y"]= trackingShape.shape.lightbar.quad[1].y;
+        pt["lightbar.quad.v1.z"]= trackingShape.shape.lightbar.quad[1].z;
+        pt["lightbar.quad.v2.x"]= trackingShape.shape.lightbar.quad[2].x;
+        pt["lightbar.quad.v2.y"]= trackingShape.shape.lightbar.quad[2].y;
+        pt["lightbar.quad.v2.z"]= trackingShape.shape.lightbar.quad[2].z;
+        pt["lightbar.quad.v3.x"]= trackingShape.shape.lightbar.quad[3].x;
+        pt["lightbar.quad.v3.y"]= trackingShape.shape.lightbar.quad[3].y;
+        pt["lightbar.quad.v3.z"]= trackingShape.shape.lightbar.quad[3].z;
+        pt["lightbar.triangle.v0.x"]= trackingShape.shape.lightbar.triangle[0].x;
+        pt["lightbar.triangle.v0.y"]= trackingShape.shape.lightbar.triangle[0].y;
+        pt["lightbar.triangle.v0.z"]= trackingShape.shape.lightbar.triangle[0].z;
+        pt["lightbar.triangle.v1.x"]= trackingShape.shape.lightbar.triangle[1].x;
+        pt["lightbar.triangle.v1.y"]= trackingShape.shape.lightbar.triangle[1].y;
+        pt["lightbar.triangle.v1.z"]= trackingShape.shape.lightbar.triangle[1].z;
+        pt["lightbar.triangle.v2.x"]= trackingShape.shape.lightbar.triangle[2].x;
+        pt["lightbar.triangle.v2.y"]= trackingShape.shape.lightbar.triangle[2].y;
+        pt["lightbar.triangle.v2.z"]= trackingShape.shape.lightbar.triangle[2].z;
+        break;
+    case PSVRTrackingShape_PointCloud:
+        pt["tracking_shape"]= "point_cloud";
+        pt["points.count"]= trackingShape.shape.pointcloud.point_count;
+        for (int point_index= 0; point_index < trackingShape.shape.pointcloud.point_count; ++point_index)
+        {
+            const char axis_label[3]= {'x', 'y', 'z'};
+            const float* axis_values= (const float *)&trackingShape.shape.pointcloud.points[point_index];
+
+            for (int axis_index = 0; axis_index < 3; ++axis_index)
+            {
+                char key[64];
+
+                Utility::format_string(key, sizeof(key), "points.v%d.%c", point_index, axis_label[axis_index]);
+                pt[key]= axis_values[axis_index];
+            }
+        }
+        break;
+    }
 
     writeTrackingColor(pt, tracking_color_id);
 
@@ -63,8 +111,61 @@ VirtualHMDConfig::readFromJSON(const configuru::Config &pt)
         max_velocity = pt.get_or<float>("PositionFilter.MaxVelocity", max_velocity);
 
         // Read the tracking color
-        tracking_color_id = static_cast<eCommonTrackingColorID>(readTrackingColor(pt));
-        bulb_radius = pt.get_or<float>("bulb_radius", bulb_radius);
+        tracking_color_id = static_cast<PSVRTrackingColorType>(readTrackingColor(pt));
+
+        std::string shape_type= pt.get_or<std::string>("tracking_shape", "sphere");
+        if (shape_type == "sphere")
+            trackingShape.shape_type= PSVRTrackingShape_Sphere;
+        else if (shape_type == "light_bar")
+            trackingShape.shape_type= PSVRTrackingShape_LightBar;
+        else if (shape_type == "point_cloud")
+            trackingShape.shape_type= PSVRTrackingShape_PointCloud;
+
+        switch (trackingShape.shape_type)
+        {
+        case PSVRTrackingShape_Sphere:
+            trackingShape.shape.sphere.radius= pt.get_or<float>("bulb.radius", 2.25f);
+            break;
+        case PSVRTrackingShape_LightBar:
+            trackingShape.shape.lightbar.quad[0].x= pt.get_or<float>("lightbar.quad.v0.x", 0.0f);
+            trackingShape.shape.lightbar.quad[0].y= pt.get_or<float>("lightbar.quad.v0.y", 0.0f);
+            trackingShape.shape.lightbar.quad[0].z= pt.get_or<float>("lightbar.quad.v0.z", 0.0f);
+            trackingShape.shape.lightbar.quad[1].x= pt.get_or<float>("lightbar.quad.v1.x", 0.0f);
+            trackingShape.shape.lightbar.quad[1].y= pt.get_or<float>("lightbar.quad.v1.y", 0.0f);
+            trackingShape.shape.lightbar.quad[1].z= pt.get_or<float>("lightbar.quad.v1.z", 0.0f);
+            trackingShape.shape.lightbar.quad[2].x= pt.get_or<float>("lightbar.quad.v2.x", 0.0f);
+            trackingShape.shape.lightbar.quad[2].y= pt.get_or<float>("lightbar.quad.v2.y", 0.0f);
+            trackingShape.shape.lightbar.quad[2].z= pt.get_or<float>("lightbar.quad.v2.z", 0.0f);
+            trackingShape.shape.lightbar.quad[3].x= pt.get_or<float>("lightbar.quad.v3.x", 0.0f);
+            trackingShape.shape.lightbar.quad[3].y= pt.get_or<float>("lightbar.quad.v3.y", 0.0f);
+            trackingShape.shape.lightbar.quad[3].z= pt.get_or<float>("lightbar.quad.v3.z", 0.0f);
+            trackingShape.shape.lightbar.triangle[0].x= pt.get_or<float>("lightbar.triangle.v0.x", 0.0f);
+            trackingShape.shape.lightbar.triangle[0].y= pt.get_or<float>("lightbar.triangle.v0.y", 0.0f);
+            trackingShape.shape.lightbar.triangle[0].z= pt.get_or<float>("lightbar.triangle.v0.z", 0.0f);
+            trackingShape.shape.lightbar.triangle[1].x= pt.get_or<float>("lightbar.triangle.v1.x", 0.0f);
+            trackingShape.shape.lightbar.triangle[1].y= pt.get_or<float>("lightbar.triangle.v1.y", 0.0f);
+            trackingShape.shape.lightbar.triangle[1].z= pt.get_or<float>("lightbar.triangle.v1.z", 0.0f);
+            trackingShape.shape.lightbar.triangle[2].x= pt.get_or<float>("lightbar.triangle.v2.x", 0.0f);
+            trackingShape.shape.lightbar.triangle[2].y= pt.get_or<float>("lightbar.triangle.v2.y", 0.0f);
+            trackingShape.shape.lightbar.triangle[2].z= pt.get_or<float>("lightbar.triangle.v2.z", 0.0f);
+            break;
+        case PSVRTrackingShape_PointCloud:
+            trackingShape.shape.pointcloud.point_count= std::min(pt.get_or<int>("points.count", 0), (int)MAX_POINT_CLOUD_POINT_COUNT);
+            for (int point_index= 0; point_index < trackingShape.shape.pointcloud.point_count; ++point_index)
+            {
+                const char axis_label[3]= {'x', 'y', 'z'};
+                float* axis_values= (float *)&trackingShape.shape.pointcloud.points[point_index];
+
+                for (int axis_index = 0; axis_index < 3; ++axis_index)
+                {
+                    char key[64];
+
+                    Utility::format_string(key, sizeof(key), "points.v%d.%c", point_index, axis_label[axis_index]);
+                    axis_values[axis_index]= pt.get_or<float>(key, 0.f);
+                }
+            }
+            break;
+        }
     }
     else
     {
@@ -226,15 +327,13 @@ VirtualHMD::poll()
 }
 
 void
-VirtualHMD::getTrackingShape(CommonDeviceTrackingShape &outTrackingShape) const
+VirtualHMD::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
 {
-    outTrackingShape.shape_type = eCommonTrackingShapeType::Sphere;
-    outTrackingShape.shape.sphere.radius_cm= cfg.bulb_radius;
+    outTrackingShape= cfg.trackingShape;
 }
 
-
 bool 
-VirtualHMD::setTrackingColorID(const eCommonTrackingColorID tracking_color_id)
+VirtualHMD::setTrackingColorID(const PSVRTrackingColorType tracking_color_id)
 {
     bool bSuccess = false;
 
@@ -249,7 +348,7 @@ VirtualHMD::setTrackingColorID(const eCommonTrackingColorID tracking_color_id)
 }
 
 bool 
-VirtualHMD::getTrackingColorID(eCommonTrackingColorID &out_tracking_color_id) const
+VirtualHMD::getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const
 {
     out_tracking_color_id = cfg.tracking_color_id;
     return true;

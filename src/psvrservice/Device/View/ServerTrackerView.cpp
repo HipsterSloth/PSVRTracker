@@ -2,24 +2,18 @@
 #include "DeviceEnumerator.h"
 #include "DeviceManager.h"
 #include "ServerTrackerView.h"
-#include "ServerControllerView.h"
 #include "ServerHMDView.h"
 #include "MathUtility.h"
 #include "MathEigen.h"
 #include "MathGLM.h"
 #include "MathAlignment.h"
 #include "PS3EyeTracker.h"
-#include "PSVRProtocol.pb.h"
 #include "Utility.h"
 #include "Logger.h"
-#include "ServerRequestHandler.h"
-#include "SharedTrackerState.h"
+#include "ServiceRequestHandler.h"
 #include "TrackerManager.h"
 #include "PoseFilterInterface.h"
 
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
 #include <memory>
 
 #include "opencv2/opencv.hpp"
@@ -469,7 +463,7 @@ public:
     // Return points in raw image space:
     // i.e. [0, 0] at lower left  to [frameWidth-1, frameHeight-1] at lower right
     bool computeBiggestNContours(
-        const CommonHSVColorRange &hsvColorRange,
+        const PSVR_HSVColorRange &hsvColorRange,
         t_opencv_int_contour_list &out_biggest_N_contours,
         std::vector<double> &out_contour_areas,
         const int max_contour_count,
@@ -619,12 +613,12 @@ public:
     }
     
     void
-    draw_pose_projection(const CommonDeviceTrackingProjection &pose_projection)
+    draw_pose_projection(const PSVRTrackingProjection &pose_projection)
     {
         // Draw the projection of the pose onto the shared mem buffer.
         switch (pose_projection.shape_type)
         {
-        case eCommonTrackingProjectionType::ProjectionType_Ellipse:
+        case PSVRShape_Ellipse:
             {
                 // For the sphere, its ellipse projection parameters should already
                 // be calculated, so we can use those parameters to draw an ellipse.
@@ -646,12 +640,12 @@ public:
                 cv::drawMarker(*bgrShmemBuffer, ell_center, cv::Scalar(0, 0, 255), 0,
                     (ell_size.height < ell_size.width) ? ell_size.height * 2 : ell_size.width * 2);
             } break;
-        case eCommonTrackingProjectionType::ProjectionType_LightBar:
+        case PSVRShape_LightBar:
             {
                 int prev_point_index;
 
-                prev_point_index = CommonDeviceTrackingShape::QuadVertexCount - 1;
-                for (int point_index = 0; point_index < CommonDeviceTrackingShape::QuadVertexCount; ++point_index)
+                prev_point_index = PSVRTrackingShape::QuadVertexCount - 1;
+                for (int point_index = 0; point_index < PSVRTrackingShape::QuadVertexCount; ++point_index)
                 {
                     cv::Point pt1(
                         static_cast<int>(pose_projection.shape.lightbar.quad[prev_point_index].x),
@@ -664,8 +658,8 @@ public:
                     prev_point_index = point_index;
                 }
 
-                prev_point_index = CommonDeviceTrackingShape::TriVertexCount - 1;
-                for (int point_index = 0; point_index < CommonDeviceTrackingShape::TriVertexCount; ++point_index)
+                prev_point_index = PSVRTrackingShape::TriVertexCount - 1;
+                for (int point_index = 0; point_index < PSVRTrackingShape::TriVertexCount; ++point_index)
                 {
                     cv::Point pt1(
                         static_cast<int>(pose_projection.shape.lightbar.triangle[prev_point_index].x),
@@ -679,7 +673,7 @@ public:
                 }
                 
             } break;
-        case eCommonTrackingProjectionType::ProjectionType_Points:
+        case PSVRShape_PointCloud:
             {
                 for (int point_index = 0; point_index < pose_projection.shape.points.point_count; ++point_index)
                 {
@@ -722,27 +716,27 @@ static void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_
                                                cv::Matx<float, 5, 1> &distortionOut);
 static cv::Matx34f computeOpenCVCameraPinholeMatrix(const ITrackerInterface *tracker_device);
 static bool computeTrackerRelativeLightBarProjection(
-    const CommonDeviceTrackingShape *tracking_shape,
+    const PSVRTrackingShape *tracking_shape,
     const t_opencv_float_contour &opencv_contour,
-    CommonDeviceTrackingProjection *out_projection);
+    PSVRTrackingProjection *out_projection);
 static bool computeTrackerRelativeLightBarPose(
     const ITrackerInterface *tracker_device,
-    const CommonDeviceTrackingShape *tracking_shape,
-    const CommonDeviceTrackingProjection *projection,
-    const CommonDevicePose *tracker_relative_pose_guess,
+    const PSVRTrackingShape *tracking_shape,
+    const PSVRTrackingProjection *projection,
+    const PSVRPosef *tracker_relative_pose_guess,
     ControllerOpticalPoseEstimation *out_pose_estimate);
 static bool computeTrackerRelativePointCloudContourPose(
     const ITrackerInterface *tracker_device,
-    const CommonDeviceTrackingShape *tracking_shape,
+    const PSVRTrackingShape *tracking_shape,
     const t_opencv_float_contour_list &opencv_contours,
-    const CommonDevicePose *tracker_relative_pose_guess,
+    const PSVRPosef *tracker_relative_pose_guess,
     HMDOpticalPoseEstimation *out_pose_estimate);
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool disabled_roi,
     const ServerTrackerView *tracker,
     const IPoseFilter* pose_filter,
-    const CommonDeviceTrackingProjection *prior_tracking_projection,
-    const CommonDeviceTrackingShape *tracking_shape);
+    const PSVRTrackingProjection *prior_tracking_projection,
+    const PSVRTrackingShape *tracking_shape);
 static bool computeBestFitTriangleForContour(
     const t_opencv_float_contour &opencv_contour,
     cv::Point2f &out_triangle_top,
@@ -757,7 +751,7 @@ static bool computeBestFitQuadForContour(
     cv::Point2f &bottom_left,
     cv::Point2f &bottom_right);
 static void commonDeviceOrientationToOpenCVRodrigues(
-    const CommonDeviceQuaternion &orientation,
+    const PSVRQuatf &orientation,
     cv::Mat &rvec);
 static void openCVRodriguesToAngleAxis(
     const cv::Mat &rvec,
@@ -767,7 +761,7 @@ static void angleAxisVectorToEulerAngles(
     float &yaw, float &pitch, float &roll);
 static void angleAxisVectorToCommonDeviceOrientation(
     const float axis_x, const float axis_y, const float axis_z, const float radians,
-    CommonDeviceQuaternion &orientation);
+    PSVRQuatf &orientation);
 
 //-- public implementation -----
 ServerTrackerView::ServerTrackerView(const int device_id)
@@ -1129,13 +1123,13 @@ void ServerTrackerView::setCameraIntrinsics(
         distortionP1, distortionP2);
 }
 
-CommonDevicePose ServerTrackerView::getTrackerPose() const
+PSVRPosef ServerTrackerView::getTrackerPose() const
 {
     return m_device->getTrackerPose();
 }
 
 void ServerTrackerView::setTrackerPose(
-    const struct CommonDevicePose *pose)
+    const PSVRPosef *pose)
 {
     m_device->setTrackerPose(pose);
 }
@@ -1195,8 +1189,8 @@ void ServerTrackerView::gatherTrackingColorPresets(
 
 void ServerTrackerView::setControllerTrackingColorPreset(
     const class ServerControllerView *controller,
-    eCommonTrackingColorID color, 
-    const CommonHSVColorRange *preset)
+    PSVRTrackingColorType color, 
+    const PSVR_HSVColorRange *preset)
 {
     std::string controller_id= (controller != nullptr) ? controller->getConfigIdentifier() : "";
 
@@ -1205,8 +1199,8 @@ void ServerTrackerView::setControllerTrackingColorPreset(
 
 void ServerTrackerView::getControllerTrackingColorPreset(
     const class ServerControllerView *controller,
-    eCommonTrackingColorID color,
-    CommonHSVColorRange *out_preset) const
+    PSVRTrackingColorType color,
+    PSVR_HSVColorRange *out_preset) const
 {
     std::string controller_id= (controller != nullptr) ? controller->getConfigIdentifier() : "";
 
@@ -1215,8 +1209,8 @@ void ServerTrackerView::getControllerTrackingColorPreset(
 
 void ServerTrackerView::setHMDTrackingColorPreset(
     const class ServerHMDView *hmd,
-    eCommonTrackingColorID color,
-    const CommonHSVColorRange *preset)
+    PSVRTrackingColorType color,
+    const PSVR_HSVColorRange *preset)
 {
     std::string hmd_id = (hmd != nullptr) ? hmd->getConfigIdentifier() : "";
 
@@ -1225,8 +1219,8 @@ void ServerTrackerView::setHMDTrackingColorPreset(
 
 void ServerTrackerView::getHMDTrackingColorPreset(
     const class ServerHMDView *hmd,
-    eCommonTrackingColorID color,
-    CommonHSVColorRange *out_preset) const
+    PSVRTrackingColorType color,
+    PSVR_HSVColorRange *out_preset) const
 {
     std::string hmd_id = (hmd != nullptr) ? hmd->getConfigIdentifier() : "";
 
@@ -1236,18 +1230,18 @@ void ServerTrackerView::getHMDTrackingColorPreset(
 bool
 ServerTrackerView::computeProjectionForController(
     const ServerControllerView* tracked_controller,
-    const CommonDeviceTrackingShape *tracking_shape,
+    const PSVRTrackingShape *tracking_shape,
     ControllerOpticalPoseEstimation *out_pose_estimate)
 {
     bool bSuccess = true;
 
     // Get the HSV filter used to find the tracking blob
-    CommonHSVColorRange hsvColorRange;
+    PSVR_HSVColorRange hsvColorRange;
     if (bSuccess)
     {
-        eCommonTrackingColorID tracked_color_id = tracked_controller->getTrackingColorID();
+        PSVRTrackingColorType tracked_color_id = tracked_controller->getTrackingColorID();
 
-        if (tracked_color_id != eCommonTrackingColorID::INVALID_COLOR)
+        if (tracked_color_id != PSVRTrackingColorType_INVALID)
         {
             getControllerTrackingColorPreset(tracked_controller, tracked_color_id, &hsvColorRange);
         }
@@ -1295,7 +1289,7 @@ ServerTrackerView::computeProjectionForController(
         switch (tracking_shape->shape_type)
         {
         // For the sphere projection we can go ahead and compute the full pose estimation now
-        case eCommonTrackingShapeType::Sphere:
+        case PSVRTrackingShape_Sphere:
             {
                 // Compute the convex hull of the contour
                 t_opencv_int_contour convex_contour;
@@ -1351,7 +1345,7 @@ ServerTrackerView::computeProjectionForController(
                     //We must reproject it onto the camera.
                     //TODO: Use opencv's project points instead of manual way below
                     //because it will account for distortion, at least for the center point.
-                    out_pose_estimate->projection.shape_type = eCommonTrackingProjectionType::ProjectionType_Ellipse;
+                    out_pose_estimate->projection.shape_type = PSVRShape_Ellipse;
                     out_pose_estimate->projection.shape.ellipse.center.set(
                         ellipse_projection.center.x()*camera_matrix.val[0] + camera_matrix.val[2],
                         ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]);
@@ -1368,7 +1362,7 @@ ServerTrackerView::computeProjectionForController(
             } break;
         // For the LightBar projection we only want to compute the projection shape.
         // The pose estimation is deferred until we know if we can leverage triangulation or not.
-        case eCommonTrackingShapeType::LightBar:
+        case PSVRTrackingShape_LightBar:
             {
                 // Draw the raw source contour
                 m_opencv_buffer_state->draw_contour(biggest_contours[0]);
@@ -1419,18 +1413,18 @@ ServerTrackerView::computeProjectionForController(
 
 bool ServerTrackerView::computeProjectionForHMD(
     const class ServerHMDView* tracked_hmd,
-    const struct CommonDeviceTrackingShape *tracking_shape,
+    const PSVRTrackingShape *tracking_shape,
     struct HMDOpticalPoseEstimation *out_pose_estimate)
 {
     bool bSuccess = true;
 
     // Get the HSV filter used to find the tracking blob
-    CommonHSVColorRange hsvColorRange;
+    PSVR_HSVColorRange hsvColorRange;
     if (bSuccess)
     {
-        eCommonTrackingColorID tracked_color_id = tracked_hmd->getTrackingColorID();
+        PSVRTrackingColorType tracked_color_id = tracked_hmd->getTrackingColorID();
 
-        if (tracked_color_id != eCommonTrackingColorID::INVALID_COLOR)
+        if (tracked_color_id != PSVRTrackingColorType_INVALID)
         {
             getHMDTrackingColorPreset(tracked_hmd, tracked_color_id, &hsvColorRange);
         }
@@ -1463,7 +1457,7 @@ bool ServerTrackerView::computeProjectionForHMD(
     {
         bSuccess = 
             m_opencv_buffer_state->computeBiggestNContours(
-                hsvColorRange, biggest_contours, contour_areas, CommonDeviceTrackingProjection::MAX_POINT_CLOUD_POINT_COUNT);
+                hsvColorRange, biggest_contours, contour_areas, PSVRTrackingProjection::MAX_POINT_CLOUD_POINT_COUNT);
     }
 
     // Compute the tracker relative 3d position of the controller from the contour
@@ -1476,7 +1470,7 @@ bool ServerTrackerView::computeProjectionForHMD(
         switch (tracking_shape->shape_type)
         {
         // For the sphere projection we can go ahead and compute the full pose estimation now
-        case eCommonTrackingShapeType::Sphere:
+        case PSVRTrackingShape_Sphere:
             {
                 // Compute the convex hull of the contour
                 t_opencv_int_contour convex_contour;
@@ -1532,7 +1526,7 @@ bool ServerTrackerView::computeProjectionForHMD(
                     //We must reproject it onto the camera.
                     //TODO: Use opencv's project points instead of manual way below
                     //because it will account for distortion, at least for the center point.
-                    out_pose_estimate->projection.shape_type = eCommonTrackingProjectionType::ProjectionType_Ellipse;
+                    out_pose_estimate->projection.shape_type = PSVRShape_Ellipse;
                     out_pose_estimate->projection.shape.ellipse.center.set(
                         ellipse_projection.center.x()*camera_matrix.val[0] + camera_matrix.val[2],
                         ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]);
@@ -1547,10 +1541,10 @@ bool ServerTrackerView::computeProjectionForHMD(
                     bSuccess = true;
                 }
             } break;
-        case eCommonTrackingShapeType::PointCloud:
+        case PSVRTrackingShape_PointCloud:
             {
                 const HMDOpticalPoseEstimation *prior_post_est= tracked_hmd->getTrackerPoseEstimate(getDeviceID());
-                CommonDevicePose tracker_pose_guess= {prior_post_est->position_cm, prior_post_est->orientation};
+                PSVRPosef tracker_pose_guess= {prior_post_est->position_cm, prior_post_est->orientation};
 
                 // Undistort the source contours
                 t_opencv_float_contour_list undistorted_contours;
@@ -1596,21 +1590,21 @@ bool ServerTrackerView::computeProjectionForHMD(
 
 bool 
 ServerTrackerView::computePoseForProjection(
-    const CommonDeviceTrackingProjection *projection,
-    const CommonDeviceTrackingShape *tracking_shape,
-    const CommonDevicePose *pose_guess,
+    const PSVRTrackingProjection *projection,
+    const PSVRTrackingShape *tracking_shape,
+    const PSVRPosef *pose_guess,
     ControllerOpticalPoseEstimation *out_pose_estimate)
 {
     bool bSuccess = false;
 
     switch (projection->shape_type)
     {
-    case eCommonTrackingShapeType::Sphere:
+    case PSVRTrackingShape_Sphere:
         {
             // Nothing to do. The pose estimate is already computed in computeProjectionForController()
             bSuccess = true;
         } break;
-    case eCommonTrackingShapeType::LightBar:
+    case PSVRTrackingShape_LightBar:
         {
             bSuccess =
                 computeTrackerRelativeLightBarPose(
@@ -1627,23 +1621,23 @@ ServerTrackerView::computePoseForProjection(
     return bSuccess;
 }
 
-CommonDevicePosition
+PSVRVector3f
 ServerTrackerView::computeWorldPosition(
-    const CommonDevicePosition *tracker_relative_position) const
+    const PSVRVector3f *tracker_relative_position) const
 {
     const glm::vec4 rel_pos(tracker_relative_position->x, tracker_relative_position->y, tracker_relative_position->z, 1.f);
     const glm::mat4 cameraTransform= computeGLMCameraTransformMatrix(m_device);
     const glm::vec4 world_pos = cameraTransform * rel_pos;
     
-    CommonDevicePosition result;
+    PSVRVector3f result;
     result.set(world_pos.x, world_pos.y, world_pos.z);
 
     return result;
 }
 
-CommonDeviceQuaternion
+PSVRQuatf
 ServerTrackerView::computeWorldOrientation(
-    const CommonDeviceQuaternion *tracker_relative_orientation) const
+    const PSVRQuatf *tracker_relative_orientation) const
 {
     // Compute a rotations that rotates from +X to global "forward"
     const TrackerManagerConfig &cfg = DeviceManager::getInstance()->m_tracker_manager->getConfig();
@@ -1658,7 +1652,7 @@ ServerTrackerView::computeWorldOrientation(
     const glm::quat camera_quat= computeGLMCameraTransformQuaternion(m_device);
     const glm::quat world_quat = global_forward_quat * camera_quat * rel_orientation;
     
-    CommonDeviceQuaternion result;
+    PSVRQuatf result;
     result.w= world_quat.w;
     result.x= world_quat.x;
     result.y= world_quat.y;
@@ -1667,23 +1661,23 @@ ServerTrackerView::computeWorldOrientation(
     return result;
 }
 
-CommonDevicePosition 
+PSVRVector3f 
 ServerTrackerView::computeTrackerPosition(
-    const CommonDevicePosition *world_relative_position) const
+    const PSVRVector3f *world_relative_position) const
 {
     const glm::vec4 world_pos(world_relative_position->x, world_relative_position->y, world_relative_position->z, 1.f);
     const glm::mat4 invCameraTransform= glm::inverse(computeGLMCameraTransformMatrix(m_device));
     const glm::vec4 rel_pos = invCameraTransform * world_pos;
     
-    CommonDevicePosition result;
+    PSVRVector3f result;
     result.set(rel_pos.x, rel_pos.y, rel_pos.z);
 
     return result;
 }
 
-CommonDeviceQuaternion 
+PSVRQuatf 
 ServerTrackerView::computeTrackerOrientation(
-    const CommonDeviceQuaternion *world_relative_orientation) const
+    const PSVRQuatf *world_relative_orientation) const
 {
     const glm::quat world_orientation(
         world_relative_orientation->w,
@@ -1694,7 +1688,7 @@ ServerTrackerView::computeTrackerOrientation(
     // combined_rotation = second_rotation * first_rotation;
     const glm::quat rel_quat = camera_inv_quat * world_orientation;
     
-    CommonDeviceQuaternion result;
+    PSVRQuatf result;
     result.w= rel_quat.w;
     result.x= rel_quat.x;
     result.y= rel_quat.y;
@@ -1703,20 +1697,20 @@ ServerTrackerView::computeTrackerOrientation(
     return result;
 }
 
-CommonDevicePose
+PSVRPosef
 ServerTrackerView::triangulateWorldPose(
     const ServerTrackerView *tracker, 
-    const CommonDeviceTrackingProjection *tracker_relative_projection,
+    const PSVRTrackingProjection *tracker_relative_projection,
     const ServerTrackerView *other_tracker,
-    const CommonDeviceTrackingProjection *other_tracker_relative_projection)
+    const PSVRTrackingProjection *other_tracker_relative_projection)
 {
     assert(tracker_relative_projection->shape_type == other_tracker_relative_projection->shape_type);
-    CommonDevicePose pose;
+    PSVRPosef pose;
 
     pose.clear();
     switch(tracker_relative_projection->shape_type)
     {
-    case eCommonTrackingProjectionType::ProjectionType_Ellipse:
+    case PSVRShape_Ellipse:
         {
             pose.PositionCm =
                 triangulateWorldPosition(
@@ -1726,29 +1720,29 @@ ServerTrackerView::triangulateWorldPose(
                     &other_tracker_relative_projection->shape.ellipse.center);
             pose.Orientation.clear();
         } break;
-    case eCommonTrackingProjectionType::ProjectionType_LightBar:
+    case PSVRShape_LightBar:
         {
             // Copy the lightbar triangle and quad screen space points into flat arrays
-            const int k_vertex_count= CommonDeviceTrackingShape::QuadVertexCount+CommonDeviceTrackingShape::TriVertexCount;
-            CommonDeviceScreenLocation screen_locations[k_vertex_count];
-            CommonDeviceScreenLocation other_screen_locations[k_vertex_count];			
-            for (int quad_index = 0; quad_index < CommonDeviceTrackingShape::QuadVertexCount; ++quad_index)
+            const int k_vertex_count= PSVRTrackingShape::QuadVertexCount+PSVRTrackingShape::TriVertexCount;
+            PSVRVector2f screen_locations[k_vertex_count];
+            PSVRVector2f other_screen_locations[k_vertex_count];			
+            for (int quad_index = 0; quad_index < PSVRTrackingShape::QuadVertexCount; ++quad_index)
             {
                 screen_locations[quad_index]= tracker_relative_projection->shape.lightbar.quad[quad_index];
                 other_screen_locations[quad_index]= other_tracker_relative_projection->shape.lightbar.quad[quad_index];
             }
-            for (int tri_index = 0; tri_index < CommonDeviceTrackingShape::TriVertexCount; ++tri_index)
+            for (int tri_index = 0; tri_index < PSVRTrackingShape::TriVertexCount; ++tri_index)
             {
-                screen_locations[CommonDeviceTrackingShape::QuadVertexCount + tri_index]= 
+                screen_locations[PSVRTrackingShape::QuadVertexCount + tri_index]= 
                     tracker_relative_projection->shape.lightbar.triangle[tri_index];
-                other_screen_locations[CommonDeviceTrackingShape::QuadVertexCount + tri_index]=
+                other_screen_locations[PSVRTrackingShape::QuadVertexCount + tri_index]=
                     other_tracker_relative_projection->shape.lightbar.triangle[tri_index];
             }
 
             // Triangulate the 7 points on the lightbar
             Eigen::Vector3f lightbar_points[k_vertex_count];
             {
-                CommonDevicePosition world_positions[k_vertex_count];
+                PSVRVector3f world_positions[k_vertex_count];
                 ServerTrackerView::triangulateWorldPositions(
                     tracker, 
                     screen_locations,
@@ -1759,7 +1753,7 @@ ServerTrackerView::triangulateWorldPose(
 
                 for (int point_index = 0; point_index < k_vertex_count; ++point_index)
                 {
-                    const CommonDevicePosition &p= world_positions[point_index];
+                    const PSVRVector3f &p= world_positions[point_index];
 
                     lightbar_points[point_index]= Eigen::Vector3f(p.x, p.y, p.z);
                 }
@@ -1775,7 +1769,7 @@ ServerTrackerView::triangulateWorldPose(
                 // Since the projection is planar and both trackers can see the projection
                 // it doesn't matter which tracker we use for the facing test.
                 {
-                    const CommonDevicePosition commonTrackerPosition= tracker->getTrackerPose().PositionCm;
+                    const PSVRVector3f commonTrackerPosition= tracker->getTrackerPose().PositionCm;
                     const Eigen::Vector3f trackerPosition(commonTrackerPosition.x, commonTrackerPosition.y, commonTrackerPosition.z);
                     const Eigen::Vector3f centroidToTracker= trackerPosition - centroid;
 
@@ -1793,19 +1787,19 @@ ServerTrackerView::triangulateWorldPose(
                 // Up is defined by the orientation of the lightbar vertices
                 {
                     const Eigen::Vector3f &mid_left_vertex= 
-                        (lightbar_points[CommonDeviceTrackingShape::QuadVertexUpperLeft] 
-                        + lightbar_points[CommonDeviceTrackingShape::QuadVertexLowerLeft]) / 2.f;
+                        (lightbar_points[PSVRTrackingShape::QuadVertexUpperLeft] 
+                        + lightbar_points[PSVRTrackingShape::QuadVertexLowerLeft]) / 2.f;
                     const Eigen::Vector3f &mid_right_vertex =
-                        (lightbar_points[CommonDeviceTrackingShape::QuadVertexUpperRight]
-                        + lightbar_points[CommonDeviceTrackingShape::QuadVertexLowerRight]) / 2.f;
+                        (lightbar_points[PSVRTrackingShape::QuadVertexUpperRight]
+                        + lightbar_points[PSVRTrackingShape::QuadVertexLowerRight]) / 2.f;
                     const Eigen::Vector3f right= mid_right_vertex - mid_left_vertex;
 
                     // Get the global definition of tracking space "forward" and "right"
                     const TrackerManagerConfig &cfg= DeviceManager::getInstance()->m_tracker_manager->getConfig();
-                    const CommonDeviceVector &global_forward = cfg.get_global_forward_axis();
-                    const CommonDeviceVector &global_right = cfg.get_global_right_axis();
-                    const Eigen::Vector3f eigen_global_forward(global_forward.i, global_forward.j, global_forward.k);
-                    const Eigen::Vector3f eigen_global_right(global_right.i, global_right.j, global_right.k);
+                    const PSVRVector3f global_forward = cfg.get_global_forward_axis();
+                    const PSVRVector3f global_right = cfg.get_global_right_axis();
+                    const Eigen::Vector3f eigen_global_forward(global_forward.x, global_forward.y, global_forward.z);
+                    const Eigen::Vector3f eigen_global_right(global_right.x, global_right.y, global_right.z);
 
                     // Compute the rotation that would align the global forward and right 
                     // with the normal and right vectors computed for the light bar
@@ -1833,7 +1827,7 @@ ServerTrackerView::triangulateWorldPose(
                 pose.clear();
             }
         } break;
-    case eCommonTrackingProjectionType::ProjectionType_Points:
+    case PSVRShape_PointCloud:
         {
             //###HipsterSloth $TODO
         } break;
@@ -1844,12 +1838,12 @@ ServerTrackerView::triangulateWorldPose(
     return pose;
 }
 
-CommonDevicePosition
+PSVRVector3f
 ServerTrackerView::triangulateWorldPosition(
     const ServerTrackerView *tracker, 
-    const CommonDeviceScreenLocation *screen_location,
+    const PSVRVector2f *screen_location,
     const ServerTrackerView *other_tracker,
-    const CommonDeviceScreenLocation *other_screen_location)
+    const PSVRVector2f *other_screen_location)
 {
     float screenWidth, screenHeight;
     tracker->getPixelDimensions(screenWidth, screenHeight);
@@ -1871,7 +1865,7 @@ ServerTrackerView::triangulateWorldPosition(
     cv::triangulatePoints(projMat1, projMat2, projPoints1, projPoints2, point3D);
 
     // Return the world space position
-    CommonDevicePosition result;
+    PSVRVector3f result;
     const float w = point3D.at<float>(3, 0);
     result.x = point3D.at<float>(0, 0) / w;
     result.y = point3D.at<float>(1, 0) / w;
@@ -1883,11 +1877,11 @@ ServerTrackerView::triangulateWorldPosition(
 void
 ServerTrackerView::triangulateWorldPositions(
     const ServerTrackerView *tracker, 
-    const CommonDeviceScreenLocation *screen_locations,
+    const PSVRVector2f *screen_locations,
     const ServerTrackerView *other_tracker,
-    const CommonDeviceScreenLocation *other_screen_locations,
+    const PSVRVector2f *other_screen_locations,
     const int screen_location_count,
-    CommonDevicePosition *out_result)
+    PSVRVector3f *out_result)
 {
     float screenWidth, screenHeight;
     tracker->getPixelDimensions(screenWidth, screenHeight);
@@ -1899,8 +1893,8 @@ ServerTrackerView::triangulateWorldPositions(
     std::vector<cv::Point2f> projPoints2;
     for (int point_index = 0; point_index < screen_location_count; ++point_index)
     {
-        const CommonDeviceScreenLocation &p1= screen_locations[point_index];
-        const CommonDeviceScreenLocation &p2= other_screen_locations[point_index];
+        const PSVRVector2f &p1= screen_locations[point_index];
+        const PSVRVector2f &p2= other_screen_locations[point_index];
 
         projPoints1.push_back(cv::Point2f(p1.x, p1.y));
         projPoints2.push_back(cv::Point2f(p2.x, p2.y));
@@ -1919,7 +1913,7 @@ ServerTrackerView::triangulateWorldPositions(
     // Return the world space positions
     for (int point_index = 0; point_index < screen_location_count; ++point_index)
     {
-        CommonDevicePosition &result= out_result[point_index];
+        PSVRVector3f &result= out_result[point_index];
 
         const float w = points3D.at<float>(3, point_index);
         result.x = points3D.at<float>(0, point_index) / w;
@@ -1929,8 +1923,8 @@ ServerTrackerView::triangulateWorldPositions(
 }
 
 
-std::vector<CommonDeviceScreenLocation>
-ServerTrackerView::projectTrackerRelativePositions(const std::vector<CommonDevicePosition> &objectPositions) const
+std::vector<PSVRVector2f>
+ServerTrackerView::projectTrackerRelativePositions(const std::vector<PSVRVector3f> &objectPositions) const
 {
     cv::Matx33f camera_matrix;
     cv::Matx<float, 5, 1> distortions;
@@ -1957,9 +1951,9 @@ ServerTrackerView::projectTrackerRelativePositions(const std::vector<CommonDevic
                       distortions,
                       projectedPoints);
     
-    std::vector<CommonDeviceScreenLocation> screenLocations;
+    std::vector<PSVRVector2f> screenLocations;
     for (i=0; i<projectedPoints.size(); ++i) {
-        CommonDeviceScreenLocation thisloc;
+        PSVRVector2f thisloc;
         thisloc.set(projectedPoints[i].x, projectedPoints[i].y);
         screenLocations.push_back(thisloc);
     }
@@ -1967,11 +1961,11 @@ ServerTrackerView::projectTrackerRelativePositions(const std::vector<CommonDevic
     return screenLocations;
 }
 
-CommonDeviceScreenLocation
-ServerTrackerView::projectTrackerRelativePosition(const CommonDevicePosition *trackerRelativePosition) const
+PSVRVector2f
+ServerTrackerView::projectTrackerRelativePosition(const PSVRVector3f *trackerRelativePosition) const
 {
-    std::vector<CommonDevicePosition> trp_vec {*trackerRelativePosition};
-    CommonDeviceScreenLocation screenLocation = projectTrackerRelativePositions(trp_vec)[0];
+    std::vector<PSVRVector3f> trp_vec {*trackerRelativePosition};
+    PSVRVector2f screenLocation = projectTrackerRelativePositions(trp_vec)[0];
 
     return screenLocation;
 }
@@ -1981,8 +1975,8 @@ ServerTrackerView::projectTrackerRelativePosition(const CommonDevicePosition *tr
 static glm::quat computeGLMCameraTransformQuaternion(const ITrackerInterface *tracker_device)
 {
 
-    const CommonDevicePose pose = tracker_device->getTrackerPose();
-    const CommonDeviceQuaternion &quat = pose.Orientation;
+    const PSVRPosef pose = tracker_device->getTrackerPose();
+    const PSVRQuatf &quat = pose.Orientation;
 
     const glm::quat glm_quat(quat.w, quat.x, quat.y, quat.z);
 
@@ -1992,9 +1986,9 @@ static glm::quat computeGLMCameraTransformQuaternion(const ITrackerInterface *tr
 static glm::mat4 computeGLMCameraTransformMatrix(const ITrackerInterface *tracker_device)
 {
 
-    const CommonDevicePose pose = tracker_device->getTrackerPose();
-    const CommonDeviceQuaternion &quat = pose.Orientation;
-    const CommonDevicePosition &pos = pose.PositionCm;
+    const PSVRPosef pose = tracker_device->getTrackerPose();
+    const PSVRQuatf &quat = pose.Orientation;
+    const PSVRVector3f &pos = pose.PositionCm;
 
     const glm::quat glm_quat(quat.w, quat.x, quat.y, quat.z);
     const glm::vec3 glm_pos(pos.x, pos.y, pos.z);
@@ -2045,11 +2039,11 @@ static cv::Matx34f computeOpenCVCameraPinholeMatrix(const ITrackerInterface *tra
 }
 
 static bool computeTrackerRelativeLightBarProjection(
-    const CommonDeviceTrackingShape *tracking_shape,
+    const PSVRTrackingShape *tracking_shape,
     const t_opencv_float_contour &opencv_contour,
-    CommonDeviceTrackingProjection *out_projection)
+    PSVRTrackingProjection *out_projection)
 {
-    assert(tracking_shape->shape_type == eCommonTrackingShapeType::LightBar);
+    assert(tracking_shape->shape_type == PSVRTrackingShape_LightBar);
 
     bool bValidTrackerProjection= true;
     float projectionArea= 0.f;
@@ -2103,7 +2097,7 @@ static bool computeTrackerRelativeLightBarProjection(
     // Return the projection of the tracking shape
     if (bValidTrackerProjection)
     {
-        out_projection->shape_type = eCommonTrackingProjectionType::ProjectionType_LightBar;
+        out_projection->shape_type = PSVRShape_LightBar;
 
         for (int vertex_index = 0; vertex_index < 3; ++vertex_index)
         {
@@ -2127,27 +2121,27 @@ static bool computeTrackerRelativeLightBarProjection(
 
 static bool computeTrackerRelativeLightBarPose(
     const ITrackerInterface *tracker_device,
-    const CommonDeviceTrackingShape *tracking_shape,
-    const CommonDeviceTrackingProjection *projection,
-    const CommonDevicePose *tracker_relative_pose_guess,
+    const PSVRTrackingShape *tracking_shape,
+    const PSVRTrackingProjection *projection,
+    const PSVRPosef *tracker_relative_pose_guess,
     ControllerOpticalPoseEstimation *out_pose_estimate)
 {
-    assert(tracking_shape->shape_type == eCommonTrackingShapeType::LightBar);
-    assert(projection->shape_type == eCommonTrackingProjectionType::ProjectionType_LightBar);
+    assert(tracking_shape->shape_type == PSVRTrackingShape_LightBar);
+    assert(projection->shape_type == PSVRShape_LightBar);
 
     bool bValidTrackerPose= true;
     std::vector<cv::Point2f> cvImagePoints;
 
     for (int vertex_index = 0; vertex_index < 3; ++vertex_index)
     {
-        const CommonDeviceScreenLocation &screenLocation= projection->shape.lightbar.triangle[vertex_index];
+        const PSVRVector2f &screenLocation= projection->shape.lightbar.triangle[vertex_index];
 
         cvImagePoints.push_back(cv::Point2f(screenLocation.x, screenLocation.y));
     }
 
     for (int vertex_index = 0; vertex_index < 4; ++vertex_index)
     {
-        const CommonDeviceScreenLocation &screenLocation = projection->shape.lightbar.quad[vertex_index];
+        const PSVRVector2f &screenLocation = projection->shape.lightbar.quad[vertex_index];
 
         cvImagePoints.push_back(cv::Point2f(screenLocation.x, screenLocation.y));
     }
@@ -2163,14 +2157,14 @@ static bool computeTrackerRelativeLightBarPose(
 
         for (int corner_index= 0; corner_index < 3; ++corner_index)
         {        
-            const CommonDevicePosition &corner = tracking_shape->shape.light_bar.triangle[corner_index];
+            const PSVRVector3f &corner = tracking_shape->shape.light_bar.triangle[corner_index];
 
             cvObjectPoints.push_back(cv::Point3f(corner.x, corner.y, corner.z));
         }
 
         for (int corner_index= 0; corner_index < 4; ++corner_index)
         {        
-            const CommonDevicePosition &corner = tracking_shape->shape.light_bar.quad[corner_index];
+            const PSVRVector3f &corner = tracking_shape->shape.light_bar.quad[corner_index];
 
             cvObjectPoints.push_back(cv::Point3f(corner.x, corner.y, corner.z));
         }
@@ -2246,7 +2240,7 @@ static bool computeTrackerRelativeLightBarPose(
 
             // Return the position in the pose
             {
-                CommonDevicePosition &position= out_pose_estimate->position_cm;
+                PSVRVector3f &position= out_pose_estimate->position_cm;
 
                 position.x = static_cast<float>(tvec.at<double>(0));
                 position.y = static_cast<float>(tvec.at<double>(1));
@@ -2262,12 +2256,12 @@ static bool computeTrackerRelativeLightBarPose(
 
 static bool computeTrackerRelativePointCloudContourPose(
     const ITrackerInterface *tracker_device,
-    const CommonDeviceTrackingShape *tracking_shape,
+    const PSVRTrackingShape *tracking_shape,
     const t_opencv_float_contour_list &opencv_contours,
-    const CommonDevicePose *tracker_relative_pose_guess,
+    const PSVRPosef *tracker_relative_pose_guess,
     HMDOpticalPoseEstimation *out_pose_estimate)
 {
-    assert(tracking_shape->shape_type == eCommonTrackingShapeType::PointCloud);
+    assert(tracking_shape->shape_type == PSVRTrackingShape_PointCloud);
 
     bool bValidTrackerPose = true;
     float projectionArea = 0.f;
@@ -2293,10 +2287,10 @@ static bool computeTrackerRelativePointCloudContourPose(
     // Return the projection of the tracking shape
     if (bValidTrackerPose)
     {
-        CommonDeviceTrackingProjection *out_projection = &out_pose_estimate->projection;
+        PSVRTrackingProjection *out_projection = &out_pose_estimate->projection;
         const int imagePointCount = static_cast<int>(cvImagePoints.size());
 
-        out_projection->shape_type = eCommonTrackingProjectionType::ProjectionType_Points;
+        out_projection->shape_type = PSVRShape_PointCloud;
 
         for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
         {
@@ -2316,8 +2310,8 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool roi_disabled,
     const ServerTrackerView *tracker,
     const IPoseFilter* pose_filter,
-    const CommonDeviceTrackingProjection *prior_tracking_projection,
-    const CommonDeviceTrackingShape *tracking_shape)
+    const PSVRTrackingProjection *prior_tracking_projection,
+    const PSVRTrackingShape *tracking_shape)
 {
     // Get expected ROI
     // Default to full screen.
@@ -2332,17 +2326,17 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     {
         // Get the (predicted) position in world space.
         Eigen::Vector3f position_cm = pose_filter->getPositionCm(0.f); 
-        CommonDevicePosition world_position_cm;
+        PSVRVector3f world_position_cm;
         world_position_cm.set(position_cm.x(), position_cm.y(), position_cm.z());
 
         // Get the (predicted) position in tracker-local space.
-        CommonDevicePosition tracker_position_cm = tracker->computeTrackerPosition(&world_position_cm);
+        PSVRVector3f tracker_position_cm = tracker->computeTrackerPosition(&world_position_cm);
 
         // Project the state computed position +/- object extents onto the image.
-        CommonDevicePosition tl, br;
+        PSVRVector3f tl, br;
         switch (tracking_shape->shape_type)
         {
-        case eCommonTrackingShapeType::Sphere:
+        case PSVRTrackingShape_Sphere:
             {
                 // Simply: center - radius, center + radius.
                 tl.set(tracker_position_cm.x - tracking_shape->shape.sphere.radius_cm,
@@ -2353,13 +2347,13 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
                     tracker_position_cm.z);
             } break;
 
-        case eCommonTrackingShapeType::LightBar:
+        case PSVRTrackingShape_LightBar:
             {
                 // Compute the bounding radius of the lightbar tracking shape
-                const auto &shape_tl = tracking_shape->shape.light_bar.quad[CommonDeviceTrackingShape::QuadVertexUpperLeft];
-                const auto &shape_br = tracking_shape->shape.light_bar.quad[CommonDeviceTrackingShape::QuadVertexLowerRight];
-                const CommonDeviceVector half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
-                const auto shape_radius = fmaxf(sqrtf(half_vec.i*half_vec.i + half_vec.j*half_vec.j + half_vec.k*half_vec.k), 1.f);
+                const auto &shape_tl = tracking_shape->shape.light_bar.quad[PSVRTrackingShape::QuadVertexUpperLeft];
+                const auto &shape_br = tracking_shape->shape.light_bar.quad[PSVRTrackingShape::QuadVertexLowerRight];
+                const PSVRVector3f half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
+                const auto shape_radius = fmaxf(sqrtf(half_vec.x*half_vec.x + half_vec.y*half_vec.y + half_vec.z*half_vec.z), 1.f);
 
                 // Simply: center - shape_radius, center + shape_radius.
                 tl.set(tracker_position_cm.x - shape_radius,
@@ -2370,19 +2364,19 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
                     tracker_position_cm.z);
             } break;
 
-        case eCommonTrackingShapeType::PointCloud:
+        case PSVRTrackingShape_PointCloud:
             {
                 // Compute the bounding radius of the point cloud
-                CommonDevicePosition shape_tl = tracking_shape->shape.point_cloud.point[0];
-                CommonDevicePosition shape_br = tracking_shape->shape.point_cloud.point[0];
+                PSVRVector3f shape_tl = tracking_shape->shape.point_cloud.point[0];
+                PSVRVector3f shape_br = tracking_shape->shape.point_cloud.point[0];
                 for (int point_index = 1; point_index < tracking_shape->shape.point_cloud.point_count; ++point_index)
                 {
-                    const CommonDevicePosition &point = tracking_shape->shape.point_cloud.point[point_index];
+                    const PSVRVector3f &point = tracking_shape->shape.point_cloud.point[point_index];
                     shape_tl.set(fmaxf(shape_tl.x, point.x), fmaxf(shape_tl.y, point.y), fmaxf(shape_tl.z, point.z));
                     shape_br.set(fminf(shape_br.x, point.x), fminf(shape_br.y, point.y), fminf(shape_br.z, point.z));
                 }
-                const CommonDeviceVector half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
-                const auto shape_radius = fmaxf(sqrtf(half_vec.i*half_vec.i + half_vec.j*half_vec.j + half_vec.k*half_vec.k), 1.f);
+                const PSVRVector3f half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
+                const auto shape_radius = fmaxf(sqrtf(half_vec.x*half_vec.x + half_vec.y*half_vec.y + half_vec.z*half_vec.z), 1.f);
 
                 // Simply: center - shape_radius, center + shape_radius.
                 tl.set(tracker_position_cm.x - shape_radius,
@@ -2400,27 +2394,27 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
         }
 
         // Extract the pixel projection center from the previous frame's projection.
-        CommonDeviceScreenLocation projection_pixel_center;
+        PSVRVector2f projection_pixel_center;
         projection_pixel_center.clear();
 
         switch (prior_tracking_projection->shape_type)
         {
-        case eCommonTrackingProjectionType::ProjectionType_Ellipse:
+        case PSVRShape_Ellipse:
             {
                 // Use the center of the ellipsoid projection for the ROI area
                 projection_pixel_center = prior_tracking_projection->shape.ellipse.center;
             } break;
 
-        case eCommonTrackingProjectionType::ProjectionType_LightBar:
+        case PSVRShape_LightBar:
             {
                 // Use the center of the quad projection for the ROI area
-                const auto proj_tl = prior_tracking_projection->shape.lightbar.quad[CommonDeviceTrackingShape::QuadVertexUpperLeft];
-                const auto proj_br = prior_tracking_projection->shape.lightbar.quad[CommonDeviceTrackingShape::QuadVertexLowerRight];
+                const auto proj_tl = prior_tracking_projection->shape.lightbar.quad[PSVRTrackingShape::QuadVertexUpperLeft];
+                const auto proj_br = prior_tracking_projection->shape.lightbar.quad[PSVRTrackingShape::QuadVertexLowerRight];
 
                 projection_pixel_center.set(0.5f * (proj_tl.x + proj_br.x), 0.5f * (proj_tl.y + proj_br.y));
             } break;
 
-        case eCommonTrackingProjectionType::ProjectionType_Points:
+        case PSVRShape_PointCloud:
             {
                 // Compute the centroid of the projection pixels
                 for (int point_index = 0; point_index < prior_tracking_projection->shape.points.point_count; ++point_index)
@@ -2444,8 +2438,8 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
         // The center of the ROI is the pixel projection center from last frame
         // The size of the ROI computed by projecting the bounding box 
         {
-            std::vector<CommonDevicePosition> trps{ tl, br };
-            std::vector<CommonDeviceScreenLocation> screen_locs = tracker->projectTrackerRelativePositions(trps);
+            std::vector<PSVRVector3f> trps{ tl, br };
+            std::vector<PSVRVector2f> screen_locs = tracker->projectTrackerRelativePositions(trps);
 
             const int proj_min_x = static_cast<int>(std::min(screen_locs[0].x, screen_locs[1].x));
             const int proj_max_x = static_cast<int>(std::max(screen_locs[0].x, screen_locs[1].x));
@@ -2666,7 +2660,7 @@ cv::Point2f computeSafeCenterOfMassForContour(const t_opencv_contour_type &conto
 
 // http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToAngle/index.htm
 static void commonDeviceOrientationToOpenCVRodrigues(
-    const CommonDeviceQuaternion &orientation,
+    const PSVRQuatf &orientation,
     cv::Mat &rvec)
 {
     double qw= clampf(orientation.w, -1.0, 1.0);
@@ -2741,7 +2735,7 @@ static void angleAxisVectorToEulerAngles(
 
 static void angleAxisVectorToCommonDeviceOrientation(
     const float axis_x, const float axis_y, const float axis_z, const float radians,
-    CommonDeviceQuaternion &orientation)
+    PSVRQuatf &orientation)
 {
     if (!is_nearly_zero(radians))
     {

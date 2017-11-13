@@ -1,12 +1,11 @@
 //-- includes -----
 #include "DeviceTypeManager.h"
 #include "DeviceEnumerator.h"
-#include "PSVRProtocol.pb.h"
 #include "Logger.h"
+#include "PSVRService.h"
 #include "ServerDeviceView.h"
-#include "ServerNetworkManager.h"
+#include "ServiceRequestHandler.h"
 #include "Utility.h"
-#include "ServerRequestHandler.h"
 
 //-- methods -----
 /// Constructor and set intervals (ms) for reconnect and polling
@@ -163,7 +162,7 @@ DeviceTypeManager::update_connected_devices()
                             // Mark the device as having showed up in the enumerator
                             exists_in_enumerator[device_id_] = true;
 
-                            // Send notificiation to clients that a new device was added
+                            // Send notification to clients that a new device was added
                             bSendControllerUpdatedNotification = true;
                         }
                         else
@@ -233,24 +232,22 @@ DeviceTypeManager::publish()
 void
 DeviceTypeManager::send_device_list_changed_notification()
 {
-    ResponsePtr response(new PSVRProtocol::Response);
-    response->set_type(static_cast<PSVRProtocol::Response_ResponseType>(getListUpdatedResponseType()));
-    response->set_request_id(-1);
-    response->set_result_code(PSVRProtocol::Response_ResultCode_RESULT_OK);
+    PSVREventMessage message;
+    message.event_type= static_cast<PSVREventType>(getListUpdatedResponseType());
 
-    ServerNetworkManager::get_instance()->send_notification_to_all_clients(response);
+    PSVRService::getInstance()->getRequestHandler()->publish_notification(message);
 }
 
 bool
 DeviceTypeManager::can_poll_connected_devices()
 {
-    return !ServiceRequestHandler::get_instance()->any_active_bluetooth_requests();
+    return true;
 }
 
 bool
 DeviceTypeManager::can_update_connected_devices()
 {
-    return !ServiceRequestHandler::get_instance()->any_active_bluetooth_requests();
+    return true;
 }
 
 void

@@ -67,7 +67,7 @@ private:
 };
 
 // -- Device Enumeration ----
-struct USBDeviceEnumerator* usb_device_enumerator_allocate();
+struct USBDeviceEnumerator* usb_device_enumerator_allocate(const DeviceClass deviceClass);
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator);
 bool usb_device_enumerator_get_filter(struct USBDeviceEnumerator* enumerator, USBDeviceFilter &outDeviceInfo);
 void usb_device_enumerator_next(struct USBDeviceEnumerator* enumerator);
@@ -75,7 +75,7 @@ void usb_device_enumerator_free(struct USBDeviceEnumerator* enumerator);
 bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize);
 
 // -- Device Actions ----
-t_usb_device_handle usb_device_open(struct USBDeviceEnumerator* enumerator);
+t_usb_device_handle usb_device_open(struct USBDeviceEnumerator* enumerator, int interface_index);
 void usb_device_close(t_usb_device_handle usb_device_handle);
 
 // Send the transfer request to the worker thread asynchronously

@@ -16,7 +16,10 @@ public:
     static PSVRService *getInstance()
     { return m_instance; }
 
-	bool startup(PSVRLogSeverityLevel log_level);
+	bool startup(
+        PSVRLogSeverityLevel log_level, 
+        class IDataFrameListener *data_frame_listener, 
+        class INotificationListener *notification_listener);
 	void update();
 	void shutdown();
 	

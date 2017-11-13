@@ -3,6 +3,8 @@
 
 // -- includes -----
 #include "PSVRClient_CAPI.h"
+#include "PSVRServiceInterface.h"
+#include <bitset>
 
 // -- pre-declarations -----
 class DeviceManager;
@@ -68,16 +70,41 @@ struct HMDStreamInfo
     }
 };
 
+struct PersistentRequestConnectionState
+{
+    std::bitset<PSVRSERVICE_MAX_TRACKER_COUNT> active_tracker_streams;
+    std::bitset<PSVRSERVICE_MAX_HMD_COUNT> active_hmd_streams;
+    TrackerStreamInfo active_tracker_stream_info[PSVRSERVICE_MAX_TRACKER_COUNT];
+    HMDStreamInfo active_hmd_stream_info[PSVRSERVICE_MAX_HMD_COUNT];
+
+    PersistentRequestConnectionState()
+        : active_tracker_streams()
+        , active_hmd_streams()
+    {
+        for (int index = 0; index < PSVRSERVICE_MAX_TRACKER_COUNT; ++index)
+        {
+            active_tracker_stream_info[index].Clear();
+        }
+        
+        for (int index = 0; index < PSVRSERVICE_MAX_HMD_COUNT; ++index)
+        {
+            active_hmd_stream_info[index].Clear();
+        }
+    }
+};
+
 class ServiceRequestHandler 
 {
 public:
-    ServiceRequestHandler(DeviceManager *deviceManager);
+    ServiceRequestHandler();
     virtual ~ServiceRequestHandler();
 
     static ServiceRequestHandler *get_instance() { return m_instance; }
 
-    bool startup();
-    void update();
+    bool startup(
+        class DeviceManager *deviceManager,
+        class IDataFrameListener *data_frame_listener, 
+        class INotificationListener *notification_listener);
     void shutdown();
 
     /// When publishing tracker data to all listening connections
@@ -103,6 +130,9 @@ public:
         DeviceOutputDataFrame &data_frame);
     void publish_hmd_data_frame(
         class ServerHMDView *hmd_view, t_generate_hmd_data_frame_for_stream callback);
+
+    /// Send a event to the client
+    void publish_notification(const PSVREventMessage &message);
 
     // -- tracker requests -----
     PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list);
@@ -130,13 +160,8 @@ public:
     PSVRResult set_tracker_option(
 		const PSVRTrackerID tracker_id, const std::string &option_name, const int desired_option_index, 
 		int *out_new_option_index);
-    PSVRResult handle_request__set_tracker_color_preset(
-        const PSVRTrackerID tracker_id, const PSVRHmdID hmd_id,
-		const PSVRTrackingColorType color_type,
-		const PSVR_HSVColorRange *desired_range, PSVR_HSVColorRange *out_result_range);
     PSVRResult set_tracker_pose(const PSVRTrackerID tracker_id, const PSVRPosef *pose);
     PSVRResult set_tracker_intrinsics(const PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *tracker_intrinsics);
-    PSVRResult reload_tracker_settings(const PSVRTrackerID tracker_id);
     PSVRResult get_tracking_space_settings(PSVRTrackingSpace *out_tracking_space);
 	
     // -- hmd requests -----
@@ -158,8 +183,12 @@ public:
     PSVRResult get_service_version(char *out_version_string, size_t max_version_string);		
 
 private:
-    // private implementation - same lifetime as the ServerRequestHandler
-    class ServerRequestHandlerImpl *m_implementation_ptr;
+    // Keeps track of all active stream state
+    PersistentRequestConnectionState *m_peristentRequestState;
+
+    class DeviceManager *m_deviceManager;
+    class IDataFrameListener *m_dataFrameListener;
+    class INotificationListener *m_notificationListener;
 
     // Singleton instance of the class
     // Assigned in startup, cleared in teardown

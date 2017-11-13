@@ -141,6 +141,8 @@ typedef struct
 			int point_count;
 		} pointcloud;
     } shape;
+
+    float screen_area; // area in pixels^2
 } PSVRTrackingProjectionData;
 
 typedef enum
@@ -178,7 +180,8 @@ typedef enum
     PSVRTrackingShape_INVALID = -1,
     PSVRTrackingShape_Sphere,
     PSVRTrackingShape_LightBar,
-    PSVRTrackingShape_PointCloud
+    PSVRTrackingShape_PointCloud,
+    PSVRTrackingShape_MAX
 } PSVRTrackingShapeType;
 
 /// A tracking shape of a controller or HMD
@@ -215,7 +218,7 @@ PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fScale(const PSVRVector2f *v, con
 PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fScaleAndAdd(const PSVRVector2f *v, const float s, const PSVRVector2f *b);
 /// Divides each component of a 2D vector by a scalar without checking for divide-by-zero
 PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fUnsafeScalarDivide(const PSVRVector2f *numerator, const float divisor);
-/// Divides each component of a 2D vector by the corresponding componenet of another vector without checking for a divide-by-zero
+/// Divides each component of a 2D vector by the corresponding component of another vector without checking for a divide-by-zero
 PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fUnsafeVectorDivide(const PSVRVector2f *numerator, const PSVRVector2f *divisor);
 /// Divides each component of a 2D vector by a scalar, returning a default vector in the case of divide by zero
 PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fSafeScalarDivide(const PSVRVector2f *numerator, const float divisor, const PSVRVector2f *default_result);

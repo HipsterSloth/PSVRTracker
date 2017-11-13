@@ -13,6 +13,7 @@ struct USBDeviceFilter
 {
     unsigned short vendor_id;
     unsigned short product_id;
+    unsigned int interface_mask;
 };
 
 #endif  // USB_DEVICE_INFO_H

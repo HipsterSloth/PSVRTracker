@@ -237,6 +237,9 @@ public:
     /// Not true until the filter has updated at least once
     virtual bool getIsStateValid() const = 0;
 
+    /// Get the duration the filter has be running since last reset
+    virtual double getTimeInSeconds() const = 0;
+
     /// Update the state in the filter given the filter packet
     virtual void update(const float delta_time, const PoseFilterPacket &packet) = 0;
 

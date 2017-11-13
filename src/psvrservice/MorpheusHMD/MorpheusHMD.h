@@ -37,7 +37,7 @@ public:
 		, orientation_variance(0.005f)
         , max_poll_failure_count(100)
         , prediction_time(0.f)
-		, tracking_color_id(eCommonTrackingColorID::Blue)
+		, tracking_color_id(PSVRTrackingColorType_Blue)
     {
 		// The Morpheus uses the BMI055 IMU Chip: 
 		// https://d3nevzfk7ii3be.cloudfront.net/igi/hnlrYUv5BUb6lMoW.huge
@@ -56,25 +56,25 @@ public:
 		// see http://stackoverflow.com/questions/19161872/meaning-of-lsb-unit-and-unit-lsb
 
 		// Accelerometer configured at ±2g, 1024 LSB/g
-		accelerometer_gain.i = 1.f / (1024.f);
-		accelerometer_gain.j = 1.f / (1024.f);
-		accelerometer_gain.k = 1.f / (1024.f);
+		accelerometer_gain.x = 1.f / (1024.f);
+		accelerometer_gain.y = 1.f / (1024.f);
+		accelerometer_gain.z = 1.f / (1024.f);
 
 		// Assume no bias until calibration says otherwise
-		raw_accelerometer_bias.i = 0.f;
-		raw_accelerometer_bias.j = 0.f;
-		raw_accelerometer_bias.k = 0.f;
+		raw_accelerometer_bias.x = 0.f;
+		raw_accelerometer_bias.y = 0.f;
+		raw_accelerometer_bias.z = 0.f;
 
 		// Gyroscope configured at ±1000°/s, 32.8 LSB/(°/s)
 		// but we want the calibrated gyro value in radians/s so add in a deg->rad conversion as well
-		gyro_gain.i = 1.f / (32.8f / k_degrees_to_radians);
-		gyro_gain.j = 1.f / (32.8f / k_degrees_to_radians);
-		gyro_gain.k = 1.f / (32.8f / k_degrees_to_radians);
+		gyro_gain.x = 1.f / (32.8f / k_degrees_to_radians);
+		gyro_gain.y = 1.f / (32.8f / k_degrees_to_radians);
+		gyro_gain.z = 1.f / (32.8f / k_degrees_to_radians);
 
 		// Assume no bias until calibration says otherwise
-		raw_gyro_bias.i = 0.f;
-		raw_gyro_bias.j = 0.f;
-		raw_gyro_bias.k = 0.f;
+		raw_gyro_bias.x = 0.f;
+		raw_gyro_bias.y = 0.f;
+		raw_gyro_bias.z = 0.f;
 
 		// This is the variance of the calibrated gyro value recorded for 100 samples
 		// Units in rad/s^2
@@ -86,9 +86,9 @@ public:
 
 		// This is the ideal accelerometer reading you get when the DS4 is held such that 
 		// the light bar facing is perpendicular to gravity.        
-		identity_gravity_direction.i = 0.f;
-		identity_gravity_direction.j = cosf(MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES*k_degrees_to_radians);
-		identity_gravity_direction.k = -sinf(MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES*k_degrees_to_radians);
+		identity_gravity_direction.x = 0.f;
+		identity_gravity_direction.y = cosf(MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES*k_degrees_to_radians);
+		identity_gravity_direction.z = -sinf(MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES*k_degrees_to_radians);
     };
 
     virtual const configuru::Config writeToJSON();
@@ -107,39 +107,37 @@ public:
 	std::string orientation_filter_type;
 
 	// calibrated_acc= raw_acc*acc_gain + acc_bias
-	CommonDeviceVector accelerometer_gain;
-	CommonDeviceVector raw_accelerometer_bias;
+	PSVRVector3f accelerometer_gain;
+	PSVRVector3f raw_accelerometer_bias;
 	// The variance of the raw gyro readings in rad/sec^2
 	float raw_accelerometer_variance;
 
-	inline CommonDeviceVector get_calibrated_accelerometer_variance() const {
-		return CommonDeviceVector::create(
-			accelerometer_gain.i*raw_accelerometer_variance, 
-			accelerometer_gain.j*raw_accelerometer_variance,
-			accelerometer_gain.k*raw_accelerometer_variance);
+	inline PSVRVector3f get_calibrated_accelerometer_variance() const {
+		return 
+            {accelerometer_gain.x*raw_accelerometer_variance, 
+			accelerometer_gain.y*raw_accelerometer_variance,
+            accelerometer_gain.z*raw_accelerometer_variance};
 	}
 
 	// Maximum velocity for the controller physics (meters/second)
 	float max_velocity;
 
 	// The calibrated "down" direction
-	CommonDeviceVector identity_gravity_direction;
+	PSVRVector3f identity_gravity_direction;
 
 	// calibrated_gyro= raw_gyro*gyro_gain + gyro_bias
-	CommonDeviceVector gyro_gain;
-	CommonDeviceVector raw_gyro_bias;
+	PSVRVector3f gyro_gain;
+	PSVRVector3f raw_gyro_bias;
 	// The variance of the raw gyro readings in rad/sec^2
 	float raw_gyro_variance;
 	// The drift raw gyro readings in rad/second
 	float raw_gyro_drift;
 
-	inline CommonDeviceVector get_calibrated_gyro_variance() const {
-		return CommonDeviceVector::create(
-			gyro_gain.i*raw_gyro_variance, gyro_gain.j*raw_gyro_variance, gyro_gain.k*raw_gyro_variance);
+	inline PSVRVector3f get_calibrated_gyro_variance() const {
+        return {gyro_gain.x*raw_gyro_variance, gyro_gain.y*raw_gyro_variance, gyro_gain.z*raw_gyro_variance};
 	}
-	inline CommonDeviceVector get_calibrated_gyro_drift() const {
-		return CommonDeviceVector::create(
-			gyro_gain.i*raw_gyro_drift, gyro_gain.j*raw_gyro_drift, gyro_gain.k*raw_gyro_drift);
+	inline PSVRVector3f get_calibrated_gyro_drift() const {
+        return {gyro_gain.x*raw_gyro_drift, gyro_gain.y*raw_gyro_drift, gyro_gain.z*raw_gyro_drift};
 	}
 
 	// The average time between updates in seconds
@@ -159,26 +157,26 @@ public:
     long max_poll_failure_count;
 	float prediction_time;
 
-	eCommonTrackingColorID tracking_color_id;
+	PSVRTrackingColorType tracking_color_id;
 };
 
 struct MorpheusHMDSensorFrame
 {
 	int SequenceNumber;
 
-	CommonRawDeviceVector RawAccel;
-	CommonRawDeviceVector RawGyro;
+	PSVRVector3i RawAccel;
+	PSVRVector3i RawGyro;
 
-	CommonDeviceVector CalibratedAccel;
-	CommonDeviceVector CalibratedGyro;
+	PSVRVector3f CalibratedAccel;
+	PSVRVector3f CalibratedGyro;
 
 	void clear()
 	{
 		SequenceNumber = 0;
-		RawAccel.clear();
-		RawGyro.clear();
-		CalibratedAccel.clear();
-		CalibratedGyro.clear();
+		RawAccel= *k_PSVR_int_vector3_zero;
+		RawGyro= *k_PSVR_int_vector3_zero;
+		CalibratedAccel= *k_PSVR_float_vector3_zero;
+		CalibratedGyro= *k_PSVR_float_vector3_zero;
 	}
 
 	void parse_data_input(const MorpheusHMDConfig *config, const struct MorpheusRawSensorFrame *data_input);
@@ -234,9 +232,9 @@ public:
 
     // -- IHMDInterface
     std::string getUSBDevicePath() const override;
-	void getTrackingShape(CommonDeviceTrackingShape &outTrackingShape) const override;
-	bool setTrackingColorID(const eCommonTrackingColorID tracking_color_id) override;
-	bool getTrackingColorID(eCommonTrackingColorID &out_tracking_color_id) const override;
+	void getTrackingShape(PSVRTrackingShape &outTrackingShape) const override;
+	bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) override;
+	bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const override;
 	float getPredictionTime() const override;
 
     // -- Getters

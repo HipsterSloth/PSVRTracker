@@ -1,13 +1,13 @@
 //-- includes -----
 #include "PSVRService.h"
-#include "ServerNetworkManager.h"
-#include "ServerRequestHandler.h"
+#include "ServiceRequestHandler.h"
 #include "DeviceManager.h"
 #include "Version.h"
 #include "Logger.h"
-#include "SharedTrackerState.h"
+#include "PSVRServiceInterface.h"
 #include "TrackerManager.h"
 #include "USBDeviceManager.h"
+#include "ServiceVersion.h"
 
 #include <fstream>
 #include <cstdio>
@@ -32,7 +32,7 @@ PSVRService::PSVRService()
     m_device_manager= new DeviceManager();
 
     // Generates responses from incoming requests sent to the network manager
-    m_request_handler= new ServiceRequestHandler(m_device_manager);
+    m_request_handler= new ServiceRequestHandler();
 	
 }
 
@@ -45,7 +45,10 @@ PSVRService::~PSVRService()
 	PSVRService::m_instance= nullptr;
 }
 
-bool PSVRService::startup(PSVRLogSeverityLevel log_level)
+bool PSVRService::startup(
+    PSVRLogSeverityLevel log_level,
+    class IDataFrameListener *data_frame_listener, 
+    class INotificationListener *notification_listener)
 {
 	bool success= true;
    
@@ -53,7 +56,7 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 	log_init(log_level, "PSVRSERVICE.log");
 
 	// Start the service app
-	PSVR_LOG_INFO("main") << "Starting PSVRService v" << PSVR_RELEASE_VERSION_STRING << " (protocol v" << PSVR_PROTOCOL_VERSION_STRING << ")";	   
+	PSVR_LOG_INFO("main") << "Starting PSVRService v" << PSVR_SERVICE_VERSION_STRING;	   
    
 	/** Setup the usb async transfer thread before we attempt to initialize the trackers */
 	if (success)
@@ -78,7 +81,7 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 	/** Setup the request handler */
 	if (success)
 	{
-		if (!m_request_handler->startup())
+		if (!m_request_handler->startup(m_device_manager, data_frame_listener, notification_listener))
 		{
 			PSVR_LOG_FATAL("PSVRService") << "Failed to initialize the service request handler";
 			success= false;
@@ -90,9 +93,6 @@ bool PSVRService::startup(PSVRLogSeverityLevel log_level)
 
 void PSVRService::update()
 {
-	// Update an async requests still waiting to complete
-	m_request_handler->update();
-
 	// Process any async results from the USB transfer thread
 	m_usb_device_manager->update();
 

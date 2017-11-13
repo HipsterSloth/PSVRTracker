@@ -143,7 +143,9 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Platform)
     list(APPEND PSVR_SERVICE_SRC
         ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.h
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.cpp)
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBApi.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBBulkTransferBundle.cpp)
 ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ELSE()
 ENDIF()

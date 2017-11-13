@@ -82,12 +82,12 @@ PSVRConfig::writeColorPropertyPresetTable(
 {
 	const char *profile_name= table->table_name;
 
-    writeColorPreset(pt, profile_name, "magenta", &table->color_presets[eCommonTrackingColorID::Magenta]);
-    writeColorPreset(pt, profile_name, "cyan", &table->color_presets[eCommonTrackingColorID::Cyan]);
-    writeColorPreset(pt, profile_name, "yellow", &table->color_presets[eCommonTrackingColorID::Yellow]);
-    writeColorPreset(pt, profile_name, "red", &table->color_presets[eCommonTrackingColorID::Red]);
-    writeColorPreset(pt, profile_name, "green", &table->color_presets[eCommonTrackingColorID::Green]);
-    writeColorPreset(pt, profile_name, "blue", &table->color_presets[eCommonTrackingColorID::Blue]);
+    writeColorPreset(pt, profile_name, "magenta", &table->color_presets[PSVRTrackingColorType_Magenta]);
+    writeColorPreset(pt, profile_name, "cyan", &table->color_presets[PSVRTrackingColorType_Cyan]);
+    writeColorPreset(pt, profile_name, "yellow", &table->color_presets[PSVRTrackingColorType_Yellow]);
+    writeColorPreset(pt, profile_name, "red", &table->color_presets[PSVRTrackingColorType_Red]);
+    writeColorPreset(pt, profile_name, "green", &table->color_presets[PSVRTrackingColorType_Green]);
+    writeColorPreset(pt, profile_name, "blue", &table->color_presets[PSVRTrackingColorType_Blue]);
 }
 
 void
@@ -97,12 +97,12 @@ PSVRConfig::readColorPropertyPresetTable(
 {
 	const char *profile_name= table->table_name;
 
-    readColorPreset(pt, profile_name, "magenta", &table->color_presets[eCommonTrackingColorID::Magenta], &k_default_color_presets[eCommonTrackingColorID::Magenta]);
-    readColorPreset(pt, profile_name, "cyan", &table->color_presets[eCommonTrackingColorID::Cyan], &k_default_color_presets[eCommonTrackingColorID::Cyan]);
-    readColorPreset(pt, profile_name, "yellow", &table->color_presets[eCommonTrackingColorID::Yellow], &k_default_color_presets[eCommonTrackingColorID::Yellow]);
-    readColorPreset(pt, profile_name, "red", &table->color_presets[eCommonTrackingColorID::Red], &k_default_color_presets[eCommonTrackingColorID::Red]);
-    readColorPreset(pt, profile_name, "green", &table->color_presets[eCommonTrackingColorID::Green], &k_default_color_presets[eCommonTrackingColorID::Green]);
-    readColorPreset(pt, profile_name, "blue", &table->color_presets[eCommonTrackingColorID::Blue], &k_default_color_presets[eCommonTrackingColorID::Blue]);
+    readColorPreset(pt, profile_name, "magenta", &table->color_presets[PSVRTrackingColorType_Magenta], &k_default_color_presets[PSVRTrackingColorType_Magenta]);
+    readColorPreset(pt, profile_name, "cyan", &table->color_presets[PSVRTrackingColorType_Cyan], &k_default_color_presets[PSVRTrackingColorType_Cyan]);
+    readColorPreset(pt, profile_name, "yellow", &table->color_presets[PSVRTrackingColorType_Yellow], &k_default_color_presets[PSVRTrackingColorType_Yellow]);
+    readColorPreset(pt, profile_name, "red", &table->color_presets[PSVRTrackingColorType_Red], &k_default_color_presets[PSVRTrackingColorType_Red]);
+    readColorPreset(pt, profile_name, "green", &table->color_presets[PSVRTrackingColorType_Green], &k_default_color_presets[PSVRTrackingColorType_Green]);
+    readColorPreset(pt, profile_name, "blue", &table->color_presets[PSVRTrackingColorType_Blue], &k_default_color_presets[PSVRTrackingColorType_Blue]);
 }
 
 void
@@ -112,25 +112,25 @@ PSVRConfig::writeTrackingColor(
 {
 	switch (tracking_color_id)
 	{
-	case eCommonTrackingColorID::INVALID_COLOR:
+	case PSVRTrackingColorType_INVALID:
 		pt["tracking_color"]= "invalid";
 		break;
-	case eCommonTrackingColorID::Magenta:
+	case PSVRTrackingColorType_Magenta:
 		pt["tracking_color"]= "magenta";
 		break;
-	case eCommonTrackingColorID::Cyan:
+	case PSVRTrackingColorType_Cyan:
 		pt["tracking_color"]= "cyan";
 		break;
-	case eCommonTrackingColorID::Yellow:
+	case PSVRTrackingColorType_Yellow:
 		pt["tracking_color"]= "yellow";
 		break;
-	case eCommonTrackingColorID::Red:
+	case PSVRTrackingColorType_Red:
 		pt["tracking_color"]= "red";
 		break;
-	case eCommonTrackingColorID::Green:
+	case PSVRTrackingColorType_Green:
 		pt["tracking_color"]= "green";
 		break;
-	case eCommonTrackingColorID::Blue:
+	case PSVRTrackingColorType_Blue:
 		pt["tracking_color"]= "blue";
 		break;
 	default:
@@ -143,31 +143,31 @@ PSVRConfig::readTrackingColor(
 	const configuru::Config &pt)
 {
 	std::string tracking_color_string = pt.get_or("tracking_color", "invalid");
-	int tracking_color_id = eCommonTrackingColorID::INVALID_COLOR;
+	int tracking_color_id = PSVRTrackingColorType_INVALID;
 
 	if (tracking_color_string == "magenta")
 	{
-		tracking_color_id = eCommonTrackingColorID::Magenta;
+		tracking_color_id = PSVRTrackingColorType_Magenta;
 	}
 	else if (tracking_color_string == "cyan")
 	{
-		tracking_color_id = eCommonTrackingColorID::Cyan;
+		tracking_color_id = PSVRTrackingColorType_Cyan;
 	}
 	else if (tracking_color_string == "yellow")
 	{
-		tracking_color_id = eCommonTrackingColorID::Yellow;
+		tracking_color_id = PSVRTrackingColorType_Yellow;
 	}
 	else if (tracking_color_string == "red")
 	{
-		tracking_color_id = eCommonTrackingColorID::Red;
+		tracking_color_id = PSVRTrackingColorType_Red;
 	}
 	else if (tracking_color_string == "green")
 	{
-		tracking_color_id = eCommonTrackingColorID::Green;
+		tracking_color_id = PSVRTrackingColorType_Green;
 	}
 	else if (tracking_color_string == "blue")
 	{
-		tracking_color_id = eCommonTrackingColorID::Blue;
+		tracking_color_id = PSVRTrackingColorType_Blue;
 	}
 
 	return tracking_color_id;

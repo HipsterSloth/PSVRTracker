@@ -65,47 +65,47 @@ public:
     
     bool computeProjectionForController(
         const class ServerControllerView* tracked_controller, 
-		const struct CommonDeviceTrackingShape *tracking_shape,
+		const PSVRTrackingShape *tracking_shape,
         struct ControllerOpticalPoseEstimation *out_pose_estimate);
     bool computeProjectionForHMD(
 		const class ServerHMDView* tracked_hmd,
-		const struct CommonDeviceTrackingShape *tracking_shape,
+		const PSVRTrackingShape *tracking_shape,
 		struct HMDOpticalPoseEstimation *out_pose_estimate);
     bool computePoseForProjection(
-		const struct CommonDeviceTrackingProjection *projection,
-		const struct CommonDeviceTrackingShape *tracking_shape,
-		const struct CommonDevicePose *pose_guess,
+		const PSVRTrackingProjection *projection,
+		const PSVRTrackingShape *tracking_shape,
+		const PSVRPosef *pose_guess,
 		struct ControllerOpticalPoseEstimation *out_pose_estimate);
     
-    std::vector<CommonDeviceScreenLocation> projectTrackerRelativePositions(
-                                const std::vector<CommonDevicePosition> &objectPositions) const;
+    std::vector<PSVRVector2f> projectTrackerRelativePositions(
+                                const std::vector<PSVRVector3f> &objectPositions) const;
     
-    CommonDeviceScreenLocation projectTrackerRelativePosition(const CommonDevicePosition *trackerRelativePosition) const;
+    PSVRVector2f projectTrackerRelativePosition(const PSVRVector3f *trackerRelativePosition) const;
     
-    CommonDevicePosition computeWorldPosition(const CommonDevicePosition *tracker_relative_position) const;
-    CommonDeviceQuaternion computeWorldOrientation(const CommonDeviceQuaternion *tracker_relative_orientation) const;
+    PSVRVector3f computeWorldPosition(const PSVRVector3f *tracker_relative_position) const;
+    PSVRQuatf computeWorldOrientation(const PSVRQuatf *tracker_relative_orientation) const;
 
-    CommonDevicePosition computeTrackerPosition(const CommonDevicePosition *world_relative_position) const;
-    CommonDeviceQuaternion computeTrackerOrientation(const CommonDeviceQuaternion *world_relative_orientation) const;
+    PSVRVector3f computeTrackerPosition(const PSVRVector3f *world_relative_position) const;
+    PSVRQuatf computeTrackerOrientation(const PSVRQuatf *world_relative_orientation) const;
 
     /// Given a single screen location on two different trackers, compute the triangulated world space location
-    static CommonDevicePosition triangulateWorldPosition(
-        const ServerTrackerView *tracker, const CommonDeviceScreenLocation *screen_location,
-        const ServerTrackerView *other_tracker, const CommonDeviceScreenLocation *other_screen_location);
+    static PSVRVector3f triangulateWorldPosition(
+        const ServerTrackerView *tracker, const PSVRVector2f *screen_location,
+        const ServerTrackerView *other_tracker, const PSVRVector2f *other_screen_location);
 
 	/// Given a set of screen locations on two different trackers, compute the triangulated world space locations
 	static void triangulateWorldPositions(
 		const ServerTrackerView *tracker, 
-		const CommonDeviceScreenLocation *screen_locations,
+		const PSVRVector2f *screen_locations,
 		const ServerTrackerView *other_tracker,
-		const CommonDeviceScreenLocation *other_screen_locations,
+		const PSVRVector2f *other_screen_locations,
 		const int screen_location_count,
-		CommonDevicePosition *out_result);
+		PSVRVector3f *out_result);
 
     /// Given screen projections on two different trackers, compute the triangulated world space location
-    static CommonDevicePose triangulateWorldPose(
-        const ServerTrackerView *tracker, const CommonDeviceTrackingProjection *tracker_relative_projection,
-        const ServerTrackerView *other_tracker, const CommonDeviceTrackingProjection *other_tracker_relative_projection);
+    static PSVRPosef triangulateWorldPose(
+        const ServerTrackerView *tracker, const PSVRTrackingProjection *tracker_relative_projection,
+        const ServerTrackerView *other_tracker, const PSVRTrackingProjection *other_tracker_relative_projection);
 
     void getCameraIntrinsics(
         float &outFocalLengthX, float &outFocalLengthY,
@@ -118,8 +118,8 @@ public:
         float distortionK1, float distortionK2, float distortionK3,
         float distortionP1, float distortionP2);
 
-    CommonDevicePose getTrackerPose() const;
-    void setTrackerPose(const struct CommonDevicePose *pose);
+    PSVRPosef getTrackerPose() const;
+    void setTrackerPose(const PSVRPosef *pose);
 
     void getPixelDimensions(float &outWidth, float &outHeight) const;
     void getFOV(float &outHFOV, float &outVFOV) const;
@@ -132,11 +132,11 @@ public:
     void gatherTrackingColorPresets(const class ServerControllerView *controller, PSVRProtocol::Response_ResultTrackerSettings* settings) const;
 	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSVRProtocol::Response_ResultTrackerSettings* settings) const;
 
-    void setControllerTrackingColorPreset(const class ServerControllerView *controller, eCommonTrackingColorID color, const CommonHSVColorRange *preset);
-    void getControllerTrackingColorPreset(const class ServerControllerView *controller, eCommonTrackingColorID color, CommonHSVColorRange *out_preset) const;
+    void setControllerTrackingColorPreset(const class ServerControllerView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
+    void getControllerTrackingColorPreset(const class ServerControllerView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 
-	void setHMDTrackingColorPreset(const class ServerHMDView *controller, eCommonTrackingColorID color, const CommonHSVColorRange *preset);
-	void getHMDTrackingColorPreset(const class ServerHMDView *controller, eCommonTrackingColorID color, CommonHSVColorRange *out_preset) const;
+	void setHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
+	void getHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 
 protected:
     bool allocate_device_interface(const class DeviceEnumerator *enumerator) override;

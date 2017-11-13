@@ -16,11 +16,11 @@ struct HMDOpticalPoseEstimation
 	std::chrono::time_point<std::chrono::high_resolution_clock> last_visible_timestamp;
 	bool bValidTimestamps;
 
-	CommonDevicePosition position_cm;
-	CommonDeviceTrackingProjection projection;
+	PSVRVector3f position_cm;
+	PSVRTrackingProjection projection;
 	bool bCurrentlyTracking;
 
-	CommonDeviceQuaternion orientation;
+	PSVRQuatf orientation;
 	bool bOrientationValid;
 
 	inline void clear()
@@ -29,14 +29,14 @@ struct HMDOpticalPoseEstimation
 		last_visible_timestamp = std::chrono::time_point<std::chrono::high_resolution_clock>();
 		bValidTimestamps = false;
 
-		position_cm.clear();
+		position_cm= *k_PSVR_float_vector3_zero;
 		bCurrentlyTracking = false;
 
-		orientation.clear();
+		orientation= *k_PSVR_quaternion_identity;
 		bOrientationValid = false;
 
-		memset(&projection, 0, sizeof(CommonDeviceTrackingProjection));
-		projection.shape_type = eCommonTrackingProjectionType::INVALID_PROJECTION;
+		memset(&projection, 0, sizeof(PSVRTrackingProjection));
+		projection.shape_type = PSVRShape_INVALID_PROJECTION;
 	}
 };
 
@@ -61,10 +61,10 @@ public:
 	inline const class IPoseFilter * getPoseFilter() const { return m_pose_filter; }
 
 	// Estimate the given pose if the controller at some point into the future
-	CommonDevicePose getFilteredPose(float time = 0.f) const;
+	PSVRPosef getFilteredPose(float time = 0.f) const;
 
 	// Get the current physics from the filter position and orientation
-	CommonDevicePhysics getFilteredPhysics() const;
+	PSVRPhysicsData getFilteredPhysics() const;
 
     // Returns the full usb device path for the controller
     std::string getUSBDevicePath() const;
@@ -91,13 +91,13 @@ public:
 	void stopTracking();
 
 	// Get the tracking shape for the controller
-	bool getTrackingShape(CommonDeviceTrackingShape &outTrackingShape) const;
+	bool getTrackingShape(PSVRTrackingShape &outTrackingShape) const;
 
 	// Get the currently assigned tracking color ID for the controller
-	eCommonTrackingColorID getTrackingColorID() const;
+	PSVRTrackingColorType getTrackingColorID() const;
 
     // Set the assigned tracking color ID for the controller
-    bool setTrackingColorID(eCommonTrackingColorID colorID);
+    bool setTrackingColorID(PSVRTrackingColorType colorID);
 
 	// Get if the region-of-interest optimization is disabled for this HMD
 	inline bool getIsROIDisabled() const { return m_roi_disable_count > 0; }

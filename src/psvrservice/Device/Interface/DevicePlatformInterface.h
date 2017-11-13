@@ -11,6 +11,7 @@ enum DeviceClass
 
 	DeviceClass_Camera,
 	DeviceClass_HID,
+    DeviceClass_RawUSB,
 
 	k_max_supported_device_classes
 };
@@ -35,6 +36,7 @@ public:
 	virtual void shutdown() = 0;
 
 	// Queries
+    virtual const void* get_device_class_platform_identifier(const DeviceClass deviceClass) const = 0;
 	virtual bool get_device_property(
 		const DeviceClass deviceClass,
 		const int vendor_id,

@@ -25,8 +25,8 @@ static void applyTrackerDataFrame(const TrackerDataPacket& tracker_packet, PSVRT
 static void applyHmdDataFrame(const HMDDataPacket& hmd_packet, PSVRHeadMountedDisplay *hmd);
 
 // -- methods -----
-PSVRClient::PSVRClient(class ServiceRequestHandler *request_handler)
-	: m_requestManager(request_handler)
+PSVRClient::PSVRClient()
+	: m_requestHandler(nullptr)
 	, m_bHasTrackerListChanged(false)
 	, m_bHasHMDListChanged(false)
 {
@@ -56,11 +56,15 @@ bool PSVRClient::pollHasHMDListChanged()
 }
 
 // -- ClientPSVRAPI System -----
-bool PSVRClient::startup(PSVRLogSeverityLevel log_level)
+bool PSVRClient::startup(
+    PSVRLogSeverityLevel log_level,
+    class ServiceRequestHandler * request_handler)
 {
     bool success = true;
 
     log_init(log_level);
+
+    m_requestHandler= request_handler;
 
 	// Reset status flags
 	m_bHasTrackerListChanged= false;
@@ -183,7 +187,7 @@ bool PSVRClient::open_video_stream(PSVRTrackerID tracker_id)
 		if (tracker->opaque_shared_video_frame_buffer == nullptr)
 		{
 			SharedVideoFrameBuffer *shared_buffer= nullptr;
-			if (m_requestManager->get_shared_video_frame_buffer(tracker_id, &shared_buffer) == PSVRResult_Success)
+			if (m_requestHandler->get_shared_video_frame_buffer(tracker_id, &shared_buffer) == PSVRResult_Success)
 			{				
 				tracker->opaque_shared_video_frame_buffer= shared_buffer;
 				bSuccess = true;

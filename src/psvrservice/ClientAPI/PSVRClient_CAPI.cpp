@@ -43,14 +43,19 @@ PSVRResult PSVR_Initialize(PSVRLogSeverityLevel log_level)
 {
 	PSVRResult result= PSVRResult_Success;
 
-	if (g_psvr_service == nullptr || !g_psvr_service->getIsInitialized())
+	if (g_psvr_service == nullptr)
 	{
-		if (g_psvr_service == nullptr)
-		{
-			g_psvr_service= new PSVRService();
-		}
+		g_psvr_service= new PSVRService();
+	}
 
-		if (!g_psvr_service->startup(log_level))
+	if (g_psvr_client == nullptr)
+	{
+		g_psvr_client= new PSVRClient();
+	}
+
+	if (!g_psvr_service->getIsInitialized())
+	{
+		if (!g_psvr_service->startup(log_level, g_psvr_client, g_psvr_client))
 		{
 			delete g_psvr_service;
 			g_psvr_service= nullptr;
@@ -60,12 +65,7 @@ PSVRResult PSVR_Initialize(PSVRLogSeverityLevel log_level)
 	
 	if (result == PSVRResult_Success)
 	{
-		if (g_psvr_client == nullptr)
-		{
-			g_psvr_client= new PSVRClient(g_psvr_service->getRequestHandler());
-		}
-
-		if (!g_psvr_client->startup(log_level))
+		if (!g_psvr_client->startup(log_level, g_psvr_service->getRequestHandler()))
 		{
 			delete g_psvr_client;
 			g_psvr_client= nullptr;

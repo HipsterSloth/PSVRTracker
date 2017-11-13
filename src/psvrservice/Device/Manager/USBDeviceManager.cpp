@@ -5,6 +5,7 @@
 #include "LibUSBBulkTransferBundle.h"
 #include "LibUSBApi.h"
 #include "NullUSBApi.h"
+#include "WinUSBApi.h"
 #include "Logger.h"
 #include "Utility.h"
 
@@ -130,11 +131,13 @@ public:
 				m_usb_api = new LibUSBApi;
 				break;
 			case _USBApiType_WinUSB:
-				//###HipsterSloth $TODO actually implement WinUSB interface
-				//PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating WinUSBApi";
-				//m_usb_api = new WinUSBApi;
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi (WinUSBApi not yet implemented)";
+#ifdef _WIN32
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating WinUSBApi";
+				m_usb_api = new WinUSBApi;
+#else
+				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi (WinUSBApi not available on this platform)";
 				m_usb_api = new LibUSBApi;
+#endif
 				break;
 			default:
 				assert(0 && "unreachable");
@@ -218,11 +221,11 @@ public:
     }
 
     // -- Device Actions ----
-	t_usb_device_handle openUSBDevice(struct USBDeviceEnumerator* enumerator)
+	t_usb_device_handle openUSBDevice(struct USBDeviceEnumerator* enumerator, int interface_index)
     {
 		t_usb_device_handle handle= k_invalid_usb_device_handle;
 
-		USBDeviceState *state = m_usb_api->open_usb_device(enumerator);
+		USBDeviceState *state = m_usb_api->open_usb_device(enumerator, interface_index);
 
         if (state != nullptr)
         {
@@ -285,7 +288,7 @@ public:
 			switch (request.request_type)
 			{
 			case eUSBTransferRequestType::_USBRequestType_InterruptTransfer:
-				result.result_type= _USBResultType_InterrupTransfer;
+				result.result_type= _USBResultType_InterruptTransfer;
 				result.payload.interrupt_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
 				result.payload.interrupt_transfer.usb_device_handle= request.payload.interrupt_transfer.usb_device_handle;
 				break;
@@ -294,15 +297,20 @@ public:
 				result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
 				result.payload.control_transfer.usb_device_handle= request.payload.control_transfer.usb_device_handle;
 				break;
-			case eUSBTransferRequestType::_USBRequestType_StartBulkTransfer:
+			case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
 				result.result_type= _USBResultType_BulkTransfer;
-				result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.bulk_transfer.usb_device_handle= request.payload.start_bulk_transfer.usb_device_handle;
+				result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+				result.payload.control_transfer.usb_device_handle= request.payload.bulk_transfer.usb_device_handle;
 				break;
-			case eUSBTransferRequestType::_USBRequestType_CancelBulkTransfer:
-				result.result_type= _USBResultType_BulkTransfer;
+			case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
+				result.result_type= _USBResultType_BulkTransferBundle;
 				result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.bulk_transfer.usb_device_handle= request.payload.cancel_bulk_transfer.usb_device_handle;
+				result.payload.bulk_transfer.usb_device_handle= request.payload.start_bulk_transfer_bundle.usb_device_handle;
+				break;
+			case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
+				result.result_type= _USBResultType_BulkTransferBundle;
+				result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+				result.payload.bulk_transfer.usb_device_handle= request.payload.cancel_bulk_transfer_bundle.usb_device_handle;
 				break;
 			}
 			
@@ -376,10 +384,17 @@ public:
 		}
 		// If a interrupt transfer just completed (successfully or unsuccessfully)
 		// decrement the outstanding interrupt transfer count
-		else if (result.result_type == _USBResultType_InterrupTransfer)
+		else if (result.result_type == _USBResultType_InterruptTransfer)
 		{
 			assert(m_active_interrupt_transfers > 0);
 			--m_active_interrupt_transfers;
+		}
+		// If a bulk transfer just completed (successfully or unsuccessfully)
+		// decrement the outstanding bulk transfer count
+		else if (result.result_type == _USBResultType_BulkTransfer)
+		{
+			assert(m_active_bulk_transfers > 0);
+			--m_active_bulk_transfers;
 		}
 
 		result_queue.enqueue(state);
@@ -412,10 +427,13 @@ protected:
             case eUSBTransferRequestType::_USBRequestType_ControlTransfer:
                 handleControlTransferRequest(requestState);
                 break;
-            case eUSBTransferRequestType::_USBRequestType_StartBulkTransfer:
+            case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
+                handleBulkTransferRequest(requestState);
+                break;
+            case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
                 handleStartBulkTransferRequest(requestState);
                 break;
-            case eUSBTransferRequestType::_USBRequestType_CancelBulkTransfer:
+            case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
                 handleCancelBulkTransferRequest(requestState);
                 break;
             }
@@ -544,7 +562,7 @@ protected:
 		else
 		{
 			debug("USBMgr REQUEST: control transfer read - dev: %d, endpoint: 0x%X, datalen: %d\n",
-				requestState.request.payload.control_transfer.usb_device_handle,
+				requestState.request.payload.interrupt_transfer.usb_device_handle,
 				requestState.request.payload.interrupt_transfer.endpoint,
 				requestState.request.payload.interrupt_transfer.length);
 		}
@@ -574,7 +592,7 @@ protected:
 			memset(&result, 0, sizeof(USBTransferResult));
 			result.payload.interrupt_transfer.usb_device_handle = request.usb_device_handle;
 			result.payload.interrupt_transfer.result_code = result_code;
-			result.result_type = _USBResultType_InterrupTransfer;
+			result.result_type = _USBResultType_InterruptTransfer;
 
 			postUSBTransferResult(result, requestState.callback);
 		}
@@ -636,9 +654,66 @@ protected:
         }
     }
 
+	void handleBulkTransferRequest(const USBTransferRequestState &requestState)
+	{
+		const USBRequestPayload_BulkTransfer &request = requestState.request.payload.bulk_transfer;
+
+		t_usb_device_map_iterator iter = m_device_state_map.find(request.usb_device_handle);
+		USBDeviceState *state = iter->second;
+
+		eUSBResultCode result_code;
+		bool bSuccess = true;
+
+#if defined(DEBUG_USB)
+		if ((request.endpoint & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
+		{
+			debug("USBMgr REQUEST: bulk transfer write - dev: %d, endpoint: 0x%X, datalen: %d\n",
+				requestState.request.payload.bulk_transfer.usb_device_handle,
+				requestState.request.payload.bulk_transfer.endpoint,
+				requestState.request.payload.bulk_transfer.length);
+		}
+		else
+		{
+			debug("USBMgr REQUEST: control transfer read - dev: %d, endpoint: 0x%X, datalen: %d\n",
+				requestState.request.payload.bulk_transfer.usb_device_handle,
+				requestState.request.payload.bulk_transfer.endpoint,
+				requestState.request.payload.bulk_transfer.length);
+		}
+#endif
+
+        ++m_active_bulk_transfers;
+
+		if (state != nullptr)
+		{
+			result_code= m_usb_api->submit_bulk_transfer(state, &requestState);
+			if (result_code != _USBResultCode_Started)
+			{
+				bSuccess = false;
+			}
+		}
+		else
+		{
+			result_code = _USBResultCode_BadHandle;
+			bSuccess = false;
+		}
+
+		// If the control transfer didn't successfully start, post a failure result now
+		if (!bSuccess)
+		{
+			USBTransferResult result;
+
+			memset(&result, 0, sizeof(USBTransferResult));
+			result.payload.bulk_transfer.usb_device_handle = request.usb_device_handle;
+			result.payload.bulk_transfer.result_code = result_code;
+			result.result_type = _USBResultType_BulkTransfer;
+
+			postUSBTransferResult(result, requestState.callback);
+		}
+	}
+
     void handleStartBulkTransferRequest(const USBTransferRequestState &requestState)
     {
-        const USBRequestPayload_BulkTransfer &request= requestState.request.payload.start_bulk_transfer;
+        const USBRequestPayload_BulkTransferBundle &request= requestState.request.payload.start_bulk_transfer_bundle;
 
 		t_usb_device_map_iterator iter = m_device_state_map.find(request.usb_device_handle);
 		USBDeviceState *state = iter->second;
@@ -658,7 +733,7 @@ protected:
 
             if (it == m_active_bulk_transfer_bundles.end())
             {
-                IUSBBulkTransferBundle *bundle = m_usb_api->allocate_bulk_transfer_bundle(state, &requestState.request.payload.start_bulk_transfer);
+                IUSBBulkTransferBundle *bundle = m_usb_api->allocate_bulk_transfer_bundle(state, &requestState.request.payload.start_bulk_transfer_bundle);
 
                 // Allocate and initialize the bulk transfers
                 if (bundle->initialize())
@@ -710,7 +785,7 @@ protected:
         {
             USBTransferResult result;
 
-            result.result_type = _USBResultType_BulkTransfer;
+            result.result_type = _USBResultType_BulkTransferBundle;
             result.payload.bulk_transfer.usb_device_handle= request.usb_device_handle;
             result.payload.bulk_transfer.result_code = result_code;
 
@@ -720,7 +795,7 @@ protected:
 
     void handleCancelBulkTransferRequest(const USBTransferRequestState &requestState)
     {
-        const USBRequestPayload_CancelBulkTransfer &request= requestState.request.payload.cancel_bulk_transfer;
+        const USBRequestPayload_CancelBulkTransferBundle &request= requestState.request.payload.cancel_bulk_transfer_bundle;
 
 		t_usb_device_map_iterator iter = m_device_state_map.find(request.usb_device_handle);
 
@@ -768,7 +843,7 @@ protected:
         {
             USBTransferResult result;
 
-            result.result_type = _USBResultType_BulkTransfer;
+            result.result_type = _USBResultType_BulkTransferBundle;
             result.payload.bulk_transfer.usb_device_handle = request.usb_device_handle;
             result.payload.bulk_transfer.result_code = result_code;
 
@@ -821,6 +896,7 @@ private:
     std::vector<IUSBBulkTransferBundle *> m_canceled_bulk_transfer_bundles;
     int m_active_control_transfers;
 	int m_active_interrupt_transfers;
+    int m_active_bulk_transfers;
 
     // Main thread state
 	bool m_transfers_enabled;
@@ -876,9 +952,9 @@ void USBDeviceManager::shutdown()
 }
 
 // -- Device Enumeration ----
-USBDeviceEnumerator* usb_device_enumerator_allocate()
+USBDeviceEnumerator* usb_device_enumerator_allocate(const DeviceClass deviceClass)
 {
-	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_create();
+	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_create(deviceClass);
 }
 
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator)
@@ -907,9 +983,9 @@ bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char
 }
 
 // -- Device Actions ----
-t_usb_device_handle usb_device_open(struct USBDeviceEnumerator* enumerator)
+t_usb_device_handle usb_device_open(struct USBDeviceEnumerator* enumerator, int interface_index)
 {
-	return USBDeviceManager::getInstance()->getImplementation()->openUSBDevice(enumerator);
+	return USBDeviceManager::getInstance()->getImplementation()->openUSBDevice(enumerator, interface_index);
 }
 
 void usb_device_close(t_usb_device_handle usb_device_handle)

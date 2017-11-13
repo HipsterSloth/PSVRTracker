@@ -172,7 +172,7 @@ PS3EyeTrackerConfig::readFromJSON(const configuru::Config &pt)
 				PSVR_HSVColorRangeTable table;
 
 				strncpy(table.table_name, entry_name.c_str(), sizeof(table.table_name));
-				for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
+				for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
 				{
 					table.color_presets[preset_index] = k_default_color_presets[preset_index];
 				}
@@ -230,7 +230,7 @@ PS3EyeTrackerConfig::getOrAddColorRangeTable(const std::string &table_name)
 			PSVR_HSVColorRangeTable Table;
 
 			strncpy(Table.table_name, table_name.c_str(), sizeof(Table.table_name));
-			for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
+			for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
 			{
 				Table.color_presets[preset_index] = k_default_color_presets[preset_index];
 			}
@@ -671,13 +671,13 @@ void PS3EyeTracker::setCameraIntrinsics(
     cfg.distortionP2 = distortionP2;
 }
 
-CommonDevicePose PS3EyeTracker::getTrackerPose() const
+PSVRPosef PS3EyeTracker::getTrackerPose() const
 {
     return cfg.pose;
 }
 
 void PS3EyeTracker::setTrackerPose(
-    const struct CommonDevicePose *pose)
+    const PSVRPosef *pose)
 {
     cfg.pose = *pose;
     cfg.save();
@@ -696,7 +696,7 @@ void PS3EyeTracker::getZRange(float &outZNear, float &outZFar) const
 }
 
 void PS3EyeTracker::gatherTrackerOptions(
-    PSVRProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRClientTrackerSettings* settings) const
 {
     PSVRProtocol::OptionSet *optionSet = settings->add_option_sets();
     
@@ -742,14 +742,14 @@ bool PS3EyeTracker::getOptionIndex(
 
 void PS3EyeTracker::gatherTrackingColorPresets(
 	const std::string &controller_serial, 
-    PSVRProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRClientTrackerSettings* settings) const
 {
 	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
 
-    for (int list_index = 0; list_index < MAX_TRACKING_COLOR_TYPES; ++list_index)
+    for (int list_index = 0; list_index < PSVRTrackingColorType_MaxColorTypes; ++list_index)
     {
-        const CommonHSVColorRange &hsvRange = table->color_presets[list_index];
-        const eCommonTrackingColorID colorType = static_cast<eCommonTrackingColorID>(list_index);
+        const PSVR_HSVColorRange &hsvRange = table->color_presets[list_index];
+        const PSVRTrackingColorType colorType = static_cast<PSVRTrackingColorType>(list_index);
 
         PSVRProtocol::TrackingColorPreset *colorPreset= settings->add_color_presets();
         colorPreset->set_color_type(static_cast<PSVRProtocol::TrackingColorType>(colorType));
@@ -764,8 +764,8 @@ void PS3EyeTracker::gatherTrackingColorPresets(
 
 void PS3EyeTracker::setTrackingColorPreset(
 	const std::string &controller_serial, 
-    eCommonTrackingColorID color, 
-    const CommonHSVColorRange *preset)
+    PSVRTrackingColorType color, 
+    const PSVR_HSVColorRange *preset)
 {
 //    cfg.ColorPresets[color] = *preset; // from generic_camera conflict
 	PSVR_HSVColorRangeTable *table= cfg.getOrAddColorRangeTable(controller_serial);
@@ -776,8 +776,8 @@ void PS3EyeTracker::setTrackingColorPreset(
 
 void PS3EyeTracker::getTrackingColorPreset(
 	const std::string &controller_serial, 
-    eCommonTrackingColorID color, 
-    CommonHSVColorRange *out_preset) const
+    PSVRTrackingColorType color, 
+    PSVR_HSVColorRange *out_preset) const
 {
 	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
 

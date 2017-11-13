@@ -1,5 +1,5 @@
-#ifndef GEOMETRY_UTILITY_H
-#define GEOMETRY_UTILITY_H
+#ifndef MATH_TYPE_CONVERSION_H
+#define MATH_TYPE_CONVERSION_H
 
 //-- includes -----
 #undef Status
@@ -66,4 +66,4 @@ glm::vec3 eigen_vector3f_to_glm_vec3(const Eigen::Vector3f &v);
 // Eigen types to PSVR types
 PSVRVector3f eigen_vector3f_to_PSVR_vector3f(const Eigen::Vector3f &v);
 
-#endif // GEOMETRY_UTILITY_H
+#endif // MATH_TYPE_CONVERSION_H
