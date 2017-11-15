@@ -50,6 +50,9 @@ public:
 
     // Returns the name of the shared memory block video frames are written to
     std::string getSharedMemoryStreamName() const;
+
+    // Returns a pointer the memory buffer the video frames are published to
+    const class SharedVideoFrameBuffer *getSharedVideoFrameBuffer() const;
     
     void loadSettings();
     void saveSettings();
@@ -98,13 +101,7 @@ public:
     void getFOV(float &outHFOV, float &outVFOV) const;
     void getZRange(float &outZNear, float &outZFar) const;
 
-    void gatherTrackerOptions(PSVRClientTrackerSettings* settings) const;
-    bool setOptionIndex(const std::string &option_name, int option_index);
-    bool getOptionIndex(const std::string &option_name, int &out_option_index) const;
-
 	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSVRClientTrackerSettings* settings) const;
-
-
 	void setHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
 	void getHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 

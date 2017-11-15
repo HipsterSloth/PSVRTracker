@@ -273,10 +273,6 @@ public:
     virtual void getFOV(float &outHFOV, float &outVFOV) const = 0;
     virtual void getZRange(float &outZNear, float &outZFar) const = 0;
 
-    virtual void gatherTrackerOptions(PSVRClientTrackerSettings* settings) const = 0;
-    virtual bool setOptionIndex(const std::string &option_name, int option_index) = 0;
-    virtual bool getOptionIndex(const std::string &option_name, int &out_option_index) const = 0;
-
     virtual void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const = 0;
     virtual void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) = 0;
     virtual void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const = 0;

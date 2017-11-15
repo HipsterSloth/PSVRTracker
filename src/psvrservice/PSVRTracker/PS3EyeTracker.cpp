@@ -7,6 +7,10 @@
 #include "TrackerManager.h"
 #include "opencv2/opencv.hpp"
 
+#ifdef _MSC_VER
+    #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
+#endif
+
 // -- constants -----
 #define PS3EYE_STATE_BUFFER_MAX 16
 
@@ -36,27 +40,28 @@ PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
-	, frame_width(640)
-	, frame_height(480)
 	, frame_rate(40)
     , exposure(32)
     , gain(32)
-    , focalLengthX(554.2563) // pixels
-    , focalLengthY(554.2563) // pixels
-    , principalX(320.0) // pixels
-    , principalY(240.0) // pixels
-    , hfov(60.0) // degrees
-    , vfov(45.0) // degrees
-    , zNear(10.0) // cm
-    , zFar(200.0) // cm
-    , distortionK1(-0.10771770030260086)
-    , distortionK2(0.1213262677192688)
-    , distortionK3(0.04875476285815239)
-    , distortionP1(0.00091733073350042105)
-    , distortionP2(0.00010589254816295579)
     , fovSetting(BlueDot)
 {
-    pose.clear();
+	trackerIntrinsics.pixel_width= 640.f;
+	trackerIntrinsics.pixel_height= 480.f;
+    trackerIntrinsics.camera_matrix= {
+        554.2563, 0.0, 320.0, 
+        0.0, 554.2563, 240.0,
+        0.0, 0.0, 1.0}; // pixels
+    trackerIntrinsics.hfov= 60.0; // degrees
+    trackerIntrinsics.vfov= 45.0; // degrees
+    trackerIntrinsics.znear= 10.0; // cm
+    trackerIntrinsics.zfar= 200.0; // cm
+    trackerIntrinsics.distortion_coefficients.k1= -0.10771770030260086;
+    trackerIntrinsics.distortion_coefficients.k2= 0.1213262677192688;
+    trackerIntrinsics.distortion_coefficients.k3= 0.04875476285815239;
+    trackerIntrinsics.distortion_coefficients.p1= 0.00091733073350042105;
+    trackerIntrinsics.distortion_coefficients.p2= 0.00010589254816295579;
+	
+    pose = *k_PSVR_pose_identity;
     memset(&SharedColorPresets, 0, sizeof(PSVR_HSVColorRangeTable));
 };
 
@@ -66,35 +71,29 @@ PS3EyeTrackerConfig::writeToJSON()
     configuru::Config pt{
         {"is_valid", is_valid},
         {"version", PS3EyeTrackerConfig::CONFIG_VERSION},
-	    {"lens_calibration_version", PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION},
+        {"lens_calibration_version", PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION},
         {"max_poll_failure_count", max_poll_failure_count},
-	    {"frame_width", frame_width},
-	    {"frame_height", frame_height},
-	    {"frame_rate", frame_rate},
+        {"frame_rate", frame_rate},
         {"exposure", exposure},
-	    {"gain", gain},
-        {"focalLengthX", focalLengthX},
-        {"focalLengthY", focalLengthY},
-        {"principalX", principalX},
-        {"principalY", principalY},
-        {"hfov", hfov},
-        {"vfov", vfov},
-        {"zNear", zNear},
-        {"zFar", zFar},
-        {"distortionK1", distortionK1},
-        {"distortionK2", distortionK2},
-        {"distortionK3", distortionK3},
-        {"distortionP1", distortionP1},
-        {"distortionP2", distortionP2},
+        {"gain", gain},
+        {"hfov", trackerIntrinsics.hfov},
+        {"vfov", trackerIntrinsics.vfov},
+        {"zNear", trackerIntrinsics.znear},
+        {"zFar", trackerIntrinsics.zfar},
+        {"frame_width", trackerIntrinsics.pixel_width},
+        {"frame_height", trackerIntrinsics.pixel_height},
         {"fovSetting", static_cast<int>(fovSetting)},
         {"pose.orientation.w", pose.Orientation.w},
         {"pose.orientation.x", pose.Orientation.x},
         {"pose.orientation.y", pose.Orientation.y},
         {"pose.orientation.z", pose.Orientation.z},
-        {"pose.position.x", pose.PositionCm.x},
-        {"pose.position.y", pose.PositionCm.y},
-        {"pose.position.z", pose.PositionCm.z}
+        {"pose.position.x", pose.Position.x},
+        {"pose.position.y", pose.Position.y},
+        {"pose.position.z", pose.Position.z}
     };
+
+    writeMatrix3d(pt, "camera_matrix", trackerIntrinsics.camera_matrix);
+    writeDistortionCoefficients(pt, "distortion", &trackerIntrinsics.distortion_coefficients);
 
 	writeColorPropertyPresetTable(&SharedColorPresets, pt);
 
@@ -114,28 +113,24 @@ PS3EyeTrackerConfig::readFromJSON(const configuru::Config &pt)
     {
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
-		frame_width = pt.get_or<double>("frame_width", 640);
-		frame_height = pt.get_or<double>("frame_height", 480);
 		frame_rate = pt.get_or<double>("frame_rate", 40);
         exposure = pt.get_or<double>("exposure", 32);
 		gain = pt.get_or<double>("gain", 32);
-        hfov = pt.get_or<double>("hfov", 60.0);
-        vfov = pt.get_or<double>("vfov", 45.0);
-        zNear = pt.get_or<double>("zNear", 10.0);
-        zFar = pt.get_or<double>("zFar", 200.0);
 
 		int lens_calibration_version = pt.get_or<int>("lens_calibration_version", 0);
 		if (lens_calibration_version == PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION)
 		{
-			focalLengthX = pt.get_or<double>("focalLengthX", focalLengthX);
-			focalLengthY = pt.get_or<double>("focalLengthY", focalLengthY);
-			principalX = pt.get_or<double>("principalX", principalX);
-			principalY = pt.get_or<double>("principalY", principalY);
-			distortionK1 = pt.get_or<double>("distortionK1", distortionK1);
-			distortionK2 = pt.get_or<double>("distortionK2", distortionK2);
-			distortionK3 = pt.get_or<double>("distortionK3", distortionK3);
-			distortionP1 = pt.get_or<double>("distortionP1", distortionP1);
-			distortionP2 = pt.get_or<double>("distortionP2", distortionP2);
+            trackerIntrinsics.hfov = pt.get_or<float>("hfov", 60.0f);
+            trackerIntrinsics.vfov = pt.get_or<float>("vfov", 45.0f);
+            trackerIntrinsics.znear = pt.get_or<float>("zNear", 10.0f);
+            trackerIntrinsics.zfar = pt.get_or<float>("zFar", 200.0f);
+		    trackerIntrinsics.pixel_width = pt.get_or<float>("frame_width", 640.f);
+		    trackerIntrinsics.pixel_height = pt.get_or<float>("frame_height", 480.f);
+
+            readMatrix3d(pt, "camera_matrix", trackerIntrinsics.camera_matrix);
+            readDistortionCoefficients(pt, "distortion", 
+                &trackerIntrinsics.distortion_coefficients, 
+                &trackerIntrinsics.distortion_coefficients);
 		}
 		else
 		{
@@ -152,9 +147,9 @@ PS3EyeTrackerConfig::readFromJSON(const configuru::Config &pt)
         pose.Orientation.x = pt.get_or<float>("pose.orientation.x", 0.0);
         pose.Orientation.y = pt.get_or<float>("pose.orientation.y", 0.0);
         pose.Orientation.z = pt.get_or<float>("pose.orientation.z", 0.0);
-        pose.PositionCm.x = pt.get_or<float>("pose.position.x", 0.0);
-        pose.PositionCm.y = pt.get_or<float>("pose.position.y", 0.0);
-        pose.PositionCm.z = pt.get_or<float>("pose.position.z", 0.0);
+        pose.Position.x = pt.get_or<float>("pose.position.x", 0.0);
+        pose.Position.y = pt.get_or<float>("pose.position.y", 0.0);
+        pose.Position.z = pt.get_or<float>("pose.position.z", 0.0);
 
 		// Read the default preset table
 		readColorPropertyPresetTable(pt, &SharedColorPresets);
@@ -270,7 +265,7 @@ PS3EyeTracker::~PS3EyeTracker()
 // PSVRTracker
 bool PS3EyeTracker::open() // Opens the first HID device for the tracker
 {
-    TrackerDeviceEnumerator enumerator;
+    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_USB, CommonDeviceState::PS3EYE);
     bool success = false;
 
     // Skip over everything that isn't a PS3EYE
@@ -295,7 +290,7 @@ bool PS3EyeTracker::matchesDeviceEnumerator(const DeviceEnumerator *enumerator) 
 
     bool matches = false;
 
-    if (pEnum->get_device_type() == CommonControllerState::PS3EYE)
+    if (pEnum->get_device_type() == CommonDeviceState::PS3EYE)
     {
         std::string enumerator_path = pEnum->get_path();
 
@@ -352,7 +347,7 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
 		// Save the config back out again in case defaults changed
 		cfg.save();
 
-		VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, cfg.frame_width);
+		VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, cfg.trackerIntrinsics.pixel_width);
 		VideoCapture->set(cv::CAP_PROP_EXPOSURE, cfg.exposure);
 		VideoCapture->set(cv::CAP_PROP_GAIN, cfg.gain);
 		VideoCapture->set(cv::CAP_PROP_FPS, cfg.frame_rate);
@@ -515,11 +510,12 @@ bool PS3EyeTracker::getVideoFrameDimensions(
     return bSuccess;
 }
 
-const unsigned char *PS3EyeTracker::getVideoFrameBuffer() const
+const unsigned char *PS3EyeTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
 {
     const unsigned char *result = nullptr;
 
-    if (CaptureData != nullptr)
+    if (CaptureData != nullptr &&
+        section == PSVRVideoFrameSection_Primary)
     {
         return static_cast<const unsigned char *>(CaptureData->frame.data);
     }
@@ -536,9 +532,9 @@ void PS3EyeTracker::loadSettings()
 
     cfg.load();
 
-	if (currentFrameWidth != cfg.frame_width)
+	if (currentFrameWidth != cfg.trackerIntrinsics.pixel_width)
 	{
-		VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, cfg.frame_width);
+		VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, cfg.trackerIntrinsics.pixel_width);
 	}
 
     if (currentExposure != cfg.exposure)
@@ -568,7 +564,7 @@ void PS3EyeTracker::setFrameWidth(double value, bool bUpdateConfig)
 
 	if (bUpdateConfig)
 	{
-		cfg.frame_width = value;
+		cfg.trackerIntrinsics.pixel_width = static_cast<float>(value);
 	}
 }
 
@@ -583,7 +579,7 @@ void PS3EyeTracker::setFrameHeight(double value, bool bUpdateConfig)
 
 	if (bUpdateConfig)
 	{
-		cfg.frame_height = value;
+		cfg.trackerIntrinsics.pixel_height = static_cast<float>(value);
 	}
 }
 
@@ -638,37 +634,17 @@ double PS3EyeTracker::getGain() const
 }
 
 void PS3EyeTracker::getCameraIntrinsics(
-    float &outFocalLengthX, float &outFocalLengthY,
-    float &outPrincipalX, float &outPrincipalY,
-    float &outDistortionK1, float &outDistortionK2, float &outDistortionK3,
-    float &outDistortionP1, float &outDistortionP2) const
+    PSVRTrackerIntrinsics &out_tracker_intrinsics) const
 {
-    outFocalLengthX = static_cast<float>(cfg.focalLengthX);
-    outFocalLengthY = static_cast<float>(cfg.focalLengthY);
-    outPrincipalX = static_cast<float>(cfg.principalX);
-    outPrincipalY = static_cast<float>(cfg.principalY);
-    outDistortionK1 = static_cast<float>(cfg.distortionK1);
-    outDistortionK2 = static_cast<float>(cfg.distortionK2);
-    outDistortionK3 = static_cast<float>(cfg.distortionK3);
-    outDistortionP1 = static_cast<float>(cfg.distortionP1);
-    outDistortionP2 = static_cast<float>(cfg.distortionP2);
+    out_tracker_intrinsics.intrinsics_type= PSVR_MONO_TRACKER_INTRINSICS;
+    out_tracker_intrinsics.intrinsics.mono= cfg.trackerIntrinsics;
 }
 
 void PS3EyeTracker::setCameraIntrinsics(
-    float focalLengthX, float focalLengthY,
-    float principalX, float principalY,
-    float distortionK1, float distortionK2, float distortionK3,
-    float distortionP1, float distortionP2)
+    const PSVRTrackerIntrinsics &tracker_intrinsics)
 {
-    cfg.focalLengthX = focalLengthX;
-    cfg.focalLengthY = focalLengthY;
-    cfg.principalX = principalX;
-    cfg.principalY = principalY;
-    cfg.distortionK1 = distortionK1;
-    cfg.distortionK2 = distortionK2;
-    cfg.distortionK3 = distortionK3;
-    cfg.distortionP1 = distortionP1;
-    cfg.distortionP2 = distortionP2;
+    assert(tracker_intrinsics.intrinsics_type == PSVR_MONO_TRACKER_INTRINSICS);
+    cfg.trackerIntrinsics = tracker_intrinsics.intrinsics.mono;
 }
 
 PSVRPosef PS3EyeTracker::getTrackerPose() const
@@ -685,81 +661,21 @@ void PS3EyeTracker::setTrackerPose(
 
 void PS3EyeTracker::getFOV(float &outHFOV, float &outVFOV) const
 {
-    outHFOV = static_cast<float>(cfg.hfov);
-    outVFOV = static_cast<float>(cfg.vfov);
+    outHFOV = static_cast<float>(cfg.trackerIntrinsics.hfov);
+    outVFOV = static_cast<float>(cfg.trackerIntrinsics.vfov);
 }
 
 void PS3EyeTracker::getZRange(float &outZNear, float &outZFar) const
 {
-    outZNear = static_cast<float>(cfg.zNear);
-    outZFar = static_cast<float>(cfg.zFar);
-}
-
-void PS3EyeTracker::gatherTrackerOptions(
-    PSVRClientTrackerSettings* settings) const
-{
-    PSVRProtocol::OptionSet *optionSet = settings->add_option_sets();
-    
-    optionSet->set_option_name(OPTION_FOV_SETTING);
-    optionSet->add_option_strings(OPTION_FOV_RED_DOT);
-    optionSet->add_option_strings(OPTION_FOV_BLUE_DOT);
-    optionSet->set_option_index(static_cast<int>(cfg.fovSetting));
-}
-
-bool PS3EyeTracker::setOptionIndex(
-    const std::string &option_name,
-    int option_index)
-{
-    bool bValidOption = false;
-
-    if (option_name == OPTION_FOV_SETTING && 
-        option_index >= 0 && 
-        option_index < PS3EyeTrackerConfig::eFOVSetting::MAX_FOV_SETTINGS)
-    {
-        cfg.fovSetting = static_cast<PS3EyeTrackerConfig::eFOVSetting>(option_index);
-        //###HipsterSloth $TODO Update the focal lengths?
-
-        bValidOption = true;
-    }
-
-    return bValidOption;
-}
-
-bool PS3EyeTracker::getOptionIndex(
-    const std::string &option_name, 
-    int &out_option_index) const
-{
-    bool bValidOption = false;
-
-    if (option_name == OPTION_FOV_SETTING)
-    {
-        out_option_index = static_cast<int>(cfg.fovSetting);
-        bValidOption = true;
-    }
-
-    return bValidOption;
+    outZNear = static_cast<float>(cfg.trackerIntrinsics.znear);
+    outZFar = static_cast<float>(cfg.trackerIntrinsics.zfar);
 }
 
 void PS3EyeTracker::gatherTrackingColorPresets(
 	const std::string &controller_serial, 
     PSVRClientTrackerSettings* settings) const
 {
-	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
-
-    for (int list_index = 0; list_index < PSVRTrackingColorType_MaxColorTypes; ++list_index)
-    {
-        const PSVR_HSVColorRange &hsvRange = table->color_presets[list_index];
-        const PSVRTrackingColorType colorType = static_cast<PSVRTrackingColorType>(list_index);
-
-        PSVRProtocol::TrackingColorPreset *colorPreset= settings->add_color_presets();
-        colorPreset->set_color_type(static_cast<PSVRProtocol::TrackingColorType>(colorType));
-        colorPreset->set_hue_center(hsvRange.hue_range.center);
-        colorPreset->set_hue_range(hsvRange.hue_range.range);
-        colorPreset->set_saturation_center(hsvRange.saturation_range.center);
-        colorPreset->set_saturation_range(hsvRange.saturation_range.range);
-        colorPreset->set_value_center(hsvRange.value_range.center);
-        colorPreset->set_value_range(hsvRange.value_range.range);
-    }
+    settings->color_range_table= *cfg.getColorRangeTable(controller_serial);
 }
 
 void PS3EyeTracker::setTrackingColorPreset(

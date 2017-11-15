@@ -70,6 +70,18 @@ typedef enum
     PSVRDriver_GENERIC_WEBCAM
 } PSVRTrackerDriver;
 
+/// Tracked device data stream options
+typedef enum
+{
+    PSMStreamFlags_defaultStreamOptions = 0x00,			///< Default minimal data stream
+    PSMStreamFlags_includePositionData = 0x01,			///< Add position data (turns on tracking)
+    PSMStreamFlags_includePhysicsData = 0x02,			///< Add IMU physics state
+    PSMStreamFlags_includeRawSensorData = 0x04,			///< Add raw IMU sensor data
+	PSMStreamFlags_includeCalibratedSensorData = 0x08,	///< Add calibrated IMU sensor state
+    PSMStreamFlags_includeRawTrackerData = 0x10,		///< Add raw optical tracking projection info
+	PSMStreamFlags_disableROI = 0x20,					///< Disable Region-of-Interest tracking optimization
+} PSMDeviceDataStreamFlags;
+
 // Tracker State
 //--------------
 
@@ -207,7 +219,7 @@ typedef struct
     float data_frame_average_fps;
 
     // SharedVideoFrameBuffer pointer internally
-    void *opaque_shared_video_frame_buffer;
+    const void *opaque_shared_video_frame_buffer;
 } PSVRTracker;
 
 // HMD State

@@ -495,6 +495,8 @@ public:
     /// Unscented Kalman Filter instance
 	OrientationSRUKF ukf;
 
+    double time;
+
 	/// The final output of this filter.
 	/// This isn't part of the UKF state vector because it's non-linear.
 	/// Instead we store "error euler angles" in the UKF state vector and then apply it 
@@ -507,6 +509,7 @@ public:
 		, system_model()
 		, ukf(k_ukf_alpha, k_ukf_beta, k_ukf_kappa)
         , world_orientation(Eigen::Quaternionf::Identity())
+        , time(0.0)
     {
     }
 
@@ -658,6 +661,11 @@ bool KalmanOrientationFilter::getIsStateValid() const
 	return m_filter->bIsValid;
 }
 
+double KalmanOrientationFilter::getTimeInSeconds() const
+{
+    return m_filter->time;
+}
+
 void KalmanOrientationFilter::resetState()
 {
 	m_filter->init(m_constants);
@@ -799,10 +807,13 @@ void KalmanOrientationFilterDS4::update(const float delta_time, const PoseFilter
 		// Update the measurement model with the latest estimate of the orientation (without error)
 		// so that we can predict what the controller relative sensor measurements will be
 		measurement_model.update_world_orientation(filter->world_orientation);
+
+        filter->time+= (double)delta_time;
 	}
 	else
 	{
 		m_filter->ukf.init(OrientationStateVectord::Identity());
+        m_filter->time= 0.0;
 		m_filter->bIsValid = true;
 	}
 }

@@ -46,6 +46,9 @@ struct PositionFilterState
     /// Position that's considered the origin position 
     Eigen::Vector3f origin_position; // meters
 
+    /// The number of seconds the filter has been running
+    double time;
+
     std::chrono::time_point<std::chrono::high_resolution_clock> last_visible_position_timestamp;
     bool bLast_visible_position_timestamp_valid;
 
@@ -58,6 +61,7 @@ struct PositionFilterState
         accelerometer_g_units = Eigen::Vector3f::Zero();
         accelerometer_derivative_g_per_sec = Eigen::Vector3f::Zero();
         origin_position = Eigen::Vector3f::Zero();
+        time= 0.0;
     }
 
 	void apply_state(
@@ -158,6 +162,11 @@ bool PositionFilter::getIsStateValid() const
     return m_state->bIsValid;
 }
 
+double PositionFilter::getTimeInSeconds() const
+{
+    return m_state->time;
+}
+
 void PositionFilter::resetState()
 {
     m_state->reset();
@@ -237,6 +246,7 @@ void PositionFilterPassThru::update(
 		Eigen::Vector3f::Zero(),
 		packet.world_accelerometer, 
 		Eigen::Vector3f::Zero());
+    m_state->time+= (double)delta_time;
 }
 
 // -- PositionFilterLowPassOptical --
@@ -273,6 +283,7 @@ void PositionFilterLowPassOptical::update(
 			new_state.acceleration_m_per_sec_sqr,
 			new_state.accelerometer_g_units, 
 			new_state.accelerometer_derivative_g_per_sec);
+        m_state->time+= (double)delta_time;
     }
 	else
 	{
@@ -304,6 +315,7 @@ void PositionFilterLowPassIMU::update(
 				new_state.acceleration_m_per_sec_sqr,
 				new_state.accelerometer_g_units, 
 				new_state.accelerometer_derivative_g_per_sec);
+            m_state->time+= (double)delta_time;
         }
         else
         {
@@ -314,6 +326,7 @@ void PositionFilterLowPassIMU::update(
 				Eigen::Vector3f::Zero(),
 				packet.world_accelerometer, 
 				Eigen::Vector3f::Zero());
+            m_state->time+= (double)delta_time;
         }
     }
 }
@@ -388,6 +401,7 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
 				new_imu_state.acceleration_m_per_sec_sqr,
 				new_imu_state.accelerometer_g_units, 
 				new_imu_state.accelerometer_derivative_g_per_sec);
+            m_state->time+= (double)delta_time;
         }
         else
         {
@@ -395,6 +409,7 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
             m_state->velocity_m_per_sec = Eigen::Vector3f::Zero();
             m_state->acceleration_m_per_sec_sqr = Eigen::Vector3f::Zero();
             m_state->accelerometer_derivative_g_per_sec = Eigen::Vector3f::Zero();
+            m_state->time= 0.0;
 
             // Fusion state is no longer valid
             m_state->bIsValid = false;
@@ -409,6 +424,7 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
 			Eigen::Vector3f::Zero(),
 			packet.world_accelerometer,
 			Eigen::Vector3f::Zero());
+        m_state->time+= (double)delta_time;
     }
 }
 
@@ -444,7 +460,6 @@ void PositionFilterLowPassExponential::update(const float delta_time, const Pose
 
 			if (totalTime > 0.f)
 			{
-
 				Eigen::Vector3f newvVelocity = (positionList.back() - positionList.front()) / totalTime;
 				prevVelocity = (newvVelocity * smooth) + (prevVelocity * (1.0f - smooth));
 				m_state->velocity_m_per_sec = prevVelocity;
@@ -454,6 +469,7 @@ void PositionFilterLowPassExponential::update(const float delta_time, const Pose
 			}
 
 			m_state->acceleration_m_per_sec_sqr = Eigen::Vector3f::Zero(); //new_acceleration;
+            m_state->time+= (double)totalTime;
 		}
 		else
 		{
@@ -461,7 +477,7 @@ void PositionFilterLowPassExponential::update(const float delta_time, const Pose
 			m_state->position_meters = m_state->position_meters;
 			m_state->velocity_m_per_sec = Eigen::Vector3f::Zero();
 			m_state->acceleration_m_per_sec_sqr = Eigen::Vector3f::Zero();
-
+            m_state->time+= (double)delta_time;
 
 			while (timeList.size() < queueLen)
 				timeList.push_back(delta_time);

@@ -26,6 +26,7 @@ struct OrientationFilterState
     Eigen::Quaternionf orientation;
     Eigen::Vector3f angular_velocity;
     Eigen::Vector3f angular_acceleration;
+    double time;
 
     /* Quaternion measured when controller points towards camera */
     Eigen::Quaternionf reset_orientation;
@@ -37,6 +38,7 @@ struct OrientationFilterState
         angular_velocity = Eigen::Vector3f::Zero();
         angular_acceleration = Eigen::Vector3f::Zero();
         reset_orientation= Eigen::Quaternionf::Identity();
+        time= 0.0;
     }
 
     void apply_state(
@@ -93,6 +95,11 @@ OrientationFilter::~OrientationFilter()
 bool OrientationFilter::getIsStateValid() const
 {
     return m_state->bIsValid;
+}
+
+double OrientationFilter::getTimeInSeconds() const
+{
+    return m_state->time;
 }
 
 void OrientationFilter::resetState()
@@ -177,6 +184,7 @@ void OrientationFilterPassThru::update(const float delta_time, const PoseFilterP
         Eigen::Vector3f::Zero(); //(new_angular_velocity - m_state->angular_velocity) / delta_time;
 
     m_state->apply_state(new_orientation, new_angular_velocity, new_angular_accelertion);
+    m_state->time+= (double)delta_time;
 }
 
 // -- OrientationFilterMadgwickARG --
@@ -248,6 +256,7 @@ void OrientationFilterMadgwickARG::update(const float delta_time, const PoseFilt
         const Eigen::Vector3f new_angular_acceleration= Eigen::Vector3f::Zero(); // (current_omega - m_state->angular_velocity) / delta_time;
 
         m_state->apply_state(new_orientation, new_angular_velocity, new_angular_acceleration);
+        m_state->time+= (double)delta_time;
     }
 }
 
@@ -365,6 +374,7 @@ void OrientationFilterMadgwickMARG::update(const float delta_time, const PoseFil
         const Eigen::Vector3f new_angular_acceleration = Eigen::Vector3f::Zero(); //(new_angular_velocity - m_state->angular_velocity) / delta_time;
 
         m_state->apply_state(new_orientation, new_angular_velocity, new_angular_acceleration);
+        m_state->time+= (double)delta_time;
     }
 }
 
@@ -476,6 +486,7 @@ void OrientationFilterComplementaryOpticalARG::update(const float delta_time, co
 		const Eigen::Vector3f new_angular_acceleration = Eigen::Vector3f::Zero(); // (current_omega - m_state->angular_velocity) / delta_time;
 
 		m_state->apply_state(blended_orientation_new, new_angular_velocity, new_angular_acceleration);
+        m_state->time+= (double)delta_time;
 	}
 }
 
@@ -543,6 +554,7 @@ void OrientationFilterComplementaryMARG::update(const float delta_time, const Po
         const Eigen::Vector3f new_angular_acceleration = Eigen::Vector3f::Zero(); // (current_omega - m_state->angular_velocity) / delta_time;
 
         m_state->apply_state(new_orientation, new_angular_velocity, new_angular_acceleration);
+        m_state->time+= (double)delta_time;
     }
 
     // Update the blend weight

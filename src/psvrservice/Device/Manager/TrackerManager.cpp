@@ -1,6 +1,7 @@
 //-- includes -----
 #include "TrackerManager.h"
 #include "TrackerDeviceEnumerator.h"
+#include "VirtualStereoCameraEnumerator.h"
 #include "DeviceManager.h"
 #include "HMDManager.h"
 #include "Logger.h"
@@ -21,7 +22,7 @@ const int TrackerManagerConfig::CONFIG_VERSION = 2;
 TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
 {
-
+    virtual_stereo_tracker_count= 0;
 	controller_position_smoothing = 0.f;
     optical_tracking_timeout= 100;
 	tracker_sleep_ms = 1;
@@ -61,7 +62,8 @@ TrackerManagerConfig::writeToJSON()
 	    {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
         {"default_tracker_profile.exposure", default_tracker_profile.exposure},
         {"default_tracker_profile.gain", default_tracker_profile.gain},
-	    {"global_forward_degrees", global_forward_degrees}
+	    {"global_forward_degrees", global_forward_degrees},
+		{"virtual_stereo_tracker_count", virtual_stereo_tracker_count}
     };
 
 	writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
@@ -76,6 +78,7 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
 
     if (version == TrackerManagerConfig::CONFIG_VERSION)
     {
+		virtual_stereo_tracker_count = pt.get_or<int>("virtual_stereo_tracker_count", virtual_stereo_tracker_count);
 		controller_position_smoothing = pt.get_or<float>("controller_position_smoothing", controller_position_smoothing);
         optical_tracking_timeout= pt.get_or<int>("optical_tracking_timeout", optical_tracking_timeout);
 		use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
@@ -157,6 +160,10 @@ TrackerManager::startup()
         // Save back out the config in case there were updated defaults
         cfg.save();
 
+        // Copy the virtual stereo camera count into the Virtual Stereo Camera Enumerator's static variable.
+        // This breaks the dependency between the Tracker Manager and the enumerator.
+        VirtualStereoCameraEnumerator::virtual_stereo_camera_count= cfg.virtual_stereo_tracker_count;
+
         // Refresh the tracker list
         mark_tracker_list_dirty();
 
@@ -205,7 +212,7 @@ TrackerManager::mark_tracker_list_dirty()
 DeviceEnumerator *
 TrackerManager::allocate_device_enumerator()
 {
-    return new TrackerDeviceEnumerator;
+    return new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_ALL);
 }
 
 void

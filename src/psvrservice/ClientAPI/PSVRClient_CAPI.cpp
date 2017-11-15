@@ -193,11 +193,11 @@ PSVRResult PSVR_GetTrackerScreenSize(PSVRTrackerID tracker_id, PSVRVector2f *out
 
         switch (tracker->tracker_info.tracker_intrinsics.intrinsics_type)
         {
-        case PSVRTrackerIntrinsics::PSVR_STEREO_TRACKER_INTRINSICS:
+        case PSVR_STEREO_TRACKER_INTRINSICS:
             out_screen_size->x= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_width;
             out_screen_size->y= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_height;
             break;
-        case PSVRTrackerIntrinsics::PSVR_MONO_TRACKER_INTRINSICS:
+        case PSVR_MONO_TRACKER_INTRINSICS:
             out_screen_size->x= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_width;
             out_screen_size->y= tracker->tracker_info.tracker_intrinsics.intrinsics.stereo.pixel_height;
             break;

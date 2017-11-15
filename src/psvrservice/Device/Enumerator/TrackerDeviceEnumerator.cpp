@@ -1,46 +1,91 @@
 // -- includes -----
 #include "TrackerDeviceEnumerator.h"
-#include "Utility.h"
-#include "USBDeviceManager.h"
-#include "Logger.h"
+#include "TrackerUSBDeviceEnumerator.h"
+#include "VirtualStereoCameraEnumerator.h"
 #include "assert.h"
 #include "string.h"
 
-// -- private definitions -----
-#ifdef _MSC_VER
-#pragma warning (disable: 4996) // 'This function or variable may be unsafe': snprintf
-#define snprintf _snprintf
-#endif
-
-// -- macros ----
-#define MAX_CAMERA_TYPE_INDEX               GET_DEVICE_TYPE_INDEX(CommonDeviceState::SUPPORTED_CAMERA_TYPE_COUNT)
-
 // -- globals -----
-// NOTE: This list must match the tracker order in CommonDeviceState::eDeviceType
-USBDeviceFilter k_supported_tracker_infos[MAX_CAMERA_TYPE_INDEX] = {
-    { 0x1415, 0x2000 }, // PS3Eye
-    //{ 0x05a9, 0x058a }, // PS4 Camera - TODO
-};
 
-// -- private prototypes -----
-static bool is_tracker_supported(USBDeviceEnumerator* enumerator, CommonDeviceState::eDeviceType device_type_filter, CommonDeviceState::eDeviceType &out_device_type);
-
-// -- methods -----
-TrackerDeviceEnumerator::TrackerDeviceEnumerator()
+// -- TrackerDeviceEnumerator -----
+TrackerDeviceEnumerator::TrackerDeviceEnumerator(
+	eAPIType _apiType)
 	: DeviceEnumerator()
-	, m_usb_enumerator(nullptr)
-    , m_cameraIndex(-1)
+	, api_type(_apiType)
+	, enumerators(nullptr)
+	, enumerator_count(0)
+	, enumerator_index(0)
+    , camera_index(-1)
 {
-	USBDeviceManager *usbRequestMgr = USBDeviceManager::getInstance();
-
-	m_deviceType= CommonDeviceState::PS3EYE;
-	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
-	m_usb_enumerator = usb_device_enumerator_allocate();
-
-	// If the first USB device handle isn't a tracker, move on to the next device
-	if (testUSBEnumerator())
+	switch (_apiType)
 	{
-		m_cameraIndex= 0;
+	case eAPIType::CommunicationType_USB:
+		enumerators = new DeviceEnumerator *[1];
+		enumerators[0] = nullptr;
+		enumerator_count = 1;
+		break;
+	case eAPIType::CommunicationType_VIRTUAL_STEREO:
+		enumerators = new DeviceEnumerator *[1];
+		enumerators[0] = nullptr;
+		enumerator_count = 1;
+		break;
+	case eAPIType::CommunicationType_ALL:
+		enumerators = new DeviceEnumerator *[2];
+        enumerators[0] = nullptr;
+		enumerators[1] = nullptr;
+		enumerator_count = 2;
+		break;
+	}
+
+    allocate_child_enumerator(enumerator_index);
+
+	if (is_valid())
+	{
+        camera_index= 0;
+		m_deviceType= enumerators[enumerator_index]->get_device_type();
+	}
+	else
+    {
+        next();
+    }
+}
+
+TrackerDeviceEnumerator::TrackerDeviceEnumerator(
+	eAPIType _apiType,
+	CommonDeviceState::eDeviceType deviceTypeFilter)
+    : DeviceEnumerator(deviceTypeFilter)
+	, api_type(_apiType)
+	, enumerators(nullptr)
+	, enumerator_count(0)
+	, enumerator_index(0)
+    , camera_index(-1)
+{
+	switch (_apiType)
+	{
+	case eAPIType::CommunicationType_USB:
+		enumerators = new DeviceEnumerator *[1];
+		enumerators[0] = nullptr;
+		enumerator_count = 1;
+		break;
+	case eAPIType::CommunicationType_VIRTUAL_STEREO:
+		enumerators = new DeviceEnumerator *[1];
+		enumerators[0] = nullptr;
+		enumerator_count = 1;
+		break;
+	case eAPIType::CommunicationType_ALL:
+		enumerators = new DeviceEnumerator *[2];
+		enumerators[0] = nullptr;
+        enumerators[1] = nullptr;
+		enumerator_count = 2;
+		break;
+	}
+
+    allocate_child_enumerator(enumerator_index);
+
+	if (is_valid())
+	{
+        camera_index= 0;
+		m_deviceType = enumerators[enumerator_index]->get_device_type();
 	}
 	else
 	{
@@ -48,142 +93,230 @@ TrackerDeviceEnumerator::TrackerDeviceEnumerator()
 	}
 }
 
+TrackerDeviceEnumerator::TrackerDeviceEnumerator(const std::string &usb_path)
+    : DeviceEnumerator()
+	, api_type(eAPIType::CommunicationType_USB)
+	, enumerators(nullptr)
+	, enumerator_count(0)
+	, enumerator_index(0)
+    , camera_index(0)
+{
+	enumerators = new DeviceEnumerator *[1];
+	enumerators[0] = new TrackerUSBDeviceEnumerator(usb_path);
+	enumerator_count = 1;
+
+	if (is_valid())
+	{
+		m_deviceType = enumerators[0]->get_device_type();
+        camera_index = static_cast<TrackerUSBDeviceEnumerator *>(enumerators[0])->get_camera_index();
+	}
+	else
+	{
+		m_deviceType= CommonDeviceState::INVALID_DEVICE_TYPE;
+	}
+}
+
 TrackerDeviceEnumerator::~TrackerDeviceEnumerator()
 {
-	if (m_usb_enumerator != nullptr)
+	for (int index = 0; index < enumerator_count; ++index)
 	{
-		usb_device_enumerator_free(m_usb_enumerator);
+		delete enumerators[index];
 	}
-}
-
-int TrackerDeviceEnumerator::get_vendor_id() const
-{
-	USBDeviceFilter devInfo;
-	int vendor_id = -1;
-
-	if (is_valid() && usb_device_enumerator_get_filter(m_usb_enumerator, devInfo))
-	{
-		vendor_id = devInfo.vendor_id;
-	}
-
-	return vendor_id;
-}
-
-int TrackerDeviceEnumerator::get_product_id() const
-{
-	USBDeviceFilter devInfo;
-	int product_id = -1;
-
-	if (is_valid() && usb_device_enumerator_get_filter(m_usb_enumerator, devInfo))
-	{
-		product_id = devInfo.product_id;
-	}
-
-	return product_id;
+	delete[] enumerators;
 }
 
 const char *TrackerDeviceEnumerator::get_path() const
 {
-    const char *result = nullptr;
+    return (enumerator_index < enumerator_count) ? enumerators[enumerator_index]->get_path() : nullptr;
+}
 
-    if (is_valid())
-    {
-        // Return a pointer to our member variable that has the path cached
-        result= m_currentUSBPath;
-    }
+int TrackerDeviceEnumerator::get_vendor_id() const
+{
+	return (enumerator_index < enumerator_count) ? enumerators[enumerator_index]->get_vendor_id() : -1;
+}
 
-    return result;
+int TrackerDeviceEnumerator::get_product_id() const
+{
+	return (enumerator_index < enumerator_count) ? enumerators[enumerator_index]->get_product_id() : -1;
+}
+
+TrackerDeviceEnumerator::eAPIType TrackerDeviceEnumerator::get_api_type() const
+{
+	TrackerDeviceEnumerator::eAPIType result= TrackerDeviceEnumerator::CommunicationType_INVALID;
+
+	switch (api_type)
+	{
+	case eAPIType::CommunicationType_USB:
+		result = (enumerator_index < enumerator_count) ? TrackerDeviceEnumerator::CommunicationType_USB : TrackerDeviceEnumerator::CommunicationType_INVALID;
+		break;
+	case eAPIType::CommunicationType_VIRTUAL_STEREO:
+		result = (enumerator_index < enumerator_count) ? TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO : TrackerDeviceEnumerator::CommunicationType_INVALID;
+		break;
+	case eAPIType::CommunicationType_ALL:
+		if (enumerator_index < enumerator_count)
+		{
+			switch (enumerator_index)
+			{
+            case 0:
+				result = TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO;
+				break;
+            case 1:
+				result = TrackerDeviceEnumerator::CommunicationType_USB;
+				break;
+			default:
+				result = TrackerDeviceEnumerator::CommunicationType_INVALID;
+				break;
+			}
+		}
+		else
+		{
+			result = TrackerDeviceEnumerator::CommunicationType_INVALID;
+		}
+		break;
+	}
+
+	return result;
+}
+
+const VirtualStereoCameraEnumerator *TrackerDeviceEnumerator::get_virtual_stereo_camera_enumerator() const
+{
+	VirtualStereoCameraEnumerator *enumerator = nullptr;
+
+	switch (api_type)
+	{
+	case eAPIType::CommunicationType_USB:
+		enumerator = nullptr;
+		break;
+	case eAPIType::CommunicationType_VIRTUAL_STEREO:
+		enumerator = (enumerator_index < enumerator_count) ? static_cast<VirtualStereoCameraEnumerator *>(enumerators[0]) : nullptr;
+		break;
+	case eAPIType::CommunicationType_ALL:
+		if (enumerator_index < enumerator_count)
+		{
+			enumerator = (enumerator_index == 0) ? static_cast<VirtualStereoCameraEnumerator *>(enumerators[0]) : nullptr;
+		}
+		else
+		{
+			enumerator = nullptr;
+		}
+		break;
+	}
+
+	return enumerator;
+}
+
+const TrackerUSBDeviceEnumerator *TrackerDeviceEnumerator::get_usb_tracker_enumerator() const
+{
+	TrackerUSBDeviceEnumerator *enumerator = nullptr;
+
+	switch (api_type)
+	{
+	case eAPIType::CommunicationType_USB:
+		enumerator = (enumerator_index < enumerator_count) ? static_cast<TrackerUSBDeviceEnumerator *>(enumerators[0]) : nullptr;
+		break;
+	case eAPIType::CommunicationType_VIRTUAL_STEREO:
+		enumerator = nullptr;
+		break;
+	case eAPIType::CommunicationType_ALL:
+		if (enumerator_index < enumerator_count)
+		{
+			enumerator = (enumerator_index == 1) ? static_cast<TrackerUSBDeviceEnumerator *>(enumerators[1]) : nullptr;
+		}
+		else
+		{
+			enumerator = nullptr;
+		}
+		break;
+	}
+
+	return enumerator;
 }
 
 bool TrackerDeviceEnumerator::is_valid() const
 {
-	return m_usb_enumerator != nullptr && usb_device_enumerator_is_valid(m_usb_enumerator);
+    bool bIsValid = false;
+
+	if (enumerator_index < enumerator_count)
+	{
+		bIsValid = enumerators[enumerator_index]->is_valid();
+	}
+
+    return bIsValid;
 }
 
 bool TrackerDeviceEnumerator::next()
 {
-	USBDeviceManager *usbRequestMgr = USBDeviceManager::getInstance();
-	bool foundValid = false;
+    bool foundValid = false;
 
-	while (is_valid() && !foundValid)
-	{
-		usb_device_enumerator_next(m_usb_enumerator);
-
-		if (testUSBEnumerator())
+    while (!foundValid && enumerator_index < enumerator_count)
+    {
+		if (enumerators[enumerator_index] != nullptr && enumerators[enumerator_index]->is_valid())
 		{
-			foundValid= true;
-		}
-	}
+            ++camera_index;
 
-	if (foundValid)
-	{
-		++m_cameraIndex;
-	}
-
-	return foundValid;
-}
-
-bool TrackerDeviceEnumerator::testUSBEnumerator()
-{
-	bool foundValid= false;
-
-	if (is_valid() && is_tracker_supported(m_usb_enumerator, m_deviceTypeFilter, m_deviceType))
-	{
-		char USBPath[256];
-
-		// Cache the path to the device
-		usb_device_enumerator_get_path(m_usb_enumerator, USBPath, sizeof(USBPath));
-
-		// Test open the device
-		char errorReason[256];
-		if (usb_device_can_be_opened(m_usb_enumerator, errorReason, sizeof(errorReason)))
-		{
-			// Remember the last successfully opened tracker path
-			strncpy(m_currentUSBPath, USBPath, sizeof(m_currentUSBPath));
-
-			foundValid = true;
+			enumerators[enumerator_index]->next();
+			foundValid = enumerators[enumerator_index]->is_valid();
 		}
 		else
 		{
-			PSVR_LOG_INFO("TrackerDeviceEnumerator") << "Skipping device (" <<  USBPath << ") - " << errorReason;
-		}
-	}
+			++enumerator_index;
 
-	return foundValid;
-}
-
-//-- private methods -----
-static bool is_tracker_supported(
-	USBDeviceEnumerator *enumerator, 
-	CommonDeviceState::eDeviceType device_type_filter,
-	CommonDeviceState::eDeviceType &out_device_type)
-{
-	USBDeviceFilter devInfo;
-	bool bIsValidDevice = false;
-
-	if (usb_device_enumerator_get_filter(enumerator, devInfo))
-	{
-		// See if the next filtered device is a camera that we care about
-		for (int tracker_type_index = 0; tracker_type_index < MAX_CAMERA_TYPE_INDEX; ++tracker_type_index)
-		{
-			const USBDeviceFilter &supported_type = k_supported_tracker_infos[tracker_type_index];
-
-			if (devInfo.product_id == supported_type.product_id &&
-				devInfo.vendor_id == supported_type.vendor_id)
+			if (enumerator_index < enumerator_count &&
+                camera_index < 0) //###HipsterSloth $HACK - Don't use usb iterator if virtual stereo cameras are in use
+                                  // This can be removed once we have a good way to filter out usb cameras already in use
 			{
-				CommonDeviceState::eDeviceType device_type = 
-					static_cast<CommonDeviceState::eDeviceType>(CommonDeviceState::TrackingCamera + tracker_type_index);
-
-				if (device_type_filter == CommonDeviceState::INVALID_DEVICE_TYPE || // i.e. no filter
-					device_type_filter == device_type)
-				{
-					out_device_type = device_type;
-					bIsValidDevice = true;
-					break;
-				}
+                camera_index= 0;
+                allocate_child_enumerator(enumerator_index);
+				foundValid = enumerators[enumerator_index]->is_valid();
 			}
 		}
+    }
+
+	if (foundValid)
+	{
+		m_deviceType = enumerators[enumerator_index]->get_device_type();
+	}
+	else
+	{
+		m_deviceType = CommonDeviceState::SUPPORTED_CAMERA_TYPE_COUNT; // invalid
 	}
 
-	return bIsValidDevice;
+    return foundValid;
+}
+
+void TrackerDeviceEnumerator::allocate_child_enumerator(int enumerator_index)
+{
+    switch (api_type)
+	{
+	case eAPIType::CommunicationType_USB:
+        assert(enumerator_index == 0);
+        if (enumerators[0] == nullptr)
+        {
+		    enumerators[0] = new TrackerUSBDeviceEnumerator;
+        }
+		break;
+	case eAPIType::CommunicationType_VIRTUAL_STEREO:
+        assert(enumerator_index == 0);
+        if (enumerators[0] == nullptr)
+        {
+		    enumerators[0] = new VirtualStereoCameraEnumerator;
+        }
+		break;
+	case eAPIType::CommunicationType_ALL:
+        if (enumerator_index == 0)
+        {
+            if (enumerators[0] == nullptr)
+            {
+                enumerators[0] = new VirtualStereoCameraEnumerator;
+            }
+        }
+        else if (enumerator_index == 1)
+        {
+            if (enumerators[1] == nullptr)
+            {
+    		    enumerators[1] = new TrackerUSBDeviceEnumerator;
+            }
+        }
+		break;
+	}
 }

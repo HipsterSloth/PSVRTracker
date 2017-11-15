@@ -138,7 +138,7 @@ public:
     PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list);
     PSVRResult start_tracker_data_stream(PSVRTrackerID tracker_id);
     PSVRResult stop_tracker_data_stream(PSVRTrackerID tracker_id);
-	PSVRResult get_shared_video_frame_buffer(PSVRTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer);
+	PSVRResult get_shared_video_frame_buffer(PSVRTrackerID tracker_id, const SharedVideoFrameBuffer **out_shared_buffer);
     PSVRResult get_tracker_settings(
 		PSVRTrackerID tracker_id, PSVRHmdID hmd_id, 
 		PSVRClientTrackerSettings *out_settings);
@@ -157,14 +157,12 @@ public:
     PSVRResult set_tracker_gain(
 		const PSVRTrackerID tracker_id, const float desired_gain, const bool bSaveSetting,
 		float *out_result_gain);
-    PSVRResult set_tracker_option(
-		const PSVRTrackerID tracker_id, const std::string &option_name, const int desired_option_index, 
-		int *out_new_option_index);
     PSVRResult set_tracker_pose(const PSVRTrackerID tracker_id, const PSVRPosef *pose);
     PSVRResult set_tracker_intrinsics(const PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *tracker_intrinsics);
     PSVRResult get_tracking_space_settings(PSVRTrackingSpace *out_tracking_space);
 	
     // -- hmd requests -----
+    ServerHMDView *get_hmd_view_or_null(PSVRHmdID hmd_id);
     PSVRResult get_hmd_list(PSVRHmdList *out_hmd_list);
 	PSVRResult get_hmd_tracking_shape(PSVRHmdID hmd_id, PSVRTrackingShape *out_shape);
     PSVRResult start_hmd_data_stream(const PSVRHmdID hmd_id, unsigned int data_stream_flags);

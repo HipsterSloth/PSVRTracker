@@ -75,6 +75,175 @@ PSVRConfig::load()
     return bLoadedOk;
 }
 
+void PSVRConfig::writeDistortionCoefficients(
+    configuru::Config &pt,
+    const char *coefficients_name,
+    const PSVRDistortionCoefficients *coefficients)
+{
+    char full_property_name[256];
+
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k1", coefficients_name);
+    pt[full_property_name]= coefficients->k1;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k2", coefficients_name);
+    pt[full_property_name]= coefficients->k2;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k3", coefficients_name);
+    pt[full_property_name]= coefficients->k3;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p1", coefficients_name);
+    pt[full_property_name]= coefficients->p1;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p2", coefficients_name);
+    pt[full_property_name]= coefficients->p2;
+}
+
+void PSVRConfig::readDistortionCoefficients(
+    const configuru::Config &pt,
+    const char *coefficients_name,
+    PSVRDistortionCoefficients *outCoefficients,
+    const PSVRDistortionCoefficients *defaultCoefficients)
+{
+    char full_property_name[256];
+
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k1", coefficients_name);
+    outCoefficients->k1= pt.get_or<double>(full_property_name, defaultCoefficients->k1);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k2", coefficients_name);
+    outCoefficients->k2= pt.get_or<double>(full_property_name, defaultCoefficients->k2);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k3", coefficients_name);
+    outCoefficients->k3= pt.get_or<double>(full_property_name, defaultCoefficients->k3);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p1", coefficients_name);
+    outCoefficients->p1= pt.get_or<double>(full_property_name, defaultCoefficients->p1);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p2", coefficients_name);
+    outCoefficients->p2= pt.get_or<double>(full_property_name, defaultCoefficients->p2);
+}
+
+void PSVRConfig::writeMatrix3d(
+    configuru::Config &pt,
+    const char *matrix_name,
+    const PSVRMatrix3d &m)
+{
+    pt[matrix_name]= configuru::Config::array({
+        m.m[0][0], m.m[0][1], m.m[0][2],
+        m.m[1][0], m.m[1][1], m.m[1][2],
+        m.m[2][0], m.m[2][1], m.m[2][2]});
+}
+
+void PSVRConfig::readMatrix3d(
+    const configuru::Config &pt,
+    const char *matrix_name,
+    PSVRMatrix3d &outMatrix)
+{
+    if (pt[matrix_name].is_array())
+    {
+        int i= 0;
+        int j= 0;
+        for (const configuru::Config& element : pt[matrix_name].as_array()) 
+        {
+            outMatrix.m[j][i]= element.as_double();
+
+            ++i;
+            if (i >= 3)
+            {
+                i=0;
+                ++j;
+            }
+            if (j >= 3)
+                break;
+        }
+    }
+}
+
+void PSVRConfig::writeMatrix34d(
+    configuru::Config &pt,
+    const char *matrix_name,
+    const PSVRMatrix34d &m)
+{
+    pt[matrix_name]= configuru::Config::array({
+        m.m[0][0], m.m[0][1], m.m[0][2], m.m[0][3],
+        m.m[1][0], m.m[1][1], m.m[1][2], m.m[1][3],
+        m.m[2][0], m.m[2][1], m.m[2][2], m.m[2][3]});
+}
+
+void PSVRConfig::readMatrix34d(
+    const configuru::Config &pt,
+    const char *matrix_name,
+    PSVRMatrix34d &outMatrix)
+{
+    if (pt[matrix_name].is_array())
+    {
+        int i= 0;
+        int j= 0;
+        for (const configuru::Config& element : pt[matrix_name].as_array()) 
+        {
+            outMatrix.m[j][i]= element.as_double();
+
+            ++i;
+            if (i >= 4)
+            {
+                i=0;
+                ++j;
+            }
+            if (j >= 3)
+                break;
+        }
+    }
+}
+
+void PSVRConfig::writeMatrix4d(
+    configuru::Config &pt,
+    const char *matrix_name,
+    const PSVRMatrix4d &m)
+{
+    pt[matrix_name]= configuru::Config::array({
+        m.m[0][0], m.m[0][1], m.m[0][2], m.m[0][3],
+        m.m[1][0], m.m[1][1], m.m[1][2], m.m[1][3],
+        m.m[2][0], m.m[2][1], m.m[2][2], m.m[2][3],
+        m.m[3][0], m.m[3][1], m.m[3][2], m.m[3][3]});
+}
+
+void PSVRConfig::readMatrix4d(
+    const configuru::Config &pt,
+    const char *matrix_name,
+    PSVRMatrix4d &outMatrix)
+{
+    if (pt[matrix_name].is_array())
+    {
+        int i= 0;
+        int j= 0;
+        for (const configuru::Config& element : pt[matrix_name].as_array()) 
+        {
+            outMatrix.m[j][i]= element.as_double();
+
+            ++i;
+            if (i >= 4)
+            {
+                i=0;
+                ++j;
+            }
+            if (j >= 4)
+                break;
+        }
+    }
+}
+
+void PSVRConfig::writeVector3d(
+    configuru::Config &pt,
+    const char *vector_name,
+    const PSVRVector3d &v)
+{
+    pt[vector_name]= configuru::Config::array({v.x, v.y, v.z});
+}
+
+void PSVRConfig::readVector3d(
+    const configuru::Config &pt,
+    const char *vector_name,
+    PSVRVector3d &outVector)
+{
+    if (pt[vector_name].is_array())
+    {
+        outVector.x= pt[vector_name][0].as_double();
+        outVector.y= pt[vector_name][1].as_double();
+        outVector.z= pt[vector_name][2].as_double();
+    }
+}
+
 void
 PSVRConfig::writeColorPropertyPresetTable(
 	const PSVR_HSVColorRangeTable *table,
@@ -217,27 +386,40 @@ readColorPropertyPreset(
     float &out_value,
     const float default_value)
 {
-    configuru::Config profile= pt;
-
     if (profile_name != nullptr && profile_name[0] != '\0')
     {
         if (pt.has_key(profile_name))
         {
-            profile= pt.get_or<configuru::Config>(profile_name);
+            const auto &profile= pt[profile_name];
+
+            if (profile.has_key("color_preset"))
+            {
+                const auto &color_preset= profile["color_preset"];
+
+                if (color_preset.has_key(color_name))
+                {
+                    const auto &color= color_preset[color_name];
+
+                    if (color.has_key(property_name))
+                    {
+                        out_value= color.get_or<float>(property_name, default_value);
+                        return;
+                    }
+                }
+            }
         }
     }
-
-    if (profile.has_key("color_preset"))
+    else
     {
-        const configuru::Config color_preset= profile.get<configuru::Config>("color_preset");
+        const auto &color_preset= pt["color_preset"];
 
         if (color_preset.has_key(color_name))
         {
-            const configuru::Config color= color_preset.get<configuru::Config>(color_name);
+            const auto &color= color_preset[color_name];
 
             if (color.has_key(property_name))
             {
-                out_value= color.get<float>(property_name);
+                out_value= color.get_or<float>(property_name, default_value);
                 return;
             }
         }

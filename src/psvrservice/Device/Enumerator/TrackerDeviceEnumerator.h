@@ -4,29 +4,45 @@
 //-- includes -----
 #include "DeviceEnumerator.h"
 #include "USBApiInterface.h"
+#include <string>
 
 //-- definitions -----
 class TrackerDeviceEnumerator : public DeviceEnumerator
 {
 public:
-    TrackerDeviceEnumerator();
+	enum eAPIType
+	{
+		CommunicationType_INVALID= -1,
+		CommunicationType_USB,
+        CommunicationType_VIRTUAL_STEREO,
+		CommunicationType_ALL
+	};
+
+    TrackerDeviceEnumerator(eAPIType api_type);
+    TrackerDeviceEnumerator(eAPIType api_type, CommonDeviceState::eDeviceType deviceTypeFilter);
+    TrackerDeviceEnumerator(const std::string &usb_path);
 	~TrackerDeviceEnumerator();
 
     bool is_valid() const override;
     bool next() override;
-	int get_vendor_id() const override;
-	int get_product_id() const override;
     const char *get_path() const override;
-    inline int get_camera_index() const { return m_cameraIndex; }
-	inline struct USBDeviceEnumerator* get_usb_device_enumerator() const { return m_usb_enumerator; }
+    
+    int get_vendor_id() const override;
+	int get_product_id() const override;
+    inline int get_camera_index() const { return camera_index; }
+    eAPIType get_api_type() const;
+    const class VirtualStereoCameraEnumerator *get_virtual_stereo_camera_enumerator() const;
+	const class TrackerUSBDeviceEnumerator *get_usb_tracker_enumerator() const;
 
-protected: 
-	bool testUSBEnumerator();
+protected:
+    void allocate_child_enumerator(int enumerator_index);
 
 private:
-    char m_currentUSBPath[256];
-	struct USBDeviceEnumerator* m_usb_enumerator;
-    int m_cameraIndex;
+	eAPIType api_type;
+	DeviceEnumerator **enumerators;
+	int enumerator_count;
+	int enumerator_index;
+    int camera_index;
 };
 
 #endif // TRACKER_DEVICE_ENUMERATOR_H

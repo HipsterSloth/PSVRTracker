@@ -37,26 +37,12 @@ public:
     
     bool is_valid;
     long max_poll_failure_count;
-	double frame_width;
-	double frame_height;
 	double frame_rate;
     double exposure;
 	double gain;
-    double focalLengthX;
-    double focalLengthY;
-    double principalX;
-    double principalY;
-    double hfov;
-    double vfov;
-    double zNear;
-    double zFar;
-    double distortionK1;
-    double distortionK2;
-    double distortionK3;
-    double distortionP1;
-    double distortionP2;
 
-    eFOVSetting fovSetting;
+    eFOVSetting fovSetting;    
+    PSVRMonoTrackerIntrinsics trackerIntrinsics;
     PSVRPosef pose;
 	PSVR_HSVColorRangeTable SharedColorPresets;
 	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
@@ -124,9 +110,6 @@ public:
     void setTrackerPose(const PSVRPosef *pose) override;
     void getFOV(float &outHFOV, float &outVFOV) const override;
     void getZRange(float &outZNear, float &outZFar) const override;
-    void gatherTrackerOptions(PSVRClientTrackerSettings* settings) const override;
-    bool setOptionIndex(const std::string &option_name, int option_index) override;
-    bool getOptionIndex(const std::string &option_name, int &out_option_index) const override;
     void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const override;
     void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) override;
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;

@@ -708,6 +708,12 @@ ServerTrackerView::getSharedMemoryStreamName() const
     return std::string(m_shared_memory_name);
 }
 
+const SharedVideoFrameBuffer *
+ServerTrackerView::getSharedVideoFrameBuffer() const
+{
+    return m_shared_memory_accesor;
+}
+
 bool ServerTrackerView::open(const class DeviceEnumerator *enumerator)
 {
     bool bSuccess = ServerDeviceView::open(enumerator);
@@ -1067,21 +1073,6 @@ void ServerTrackerView::getFOV(float &outHFOV, float &outVFOV) const
 void ServerTrackerView::getZRange(float &outZNear, float &outZFar) const
 {
     m_device->getZRange(outZNear, outZFar);
-}
-
-void ServerTrackerView::gatherTrackerOptions(PSVRClientTrackerSettings* settings) const
-{
-    m_device->gatherTrackerOptions(settings);
-}
-
-bool ServerTrackerView::setOptionIndex(const std::string &option_name, int option_index)
-{
-    return m_device->setOptionIndex(option_name, option_index);
-}
-
-bool ServerTrackerView::getOptionIndex(const std::string &option_name, int &out_option_index) const
-{
-    return m_device->getOptionIndex(option_name, out_option_index);
 }
 
 void ServerTrackerView::gatherTrackingColorPresets(

@@ -9,6 +9,10 @@
 #include "TrackerManager.h"
 #include "opencv2/opencv.hpp"
 
+#ifdef _MSC_VER
+    #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
+#endif
+
 // -- constants -----
 #define VIRTUAL_STEREO_STATE_BUFFER_MAX 16
 
@@ -97,58 +101,56 @@ VirtualStereoTrackerConfig::VirtualStereoTrackerConfig(const std::string &fnameb
         0.0, 0.0, 0.0, 0.0}};
 
 	SharedColorPresets.table_name[0]= 0;
-    for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
+    for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
     {
         SharedColorPresets.color_presets[preset_index] = k_default_color_presets[preset_index];
     }
 };
 
-const boost::property_tree::ptree
-VirtualStereoTrackerConfig::config2ptree()
+const configuru::Config 
+VirtualStereoTrackerConfig::writeToJSON()
 {
-    boost::property_tree::ptree pt;
+    configuru::Config pt{
+        {"is_valid", is_valid},
+        {"version", VirtualStereoTrackerConfig::CONFIG_VERSION},
+        {"max_poll_failure_count", max_poll_failure_count},
+        {"frame_width", tracker_intrinsics.pixel_width},
+        {"frame_height", tracker_intrinsics.pixel_height},
+        {"frame_rate", frame_rate},
+        {"exposure", exposure},
+        {"gain", gain},
+        {"hfov", tracker_intrinsics.hfov},
+        {"vfov", tracker_intrinsics.vfov},
+        {"zNear", tracker_intrinsics.znear},
+        {"zFar", tracker_intrinsics.zfar},
+        {"pose.orientation.w", pose.Orientation.w},
+        {"pose.orientation.x", pose.Orientation.x},
+        {"pose.orientation.y", pose.Orientation.y},
+        {"pose.orientation.z", pose.Orientation.z},
+        {"pose.position.x", pose.Position.x},
+        {"pose.position.y", pose.Position.y},
+        {"pose.position.z", pose.Position.z},
+        {"left_camera_usb_path", left_camera_usb_path},
+        {"right_camera_usb_path", right_camera_usb_path}
+    };
 
-    pt.put("is_valid", is_valid);
-    pt.put("version", VirtualStereoTrackerConfig::CONFIG_VERSION);
-    pt.put("max_poll_failure_count", max_poll_failure_count);
-	pt.put("frame_width", tracker_intrinsics.pixel_width);
-	pt.put("frame_height", tracker_intrinsics.pixel_height);
-	pt.put("frame_rate", frame_rate);
-    pt.put("exposure", exposure);
-	pt.put("gain", gain);
-    pt.put("hfov", tracker_intrinsics.hfov);
-    pt.put("vfov", tracker_intrinsics.vfov);
-    pt.put("zNear", tracker_intrinsics.znear);
-    pt.put("zFar", tracker_intrinsics.zfar);
-
-    pt.put("pose.orientation.w", pose.Orientation.w);
-    pt.put("pose.orientation.x", pose.Orientation.x);
-    pt.put("pose.orientation.y", pose.Orientation.y);
-    pt.put("pose.orientation.z", pose.Orientation.z);
-    pt.put("pose.position.x", pose.PositionCm.x);
-    pt.put("pose.position.y", pose.PositionCm.y);
-    pt.put("pose.position.z", pose.PositionCm.z);
-
-    pt.put("left_camera_usb_path", left_camera_usb_path);
-    pt.put("right_camera_usb_path", right_camera_usb_path);
-
-    writeArray(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
-    writeArray(pt, "right_camera_matrix", tracker_intrinsics.right_camera_matrix);
+    writeMatrix3d(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
+    writeMatrix3d(pt, "right_camera_matrix", tracker_intrinsics.right_camera_matrix);
 
     writeDistortionCoefficients(pt, "left_distortion_cofficients", &tracker_intrinsics.left_distortion_coefficients);
     writeDistortionCoefficients(pt, "right_distortion_cofficients", &tracker_intrinsics.right_distortion_coefficients);
 
-    writeArray(pt, "left_rectification_rotation", tracker_intrinsics.left_rectification_rotation);
-    writeArray(pt, "right_rectification_rotation", tracker_intrinsics.right_rectification_rotation);
+    writeMatrix3d(pt, "left_rectification_rotation", tracker_intrinsics.left_rectification_rotation);
+    writeMatrix3d(pt, "right_rectification_rotation", tracker_intrinsics.right_rectification_rotation);
 
-    writeArray(pt, "left_rectification_projection", tracker_intrinsics.left_rectification_projection);
-    writeArray(pt, "right_rectification_projection", tracker_intrinsics.right_rectification_projection);
+    writeMatrix34d(pt, "left_rectification_projection", tracker_intrinsics.left_rectification_projection);
+    writeMatrix34d(pt, "right_rectification_projection", tracker_intrinsics.right_rectification_projection);
 
-    writeArray(pt, "rotation_between_cameras", tracker_intrinsics.rotation_between_cameras);
-    writeArray(pt, "translation_between_cameras", tracker_intrinsics.translation_between_cameras);
-    writeArray(pt, "essential_matrix", tracker_intrinsics.essential_matrix);
-    writeArray(pt, "fundamental_matrix", tracker_intrinsics.fundamental_matrix);
-    writeArray(pt, "reprojection_matrix", tracker_intrinsics.reprojection_matrix);
+    writeMatrix3d(pt, "rotation_between_cameras", tracker_intrinsics.rotation_between_cameras);
+    writeVector3d(pt, "translation_between_cameras", tracker_intrinsics.translation_between_cameras);
+    writeMatrix3d(pt, "essential_matrix", tracker_intrinsics.essential_matrix);
+    writeMatrix3d(pt, "fundamental_matrix", tracker_intrinsics.fundamental_matrix);
+    writeMatrix4d(pt, "reprojection_matrix", tracker_intrinsics.reprojection_matrix);
 
 	writeColorPropertyPresetTable(&SharedColorPresets, pt);
 
@@ -160,30 +162,30 @@ VirtualStereoTrackerConfig::config2ptree()
     return pt;
 }
 
-void
-VirtualStereoTrackerConfig::ptree2config(const boost::property_tree::ptree &pt)
+void 
+VirtualStereoTrackerConfig::readFromJSON(const configuru::Config &pt)
 {
-    int config_version = pt.get<int>("version", 0);
+    int config_version = pt.get_or<int>("version", 0);
     if (config_version == VirtualStereoTrackerConfig::CONFIG_VERSION)
     {
-        is_valid = pt.get<bool>("is_valid", false);
-        max_poll_failure_count = pt.get<long>("max_poll_failure_count", 100);
-		frame_rate = pt.get<double>("frame_rate", 40);
-        exposure = pt.get<double>("exposure", 32);
-		gain = pt.get<double>("gain", 32);
+        is_valid = pt.get_or<bool>("is_valid", false);
+        max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
+		frame_rate = pt.get_or<double>("frame_rate", 40);
+        exposure = pt.get_or<double>("exposure", 32);
+		gain = pt.get_or<double>("gain", 32);
 
         left_camera_usb_path= pt.get<std::string>("left_camera_usb_path");
         right_camera_usb_path= pt.get<std::string>("right_camera_usb_path");
 
-		tracker_intrinsics.pixel_width = pt.get<float>("frame_width", 640.f);
-		tracker_intrinsics.pixel_height = pt.get<float>("frame_height", 480.f);
-        tracker_intrinsics.hfov = pt.get<float>("hfov", 60.f);
-        tracker_intrinsics.vfov = pt.get<float>("vfov", 45.f);
-        tracker_intrinsics.znear = pt.get<float>("zNear", 10.f);
-        tracker_intrinsics.zfar = pt.get<float>("zFar", 200.f);
+		tracker_intrinsics.pixel_width = pt.get_or<float>("frame_width", 640.f);
+		tracker_intrinsics.pixel_height = pt.get_or<float>("frame_height", 480.f);
+        tracker_intrinsics.hfov = pt.get_or<float>("hfov", 60.f);
+        tracker_intrinsics.vfov = pt.get_or<float>("vfov", 45.f);
+        tracker_intrinsics.znear = pt.get_or<float>("zNear", 10.f);
+        tracker_intrinsics.zfar = pt.get_or<float>("zFar", 200.f);
 
-        tracker_intrinsics.left_camera_matrix= readArray<double,3*3>(pt, "left_camera_matrix");
-        tracker_intrinsics.right_camera_matrix= readArray<double,3*3>(pt, "right_camera_matrix");
+        readMatrix3d(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
+        readMatrix3d(pt, "right_camera_matrix", tracker_intrinsics.right_camera_matrix);
 
         readDistortionCoefficients(pt, "left_distortion_cofficients", 
             &tracker_intrinsics.left_distortion_coefficients, 
@@ -192,25 +194,25 @@ VirtualStereoTrackerConfig::ptree2config(const boost::property_tree::ptree &pt)
             &tracker_intrinsics.right_distortion_coefficients, 
             &tracker_intrinsics.right_distortion_coefficients);
 
-        tracker_intrinsics.left_rectification_rotation= readArray<double,3*3>(pt, "left_rectification_rotation");
-        tracker_intrinsics.right_rectification_rotation= readArray<double,3*3>(pt, "right_rectification_rotation");
+        readMatrix3d(pt, "left_rectification_rotation", tracker_intrinsics.left_rectification_rotation);
+        readMatrix3d(pt, "right_rectification_rotation", tracker_intrinsics.right_rectification_rotation);
 
-        tracker_intrinsics.left_rectification_projection= readArray<double,3*4>(pt, "left_rectification_projection");
-        tracker_intrinsics.right_rectification_projection= readArray<double,3*4>(pt, "right_rectification_projection");
+        readMatrix34d(pt, "left_rectification_projection", tracker_intrinsics.left_rectification_projection);
+        readMatrix34d(pt, "right_rectification_projection", tracker_intrinsics.right_rectification_projection);
 
-        tracker_intrinsics.rotation_between_cameras= readArray<double,3*3>(pt, "rotation_between_cameras");
-        tracker_intrinsics.translation_between_cameras= readArray<double,3>(pt, "translation_between_cameras");
-        tracker_intrinsics.essential_matrix= readArray<double,3*3>(pt, "essential_matrix");
-        tracker_intrinsics.fundamental_matrix= readArray<double,3*3>(pt, "fundamental_matrix");
-        tracker_intrinsics.reprojection_matrix= readArray<double,4*4>(pt, "reprojection_matrix");
+        readMatrix3d(pt, "rotation_between_cameras", tracker_intrinsics.rotation_between_cameras);
+        readVector3d(pt, "translation_between_cameras", tracker_intrinsics.translation_between_cameras);
+        readMatrix3d(pt, "essential_matrix", tracker_intrinsics.essential_matrix);
+        readMatrix3d(pt, "fundamental_matrix", tracker_intrinsics.fundamental_matrix);
+        readMatrix4d(pt, "reprojection_matrix", tracker_intrinsics.reprojection_matrix);
 
-        pose.Orientation.w = pt.get<float>("pose.orientation.w", 1.0);
-        pose.Orientation.x = pt.get<float>("pose.orientation.x", 0.0);
-        pose.Orientation.y = pt.get<float>("pose.orientation.y", 0.0);
-        pose.Orientation.z = pt.get<float>("pose.orientation.z", 0.0);
-        pose.PositionCm.x = pt.get<float>("pose.position.x", 0.0);
-        pose.PositionCm.y = pt.get<float>("pose.position.y", 0.0);
-        pose.PositionCm.z = pt.get<float>("pose.position.z", 0.0);
+        pose.Orientation.w = pt.get_or<float>("pose.orientation.w", 1.0);
+        pose.Orientation.x = pt.get_or<float>("pose.orientation.x", 0.0);
+        pose.Orientation.y = pt.get_or<float>("pose.orientation.y", 0.0);
+        pose.Orientation.z = pt.get_or<float>("pose.orientation.z", 0.0);
+        pose.Position.x = pt.get_or<float>("pose.position.x", 0.0);
+        pose.Position.y = pt.get_or<float>("pose.position.y", 0.0);
+        pose.Position.z = pt.get_or<float>("pose.position.z", 0.0);
 
 		// Read the default preset table
 		readColorPropertyPresetTable(pt, &SharedColorPresets);
@@ -218,17 +220,17 @@ VirtualStereoTrackerConfig::ptree2config(const boost::property_tree::ptree &pt)
 		// Read all of the controller preset tables
 		const std::string controller_prefix("controller_");
 		const std::string hmd_prefix("hmd_");
-		for(auto iter = pt.begin(); iter != pt.end(); iter++)
+        for (auto& iter : pt.as_object())
 		{
-			const std::string &entry_name= iter->first;
+			const std::string &entry_name= iter.key();
 			
 			if (entry_name.compare(0, controller_prefix.length(), controller_prefix) == 0 ||
 				entry_name.compare(0, hmd_prefix.length(), hmd_prefix) == 0)
 			{
-				CommonHSVColorRangeTable table;
+				PSVR_HSVColorRangeTable table;
 
-				table.table_name= entry_name;
-				for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
+                strncpy(table.table_name, entry_name.c_str(), sizeof(table.table_name));
+				for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
 				{
 					table.color_presets[preset_index] = k_default_color_presets[preset_index];
 				}
@@ -247,10 +249,10 @@ VirtualStereoTrackerConfig::ptree2config(const boost::property_tree::ptree &pt)
     }
 }
 
-const CommonHSVColorRangeTable *
+const PSVR_HSVColorRangeTable *
 VirtualStereoTrackerConfig::getColorRangeTable(const std::string &table_name) const
 {
-	const CommonHSVColorRangeTable *table= &SharedColorPresets;	
+	const PSVR_HSVColorRangeTable *table= &SharedColorPresets;	
 
 	if (table_name.length() > 0)
 	{
@@ -266,10 +268,10 @@ VirtualStereoTrackerConfig::getColorRangeTable(const std::string &table_name) co
 	return table;
 }
 
-inline CommonHSVColorRangeTable *
+inline PSVR_HSVColorRangeTable *
 VirtualStereoTrackerConfig::getOrAddColorRangeTable(const std::string &table_name)
 {
-	CommonHSVColorRangeTable *table= nullptr;	
+	PSVR_HSVColorRangeTable *table= nullptr;	
 
 	if (table_name.length() > 0)
 	{
@@ -283,10 +285,10 @@ VirtualStereoTrackerConfig::getOrAddColorRangeTable(const std::string &table_nam
 
 		if (table == nullptr)
 		{
-			CommonHSVColorRangeTable Table;
+			PSVR_HSVColorRangeTable Table;
 
-			Table.table_name= table_name;
-			for (int preset_index = 0; preset_index < eCommonTrackingColorID::MAX_TRACKING_COLOR_TYPES; ++preset_index)
+			strncpy(Table.table_name, table_name.c_str(), sizeof(Table.table_name));
+			for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
 			{
 				Table.color_presets[preset_index] = k_default_color_presets[preset_index];
 			}
@@ -326,7 +328,7 @@ VirtualStereoTracker::~VirtualStereoTracker()
 // PSMoveTracker
 bool VirtualStereoTracker::open() // Opens the first HID device for the tracker
 {
-    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO, CommonControllerState::VirtualStereoCamera);
+    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO, CommonDeviceState::VirtualStereoCamera);
     bool success = false;
 
     // Skip over everything that isn't a PS3EYE
@@ -351,7 +353,7 @@ bool VirtualStereoTracker::matchesDeviceEnumerator(const DeviceEnumerator *enume
 
     bool matches = false;
 
-    if (pEnum->get_device_type() == CommonControllerState::VirtualStereoCamera)
+    if (pEnum->get_device_type() == CommonDeviceState::VirtualStereoCamera)
     {
         std::string enumerator_path = pEnum->get_path();
 
@@ -613,7 +615,7 @@ bool VirtualStereoTracker::getVideoFrameDimensions(
     return LeftTracker->getVideoFrameDimensions(out_width, out_height, out_stride);
 }
 
-const unsigned char *VirtualStereoTracker::getVideoFrameBuffer(ITrackerInterface::eTrackerVideoSection section) const
+const unsigned char *VirtualStereoTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
 {
     const unsigned char *result = nullptr;
 
@@ -621,11 +623,11 @@ const unsigned char *VirtualStereoTracker::getVideoFrameBuffer(ITrackerInterface
     {
         switch (section)
         {
-        case ITrackerInterface::LeftSection:
-            result= LeftTracker->getVideoFrameBuffer(ITrackerInterface::PrimarySection);
+        case PSVRVideoFrameSection_Left:
+            result= LeftTracker->getVideoFrameBuffer(PSVRVideoFrameSection_Primary);
             break;
-        case ITrackerInterface::RightSection:
-            result= RightTracker->getVideoFrameBuffer(ITrackerInterface::PrimarySection);
+        case PSVRVideoFrameSection_Right:
+            result= RightTracker->getVideoFrameBuffer(PSVRVideoFrameSection_Primary);
             break;
         }
     }
@@ -793,26 +795,26 @@ double VirtualStereoTracker::getGain() const
 }
 
 void VirtualStereoTracker::getCameraIntrinsics(
-    CommonTrackerIntrinsics &out_tracker_intrinsics) const
+    PSVRTrackerIntrinsics &out_tracker_intrinsics) const
 {
-    out_tracker_intrinsics.intrinsics_type= CommonTrackerIntrinsics::STEREO_TRACKER_INTRINSICS;
-    out_tracker_intrinsics.stereo_intrinsics= cfg.tracker_intrinsics;
+    out_tracker_intrinsics.intrinsics_type= PSVR_STEREO_TRACKER_INTRINSICS;
+    out_tracker_intrinsics.intrinsics.stereo= cfg.tracker_intrinsics;
 }
 
 void VirtualStereoTracker::setCameraIntrinsics(
-    const CommonTrackerIntrinsics &tracker_intrinsics)
+    const PSVRTrackerIntrinsics &tracker_intrinsics)
 {
-    assert(tracker_intrinsics.intrinsics_type == CommonTrackerIntrinsics::STEREO_TRACKER_INTRINSICS);
-    cfg.tracker_intrinsics= tracker_intrinsics.stereo_intrinsics;
+    assert(tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS);
+    cfg.tracker_intrinsics= tracker_intrinsics.intrinsics.stereo;
 }
 
-CommonDevicePose VirtualStereoTracker::getTrackerPose() const
+PSVRPosef VirtualStereoTracker::getTrackerPose() const
 {
     return cfg.pose;
 }
 
 void VirtualStereoTracker::setTrackerPose(
-    const struct CommonDevicePose *pose)
+    const PSVRPosef *pose)
 {
     cfg.pose = *pose;
     cfg.save();
@@ -830,53 +832,19 @@ void VirtualStereoTracker::getZRange(float &outZNear, float &outZFar) const
     outZFar = static_cast<float>(cfg.tracker_intrinsics.zfar);
 }
 
-void VirtualStereoTracker::gatherTrackerOptions(
-    PSMoveProtocol::Response_ResultTrackerSettings* settings) const
-{
-}
-
-bool VirtualStereoTracker::setOptionIndex(
-    const std::string &option_name,
-    int option_index)
-{
-    return false;
-}
-
-bool VirtualStereoTracker::getOptionIndex(
-    const std::string &option_name, 
-    int &out_option_index) const
-{
-    return false;
-}
-
 void VirtualStereoTracker::gatherTrackingColorPresets(
 	const std::string &controller_serial, 
-    PSMoveProtocol::Response_ResultTrackerSettings* settings) const
+    PSVRClientTrackerSettings* settings) const
 {
-	const CommonHSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
-
-    for (int list_index = 0; list_index < MAX_TRACKING_COLOR_TYPES; ++list_index)
-    {
-        const CommonHSVColorRange &hsvRange = table->color_presets[list_index];
-        const eCommonTrackingColorID colorType = static_cast<eCommonTrackingColorID>(list_index);
-
-        PSMoveProtocol::TrackingColorPreset *colorPreset= settings->add_color_presets();
-        colorPreset->set_color_type(static_cast<PSMoveProtocol::TrackingColorType>(colorType));
-        colorPreset->set_hue_center(hsvRange.hue_range.center);
-        colorPreset->set_hue_range(hsvRange.hue_range.range);
-        colorPreset->set_saturation_center(hsvRange.saturation_range.center);
-        colorPreset->set_saturation_range(hsvRange.saturation_range.range);
-        colorPreset->set_value_center(hsvRange.value_range.center);
-        colorPreset->set_value_range(hsvRange.value_range.range);
-    }
+	settings->color_range_table = *cfg.getColorRangeTable(controller_serial);
 }
 
 void VirtualStereoTracker::setTrackingColorPreset(
 	const std::string &controller_serial, 
-    eCommonTrackingColorID color, 
-    const CommonHSVColorRange *preset)
+    PSVRTrackingColorType color, 
+    const PSVR_HSVColorRange *preset)
 {
-	CommonHSVColorRangeTable *table= cfg.getOrAddColorRangeTable(controller_serial);
+	PSVR_HSVColorRangeTable *table= cfg.getOrAddColorRangeTable(controller_serial);
 
     table->color_presets[color] = *preset;
     cfg.save();
@@ -884,10 +852,10 @@ void VirtualStereoTracker::setTrackingColorPreset(
 
 void VirtualStereoTracker::getTrackingColorPreset(
 	const std::string &controller_serial, 
-    eCommonTrackingColorID color, 
-    CommonHSVColorRange *out_preset) const
+    PSVRTrackingColorType color, 
+    PSVR_HSVColorRange *out_preset) const
 {
-	const CommonHSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
+	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
 
     *out_preset = table->color_presets[color];
 }

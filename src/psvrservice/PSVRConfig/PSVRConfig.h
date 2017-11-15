@@ -3,6 +3,7 @@
 
 //-- includes -----
 #include "ClientColor_CAPI.h"
+#include "PSVRClient_CAPI.h"
 #include <string>
 
 #ifdef _MSC_VER
@@ -38,6 +39,52 @@ public:
     virtual const configuru::Config writeToJSON() = 0;  // Implement by each device class' own Config
     virtual void readFromJSON(const configuru::Config &pt) = 0;  // Implement by each device class' own Config
     
+    static void writeDistortionCoefficients(
+        configuru::Config &pt,
+        const char *coefficients_name,
+        const PSVRDistortionCoefficients *coefficients);
+    static void readDistortionCoefficients(
+        const configuru::Config &pt,
+        const char *coefficients_name,
+        PSVRDistortionCoefficients *outCoefficients,
+        const PSVRDistortionCoefficients *defaultCoefficients);
+
+    static void writeMatrix3d(
+        configuru::Config &pt,
+        const char *matrix_name,
+        const PSVRMatrix3d &matrix);
+    static void readMatrix3d(
+        const configuru::Config &pt,
+        const char *matrix_name,
+        PSVRMatrix3d &outMatrix);
+
+    static void writeMatrix34d(
+        configuru::Config &pt,
+        const char *matrix_name,
+        const PSVRMatrix34d &matrix);
+    static void readMatrix34d(
+        const configuru::Config &pt,
+        const char *matrix_name,
+        PSVRMatrix34d &outMatrix);
+
+    static void writeMatrix4d(
+        configuru::Config &pt,
+        const char *matrix_name,
+        const PSVRMatrix4d &matrix);
+    static void readMatrix4d(
+        const configuru::Config &pt,
+        const char *matrix_name,
+        PSVRMatrix4d &outMatrix);
+
+    static void writeVector3d(
+        configuru::Config &pt,
+        const char *vector_name,
+        const PSVRVector3d &vector);
+    static void readVector3d(
+        const configuru::Config &pt,
+        const char *vector_name,
+        PSVRVector3d &outVector);
+
     static void writeColorPreset(
         configuru::Config &pt,
         const char *profile_name,

@@ -20,6 +20,12 @@
 
 #include <cassert>
 
+#ifdef _MSC_VER
+    #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
+#endif
+
+ServiceRequestHandler *ServiceRequestHandler::m_instance= nullptr;
+
 //-- implementation -----
 ServiceRequestHandler::ServiceRequestHandler()
     : m_peristentRequestState(new PersistentRequestConnectionState)
@@ -142,15 +148,18 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
 
         if (tracker_view->getIsOpen())
         {
-            PSVRClientTrackerInfo *tracker_info = out_tracker_list->trackers[++out_tracker_list->count];
+            PSVRClientTrackerInfo *tracker_info = &out_tracker_list->trackers[++out_tracker_list->count];
 
             switch (tracker_view->getTrackerDeviceType())
             {
-            case CommonControllerState::PS3EYE:
+            case CommonDeviceState::PS3EYE:
                 tracker_info->tracker_type= PSVRTracker_PS3Eye;
                 break;
-            case CommonControllerState::PS4CAMERA:
+            case CommonDeviceState::PS4Camera:
                 tracker_info->tracker_type= PSVRTracker_PS4Camera;
+                break;					
+            case CommonDeviceState::VirtualStereoCamera:
+                tracker_info->tracker_type= PSVRTracker_VirtualStereoCamera;
                 break;					
             default:
                 assert(0 && "Unhandled tracker type");
@@ -172,7 +181,7 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
             strncpy(tracker_info->device_path, tracker_view->getUSBDevicePath().c_str(), sizeof(tracker_info->device_path));
 
             // Get the intrinsic camera lens properties
-			tracker_view->getCameraIntrinsics(&tracker_info->tracker_intrinsics);
+			tracker_view->getCameraIntrinsics(tracker_info->tracker_intrinsics);
 
             // Get the tracker pose
 			tracker_info->tracker_pose= tracker_view->getTrackerPose();
@@ -246,7 +255,7 @@ PSVRResult ServiceRequestHandler::stop_tracker_data_stream(
 	return result;
 }
 	
-PSVRResult ServiceRequestHandler::get_shared_video_frame_buffer(PSVRTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer)
+PSVRResult ServiceRequestHandler::get_shared_video_frame_buffer(PSVRTrackerID tracker_id, const SharedVideoFrameBuffer **out_shared_buffer)
 {
 	PSVRResult result= PSVRResult_Error;
 
@@ -275,14 +284,13 @@ PSVRResult ServiceRequestHandler::get_tracker_settings(PSVRTrackerID tracker_id,
         {
 			ServerHMDView *hmd_view = get_hmd_view_or_null(hmd_id);
 
-            settings->frame_width= static_cast<float>(tracker_view->getFrameWidth());
-            settings->frame_height= static_cast<float>(tracker_view->getFrameHeight());
-            settings->frame_rate= static_cast<float>(tracker_view->getFrameRate());
-            settings->exposure= static_cast<float>(tracker_view->getExposure());
-            settings->gain= static_cast<float>(tracker_view->getGain());
+            out_settings->frame_width= static_cast<float>(tracker_view->getFrameWidth());
+            out_settings->frame_height= static_cast<float>(tracker_view->getFrameHeight());
+            out_settings->frame_rate= static_cast<float>(tracker_view->getFrameRate());
+            out_settings->exposure= static_cast<float>(tracker_view->getExposure());
+            out_settings->gain= static_cast<float>(tracker_view->getGain());
 				
-            tracker_view->gatherTrackerOptions(settings);
-			tracker_view->gatherTrackingColorPresets(hmd_view, settings);
+			tracker_view->gatherTrackingColorPresets(hmd_view, out_settings);
 				
 			result= PSVRResult_Success;
         }
@@ -471,61 +479,6 @@ PSVRResult ServiceRequestHandler::set_tracker_gain(
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_tracker_option(
-	const PSVRTrackerID tracker_id,
-    const std::string &option_name,
-	const int desired_option_index,
-	int *out_new_option_index)
-{
-    PSVRResult result= PSVRResult_Error;
-
-    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
-    {
-        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
-        if (tracker_view->getIsOpen())
-        {
-            if (tracker_view->setOptionIndex(option_name, desired_option_index))
-            {
-                // Return back the actual option index that got set
-                tracker_view->getOptionIndex(option_name, *out_new_option_index);
-                tracker_view->saveSettings();
-
-                result= PSVRResult_Success;
-            }
-        }
-	}
-			
-	return result;
-}
-
-PSVRResult ServiceRequestHandler::set_tracker_color_preset(
-    const PSVRTrackerID tracker_id,
-	const PSVRHmdID hmd_id,
-	const PSVRTrackingColorType color_type,
-	const PSVR_HSVColorRange *desired_range,
-    PSVR_HSVColorRange *out_result_range)
-{
-	PSVRResult result= PSVRResult_Error;
-		
-    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
-    {
-        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
-        if (tracker_view->getIsOpen())
-        {
-			ServerHMDView *hmd_view = get_hmd_view_or_null(device_id);
-
-			// Assign the color range
-			tracker_view->setHMDTrackingColorPreset(hmd_view, color_type, desired_range);
-			// Read back what actually got set
-			tracker_view->getHMDTrackingColorPreset(hmd_view, color_type, out_result_range);
-				
-            result= PSVRResult_Success;
-        }
-    }
-		
-	return result;
-}
-
 PSVRResult ServiceRequestHandler::set_tracker_pose(
     const PSVRTrackerID tracker_id,
     const PSVRPosef *pose)
@@ -558,7 +511,7 @@ PSVRResult ServiceRequestHandler::set_tracker_intrinsics(
         ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
         if (tracker_view->getIsOpen())
         {
-            tracker_view->setCameraIntrinsics(tracker_intrinsics);
+            tracker_view->setCameraIntrinsics(*tracker_intrinsics);
             tracker_view->saveSettings();
 
             result= PSVRResult_Success;
@@ -577,7 +530,7 @@ PSVRResult ServiceRequestHandler::get_tracking_space_settings(
     return PSVRResult_Success;
 }
 // -- hmd requests -----
-inline ServerHMDView *ServiceRequestHandler::get_hmd_view_or_null(PSVRHmdID hmd_id)
+ServerHMDView *ServiceRequestHandler::get_hmd_view_or_null(PSVRHmdID hmd_id)
 {
     ServerHMDView *hmd_view = nullptr;
 
@@ -603,7 +556,7 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 
         if (hmd_view->getIsOpen() && out_hmd_list->count < PSVRSERVICE_MAX_HMD_COUNT)
         {
-            PSVRHmdList *hmd_info = &out_hmd_list->hmds[hmd_id];
+            PSVRClientHMDInfo *hmd_info = &out_hmd_list->hmds[hmd_id];
 
             switch (hmd_view->getHMDDeviceType())
             {
@@ -612,10 +565,10 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
                     const MorpheusHMD *morpheusHMD= hmd_view->castCheckedConst<MorpheusHMD>();
                     const MorpheusHMDConfig *config= morpheusHMD->getConfig();
 
-                    hmd_info->hmd_type= PSVRProtocol::Morpheus;
+                    hmd_info->hmd_type= PSVRHmd_Morpheus;
                     hmd_info->prediction_time= config->prediction_time;
-					strncpy(hmd_info->orientation_filter, config->orientation_filter, sizeof(hmd_info->orientation_filter));
-					strncpy(hmd_info->position_filter, config->position_filter_type, sizeof(hmd_info->position_filter));
+					strncpy(hmd_info->orientation_filter, config->orientation_filter_type.c_str(), sizeof(hmd_info->orientation_filter));
+					strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
                 }
                 break;
             case CommonHMDState::VirtualHMD:
@@ -623,9 +576,9 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
                     const VirtualHMD *virtualHMD= hmd_view->castCheckedConst<VirtualHMD>();
                     const VirtualHMDConfig *config= virtualHMD->getConfig();
 
-                    hmd_info->hmd_type= PSVRProtocol::VirtualHMD;
+                    hmd_info->hmd_type= PSVRHmd_Virtual;
                     hmd_info->prediction_time= config->prediction_time;
-                    strncpy(hmd_info->position_filter, config->position_filter_type, sizeof(hmd_info->position_filter));
+                    strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
                 }
                 break;
             default:
@@ -651,7 +604,7 @@ PSVRResult ServiceRequestHandler::get_hmd_tracking_shape(PSVRHmdID hmd_id, PSVRT
 			
         if (hmd_view->getIsOpen())
         {
-			hmd_view->getTrackingShape(out_shape);
+			hmd_view->getTrackingShape(*out_shape);
 		}				
 	}			
 		
@@ -678,12 +631,12 @@ PSVRResult ServiceRequestHandler::start_hmd_data_stream(
 
             // Set control flags for the stream
             streamInfo.Clear();
-            streamInfo.include_position_data = request.include_position_data();
-            streamInfo.include_physics_data = request.include_physics_data();
-            streamInfo.include_raw_sensor_data = request.include_raw_sensor_data();
-            streamInfo.include_calibrated_sensor_data = request.include_calibrated_sensor_data();
-            streamInfo.include_raw_tracker_data = request.include_raw_tracker_data();
-            streamInfo.disable_roi = request.disable_roi();
+            streamInfo.include_position_data = (data_stream_flags & PSMStreamFlags_includePositionData) > 0;
+            streamInfo.include_physics_data = (data_stream_flags & PSMStreamFlags_includePhysicsData) > 0;
+            streamInfo.include_raw_sensor_data = (data_stream_flags & PSMStreamFlags_includeRawSensorData) > 0;
+            streamInfo.include_calibrated_sensor_data = (data_stream_flags & PSMStreamFlags_includeCalibratedSensorData) > 0;
+            streamInfo.include_raw_tracker_data = (data_stream_flags & PSMStreamFlags_includeRawTrackerData) > 0;
+            streamInfo.disable_roi = (data_stream_flags & PSMStreamFlags_disableROI) > 0;
 
             PSVR_LOG_INFO("ServerRequestHandler") << "Start hmd(" << hmd_id << ") stream ("
                 << "pos=" << streamInfo.include_position_data
@@ -762,7 +715,7 @@ PSVRResult ServiceRequestHandler::set_hmd_led_tracking_color(
     {
         const PSVRTrackingColorType oldColorID = HmdView->getTrackingColorID();
 
-        if (newColorID != oldColorID)
+        if (new_color_id != oldColorID)
         {
             // Give up control of our existing tracking color
             if (oldColorID != PSVRTrackingColorType_INVALID)
@@ -771,10 +724,10 @@ PSVRResult ServiceRequestHandler::set_hmd_led_tracking_color(
             }
 
             // Take the color from any other controller that might have it
-            if (m_deviceManager->m_tracker_manager->claimTrackingColorID(HmdView.get(), newColorID))
+            if (m_deviceManager->m_tracker_manager->claimTrackingColorID(HmdView.get(), new_color_id))
             {
                 // Assign the new color to ourselves
-                HmdView->setTrackingColorID(newColorID);
+                HmdView->setTrackingColorID(new_color_id);
                 result= PSVRResult_Success;
             }
             else
@@ -937,8 +890,6 @@ PSVRResult ServiceRequestHandler::set_hmd_prediction_time(
 	PSVRResult result= PSVRResult_Error;
 
     ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
-    const PSVRProtocol::Request_RequestSetHMDPredictionTime &request =
-        context.request->request_set_hmd_prediction_time();
 
     if (HmdView && HmdView->getIsOpen())
     {

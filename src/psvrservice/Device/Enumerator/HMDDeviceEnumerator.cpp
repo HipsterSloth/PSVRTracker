@@ -202,7 +202,7 @@ bool HMDDeviceEnumerator::next()
 	}
 	else
 	{
-		m_deviceType = CommonDeviceState::SUPPORTED_CONTROLLER_TYPE_COUNT; // invalid
+		m_deviceType = CommonDeviceState::INVALID_DEVICE_TYPE; // invalid
 	}
 
     return foundValid;

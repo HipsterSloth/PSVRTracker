@@ -105,9 +105,6 @@ public:
     void setTrackerPose(const PSVRPosef *pose) override;
     void getFOV(float &outHFOV, float &outVFOV) const override;
     void getZRange(float &outZNear, float &outZFar) const override;
-    void gatherTrackerOptions(PSVRClientTrackerSettings* settings) const override;
-    bool setOptionIndex(const std::string &option_name, int option_index) override;
-    bool getOptionIndex(const std::string &option_name, int &out_option_index) const override;
     void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const override;
     void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) override;
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;

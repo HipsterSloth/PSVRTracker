@@ -45,6 +45,7 @@ public:
     virtual const configuru::Config writeToJSON();
     virtual void readFromJSON(const configuru::Config &pt);
 
+    int virtual_stereo_tracker_count;
 	float controller_position_smoothing;
     long version;
     int optical_tracking_timeout;
