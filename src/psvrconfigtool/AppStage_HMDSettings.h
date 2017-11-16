@@ -10,33 +10,20 @@
 class AppStage_HMDSettings : public AppStage
 {
 public:
-    enum eHMDType
-    {
-        Morpheus,
-        VirtualHMD
-    };
-
     struct HMDInfo
     {
-        int HmdID;
-        eHMDType HmdType;
-        std::string DevicePath;
-        PSVRTrackingColorType TrackingColorType;
+        PSVRClientHMDInfo hmd_info;
 		int PositionFilterIndex;
-		std::string PositionFilterName;
 		int OrientationFilterIndex;
-		std::string OrientationFilterName;
-		float PredictionTime;
     };
-
 
     AppStage_HMDSettings(class App *app);
 
-    inline const HMDInfo *getSelectedHmdInfo() const
+    inline const PSVRClientHMDInfo *getSelectedHmdInfo() const
     {
         return
             (m_selectedHmdIndex != -1)
-            ? &m_hmdInfos[m_selectedHmdIndex]
+            ? &m_hmdInfos[m_selectedHmdIndex].hmd_info
             : nullptr;
     }
 
@@ -50,14 +37,10 @@ public:
     static const char *APP_STAGE_NAME;
 
 protected:
-    virtual bool onClientAPIEvent(
-        PSVREventMessage::eEventType event, 
-        PSVREventDataHandle opaque_event_handle) override;
+    virtual bool onClientAPIEvent(PSVREventType event_type) override;
 
     void request_hmd_list();
-	static void handle_hmd_list_response(
-		const PSVRResponseMessage *response,
-		void *userdata);
+	void handle_hmd_list_response(const PSVRHmdList &hmd_list);
 
 	void request_set_orientation_filter(const int hmd_id, const std::string &filter_name);
 	void request_set_position_filter(const int hmd_id, const std::string &filter_name);

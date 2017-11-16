@@ -5,13 +5,10 @@
 #include "AssetManager.h"
 #include "App.h"
 #include "Camera.h"
-#include "ClientLog.h"
+#include "Logger.h"
 #include "MathUtility.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRServiceInterface.h"
-#include "PSVRProtocol.pb.h"
-#include "SharedTrackerState.h"
 
 #include "SDL_keycode.h"
 #include "SDL_opengl.h"
@@ -71,15 +68,12 @@ void AppStage_TestTracker::update()
     // Try and read the next video frame from shared memory
     if (m_video_texture != nullptr)
     {
-        if (PSVR_PollTrackerVideoStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
-        {
-			const unsigned char *buffer= nullptr;
-			if (PSVR_GetTrackerVideoFrameBuffer(
-                    m_tracker_view->tracker_info.tracker_id, m_current_section, &buffer) == PSVRResult_Success)
-			{
-				m_video_texture->copyBufferIntoTexture(buffer);
-			}
-        }
+		const unsigned char *buffer= nullptr;
+		if (PSVR_GetTrackerVideoFrameBuffer(
+                m_tracker_view->tracker_info.tracker_id, m_current_section, &buffer) == PSVRResult_Success)
+		{
+			m_video_texture->copyBufferIntoTexture(buffer);
+		}
     }
 }
 
@@ -112,7 +106,7 @@ void AppStage_TestTracker::renderUI()
     {
     case eTrackerMenuState::idle:
     {
-        const int panel_height= (m_section_count > 1) ? 80 : 50;
+        const float panel_height= (m_section_count > 1) ? 80.f : 50.f;
 
         ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_panel_width / 2.f, 20.f));
         ImGui::SetNextWindowSize(ImVec2(k_panel_width, panel_height));
@@ -231,55 +225,39 @@ void AppStage_TestTracker::request_tracker_start_stream()
         m_menuState = AppStage_TestTracker::pendingTrackerStartStreamRequest;
 
         // Tell the PSVR service that we want to start streaming data from the tracker
-		PSVRRequestID requestID;
-		PSVR_StartTrackerDataStreamAsync(
-			m_tracker_view->tracker_info.tracker_id, 
-			&requestID);
-		PSVR_RegisterCallback(requestID, AppStage_TestTracker::handle_tracker_start_stream_response, this);
+        if (PSVR_StartTrackerDataStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
+        {
+            handle_tracker_start_stream_response();
+        }
+        else
+        {
+            m_menuState = AppStage_TestTracker::failedTrackerStartStreamRequest;
+        }
     }
 }
 
-void AppStage_TestTracker::handle_tracker_start_stream_response(
-    const PSVRResponseMessage *response,
-    void *userdata)
+void AppStage_TestTracker::handle_tracker_start_stream_response()
 {
-    AppStage_TestTracker *thisPtr = static_cast<AppStage_TestTracker *>(userdata);
+    m_bStreamIsActive = true;
+    m_menuState = AppStage_TestTracker::idle;
 
-    switch (response->result_code)
+    // Open the shared memory that the video stream is being written to
+    if (PSVR_OpenTrackerVideoStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success &&
+        PSVR_GetTrackerVideoFrameSectionCount(m_tracker_view->tracker_info.tracker_id, &m_section_count) == PSVRResult_Success)
     {
-    case PSVRResult_Success:
-        {
-            PSVRTracker *trackerView= thisPtr->m_tracker_view;
+        PSVRVector2f screenSize;
+        PSVR_GetTrackerScreenSize(m_tracker_view->tracker_info.tracker_id, &screenSize);
+        const unsigned int frameWidth = static_cast<unsigned int>(screenSize.x);
+        const unsigned int frameHeight = static_cast<unsigned int>(screenSize.y);
 
-            thisPtr->m_bStreamIsActive = true;
-            thisPtr->m_menuState = AppStage_TestTracker::idle;
-
-            // Open the shared memory that the vidoe stream is being written to
-            if (PSVR_OpenTrackerVideoStream(trackerView->tracker_info.tracker_id) == PSVRResult_Success &&
-                PSVR_GetTrackerVideoFrameSectionCount(trackerView->tracker_info.tracker_id, &thisPtr->m_section_count) == PSVRResult_Success)
-            {
-                PSVRVector2f screenSize;
-                PSVR_GetTrackerScreenSize(trackerView->tracker_info.tracker_id, &screenSize);
-                const unsigned int frameWidth = static_cast<unsigned int>(screenSize.x);
-                const unsigned int frameHeight = static_cast<unsigned int>(screenSize.y);
-
-                // Create a texture to render the video frame to
-                thisPtr->m_video_texture = new TextureAsset();
-                thisPtr->m_video_texture->init(
-                    frameWidth,
-                    frameHeight,
-                    GL_RGB, // texture format
-                    GL_BGR, // buffer format
-                    nullptr);
-            }
-        } break;
-
-    case PSVRResult_Error:
-    case PSVRResult_Canceled:
-	case PSVRResult_Timeout:
-        {
-            thisPtr->m_menuState = AppStage_TestTracker::failedTrackerStartStreamRequest;
-        } break;
+        // Create a texture to render the video frame to
+        m_video_texture = new TextureAsset();
+        m_video_texture->init(
+            frameWidth,
+            frameHeight,
+            GL_RGB, // texture format
+            GL_BGR, // buffer format
+            nullptr);
     }
 }
 
@@ -290,46 +268,34 @@ void AppStage_TestTracker::request_tracker_stop_stream()
         m_menuState = AppStage_TestTracker::pendingTrackerStopStreamRequest;
 
         // Tell the PSVR service that we want to stop streaming data from the tracker
-		PSVRRequestID requestId;
-		PSVR_StopTrackerDataStreamAsync(m_tracker_view->tracker_info.tracker_id, &requestId);
-		PSVR_RegisterCallback(requestId, AppStage_TestTracker::handle_tracker_stop_stream_response, this);
+        if (PSVR_StopTrackerDataStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
+        {
+            handle_tracker_stop_stream_response();
+        }
+        else
+        {
+            m_menuState = AppStage_TestTracker::failedTrackerStopStreamRequest;
+        }
     }
 }
 
-void AppStage_TestTracker::handle_tracker_stop_stream_response(
-    const PSVRResponseMessage *response,
-    void *userdata)
+void AppStage_TestTracker::handle_tracker_stop_stream_response()
 {
-    AppStage_TestTracker *thisPtr = static_cast<AppStage_TestTracker *>(userdata);
-
     // In either case consider the stream as now inactive
-    thisPtr->m_bStreamIsActive = false;
+    m_bStreamIsActive = false;
 
-    switch (response->result_code)
+    m_menuState = AppStage_TestTracker::inactive;
+
+    // Close the shared memory buffer
+	PSVR_CloseTrackerVideoStream(m_tracker_view->tracker_info.tracker_id);
+
+    // Free the texture we were rendering to
+    if (m_video_texture != nullptr)
     {
-    case PSVRResult_Success:
-        {
-            thisPtr->m_menuState = AppStage_TestTracker::inactive;
-
-            // Close the shared memory buffer
-			PSVR_CloseTrackerVideoStream(thisPtr->m_tracker_view->tracker_info.tracker_id);
-
-            // Free the texture we were rendering to
-            if (thisPtr->m_video_texture != nullptr)
-            {
-                delete thisPtr->m_video_texture;
-                thisPtr->m_video_texture = nullptr;
-            }
-
-            // After closing the stream, we should go back to the tracker settings
-            thisPtr->m_app->setAppStage(AppStage_TrackerSettings::APP_STAGE_NAME);
-        } break;
-
-    case PSVRResult_Error:
-    case PSVRResult_Canceled:
-	case PSVRResult_Timeout:
-        {
-            thisPtr->m_menuState = AppStage_TestTracker::failedTrackerStopStreamRequest;
-        } break;
+        delete m_video_texture;
+        m_video_texture = nullptr;
     }
+
+    // After closing the stream, we should go back to the tracker settings
+    m_app->setAppStage(AppStage_TrackerSettings::APP_STAGE_NAME);
 }

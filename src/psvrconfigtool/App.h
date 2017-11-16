@@ -39,9 +39,6 @@ public:
     inline void requestShutdown()
     { m_bShutdownRequested= true; }
 
-	inline bool getIsLocalServer() const
-	{ return m_bIsServerLocal; }
-
     bool reconnectToService();
     void setCameraType(eCameraType cameraType);
     void setAppStage(const char *appStageName);
@@ -61,17 +58,11 @@ public:
     }
 
     template <class t_app_stage>
-    inline void registerEventFallbackAppStage(PSVREventMessage::eEventType event_type)
+    inline void registerEventFallbackAppStage(PSVREventType event_type)
     {
         t_app_stage *app_stage= getAppStage<t_app_stage>();
         m_eventToFallbackAppStageMap.insert(t_app_stage_event_map_entry(event_type, app_stage));
     }
-
-public:
-	// Network Settings
-	char m_serverAddress[64];
-	char m_serverPort[32];
-	bool m_bIsServerLocal;	
 
 protected:
     bool init(int argc, char** argv);
@@ -79,7 +70,6 @@ protected:
    
     void onSDLEvent(const SDL_Event &e);
     void onClientPSVREvent(const PSVREventMessage *event);
-    void onClientPSVRResponse(const PSVRResponseMessage *response);
 
     void update();
     void render();
@@ -104,8 +94,8 @@ private:
     typedef std::map<const char *, class AppStage *> t_app_stage_map;
     typedef std::pair<const char *, class AppStage *> t_app_stage_map_entry;
 
-    typedef std::map<PSVREventMessage::eEventType, class AppStage *> t_app_stage_event_map;
-    typedef std::pair<PSVREventMessage::eEventType, class AppStage *> t_app_stage_event_map_entry;
+    typedef std::map<PSVREventType, class AppStage *> t_app_stage_event_map;
+    typedef std::pair<PSVREventType, class AppStage *> t_app_stage_event_map_entry;
 
     t_app_stage_map m_nameToAppStageMap;
 

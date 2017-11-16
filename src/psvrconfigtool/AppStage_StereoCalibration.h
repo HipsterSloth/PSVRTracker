@@ -35,14 +35,10 @@ public:
 protected:
     void renderCameraSettingsUI();
 
-    static void handle_tracker_start_stream_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_tracker_start_stream_response();
     void open_shared_memory_stream();
 
-    static void handle_tracker_stop_stream_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_tracker_stop_stream_response();
     void close_shared_memory_stream();
     
 private:

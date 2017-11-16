@@ -5,13 +5,10 @@
 #include "AssetManager.h"
 #include "App.h"
 #include "Camera.h"
-#include "ClientLog.h"
+#include "Logger.h"
 #include "MathUtility.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRServiceInterface.h"
-#include "PSVRProtocol.pb.h"
-#include "SharedTrackerState.h"
 
 #include "SDL_keycode.h"
 #include "SDL_opengl.h"
@@ -131,11 +128,6 @@ public:
 //-- public methods -----
 AppStage_ColorCalibration::AppStage_ColorCalibration(App *app)
     : AppStage(app)
-    , m_overrideControllerId(-1)
-    , m_masterControllerView(nullptr)
-    , m_pendingControllerStartCount(0)
-    , m_areAllControllerStreamsActive(false)
-    , m_lastMasterControllerSeqNum(-1)
     , m_overrideHmdId(-1)
     , m_hmdView(nullptr)
     , m_isHmdStreamActive(false)
@@ -148,11 +140,6 @@ AppStage_ColorCalibration::AppStage_ColorCalibration(App *app)
     , m_trackerFrameRate(0)
     , m_trackerExposure(0)
     , m_trackerGain(0)
-    , m_bTurnOnAllControllers(false)
-    , m_bAutoChangeController(false)
-    , m_bAutoChangeColor(false)
-    , m_bAutoChangeTracker(false)
-    , m_bAutoCalibrate(false)
     , m_bShowWindows(true)
     , m_bShowAlignment(false)
     , m_bShowAlignmentColor(false)

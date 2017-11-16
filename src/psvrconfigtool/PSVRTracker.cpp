@@ -3,8 +3,8 @@
 #include "AppStage_ColorCalibration.h"
 #include "AppStage_HMDAccelerometerCalibration.h"
 #include "AppStage_HMDGyroscopeCalibration.h"
-#include "AppStage_HMDModelCalibration.h"
 #include "AppStage_HMDSettings.h"
+#include "AppStage_HMDTrackingTest.h"
 #include "AppStage_MainMenu.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_TrackerSettings.h"
@@ -28,8 +28,8 @@ extern "C" int main(int argc, char *argv[])
 	app.registerAppStage<AppStage_ColorCalibration>();
 	app.registerAppStage<AppStage_HMDAccelerometerCalibration>();
 	app.registerAppStage<AppStage_HMDGyroscopeCalibration>();
-	app.registerAppStage<AppStage_HMDModelCalibration>();
     app.registerAppStage<AppStage_HMDSettings>();
+    app.registerAppStage<AppStage_HMDTrackingTest>();
     app.registerAppStage<AppStage_MainMenu>();
     app.registerAppStage<AppStage_StereoCalibration>();
     app.registerAppStage<AppStage_TestTracker>();

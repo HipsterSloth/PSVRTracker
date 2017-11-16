@@ -23,9 +23,6 @@ public:
 
     static const char *APP_STAGE_NAME;
 
-	inline void set_override_controller_id(int controller_id)
-	{ m_overrideControllerId= controller_id; }
-
 	inline void set_override_hmd_id(int hmd_id)
 	{ m_overrideHmdId = hmd_id; }
 
@@ -33,26 +30,11 @@ public:
 		m_masterTrackingColorType = tracking_color;
 	}
 	
-	inline void set_autoConfig(bool colour, bool controller, bool tracker) {
-		m_bAutoChangeColor = colour;
-		m_bAutoChangeController = controller;
-		m_bAutoChangeTracker = tracker;
-	}
-
 protected:
     enum eMenuState
     {
         inactive,
         waitingForStreamStartResponse,
-        manualConfig,
-		autoConfig,
-		blank1,
-		blank2,
-		changeController,
-		changeTracker,
-
-        pendingControllerStartRequest,
-        failedControllerStartRequest,
 
 		pendingHmdStartRequest,
 		failedHmdStartRequest,
@@ -70,13 +52,6 @@ protected:
         MAX_VIDEO_DISPLAY_MODES
     };
 
-    struct TrackerOption
-    {
-        std::string option_name;
-        std::vector<std::string> option_strings;
-        int option_index;
-    };
-
     struct TrackerColorPreset
     {
         float hue_center;
@@ -89,60 +64,29 @@ protected:
 
     void setState(eMenuState newState);
 
-    void request_start_controller_streams();
-    static void handle_start_controller_response(
-        const PSVRResponseMessage *response_message,
-        void *userdata);
-
 	void request_start_hmd_stream();
-	static void handle_start_hmd_response(
-		const PSVRResponseMessage *response_message,
-		void *userdata);
-
-    void request_set_controller_tracking_color(PSVRController *controllerView, PSVRTrackingColorType tracking_color);
+	void handle_start_hmd_response();
 
     void request_tracker_start_stream();
-    static void handle_tracker_start_stream_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_tracker_start_stream_response();
 
 	void request_tracker_set_frame_width(double value);
-	static void handle_tracker_set_frame_width_response(
-		const PSVRResponseMessage *response,
-		void *userdata);
+	void handle_tracker_set_frame_width_response();
 
 	void request_tracker_set_frame_rate(double value);
-	static void handle_tracker_set_frame_rate_response(
-		const PSVRResponseMessage *response,
-		void *userdata);
+	void handle_tracker_set_frame_rate_response();
 
     void request_tracker_set_exposure(double value);
-    static void handle_tracker_set_exposure_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_tracker_set_exposure_response();
 
     void request_tracker_set_gain(double value);
-    static void handle_tracker_set_gain_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
-
-    void request_tracker_set_option(TrackerOption &option, int new_option_index);
-    static void handle_tracker_set_option_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_tracker_set_gain_response();
 
     void request_tracker_set_color_preset(PSVRTrackingColorType color_type, TrackerColorPreset &color_preset);
-    static void handle_tracker_set_color_preset_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_tracker_set_color_preset_response();
 
     void request_tracker_get_settings();
-    static void handle_tracker_get_settings_response(
-        const PSVRResponseMessage *response,
-        void *userdata);
-
-    void request_save_default_tracker_profile();
-    void request_apply_default_tracker_profile();
+    void handle_tracker_get_settings_response();
 
     void allocate_video_buffers();
     void release_video_buffers();
@@ -150,23 +94,11 @@ protected:
     void release_devices();
     void request_exit_to_app_stage(const char *app_stage_name);
 
-	void request_turn_on_all_tracking_bulbs(bool bEnabled);
-
-	void request_change_controller(int step);
-	void request_change_tracker(int step);
-
     inline TrackerColorPreset getColorPreset()
     { return m_colorPresets[m_masterTrackingColorType]; }
 
 private:
     // ClientPSVRAPI state
-	int m_overrideControllerId;	
-    PSVRController *m_masterControllerView;
-	std::vector<PSVRController *> m_controllerViews;
-	std::vector<PSVRTrackingColorType> m_controllerTrackingColorTypes;
-	int m_pendingControllerStartCount;
-    bool m_areAllControllerStreamsActive;
-    int m_lastMasterControllerSeqNum;
 	int m_overrideHmdId;
 	PSVRHeadMountedDisplay *m_hmdView;
 	bool m_isHmdStreamActive;
@@ -184,20 +116,12 @@ private:
 	double m_trackerFrameRate;
     double m_trackerExposure;
     double m_trackerGain;
-    std::vector<TrackerOption> m_trackerOptions;
     TrackerColorPreset m_colorPresets[PSVRTrackingColorType_MaxColorTypes];
 	int tracker_count;
 	int tracker_index;
 
     // Color Settings
-	bool m_bTurnOnAllControllers;
     PSVRTrackingColorType m_masterTrackingColorType;
-
-	// Auto Calibration options
-	bool m_bAutoChangeController;
-	bool m_bAutoChangeColor;
-	bool m_bAutoChangeTracker;
-	bool m_bAutoCalibrate;
 
 	// Setting Windows visability
 	bool m_bShowWindows;

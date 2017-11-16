@@ -7,7 +7,7 @@ list(APPEND PSVRCONFIGTOOL_INCL_DIRS
     ${EIGEN3_INCLUDE_DIR}
 	${ROOT_DIR}/src/psvrmath/
 	${ROOT_DIR}/src/psvrservice/ClientAPI
-	${ROOT_DIR}/src/psvrservice/Utility
+	${ROOT_DIR}/src/psvrservice/Utils
     ${ROOT_DIR}/thirdparty/glm
     ${ROOT_DIR}/thirdparty/stb
     ${ROOT_DIR}/thirdparty/imgui)
@@ -26,12 +26,32 @@ list(APPEND PSVRCONFIGTOOL_REQ_LIBS ${SDL_GL_LIBS})
 list(APPEND PSVRCONFIGTOOL_INCL_DIRS ${OpenCV_INCLUDE_DIRS})
 list(APPEND PSVRCONFIGTOOL_REQ_LIBS ${OpenCV_LIBS})
 
+file(GLOB PSVRCONFIGTOOL_APP_STAGE_SRC
+    "${CMAKE_CURRENT_LIST_DIR}/AppStage*.cpp"
+	"${CMAKE_CURRENT_LIST_DIR}/AppStage*.h"
+)
+source_group("AppStages" FILES ${PSVRCONFIGTOOL_APP_STAGE_SRC})
+
+file(GLOB PSVRCONFIGTOOL_APP_CORE_SRC
+    "${CMAKE_CURRENT_LIST_DIR}/App.*"
+	"${CMAKE_CURRENT_LIST_DIR}/AssetManager.*"
+	"${CMAKE_CURRENT_LIST_DIR}/Camera.*"
+	"${CMAKE_CURRENT_LIST_DIR}/Logger.*"
+	"${CMAKE_CURRENT_LIST_DIR}/Renderer.*"
+	"${CMAKE_CURRENT_LIST_DIR}/PSVRTracker.cpp"
+	"${CMAKE_CURRENT_LIST_DIR}/UIConstants.h"
+	"${ROOT_DIR}/src/psvrservice/Utils/MathTypeConversion.h"
+	"${ROOT_DIR}/src/psvrservice/Utils/MathTypeConversion.cpp"
+    "${ROOT_DIR}/thirdparty/imgui/*.cpp"	
+)
+source_group("AppCore" FILES ${PSVRCONFIGTOOL_APP_CORE_SRC})
+
 # Source files that are needed for the psmove config tool
 file(GLOB PSVRConfigTool_SRC
     "${CMAKE_CURRENT_LIST_DIR}/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
-	"${ROOT_DIR}/src/psvrservice/Utility/MathTypeConversion.h"
-	"${ROOT_DIR}/src/psvrservice/Utility/MathTypeConversion.cpp"
+	"${ROOT_DIR}/src/psvrservice/Utils/MathTypeConversion.h"
+	"${ROOT_DIR}/src/psvrservice/Utils/MathTypeConversion.cpp"
     "${ROOT_DIR}/thirdparty/imgui/*.cpp"
 )
 

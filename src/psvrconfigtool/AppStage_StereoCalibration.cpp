@@ -7,14 +7,11 @@
 #include "AssetManager.h"
 #include "App.h"
 #include "Camera.h"
-#include "ClientLog.h"
-#include "GeometryUtility.h"
+#include "Logger.h"
+#include "MathTypeConversion.h"
 #include "MathUtility.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRServiceInterface.h"
-#include "PSVRProtocol.pb.h"
-#include "SharedTrackerState.h"
 
 #include "SDL_keycode.h"
 #include "SDL_opengl.h"
@@ -1000,28 +997,25 @@ void AppStage_StereoCalibration::update()
         m_menuState == AppStage_StereoCalibration::testCalibration)
     {
         // Try and read the next video frame from shared memory
-        if (PSVR_PollTrackerVideoStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
+        const unsigned char *left_video_frame_buffer= nullptr;
+        const unsigned char *right_video_frame_buffer= nullptr;
+		if (PSVR_GetTrackerVideoFrameBuffer(m_tracker_view->tracker_info.tracker_id, PSVRVideoFrameSection_Left, &left_video_frame_buffer) == PSVRResult_Success &&
+            PSVR_GetTrackerVideoFrameBuffer(m_tracker_view->tracker_info.tracker_id, PSVRVideoFrameSection_Right, &right_video_frame_buffer) == PSVRResult_Success)
+		{
+			// Update the video frame buffers
+            m_opencv_stereo_state->applyStereoVideoFrame(left_video_frame_buffer, right_video_frame_buffer);
+		}
+
+        if (m_menuState == AppStage_StereoCalibration::capture)
         {
-            const unsigned char *left_video_frame_buffer= nullptr;
-            const unsigned char *right_video_frame_buffer= nullptr;
-			if (PSVR_GetTrackerVideoFrameBuffer(m_tracker_view->tracker_info.tracker_id, PSVRVideoFrameSection_Left, &left_video_frame_buffer) == PSVRResult_Success &&
-                PSVR_GetTrackerVideoFrameBuffer(m_tracker_view->tracker_info.tracker_id, PSVRVideoFrameSection_Right, &right_video_frame_buffer) == PSVRResult_Success)
-			{
-				// Update the video frame buffers
-                m_opencv_stereo_state->applyStereoVideoFrame(left_video_frame_buffer, right_video_frame_buffer);
-			}
+            // Update the chess board capture state
+            m_opencv_stereo_state->findNewChessBoards();
 
-            if (m_menuState == AppStage_StereoCalibration::capture)
+            if (m_opencv_stereo_state->hasSampledAllChessBoards())
             {
-                // Update the chess board capture state
-                m_opencv_stereo_state->findNewChessBoards();
-
-                if (m_opencv_stereo_state->hasSampledAllChessBoards())
-                {
-                    // Kick off the async task (very expensive)
-                    m_opencv_stereo_state->computeCameraCalibration(m_square_length_mm);
-                    m_menuState= AppStage_StereoCalibration::processingCalibration;
-                }
+                // Kick off the async task (very expensive)
+                m_opencv_stereo_state->computeCameraCalibration(m_square_length_mm);
+                m_menuState= AppStage_StereoCalibration::processingCalibration;
             }
         }
     }
@@ -1349,65 +1343,49 @@ void AppStage_StereoCalibration::request_tracker_start_stream()
         m_menuState = AppStage_StereoCalibration::pendingTrackerStartStreamRequest;
 
         // Tell the PSVR service that we want to start streaming data from the tracker
-		PSVRRequestID requestID;
-		PSVR_StartTrackerDataStreamAsync(
-			m_tracker_view->tracker_info.tracker_id, 
-			&requestID);
-		PSVR_RegisterCallback(requestID, AppStage_StereoCalibration::handle_tracker_start_stream_response, this);
+        if (PSVR_StartTrackerDataStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
+        {
+            handle_tracker_start_stream_response();
+        }
+        else
+        {
+            m_menuState = AppStage_StereoCalibration::failedTrackerStartStreamRequest;
+        }
     }
 }
 
-void AppStage_StereoCalibration::handle_tracker_start_stream_response(
-    const PSVRResponseMessage *response,
-    void *userdata)
+void AppStage_StereoCalibration::handle_tracker_start_stream_response()
 {
-    AppStage_StereoCalibration *thisPtr = static_cast<AppStage_StereoCalibration *>(userdata);
+    m_bStreamIsActive = true;
 
-    switch (response->result_code)
+    // Open the shared memory that the video stream is being written to
+    if (PSVR_OpenTrackerVideoStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
     {
-    case PSVRResult_Success:
+        m_opencv_stereo_state->allocateVideoTextures(m_bypassCalibrationFlag);
+
+        if (m_bypassCalibrationFlag)
         {
-            PSVRTracker *trackerView= thisPtr->m_tracker_view;
+			// Crank up the exposure and gain so that we can see the chessboard
+			// These overrides will get rolled back once tracker gets closed
+			request_tracker_set_temp_exposure(128.f);
+			request_tracker_set_temp_gain(128.f);
 
-            thisPtr->m_bStreamIsActive = true;
-
-            // Open the shared memory that the video stream is being written to
-            if (PSVR_OpenTrackerVideoStream(trackerView->tracker_info.tracker_id) == PSVRResult_Success)
-            {
-                thisPtr->m_opencv_stereo_state->allocateVideoTextures(thisPtr->m_bypassCalibrationFlag);
-
-                if (thisPtr->m_bypassCalibrationFlag)
-                {
-				    // Crank up the exposure and gain so that we can see the chessboard
-				    // These overrides will get rolled back once tracker gets closed
-				    thisPtr->request_tracker_set_temp_exposure(128.f);
-				    thisPtr->request_tracker_set_temp_gain(128.f);
-
-                    thisPtr->m_menuState = AppStage_StereoCalibration::testCalibration;
-                }
-				else if (trackerView->tracker_info.tracker_type == PSVRTrackerType::PSVRTracker_PS4Camera)
-				{
-    				// Warn the user if they are about to change the distortion calibration settings for the PS4Camera
-					thisPtr->m_menuState = AppStage_StereoCalibration::showWarning;
-				}
-				else
-				{
-					// Start capturing chess boards
-					thisPtr->m_menuState = AppStage_StereoCalibration::enterBoardSettings;
-				}
-            }
-            else
-            {
-                thisPtr->m_menuState = AppStage_StereoCalibration::failedTrackerOpenStreamRequest;
-            }
-        } break;
-
-    case PSVRResult_Error:
-    case PSVRResult_Canceled:
-	case PSVRResult_Timeout:
-        {
-            thisPtr->m_menuState = AppStage_StereoCalibration::failedTrackerStartStreamRequest;
-        } break;
+            m_menuState = AppStage_StereoCalibration::testCalibration;
+        }
+		else if (m_tracker_view->tracker_info.tracker_type == PSVRTrackerType::PSVRTracker_PS4Camera)
+		{
+    		// Warn the user if they are about to change the distortion calibration settings for the PS4Camera
+			m_menuState = AppStage_StereoCalibration::showWarning;
+		}
+		else
+		{
+			// Start capturing chess boards
+			m_menuState = AppStage_StereoCalibration::enterBoardSettings;
+		}
+    }
+    else
+    {
+        m_menuState = AppStage_StereoCalibration::failedTrackerOpenStreamRequest;
     }
 }
 
@@ -1418,44 +1396,32 @@ void AppStage_StereoCalibration::request_tracker_stop_stream()
         m_menuState = AppStage_StereoCalibration::pendingTrackerStopStreamRequest;
 
         // Tell the PSVR service that we want to stop streaming data from the tracker
-		PSVRRequestID request_id;
-		PSVR_StopTrackerDataStreamAsync(m_tracker_view->tracker_info.tracker_id, &request_id);
-		PSVR_RegisterCallback(request_id, AppStage_StereoCalibration::handle_tracker_stop_stream_response, this);
+        if (PSVR_StopTrackerDataStream(m_tracker_view->tracker_info.tracker_id) == PSVRResult_Success)
+        {
+            handle_tracker_stop_stream_response();
+        }
+        else
+        {
+            m_menuState = AppStage_StereoCalibration::failedTrackerStopStreamRequest;
+        }
     }
 }
 
-void AppStage_StereoCalibration::handle_tracker_stop_stream_response(
-    const PSVRResponseMessage *response,
-    void *userdata)
+void AppStage_StereoCalibration::handle_tracker_stop_stream_response()
 {
-    AppStage_StereoCalibration *thisPtr = static_cast<AppStage_StereoCalibration *>(userdata);
+    m_menuState = AppStage_StereoCalibration::inactive;
 
     // In either case consider the stream as now inactive
-    thisPtr->m_bStreamIsActive = false;
+    m_bStreamIsActive = false;
 
-    switch (response->result_code)
-    {
-    case PSVRResult_Success:
-        {
-            thisPtr->m_menuState = AppStage_StereoCalibration::inactive;
+    // Close the shared memory buffer
+	PSVR_CloseTrackerVideoStream(m_tracker_view->tracker_info.tracker_id);
 
-            // Close the shared memory buffer
-			PSVR_CloseTrackerVideoStream(thisPtr->m_tracker_view->tracker_info.tracker_id);
+    // Free memory allocated for the video frame textures
+    m_opencv_stereo_state->disposeVideoTextures();
 
-            // Free memory allocated for the video frame textures
-            thisPtr->m_opencv_stereo_state->disposeVideoTextures();
-
-            // After closing the stream, we should go back to the tracker settings
-            thisPtr->m_app->setAppStage(AppStage_TrackerSettings::APP_STAGE_NAME);
-        } break;
-
-    case PSVRResult_Error:
-    case PSVRResult_Canceled:
-	case PSVRResult_Timeout:
-        {
-            thisPtr->m_menuState = AppStage_StereoCalibration::failedTrackerStopStreamRequest;
-        } break;
-    }
+    // After closing the stream, we should go back to the tracker settings
+    m_app->setAppStage(AppStage_TrackerSettings::APP_STAGE_NAME);
 }
 
 void AppStage_StereoCalibration::request_tracker_set_temp_gain(float gain)
@@ -1463,6 +1429,7 @@ void AppStage_StereoCalibration::request_tracker_set_temp_gain(float gain)
     m_trackerGain= gain;
 
     // Tell the PSVR service that we want to change gain, but not save the change
+    PSVR_StartTrackerDataStream()
     RequestPtr request(new PSVRProtocol::Request());
     request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_GAIN);
     request->mutable_request_set_tracker_gain()->set_tracker_id(m_tracker_view->tracker_info.tracker_id);

@@ -2,14 +2,11 @@
 #include "AppStage_HMDSettings.h"
 #include "AppStage_HMDAccelerometerCalibration.h"
 #include "AppStage_HMDGyroscopeCalibration.h"
-#include "AppStage_HMDModelCalibration.h"
 #include "AppStage_MainMenu.h"
 #include "App.h"
 #include "Camera.h"
 #include "Renderer.h"
 #include "UIConstants.h"
-#include "PSVRServiceInterface.h"
-#include "PSVRProtocol.pb.h"
 
 #include "SDL_keycode.h"
 
@@ -81,7 +78,7 @@ void AppStage_HMDSettings::render()
             // Display the tracking color being used for the controller
             glm::vec3 bulb_color = glm::vec3(1.f, 1.f, 1.f);
 
-            switch (hmdInfo.TrackingColorType)
+            switch (hmdInfo.hmd_info.tracking_color_type)
             {
             case PSVRTrackingColorType_Magenta:
                 bulb_color = glm::vec3(1.f, 0.f, 1.f);
@@ -105,14 +102,14 @@ void AppStage_HMDSettings::render()
                 break;
             }
 
-            switch (hmdInfo.HmdType)
+            switch (hmdInfo.hmd_info.hmd_type)
             {
-            case PSVRProtocol::Morpheus:
+            case PSVRHmd_Morpheus:
                 {
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(2.f, 2.f, 2.f));
                     drawMorpheusModel(scale3, glm::vec3(1.f, 1.f, 1.f));
                 } break;
-            case PSVRProtocol::VirtualHMD:
+            case PSVRHmd_Virtual:
                 {
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(2.f, 2.f, 2.f));
                     drawVirtualHMDModel(scale3, bulb_color);
@@ -174,25 +171,25 @@ void AppStage_HMDSettings::renderUI()
             }
             
             // Combo box selection for hmd tracking color
-            if (hmdInfo.HmdType == AppStage_HMDSettings::VirtualHMD)
+            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Virtual)
             {
-                int newTrackingColorType = hmdInfo.TrackingColorType;
+                int newTrackingColorType = hmdInfo.hmd_info.tracking_color_type;
 
                 ImGui::PushItemWidth(195);
                 if (ImGui::Combo("Tracking Color", &newTrackingColorType, "Magenta\0Cyan\0Yellow\0Red\0Green\0Blue\0\0"))
                 {
-                    hmdInfo.TrackingColorType = static_cast<PSVRTrackingColorType>(newTrackingColorType);
+                    hmdInfo.hmd_info.tracking_color_type = static_cast<PSVRTrackingColorType>(newTrackingColorType);
 
-                    request_set_hmd_tracking_color_id(hmdInfo.HmdID, hmdInfo.TrackingColorType);
+                    request_set_hmd_tracking_color_id(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.tracking_color_type);
 
                     // Re-request the controller list since the tracking colors could changed for other controllers
                     request_hmd_list();
                 }
                 ImGui::PopItemWidth();
             }
-            else if (hmdInfo.HmdType == AppStage_HMDSettings::Morpheus)
+            else if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
             {
-                switch (hmdInfo.TrackingColorType)
+                switch (hmdInfo.hmd_info.tracking_color_type)
                 {
                 case PSVRTrackingColorType_Magenta:
                     ImGui::BulletText("Tracking Color: Magenta");
@@ -215,16 +212,16 @@ void AppStage_HMDSettings::renderUI()
                 }
             }
 
-            ImGui::BulletText("HMD ID: %d", hmdInfo.HmdID);
+            ImGui::BulletText("HMD ID: %d", hmdInfo.hmd_info.hmd_id);
 
-            switch (hmdInfo.HmdType)
+            switch (hmdInfo.hmd_info.hmd_type)
             {
-            case AppStage_HMDSettings::Morpheus:
+            case PSVRHmd_Morpheus:
                 {
                     ImGui::BulletText("HMD Type: Morpheus");
-                    ImGui::TextWrapped("Device Path: %s", hmdInfo.DevicePath.c_str());
+                    ImGui::TextWrapped("Device Path: %s", hmdInfo.hmd_info.device_path);
                 } break;
-            case AppStage_HMDSettings::VirtualHMD:
+            case PSVRHmd_Virtual:
                 {
                     ImGui::BulletText("HMD Type: VirtualHMD");
                 } break;
@@ -248,14 +245,8 @@ void AppStage_HMDSettings::renderUI()
                 }
             }
 
-            if (hmdInfo.HmdType == AppStage_HMDSettings::eHMDType::Morpheus)
+            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
             {
-                if (ImGui::Button("Calibrate Accelerometer"))
-                {
-                    m_app->getAppStage<AppStage_HMDAccelerometerCalibration>()->setBypassCalibrationFlag(false);
-                    m_app->setAppStage(AppStage_HMDAccelerometerCalibration::APP_STAGE_NAME);
-                }
-
                 if (ImGui::Button("Test Accelerometer"))
                 {
                     m_app->getAppStage<AppStage_HMDAccelerometerCalibration>()->setBypassCalibrationFlag(true);
@@ -263,14 +254,8 @@ void AppStage_HMDSettings::renderUI()
                 }
             }
 
-            if (hmdInfo.HmdType == AppStage_HMDSettings::eHMDType::Morpheus)
+            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
             {
-                if (ImGui::Button("Calibrate Gyroscope"))
-                {
-                    m_app->getAppStage<AppStage_HMDGyroscopeCalibration>()->setBypassCalibrationFlag(false);
-                    m_app->setAppStage(AppStage_HMDGyroscopeCalibration::APP_STAGE_NAME);
-                }
-
                 if (ImGui::Button("Test Orientation"))
                 {
                     m_app->getAppStage<AppStage_HMDGyroscopeCalibration>()->setBypassCalibrationFlag(true);
@@ -278,24 +263,12 @@ void AppStage_HMDSettings::renderUI()
                 }
             }
 
-            if (hmdInfo.HmdType == AppStage_HMDSettings::eHMDType::Morpheus || 
-                hmdInfo.HmdType == AppStage_HMDSettings::eHMDType::VirtualHMD)
+            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus || 
+                hmdInfo.hmd_info.hmd_type == PSVRHmd_Virtual)
             {
-                if (m_app->getIsLocalServer())
+                if (ImGui::Button("Test LED Model"))
                 {
-                    if (ImGui::Button("Calibrate LED Model"))
-                    {
-                        AppStage_HMDModelCalibration::enterStageAndCalibrate(m_app, m_selectedHmdIndex);
-                    }
-
-                    if (ImGui::Button("Test LED Model"))
-                    {
-                        AppStage_HMDModelCalibration::enterStageAndSkipCalibration(m_app, m_selectedHmdIndex);
-                    }
-                }
-                else
-                {
-                    ImGui::TextDisabled("Calibrate LED Model");
+                    AppStage_HMDTrackingTest::enterStageAndTestTracking(m_app, m_selectedHmdIndex);
                 }
             }
 
@@ -398,14 +371,13 @@ void AppStage_HMDSettings::renderUI()
 }
 
 bool AppStage_HMDSettings::onClientAPIEvent(
-    PSVREventMessage::eEventType event, 
-    PSVREventDataHandle opaque_event_handle)
+    PSVREventType event_type)
 {
     bool bHandled = false;
 
-    switch (event)
+    switch (event_type)
     {
-    case PSVREventMessage::PSVREvent_hmdListUpdated:
+    case PSVREvent_hmdListUpdated:
         {
             bHandled = true;
             request_hmd_list();
@@ -423,13 +395,15 @@ void AppStage_HMDSettings::request_hmd_list()
         m_selectedHmdIndex = -1;
         m_hmdInfos.clear();
 
-        // Tell the PSVR service that we we want a list of HMDs connected to this machine
-        RequestPtr request(new PSVRProtocol::Request());
-        request->set_type(PSVRProtocol::Request_RequestType_GET_HMD_LIST);
-
-        PSVRRequestID request_id;
-        PSVR_SendOpaqueRequest(&request, &request_id);
-        PSVR_RegisterCallback(request_id, AppStage_HMDSettings::handle_hmd_list_response, this);
+        PSVRHmdList hmd_list;
+        if (PSVR_GetHmdList(&hmd_list) == PSVRResult_Success)
+        {
+            handle_hmd_list_response(hmd_list);
+        }
+        else
+        {
+            m_menuState = AppStage_HMDSettings::failedHmdListRequest;
+        }
     }
 }
 
@@ -487,8 +461,7 @@ void AppStage_HMDSettings::request_set_hmd_tracking_color_id(
 }
 
 void AppStage_HMDSettings::handle_hmd_list_response(
-    const PSVRResponseMessage *response,
-    void *userdata)
+    const PSVRHmdList &hmd_list)
 {
     PSVRResult ResultCode = response->result_code;
     PSVRResponseHandle response_handle = response->opaque_response_handle;

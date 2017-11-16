@@ -16,8 +16,6 @@
 //-- constants -----
 static const char *k_ps3eye_texture_filename= "./assets/textures/PS3EyeDiffuse.jpg";
 static const char *k_PSVR_texture_filename= "./assets/textures/PSVRDiffuse.jpg";
-static const char *k_psnavi_texture_filename= "./assets/textures/PSNaviDiffuse.jpg";
-static const char *k_psdualshock4_texture_filename = "./assets/textures/PSDS4Diffuse.jpg";
 static const char *k_virtual_texture_filename = "./assets/textures/VirtualDiffuse.jpg";
 static const char *k_morpheus_texture_filename = "./assets/textures/MorpheusDiffuse.jpg";
 static const char *k_dk2_texture_filename = "./assets/textures/DK2Diffuse.jpg";
@@ -38,8 +36,6 @@ AssetManager *AssetManager::m_instance= NULL;
 AssetManager::AssetManager()
     : m_ps3eyeTexture()
 	, m_PSVRTexture()
-    , m_psnaviTexture()
-    , m_psdualshock4Texture()
     , m_morpheusTexture()
     , m_dk2Texture()
     , m_defaultFont()
@@ -63,16 +59,6 @@ bool AssetManager::init()
     if (success)
     {
         success= loadTexture(k_PSVR_texture_filename, &m_PSVRTexture);
-    }
-
-    if (success)
-    {
-        success= loadTexture(k_psnavi_texture_filename, &m_psnaviTexture);
-    }
-
-    if (success)
-    {
-        success = loadTexture(k_psdualshock4_texture_filename, &m_psdualshock4Texture);
     }
 
     if (success)
@@ -116,8 +102,6 @@ void AssetManager::destroy()
 {
 	m_ps3eyeTexture.dispose();
     m_PSVRTexture.dispose();
-    m_psnaviTexture.dispose();
-    m_psdualshock4Texture.dispose();
     m_morpheusTexture.dispose();
     m_dk2Texture.dispose();
     m_defaultFont.dispose();

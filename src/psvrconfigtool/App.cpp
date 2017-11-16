@@ -5,8 +5,6 @@
 #include "Renderer.h"
 #include "Logger.h"
 
-#include "PSVRProtocol.pb.h"
-
 //-- public methods -----
 App::App()
     : m_renderer(new Renderer())
@@ -19,9 +17,6 @@ App::App()
     , m_appStage(nullptr)
     , m_bShutdownRequested(false)
 {
-	strncpy(m_serverAddress, PSVRSERVICE_DEFAULT_ADDRESS, sizeof(m_serverAddress));
-	strncpy(m_serverPort, PSVRSERVICE_DEFAULT_PORT, sizeof(m_serverPort));
-	m_bIsServerLocal= true;
 }
 
 App::~App()
@@ -83,12 +78,7 @@ bool App::reconnectToService()
 		PSVR_Shutdown();
     }
 
-    bool success= 
-		PSVR_InitializeAsync(
-            m_serverAddress,
-            m_serverPort) == PSVRResult_Success;
-
-    return success;
+    return PSVR_Initialize(PSVRLogSeverityLevel_info) == PSVRResult_Success;
 }
 
 void App::setCameraType(eCameraType cameraType)
@@ -223,11 +213,10 @@ void App::onSDLEvent(const SDL_Event &e)
 void App::onClientPSVREvent(
     const PSVREventMessage *event)
 {
-    PSVREventMessage::eEventType event_type = event->event_type;
-    PSVREventDataHandle opaque_event_handle = event->event_data_handle;
+    PSVREventType event_type = event->event_type;
 
     // Try giving the event to the current AppStage first
-    if (!m_appStage->onClientAPIEvent(event_type, opaque_event_handle))
+    if (!m_appStage->onClientAPIEvent(event_type))
     {
         t_app_stage_event_map::iterator entry= m_eventToFallbackAppStageMap.find(event_type);
 
@@ -236,7 +225,7 @@ void App::onClientPSVREvent(
         {
             // If the current stage doesn't care about the event,
             // hand it off to another app stage registered to care about the event
-            entry->second->onClientAPIEvent(event_type, opaque_event_handle);
+            entry->second->onClientAPIEvent(event_type);
         }
     }
 }

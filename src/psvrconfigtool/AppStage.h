@@ -20,9 +20,7 @@ public:
     virtual void renderUI() {}
 
     virtual void onKeyDown(int keyCode) {}
-    virtual bool onClientAPIEvent(
-        PSVREventMessage::eEventType event, 
-        PSVREventDataHandle opaque_event_handle) 
+    virtual bool onClientAPIEvent(PSVREventType event_type) 
     { return false; }
     virtual void onServiceResponse(PSVRResult ResultCode) {}
 

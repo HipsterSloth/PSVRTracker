@@ -35,9 +35,7 @@ protected:
 		const PSVRVector3f &raw_bias,
 		const float raw_drift, 
 		const float raw_variance);
-    static void handle_acquire_hmd(
-        const PSVRResponseMessage *response,
-        void *userdata);
+    void handle_acquire_hmd();
     void request_exit_to_app_stage(const char *app_stage_name);
 
 private:
