@@ -10,11 +10,10 @@
 #include <chrono>
 
 //-- definitions -----
-class AppStage_HMDAccelerometerCalibration : public AppStage
+class AppStage_HMDAccelerometerTest : public AppStage
 {
 public:
-	AppStage_HMDAccelerometerCalibration(class App *app);
-    virtual ~AppStage_HMDAccelerometerCalibration();
+	AppStage_HMDAccelerometerTest(class App *app);
 
     virtual void enter() override;
     virtual void exit() override;
@@ -25,13 +24,7 @@ public:
 
     static const char *APP_STAGE_NAME;
 
-    inline void setBypassCalibrationFlag(bool bFlag)
-    {
-        m_bBypassCalibration = bFlag;
-    }
-
 protected:
-    void handle_acquire_hmd();
     void request_exit_to_app_stage(const char *app_stage_name);
 
 private:
@@ -41,14 +34,9 @@ private:
 
         waitingForStreamStartResponse,
         failedStreamStart,
-        placeHMD,
-        measureNoise,
-        measureComplete,
         test
     };
     eCalibrationMenuState m_menuState;
-
-    bool m_bBypassCalibration;
 
     PSVRHeadMountedDisplay *m_hmdView;
     bool m_isHMDStreamActive;
@@ -56,8 +44,6 @@ private:
 
     PSVRVector3i m_lastRawAccelerometer;
     PSVRVector3f m_lastCalibratedAccelerometer;
-
-    struct HMDAccelerometerPoseSamples *m_noiseSamples;
 };
 
 #endif // APP_STAGE_HMD_ACCELEROMETER_CALIBRATION_H

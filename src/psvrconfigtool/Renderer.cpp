@@ -3,7 +3,6 @@
 #include "ClientGeometry_CAPI.h"
 #include "AssetManager.h"
 #include "Logger.h"
-#include "ProtocolVersion.h"
 #include "UIConstants.h"
 
 #include "SDL.h"
@@ -11,20 +10,14 @@
 #include "SDL_opengl.h"
 #include "SDL_syswm.h"
 
-#include "GeometryUtility.h"
+#include "MathTypeConversion.h"
 #include "MathUtility.h"
 #include "MathGLM.h"
 
 #include <imgui.h>
 
-#include "PSVRbody_3dmodel.h"
-#include "PSVRbulb_3dmodel.h"
-#include "psnavi_3dmodel.h"
 #include "ps3eye_3dmodel.h"
-#include "ds4body_3dmodel.h"
-#include "ds4lightbar_3dmodel.h"
 #include "morpheus_3dmodel.h"
-#include "dk2_3dmodel.h"
 
 #include <algorithm>
 
@@ -50,8 +43,8 @@ static const glm::vec3 k_PSVR_frustum_color = glm::vec3(0.1f, 0.7f, 0.3f);
 Renderer *Renderer::m_instance= NULL;
 
 //-- prototypes -----
-static const char* ImGui_ImplSdl_GetClipboardText();
-static void ImGui_ImplSdl_SetClipboardText(const char* text);
+static const char* ImGui_ImplSdl_GetClipboardText(void* user_data);
+static void ImGui_ImplSdl_SetClipboardText(void* user_data, const char* text);
 static void ImGui_ImplSdl_RenderDrawLists(ImDrawData* draw_data);
 
 //-- public methods -----
@@ -104,7 +97,9 @@ bool Renderer::init()
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
-		snprintf(szWindowTitle, sizeof(szWindowTitle), "PSVR Config Tool v%s", PSVR_RELEASE_VERSION_STRING);
+        char szVersionString[256];
+        PSVR_GetVersionString(szVersionString, sizeof(szVersionString));
+		snprintf(szWindowTitle, sizeof(szWindowTitle), "PSVR Config Tool v%s", szVersionString);
         m_window = SDL_CreateWindow(szWindowTitle,
             SDL_WINDOWPOS_CENTERED,
             SDL_WINDOWPOS_CENTERED,
@@ -1382,127 +1377,6 @@ void drawPS3EyeModel(const glm::mat4 &transform)
     glBindTexture(GL_TEXTURE_2D, 0); 
 }
 
-void drawPSVRModel(const glm::mat4 &transform, const glm::vec3 &color)
-{
-    assert(Renderer::getIsRenderingStage());
-
-    int textureID= AssetManager::getInstance()->getPSVRTextureAsset()->texture_id;
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    glPushMatrix();
-        glMultMatrixf(glm::value_ptr(transform));
-
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        
-        glColor3f(1.f, 1.f, 1.f);
-        glVertexPointer(3, GL_FLOAT, 0, PSVRbodyVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbodyTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, PSVRbodyNumVerts);
-
-        glColor3fv(glm::value_ptr(color));
-        glVertexPointer(3, GL_FLOAT, 0, PSVRbulbVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbulbTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, PSVRbulbNumVerts);
-
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    glPopMatrix();
-
-    // rebind the default texture
-    glBindTexture(GL_TEXTURE_2D, 0); 
-}
-
-void drawPSNaviModel(const glm::mat4 &transform)
-{
-    assert(Renderer::getIsRenderingStage());
-
-    int textureID= AssetManager::getInstance()->getPSNaviTextureAsset()->texture_id;
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glColor3f(1.f, 1.f, 1.f);
-
-    glPushMatrix();
-        glMultMatrixf(glm::value_ptr(transform));
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glVertexPointer(3, GL_FLOAT, 0, psnaviVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, psnaviTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, psnaviNumVerts);
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glPopMatrix();
-
-    // rebind the default texture
-    glBindTexture(GL_TEXTURE_2D, 0); 
-}
-
-void drawPSDualShock4Model(const glm::mat4 &transform, const glm::vec3 &color)
-{
-    assert(Renderer::getIsRenderingStage());
-
-    int textureID = AssetManager::getInstance()->getPSDualShock4TextureAsset()->texture_id;
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glColor3f(1.f, 1.f, 1.f);
-
-    glPushMatrix();
-        glMultMatrixf(glm::value_ptr(transform));
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        
-		glVertexPointer(3, GL_FLOAT, 0, ds4bodyVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, ds4bodyTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, ds4bodyNumVerts);
-
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-		glColor3fv(glm::value_ptr(color));
-		glVertexPointer(3, GL_FLOAT, 0, ds4lightbarVerts);
-		glDrawArrays(GL_TRIANGLES, 0, ds4lightbarNumVerts);
-
-        glDisableClientState(GL_VERTEX_ARRAY);
-    glPopMatrix();
-
-    // rebind the default texture
-    glBindTexture(GL_TEXTURE_2D, 0); 
-}
-
-void drawVirtualControllerModel(const glm::mat4 &transform, const glm::vec3 &color)
-{
-    assert(Renderer::getIsRenderingStage());
-
-    int textureID= AssetManager::getInstance()->getVirtualControllerTextureAsset()->texture_id;
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    glPushMatrix();
-        glMultMatrixf(glm::value_ptr(transform));
-
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        
-        glColor3f(1.f, 1.f, 1.f);
-        glVertexPointer(3, GL_FLOAT, 0, PSVRbodyVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbodyTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, PSVRbodyNumVerts);
-
-        glColor3fv(glm::value_ptr(color));
-        glVertexPointer(3, GL_FLOAT, 0, PSVRbulbVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbulbTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, PSVRbulbNumVerts);
-
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    glPopMatrix();
-
-    // rebind the default texture
-    glBindTexture(GL_TEXTURE_2D, 0); 
-}
-
 void drawTrackerList(const PSVRClientTrackerInfo *trackerList, const int trackerCount)
 {
 	glm::mat4 PSVR_tracking_space_to_chaperone_space = glm::mat4(1.f);
@@ -1564,60 +1438,16 @@ void drawMorpheusModel(const glm::mat4 &transform, const glm::vec3 &color)
 void drawVirtualHMDModel(const glm::mat4 &transform, const glm::vec3 &color)
 {
     //###HipsterSloth $TODO Draw virtual HMD model
-    assert(Renderer::getIsRenderingStage());
-
-    int dk2TextureID= AssetManager::getInstance()->getDK2TextureAsset()->texture_id;
-    int PSVRTextureID= AssetManager::getInstance()->getPSVRTextureAsset()->texture_id;
-
-    glBindTexture(GL_TEXTURE_2D, dk2TextureID);
-
-    glPushMatrix();
-        glMultMatrixf(glm::value_ptr(transform));
-
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        
-        glColor3f(1.f, 1.f, 1.f);
-        glVertexPointer(3, GL_FLOAT, 0, DK2Verts);
-        glTexCoordPointer(2, GL_FLOAT, 0, DK2TexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, DK2NumVerts);
-
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    glPopMatrix();
-
-    glBindTexture(GL_TEXTURE_2D, PSVRTextureID);
-
-    glPushMatrix();
-        glMultMatrixf(glm::value_ptr(transform));
-
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        
-        glColor3fv(glm::value_ptr(color));
-        glTranslatef(0.f, -2.f, 0.f);
-        glRotatef(90.f, 1.f, 0.f, 0.f);
-        glVertexPointer(3, GL_FLOAT, 0, PSVRbulbVerts);
-        glTexCoordPointer(2, GL_FLOAT, 0, PSVRbulbTexCoords);
-        glDrawArrays(GL_TRIANGLES, 0, PSVRbulbNumVerts);
-
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    glPopMatrix();
-
-    // rebind the default texture
-    glBindTexture(GL_TEXTURE_2D, 0); 
+    drawMorpheusModel(transform, color);
 }
 
 // -- IMGUI Callbacks -----
-static const char* ImGui_ImplSdl_GetClipboardText()
+static const char* ImGui_ImplSdl_GetClipboardText(void* user_data)
 {
 	return SDL_GetClipboardText();
 }
 
-static void ImGui_ImplSdl_SetClipboardText(const char* text)
+static void ImGui_ImplSdl_SetClipboardText(void* user_data, const char* text)
 {
     SDL_SetClipboardText(text);
 }

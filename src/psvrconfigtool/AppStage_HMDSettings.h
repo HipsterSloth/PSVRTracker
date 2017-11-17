@@ -42,14 +42,6 @@ protected:
     void request_hmd_list();
 	void handle_hmd_list_response(const PSVRHmdList &hmd_list);
 
-	void request_set_orientation_filter(const int hmd_id, const std::string &filter_name);
-	void request_set_position_filter(const int hmd_id, const std::string &filter_name);
-	void request_set_hmd_prediction(const int hmd_id, float prediction_time);
-	void request_set_hmd_tracking_color_id(
-		const int hmd_id,
-		PSVRTrackingColorType tracking_color_type);
-
-
 private:
     enum eHmdMenuState
     {

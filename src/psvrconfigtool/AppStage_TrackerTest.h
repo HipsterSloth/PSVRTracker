@@ -8,10 +8,10 @@
 #include <vector>
 
 //-- definitions -----
-class AppStage_TestTracker : public AppStage
+class AppStage_TrackerTest : public AppStage
 {
 public:
-    AppStage_TestTracker(class App *app);
+    AppStage_TrackerTest(class App *app);
 
     virtual void enter() override;
     virtual void exit() override;

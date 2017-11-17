@@ -1,14 +1,14 @@
 //-- includes -----
 #include "App.h"
 #include "AppStage_ColorCalibration.h"
-#include "AppStage_HMDAccelerometerCalibration.h"
-#include "AppStage_HMDGyroscopeCalibration.h"
+#include "AppStage_HMDAccelerometerTest.h"
+#include "AppStage_HMDGyroscopeTest.h"
 #include "AppStage_HMDSettings.h"
 #include "AppStage_HMDTrackingTest.h"
 #include "AppStage_MainMenu.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_TrackerSettings.h"
-#include "AppStage_TestTracker.h"
+#include "AppStage_TrackerTest.h"
 
 #ifdef _WIN32
 #pragma comment (lib, "winmm.lib")     /* link with Windows MultiMedia lib */
@@ -26,13 +26,13 @@ extern "C" int main(int argc, char *argv[])
 
     // Register all of the app stages
 	app.registerAppStage<AppStage_ColorCalibration>();
-	app.registerAppStage<AppStage_HMDAccelerometerCalibration>();
-	app.registerAppStage<AppStage_HMDGyroscopeCalibration>();
+	app.registerAppStage<AppStage_HMDAccelerometerTest>();
+	app.registerAppStage<AppStage_HMDGyroscopeTest>();
     app.registerAppStage<AppStage_HMDSettings>();
     app.registerAppStage<AppStage_HMDTrackingTest>();
     app.registerAppStage<AppStage_MainMenu>();
     app.registerAppStage<AppStage_StereoCalibration>();
-    app.registerAppStage<AppStage_TestTracker>();
+    app.registerAppStage<AppStage_TrackerTest>();
     app.registerAppStage<AppStage_TrackerSettings>();
 
     return app.exec(argc, argv, AppStage_MainMenu::APP_STAGE_NAME);

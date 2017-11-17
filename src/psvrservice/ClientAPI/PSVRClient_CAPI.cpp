@@ -742,3 +742,51 @@ PSVRResult PSVR_SetHmdDataStreamTrackerIndex(PSVRHmdID hmd_id, PSVRTrackerID tra
 
     return result;
 }
+
+PSVRResult PSVR_SetHmdPositionFilter(PSVRHmdID hmd_id, const char *position_filter)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    {
+		result= g_psvr_service->getRequestHandler()->set_hmd_position_filter(hmd_id, std::string(position_filter));
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetHmdOrientationFilter(PSVRHmdID hmd_id, const char *orientation_filter)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    {
+		result= g_psvr_service->getRequestHandler()->set_hmd_orientation_filter(hmd_id, std::string(orientation_filter));
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetHmdPredictionTime(PSVRHmdID hmd_id, float prediction_time)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    {
+		result= g_psvr_service->getRequestHandler()->set_hmd_prediction_time(hmd_id, prediction_time);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetHmdTrackingColorID(PSVRHmdID hmd_id, PSVRTrackingColorType tracking_color_type)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    {
+		result= g_psvr_service->getRequestHandler()->set_hmd_led_tracking_color(hmd_id, tracking_color_type);
+    }
+
+    return result;
+}

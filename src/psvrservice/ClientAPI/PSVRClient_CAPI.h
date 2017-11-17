@@ -721,6 +721,34 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_StopHmdDataStream(PSVRHmdID hmd_id);
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdDataStreamTrackerIndex(PSVRHmdID hmd_id, PSVRTrackerID tracker_id);
 
+/** \brief Selects the position filter used by the given HMD
+	\param hmd_id The ID of the HMD whose position filter we want to set
+    \param position_filter The string name of the position filter to set
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the filter type was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdPositionFilter(PSVRHmdID hmd_id, const char *position_filter);
+
+/** \brief Selects the orientation filter used by the given HMD
+	\param hmd_id The ID of the HMD whose position filter we want to set
+    \param orientation_filter The string name of the orientation filter to set
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the filter type was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdOrientationFilter(PSVRHmdID hmd_id, const char *orientation_filter);
+
+/** \brief Sets the amount of prediction to use when computing final HMD post
+	\param hmd_id The ID of the HMD whose position filter we want to set
+    \param prediction_time The prediction time in seconds
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the hmd was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdPredictionTime(PSVRHmdID hmd_id, float prediction_time);
+
+/** \brief Sets the assigned tracking color for the given HMD (only blue allowed for Morpheus)
+	\param hmd_id The ID of the HMD whose position filter we want to set
+    \param tracking_color_type The tracking color to use for this HMD
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the color was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdTrackingColorID(PSVRHmdID HmdID, PSVRTrackingColorType tracking_color_type);
+
 /** 
 @} 
 */ 

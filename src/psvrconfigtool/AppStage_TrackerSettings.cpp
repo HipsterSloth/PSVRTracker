@@ -1,6 +1,6 @@
 //-- inludes -----
 #include "AppStage_TrackerSettings.h"
-#include "AppStage_TestTracker.h"
+#include "AppStage_TrackerTest.h"
 #include "AppStage_ColorCalibration.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_HMDTrackingTest.h"
@@ -212,7 +212,7 @@ void AppStage_TrackerSettings::renderUI()
 
             if (ImGui::Button("Test Video Feed"))
             {
-                m_app->setAppStage(AppStage_TestTracker::APP_STAGE_NAME);
+                m_app->setAppStage(AppStage_TrackerTest::APP_STAGE_NAME);
             }
 
             if (trackerInfo.tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)

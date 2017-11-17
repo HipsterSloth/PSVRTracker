@@ -1,7 +1,8 @@
 //-- inludes -----
 #include "AppStage_HMDSettings.h"
-#include "AppStage_HMDAccelerometerCalibration.h"
-#include "AppStage_HMDGyroscopeCalibration.h"
+#include "AppStage_HMDAccelerometerTest.h"
+#include "AppStage_HMDGyroscopeTest.h"
+#include "AppStage_HMDTrackingTest.h"
 #include "AppStage_MainMenu.h"
 #include "App.h"
 #include "Camera.h"
@@ -12,6 +13,11 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
+
+#ifdef _MSC_VER
+#pragma warning (disable: 4996) // 'This function or variable may be unsafe': snprintf
+#define snprintf _snprintf
+#endif
 
 //-- statics ----
 const char *AppStage_HMDSettings::APP_STAGE_NAME= "HMDSettings";
@@ -180,7 +186,7 @@ void AppStage_HMDSettings::renderUI()
                 {
                     hmdInfo.hmd_info.tracking_color_type = static_cast<PSVRTrackingColorType>(newTrackingColorType);
 
-                    request_set_hmd_tracking_color_id(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.tracking_color_type);
+                    PSVR_SetHmdTrackingColorID(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.tracking_color_type);
 
                     // Re-request the controller list since the tracking colors could changed for other controllers
                     request_hmd_list();
@@ -249,8 +255,7 @@ void AppStage_HMDSettings::renderUI()
             {
                 if (ImGui::Button("Test Accelerometer"))
                 {
-                    m_app->getAppStage<AppStage_HMDAccelerometerCalibration>()->setBypassCalibrationFlag(true);
-                    m_app->setAppStage(AppStage_HMDAccelerometerCalibration::APP_STAGE_NAME);
+                    m_app->setAppStage(AppStage_HMDAccelerometerTest::APP_STAGE_NAME);
                 }
             }
 
@@ -258,8 +263,7 @@ void AppStage_HMDSettings::renderUI()
             {
                 if (ImGui::Button("Test Orientation"))
                 {
-                    m_app->getAppStage<AppStage_HMDGyroscopeCalibration>()->setBypassCalibrationFlag(true);
-                    m_app->setAppStage(AppStage_HMDGyroscopeCalibration::APP_STAGE_NAME);
+                    m_app->setAppStage(AppStage_HMDGyroscopeTest::APP_STAGE_NAME);
                 }
             }
 
@@ -272,52 +276,54 @@ void AppStage_HMDSettings::renderUI()
                 }
             }
 
-            if (hmdInfo.HmdType == AppStage_HMDSettings::eHMDType::Morpheus)
+            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
             {		
                 ImGui::PushItemWidth(195);
                 if (ImGui::Combo("Position Filter", &hmdInfo.PositionFilterIndex, k_hmd_position_filter_names, UI_ARRAYSIZE(k_hmd_position_filter_names)))
                 {
-                    hmdInfo.PositionFilterName = k_hmd_position_filter_names[hmdInfo.PositionFilterIndex];
-                    request_set_position_filter(hmdInfo.HmdID, hmdInfo.PositionFilterName);
+                    strncpy(hmdInfo.hmd_info.position_filter, k_hmd_position_filter_names[hmdInfo.PositionFilterIndex], sizeof(hmdInfo.hmd_info.position_filter));
+                    PSVR_SetHmdPositionFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.position_filter);
                 }
                 if (ImGui::Combo("Orientation Filter", &hmdInfo.OrientationFilterIndex, k_morpheus_orientation_filter_names, UI_ARRAYSIZE(k_morpheus_orientation_filter_names)))
                 {
-                    hmdInfo.OrientationFilterName = k_morpheus_orientation_filter_names[hmdInfo.OrientationFilterIndex];
-                    request_set_orientation_filter(hmdInfo.HmdID, hmdInfo.OrientationFilterName);
+                    strncpy(hmdInfo.hmd_info.orientation_filter, k_morpheus_orientation_filter_names[hmdInfo.OrientationFilterIndex], sizeof(hmdInfo.hmd_info.orientation_filter));
+                    PSVR_SetHmdOrientationFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.orientation_filter);
                 }
-                if (ImGui::SliderFloat("Prediction Time", &hmdInfo.PredictionTime, 0.f, k_max_hmd_prediction_time))
+                if (ImGui::SliderFloat("Prediction Time", &hmdInfo.hmd_info.prediction_time, 0.f, k_max_hmd_prediction_time))
                 {
-                    request_set_hmd_prediction(hmdInfo.HmdID, hmdInfo.PredictionTime);
+                    PSVR_SetHmdPredictionTime(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.prediction_time);
                 }
                 if (ImGui::Button("Reset Filter Defaults"))
                 {
                     hmdInfo.PositionFilterIndex = k_default_hmd_position_filter_index;
                     hmdInfo.OrientationFilterIndex = k_default_morpheus_position_filter_index;
-                    hmdInfo.PositionFilterName = k_hmd_position_filter_names[k_default_hmd_position_filter_index];
-                    hmdInfo.OrientationFilterName = k_morpheus_orientation_filter_names[k_default_morpheus_position_filter_index];
-                    request_set_position_filter(hmdInfo.HmdID, hmdInfo.PositionFilterName);
-                    request_set_orientation_filter(hmdInfo.HmdID, hmdInfo.OrientationFilterName);
+                    strncpy(hmdInfo.hmd_info.position_filter, k_hmd_position_filter_names[k_default_hmd_position_filter_index], sizeof(hmdInfo.hmd_info.position_filter));
+                    strncpy(hmdInfo.hmd_info.orientation_filter, k_morpheus_orientation_filter_names[k_default_morpheus_position_filter_index], sizeof(hmdInfo.hmd_info.orientation_filter));
+                    PSVR_SetHmdPositionFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.position_filter);
+                    PSVR_SetHmdOrientationFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.orientation_filter);
                 }
                 ImGui::PopItemWidth();
             }				
-            else if (hmdInfo.HmdType == AppStage_HMDSettings::eHMDType::VirtualHMD)
+            else if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Virtual)
             {
                 ImGui::PushItemWidth(195);
                 if (ImGui::Combo("Position Filter", &hmdInfo.PositionFilterIndex, k_hmd_position_filter_names, UI_ARRAYSIZE(k_hmd_position_filter_names)))
                 {
-                    hmdInfo.PositionFilterName = k_hmd_position_filter_names[hmdInfo.PositionFilterIndex];
-                    request_set_position_filter(hmdInfo.HmdID, hmdInfo.PositionFilterName);
+                    strncpy(hmdInfo.hmd_info.position_filter, k_hmd_position_filter_names[hmdInfo.PositionFilterIndex], sizeof(hmdInfo.hmd_info.position_filter));
+                    PSVR_SetHmdPositionFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.position_filter);
                 }
-                if (ImGui::SliderFloat("Prediction Time", &hmdInfo.PredictionTime, 0.f, k_max_hmd_prediction_time))
+                if (ImGui::SliderFloat("Prediction Time", &hmdInfo.hmd_info.prediction_time, 0.f, k_max_hmd_prediction_time))
                 {
-                    request_set_hmd_prediction(hmdInfo.HmdID, hmdInfo.PredictionTime);
+                    PSVR_SetHmdPredictionTime(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.prediction_time);
                 }
                 if (ImGui::Button("Reset Filter Defaults"))
                 {
                     hmdInfo.PositionFilterIndex = k_default_hmd_position_filter_index;
-                    hmdInfo.PositionFilterName = k_hmd_position_filter_names[k_default_hmd_position_filter_index];
-                    request_set_position_filter(hmdInfo.HmdID, hmdInfo.PositionFilterName);
-                    request_set_orientation_filter(hmdInfo.HmdID, hmdInfo.OrientationFilterName);
+                    hmdInfo.OrientationFilterIndex = k_default_morpheus_position_filter_index;
+                    strncpy(hmdInfo.hmd_info.position_filter, k_hmd_position_filter_names[k_default_hmd_position_filter_index], sizeof(hmdInfo.hmd_info.position_filter));
+                    strncpy(hmdInfo.hmd_info.orientation_filter, k_morpheus_orientation_filter_names[k_default_morpheus_position_filter_index], sizeof(hmdInfo.hmd_info.orientation_filter));
+                    PSVR_SetHmdPositionFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.position_filter);
+                    PSVR_SetHmdOrientationFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.orientation_filter);
                 }
                 ImGui::PopItemWidth();
             }
@@ -407,149 +413,54 @@ void AppStage_HMDSettings::request_hmd_list()
     }
 }
 
-void AppStage_HMDSettings::request_set_orientation_filter(
-    const int hmd_id,
-    const std::string &filter_name)
-{
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_ORIENTATION_FILTER);
-
-    request->mutable_request_set_hmd_orientation_filter()->set_hmd_id(hmd_id);
-    request->mutable_request_set_hmd_orientation_filter()->set_orientation_filter(filter_name);
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
-}
-
-void AppStage_HMDSettings::request_set_position_filter(
-    const int hmd_id,
-    const std::string &filter_name)
-{
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_POSITION_FILTER);
-
-    request->mutable_request_set_hmd_position_filter()->set_hmd_id(hmd_id);
-    request->mutable_request_set_hmd_position_filter()->set_position_filter(filter_name);
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
-}
-
-void AppStage_HMDSettings::request_set_hmd_prediction(const int hmd_id, float prediction_time)
-{
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_PREDICTION_TIME);
-
-    PSVRProtocol::Request_RequestSetHMDPredictionTime *calibration =
-        request->mutable_request_set_hmd_prediction_time();
-
-    calibration->set_hmd_id(hmd_id);
-    calibration->set_prediction_time(prediction_time);
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
-}
-
-void AppStage_HMDSettings::request_set_hmd_tracking_color_id(
-	int HmdID,
-	PSVRTrackingColorType tracking_color_type)
-{
-	RequestPtr request(new PSVRProtocol::Request());
-	request->set_type(PSVRProtocol::Request_RequestType_SET_HMD_LED_TRACKING_COLOR);
-	request->mutable_set_hmd_led_tracking_color_request()->set_hmd_id(HmdID);
-	request->mutable_set_hmd_led_tracking_color_request()->set_color_type(
-		static_cast<PSVRProtocol::TrackingColorType>(tracking_color_type));
-
-	PSVR_SendOpaqueRequest(&request, nullptr);
-}
-
 void AppStage_HMDSettings::handle_hmd_list_response(
     const PSVRHmdList &hmd_list)
 {
-    PSVRResult ResultCode = response->result_code;
-    PSVRResponseHandle response_handle = response->opaque_response_handle;
-    AppStage_HMDSettings *thisPtr = static_cast<AppStage_HMDSettings *>(userdata);
-
-    switch (ResultCode)
+    for (int hmd_index = 0; hmd_index < hmd_list.count; ++hmd_index)
     {
-    case PSVRResult_Success:
-        {
-            const PSVRProtocol::Response *response = GET_PSVRPROTOCOL_RESPONSE(response_handle);
+        const PSVRClientHMDInfo &HmdResponse = hmd_list.hmds[hmd_index];
+        AppStage_HMDSettings::HMDInfo HmdInfo;
 
-            for (int hmd_index = 0; hmd_index < response->result_hmd_list().hmd_entries_size(); ++hmd_index)
+        HmdInfo.hmd_info= HmdResponse;
+
+        if (HmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
+        {
+            HmdInfo.OrientationFilterIndex =
+                find_string_entry(
+                    HmdResponse.orientation_filter,
+                    k_morpheus_orientation_filter_names,
+                    UI_ARRAYSIZE(k_morpheus_orientation_filter_names));
+            if (HmdInfo.OrientationFilterIndex == -1)
             {
-                const auto &HmdResponse = response->result_hmd_list().hmd_entries(hmd_index);
-
-                AppStage_HMDSettings::HMDInfo HmdInfo;
-
-                HmdInfo.HmdID = HmdResponse.hmd_id();
-
-                switch (HmdResponse.hmd_type())
-                {
-                case PSVRProtocol::HMDType::Morpheus:
-                    HmdInfo.HmdType = AppStage_HMDSettings::Morpheus;
-                    break;
-                case PSVRProtocol::HMDType::VirtualHMD:
-                    HmdInfo.HmdType = AppStage_HMDSettings::VirtualHMD;
-                    break;
-                default:
-                    assert(0 && "unreachable");
-                }
-
-                HmdInfo.TrackingColorType = static_cast<PSVRTrackingColorType>(HmdResponse.tracking_color_type());
-                HmdInfo.DevicePath = HmdResponse.device_path();
-                HmdInfo.PredictionTime = HmdResponse.prediction_time();
-                HmdInfo.OrientationFilterName= HmdResponse.orientation_filter();
-                HmdInfo.PositionFilterName = HmdResponse.position_filter();
-
-                if (HmdInfo.HmdType == AppStage_HMDSettings::Morpheus)
-                {
-                    HmdInfo.OrientationFilterIndex =
-                        find_string_entry(
-                            HmdInfo.OrientationFilterName.c_str(),
-                            k_morpheus_orientation_filter_names,
-                            UI_ARRAYSIZE(k_morpheus_orientation_filter_names));
-                    if (HmdInfo.OrientationFilterIndex == -1)
-                    {
-                        HmdInfo.OrientationFilterName = k_morpheus_orientation_filter_names[0];
-                        HmdInfo.OrientationFilterIndex = 0;
-                    }
-                }
-                else
-                {
-                    HmdInfo.OrientationFilterName = "";
-                    HmdInfo.OrientationFilterIndex = -1;
-                }
-
-                if (HmdInfo.HmdType == AppStage_HMDSettings::Morpheus ||
-                    HmdInfo.HmdType == AppStage_HMDSettings::VirtualHMD)
-                {
-                    HmdInfo.PositionFilterIndex =
-                        find_string_entry(
-                            HmdInfo.PositionFilterName.c_str(),
-                            k_hmd_position_filter_names,
-                            UI_ARRAYSIZE(k_hmd_position_filter_names));
-                    if (HmdInfo.PositionFilterIndex == -1)
-                    {
-                        HmdInfo.PositionFilterName = k_hmd_position_filter_names[0];
-                        HmdInfo.PositionFilterIndex = 0;
-                    }
-                }
-                else
-                {
-                    HmdInfo.PositionFilterName = "";
-                    HmdInfo.PositionFilterIndex = -1;
-                }
-
-                thisPtr->m_hmdInfos.push_back(HmdInfo);
+                HmdInfo.OrientationFilterIndex = 0;
             }
-
-            thisPtr->m_selectedHmdIndex = (thisPtr->m_hmdInfos.size() > 0) ? 0 : -1;
-            thisPtr->m_menuState = AppStage_HMDSettings::idle;
-        } break;
-
-    case PSVRResult_Error:
-    case PSVRResult_Canceled:
-    case PSVRResult_Timeout:
+        }
+        else
         {
-            thisPtr->m_menuState = AppStage_HMDSettings::failedHmdListRequest;
-        } break;
+            HmdInfo.OrientationFilterIndex = -1;
+        }
+
+        if (HmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus ||
+            HmdInfo.hmd_info.hmd_type == PSVRHmd_Virtual)
+        {
+            HmdInfo.PositionFilterIndex =
+                find_string_entry(
+                    HmdInfo.hmd_info.position_filter,
+                    k_hmd_position_filter_names,
+                    UI_ARRAYSIZE(k_hmd_position_filter_names));
+            if (HmdInfo.PositionFilterIndex == -1)
+            {
+                HmdInfo.PositionFilterIndex = 0;
+            }
+        }
+        else
+        {
+            HmdInfo.PositionFilterIndex = -1;
+        }
+
+        m_hmdInfos.push_back(HmdInfo);
     }
+
+    m_selectedHmdIndex = (m_hmdInfos.size() > 0) ? 0 : -1;
+    m_menuState = AppStage_HMDSettings::idle;
 }
