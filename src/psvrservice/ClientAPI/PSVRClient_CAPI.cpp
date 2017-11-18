@@ -224,6 +224,52 @@ PSVRResult PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrin
 	return result;
 }
 
+PSVRResult PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrinsics *intrinsics)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_client != nullptr && 
+        g_psvr_service != nullptr &&
+        IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        if (g_psvr_service->getRequestHandler()->set_tracker_intrinsics(tracker_id, intrinsics) == PSVRResult_Success)
+        {
+    		PSVRTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
+
+            tracker->tracker_info.tracker_intrinsics= *intrinsics;
+		    result= PSVRResult_Success;
+        }
+	}
+
+	return result;
+}
+
+PSVRResult PSVR_GetTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && 
+        IS_VALID_TRACKER_INDEX(tracker_id) && 
+        IS_VALID_HMD_INDEX(hmd_id))
+    {
+        result= g_psvr_service->getRequestHandler()->get_tracker_settings(tracker_id, hmd_id, out_settings);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_ReloadTrackerSettings(PSVRTrackerID tracker_id)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        result= g_psvr_service->getRequestHandler()->reload_tracker_settings(tracker_id);
+    }
+
+    return result;
+}
+
 /// Tracker Requests
 PSVRResult PSVR_GetTrackerList(PSVRTrackerList *out_tracker_list)
 {
@@ -307,6 +353,45 @@ PSVRResult PSVR_GetTrackerVideoFrameSectionCount(PSVRTrackerID tracker_id, int *
     {
         *out_section_count= g_psvr_client->get_video_frame_section_count(tracker_id);
 		result= PSVRResult_Success;
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerFrameRate(PSVRTrackerID tracker_id, float desired_frame_rate, bool save_setting, float *out_frame_rate)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        result= g_psvr_service->getRequestHandler()->set_tracker_frame_rate(
+            tracker_id, desired_frame_rate, save_setting, out_frame_rate);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerExposure(PSVRTrackerID tracker_id, float desired_exposure, bool save_setting, float *out_exposure)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        result= g_psvr_service->getRequestHandler()->set_tracker_exposure(
+            tracker_id, desired_exposure, save_setting, out_exposure);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerGain(PSVRTrackerID tracker_id, float desired_gain, bool save_setting, float *out_gain)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        result= g_psvr_service->getRequestHandler()->set_tracker_exposure(
+            tracker_id, desired_gain, save_setting, out_gain);
     }
 
     return result;
@@ -786,6 +871,24 @@ PSVRResult PSVR_SetHmdTrackingColorID(PSVRHmdID hmd_id, PSVRTrackingColorType tr
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
 		result= g_psvr_service->getRequestHandler()->set_hmd_led_tracking_color(hmd_id, tracking_color_type);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerColorFilter(
+    PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRTrackingColorType tracking_color_type,
+    PSVR_HSVColorRange *desired_color_filter, PSVR_HSVColorRange *out_color_filter)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && 
+        IS_VALID_TRACKER_INDEX(tracker_id) &&
+        IS_VALID_HMD_INDEX(hmd_id))
+    {
+		result= g_psvr_service->getRequestHandler()->set_tracker_color_preset(
+            tracker_id, hmd_id, tracking_color_type,
+            *desired_color_filter, *out_color_filter);
     }
 
     return result;

@@ -157,9 +157,14 @@ public:
     PSVRResult set_tracker_gain(
 		const PSVRTrackerID tracker_id, const float desired_gain, const bool bSaveSetting,
 		float *out_result_gain);
+    PSVRResult set_tracker_color_preset(
+        const PSVRTrackerID tracker_id, const PSVRHmdID HmdID, 
+        const PSVRTrackingColorType tracking_color_type,
+        const PSVR_HSVColorRange &desired_color_filter, PSVR_HSVColorRange &out_color_filter);
     PSVRResult set_tracker_pose(const PSVRTrackerID tracker_id, const PSVRPosef *pose);
     PSVRResult set_tracker_intrinsics(const PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *tracker_intrinsics);
     PSVRResult get_tracking_space_settings(PSVRTrackingSpace *out_tracking_space);
+    PSVRResult reload_tracker_settings(const PSVRTrackerID tracker_id);
 	
     // -- hmd requests -----
     ServerHMDView *get_hmd_view_or_null(PSVRHmdID hmd_id);

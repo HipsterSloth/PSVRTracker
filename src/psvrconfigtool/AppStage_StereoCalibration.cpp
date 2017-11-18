@@ -1426,79 +1426,14 @@ void AppStage_StereoCalibration::handle_tracker_stop_stream_response()
 
 void AppStage_StereoCalibration::request_tracker_set_temp_gain(float gain)
 {
-    m_trackerGain= gain;
-
     // Tell the PSVR service that we want to change gain, but not save the change
-    PSVR_StartTrackerDataStream()
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_GAIN);
-    request->mutable_request_set_tracker_gain()->set_tracker_id(m_tracker_view->tracker_info.tracker_id);
-    request->mutable_request_set_tracker_gain()->set_value(gain);
-    request->mutable_request_set_tracker_gain()->set_save_setting(false);
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
+    PSVR_SetTrackerGain(m_tracker_view->tracker_info.tracker_id, gain, false, &m_trackerGain);
 }
 
 void AppStage_StereoCalibration::request_tracker_set_temp_exposure(float exposure)
 {
-    m_trackerExposure= exposure;
-
     // Tell the PSVR service that we want to change exposure, but not save the change.
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_EXPOSURE);
-    request->mutable_request_set_tracker_exposure()->set_tracker_id(m_tracker_view->tracker_info.tracker_id);
-    request->mutable_request_set_tracker_exposure()->set_value(exposure);
-    request->mutable_request_set_tracker_exposure()->set_save_setting(false);
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
-}
-
-inline void PSVR_distortion_to_protocol_distortion(
-    const PSVRDistortionCoefficients &d,
-    PSVRProtocol::TrackerIntrinsics_DistortionCoefficients *result)
-{
-    result->set_k1(d.k1);
-    result->set_k3(d.k2);
-    result->set_k3(d.k3);
-    result->set_p1(d.p1);
-    result->set_p2(d.p2);
-}
-
-inline void PSVR_vector3d_to_protocol_vec3(
-    const PSVRVector3d &v,
-    PSVRProtocol::DoubleVector *result)
-{
-    result->set_i(v.x);
-    result->set_j(v.y);
-    result->set_k(v.z);
-}
-
-inline void PSVR_matrix3d_to_protocol_mat33(
-    const PSVRMatrix3d &m,
-    PSVRProtocol::DoubleMatrix33 *result)
-{
-    result->set_m00(m.m[0][0]); result->set_m01(m.m[0][1]); result->set_m02(m.m[0][2]);
-    result->set_m10(m.m[1][0]); result->set_m11(m.m[1][1]); result->set_m12(m.m[1][2]);
-    result->set_m20(m.m[2][0]); result->set_m21(m.m[2][1]); result->set_m22(m.m[2][2]);
-}
-
-inline void PSVR_matrix34d_to_protocol_mat34(
-    const PSVRMatrix34d &m,
-    PSVRProtocol::DoubleMatrix34 *result)
-{
-    result->set_m00(m.m[0][0]); result->set_m01(m.m[0][1]); result->set_m02(m.m[0][2]); result->set_m03(m.m[0][3]);
-    result->set_m10(m.m[1][0]); result->set_m11(m.m[1][1]); result->set_m12(m.m[1][2]); result->set_m13(m.m[1][3]);
-    result->set_m20(m.m[2][0]); result->set_m21(m.m[2][1]); result->set_m22(m.m[2][2]); result->set_m23(m.m[2][3]);
-}
-
-inline void PSVR_matrix4d_to_protocol_mat44(
-    const PSVRMatrix4d &m,
-    PSVRProtocol::DoubleMatrix44 *result)
-{
-    result->set_m00(m.m[0][0]); result->set_m01(m.m[0][1]); result->set_m02(m.m[0][2]); result->set_m03(m.m[0][3]);
-    result->set_m10(m.m[1][0]); result->set_m11(m.m[1][1]); result->set_m12(m.m[1][2]); result->set_m13(m.m[1][3]);
-    result->set_m20(m.m[2][0]); result->set_m21(m.m[2][1]); result->set_m22(m.m[2][2]); result->set_m23(m.m[2][3]);
-    result->set_m30(m.m[3][0]); result->set_m31(m.m[3][1]); result->set_m32(m.m[3][2]); result->set_m33(m.m[3][3]);
+    PSVR_SetTrackerGain(m_tracker_view->tracker_info.tracker_id, exposure, false, &m_trackerExposure);
 }
 
 void AppStage_StereoCalibration::request_tracker_set_intrinsic(
@@ -1508,44 +1443,12 @@ void AppStage_StereoCalibration::request_tracker_set_intrinsic(
     // so that this becomes the new reset point.
     m_tracker_view->tracker_info.tracker_intrinsics.intrinsics.stereo= new_intrinsics;
 
-    // Build the tracker intrinsic request
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_SET_TRACKER_INTRINSICS);
-    request->mutable_request_set_tracker_intrinsics()->set_tracker_id(m_tracker_view->tracker_info.tracker_id);
-
-    PSVRProtocol::TrackerIntrinsics_StereoIntrinsics *protocol_intrinsics= 
-        request->mutable_request_set_tracker_intrinsics()->mutable_tracker_intrinsics()->mutable_stereo_intrinsics();
-
-    protocol_intrinsics->mutable_tracker_screen_dimensions()->set_x(new_intrinsics.pixel_width);
-    protocol_intrinsics->mutable_tracker_screen_dimensions()->set_y(new_intrinsics.pixel_height);
-    protocol_intrinsics->set_hfov(new_intrinsics.hfov);
-    protocol_intrinsics->set_vfov(new_intrinsics.vfov);
-    protocol_intrinsics->set_znear(new_intrinsics.znear);
-    protocol_intrinsics->set_zfar(new_intrinsics.zfar);
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.left_camera_matrix, protocol_intrinsics->mutable_left_camera_matrix());
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.right_camera_matrix, protocol_intrinsics->mutable_right_camera_matrix());
-    PSVR_distortion_to_protocol_distortion(new_intrinsics.left_distortion_coefficients, protocol_intrinsics->mutable_left_distortion_coefficients());
-    PSVR_distortion_to_protocol_distortion(new_intrinsics.right_distortion_coefficients, protocol_intrinsics->mutable_right_distortion_coefficients());
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.left_rectification_rotation, protocol_intrinsics->mutable_left_rectification_rotation());
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.right_rectification_rotation, protocol_intrinsics->mutable_right_rectification_rotation());
-    PSVR_matrix34d_to_protocol_mat34(new_intrinsics.left_rectification_projection, protocol_intrinsics->mutable_left_rectification_projection());
-    PSVR_matrix34d_to_protocol_mat34(new_intrinsics.right_rectification_projection, protocol_intrinsics->mutable_right_rectification_projection());
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.rotation_between_cameras, protocol_intrinsics->mutable_rotation_between_cameras());
-    PSVR_vector3d_to_protocol_vec3(new_intrinsics.translation_between_cameras, protocol_intrinsics->mutable_translation_between_cameras());
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.essential_matrix, protocol_intrinsics->mutable_essential_matrix());
-    PSVR_matrix3d_to_protocol_mat33(new_intrinsics.fundamental_matrix, protocol_intrinsics->mutable_fundamental_matrix());
-    PSVR_matrix4d_to_protocol_mat44(new_intrinsics.reprojection_matrix, protocol_intrinsics->mutable_reprojection_matrix());
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
+    PSVR_SetTrackerIntrinsics(m_tracker_view->tracker_info.tracker_id, &m_tracker_view->tracker_info.tracker_intrinsics);
 }
 
 void AppStage_StereoCalibration::request_tracker_reload_settings()
 {
-    RequestPtr request(new PSVRProtocol::Request());
-    request->set_type(PSVRProtocol::Request_RequestType_RELOAD_TRACKER_SETTINGS);
-    request->mutable_request_reload_tracker_settings()->set_tracker_id(m_tracker_view->tracker_info.tracker_id);
-
-    PSVR_SendOpaqueRequest(&request, nullptr);
+    PSVR_ReloadTrackerSettings(m_tracker_view->tracker_info.tracker_id);
 }
 
 void AppStage_StereoCalibration::request_exit()

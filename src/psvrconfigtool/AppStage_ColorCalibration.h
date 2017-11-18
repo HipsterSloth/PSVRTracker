@@ -41,6 +41,8 @@ protected:
 
         pendingTrackerStartStreamRequest,
         failedTrackerStartStreamRequest,
+
+        manualConfig
     };
 
     enum eVideoDisplayMode
@@ -52,41 +54,15 @@ protected:
         MAX_VIDEO_DISPLAY_MODES
     };
 
-    struct TrackerColorPreset
-    {
-        float hue_center;
-        float hue_range;
-        float saturation_center;
-        float saturation_range;
-        float value_center;
-        float value_range;
-    };
-
     void setState(eMenuState newState);
 
 	void request_start_hmd_stream();
-	void handle_start_hmd_response();
-
     void request_tracker_start_stream();
-    void handle_tracker_start_stream_response();
-
-	void request_tracker_set_frame_width(double value);
-	void handle_tracker_set_frame_width_response();
-
 	void request_tracker_set_frame_rate(double value);
-	void handle_tracker_set_frame_rate_response();
-
     void request_tracker_set_exposure(double value);
-    void handle_tracker_set_exposure_response();
-
     void request_tracker_set_gain(double value);
-    void handle_tracker_set_gain_response();
-
-    void request_tracker_set_color_preset(PSVRTrackingColorType color_type, TrackerColorPreset &color_preset);
-    void handle_tracker_set_color_preset_response();
-
+    void request_tracker_set_color_filter(const PSVRTrackingColorType color_type, const PSVR_HSVColorRange &color_filter);
     void request_tracker_get_settings();
-    void handle_tracker_get_settings_response();
 
     void allocate_video_buffers();
     void release_video_buffers();
@@ -94,8 +70,8 @@ protected:
     void release_devices();
     void request_exit_to_app_stage(const char *app_stage_name);
 
-    inline TrackerColorPreset getColorPreset()
-    { return m_colorPresets[m_masterTrackingColorType]; }
+    inline PSVR_HSVColorRange getColorPreset()
+    { return m_colorPresetTable.color_presets[m_masterTrackingColorType]; }
 
 private:
     // ClientPSVRAPI state
@@ -112,18 +88,17 @@ private:
     eVideoDisplayMode m_videoDisplayMode;
 
     // Tracker Settings state
-	double m_trackerFrameWidth;
 	double m_trackerFrameRate;
     double m_trackerExposure;
     double m_trackerGain;
-    TrackerColorPreset m_colorPresets[PSVRTrackingColorType_MaxColorTypes];
+    PSVR_HSVColorRangeTable m_colorPresetTable;
 	int tracker_count;
 	int tracker_index;
 
     // Color Settings
     PSVRTrackingColorType m_masterTrackingColorType;
 
-	// Setting Windows visability
+	// Setting Windows visibility
 	bool m_bShowWindows;
 	bool m_bShowAlignment;
 	bool m_bShowAlignmentColor;

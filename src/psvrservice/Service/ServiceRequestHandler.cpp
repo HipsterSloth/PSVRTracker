@@ -479,6 +479,35 @@ PSVRResult ServiceRequestHandler::set_tracker_gain(
 	return result;
 }
 
+PSVRResult ServiceRequestHandler::set_tracker_color_preset(
+    const PSVRTrackerID tracker_id, 
+    const PSVRHmdID hmd_id, 
+    const PSVRTrackingColorType tracking_color_type,
+    const PSVR_HSVColorRange &desired_color_filter, 
+    PSVR_HSVColorRange &out_color_filter)
+{
+	PSVRResult result= PSVRResult_Error;
+
+    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+    {
+        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
+
+        if (tracker_view->getIsOpen())
+        {
+            ServerHMDView *hmd_view = get_hmd_view_or_null(hmd_id);
+
+            // Assign the color range
+            tracker_view->setHMDTrackingColorPreset(hmd_view, tracking_color_type, &desired_color_filter);
+            // Read back what actually got set
+            tracker_view->getHMDTrackingColorPreset(hmd_view, tracking_color_type, &out_color_filter);
+
+            result= PSVRResult_Success;
+        }
+    }
+
+    return result;
+}
+
 PSVRResult ServiceRequestHandler::set_tracker_pose(
     const PSVRTrackerID tracker_id,
     const PSVRPosef *pose)
@@ -529,6 +558,26 @@ PSVRResult ServiceRequestHandler::get_tracking_space_settings(
 		
     return PSVRResult_Success;
 }
+
+PSVRResult ServiceRequestHandler::reload_tracker_settings(
+    const PSVRTrackerID tracker_id)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+    {
+        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
+
+        if (tracker_view->getIsOpen())
+        {
+            tracker_view->loadSettings();
+            result= PSVRResult_Success;
+        }
+    }
+
+    return result;
+}
+
 // -- hmd requests -----
 ServerHMDView *ServiceRequestHandler::get_hmd_view_or_null(PSVRHmdID hmd_id)
 {

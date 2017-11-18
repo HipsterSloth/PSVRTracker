@@ -484,6 +484,36 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerScreenSize(PSVRTrackerID tracker
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrinsics *out_intrinsics);
 
+/** \brief Set the camera intrinsics for the given tracker
+	\param tracker_id The id of the tracker
+	\param intrinsics The full set of camera intrinsics for the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrinsics *intrinsics);
+
+/** \brief Get the tracker config settings for the given tracker and hmd
+	\param tracker_id The id of the tracker
+    \param hmd_id The id of the hmd
+	\param[out] out_settings The settings for the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings);
+
+/** \brief Restores tracker settings from the config file
+	\param tracker_id The id of the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_ReloadTrackerSettings(PSVRTrackerID tracker_id);
+
+/** \brief Sets the HSV color filter parameters for the given tracking color
+    \param tracker_id The id of the tracker
+	\param hmd_id The ID of the HMD whose color filters we want to modify
+    \param tracking_color_type The filter color ID we want to modify
+    \param desired_color_filter The desired HSV filter
+    \param out_color_filter The actual resulting HSV filter
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the color was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerColorFilter(
+    PSVRTrackerID tracker_id, PSVRHmdID HmdID, PSVRTrackingColorType tracking_color_type,
+    PSVR_HSVColorRange *desired_color_filter, PSVR_HSVColorRange *out_color_filter);
+
 // Tracker Methods
 /** \brief Requests a list of the trackers currently connected to PSVRService.
 	Sends a request to PSVRService to get the list of trackers.
@@ -536,6 +566,30 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_OpenTrackerVideoStream(PSVRTrackerID track
 	\return PSVRResult_Success if the shared memory buffer was active.
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_CloseTrackerVideoStream(PSVRTrackerID tracker_id);
+
+/** \brief Set the frame rate of the target tracker
+	\param tracker_id The id of the tracker
+    \param desired_frame_rate The desired frame rate of the tracker
+    \param save_setting If true the desired frame rate is saved to the tracker config
+    \param[out] out_frame_rate The actual resulting frame rate of the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerFrameRate(PSVRTrackerID tracker_id, float desired_frame_rate, bool save_setting, float *out_frame_rate);
+
+/** \brief Set the exposure of the target tracker
+	\param tracker_id The id of the tracker
+    \param desired_exposure The desired exposure of the tracker
+    \param save_setting If true the desired exposure is saved to the tracker config
+    \param[out] out_exposure The actual resulting exposure of the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerExposure(PSVRTrackerID tracker_id, float desired_exposure, bool save_setting, float *out_exposure);
+
+/** \brief Set the gain of the target tracker
+	\param tracker_id The id of the tracker
+    \param desired_exposure The desired gain of the tracker
+    \param save_setting If true the desired gain is saved to the tracker config
+    \param[out] out_gain The actual resulting gain of the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerGain(PSVRTrackerID tracker_id, float desired_gain, bool save_setting, float *out_gain);
 
 /** \brief Get the number of sections contained in a video buffer for the given tracker
 	\remark This will be 2 for stereo cameras and 1 for mono camera. Sections are assumed to have the same dimensions.

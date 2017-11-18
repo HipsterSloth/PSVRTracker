@@ -83,10 +83,6 @@ protected:
 
     void update_tracker_video();
     void render_tracker_video();
-    void go_next_tracker();
-    void go_previous_tracker();
-    int get_tracker_count() const;
-    int get_render_tracker_index() const;
     PSVRTracker *get_render_tracker_view() const;
     PSVRHeadMountedDisplay *get_calibration_hmd_view() const;
 
