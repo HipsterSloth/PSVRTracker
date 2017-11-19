@@ -152,6 +152,15 @@ PSVRResult PSVR_UpdateNoPollEvents()
     return result;
 }
 
+PSVRResult PSVR_PollNextMessage(PSVREventMessage *message, size_t message_size)
+{
+    // Poll events queued up by the call to g_psm_client->update()
+    if (g_psvr_client != nullptr)
+        return g_psvr_client->poll_next_message(message, message_size) ? PSVRResult_Success : PSVRResult_Error;
+    else
+        return PSVRResult_Error;
+}
+
 /// Tracker Pool
 PSVRTracker *PSVR_GetTracker(PSVRTrackerID tracker_id)
 {

@@ -11,17 +11,6 @@
 class AppStage_HMDTrackingTest : public AppStage
 {
 public:
-    struct TrackerState
-    {
-        int listIndex;
-        PSVRTracker *trackerView;
-        class TextureAsset *textureAsset;
-    };
-    typedef std::map<int, TrackerState> t_tracker_state_map;
-    typedef std::map<int, TrackerState>::iterator t_tracker_state_map_iterator;
-	typedef std::map<int, TrackerState>::const_iterator t_tracker_state_map_iterator_const;
-    typedef std::pair<int, TrackerState> t_id_tracker_state_pair;
-
 	struct HMDState
 	{
 		int listIndex;
@@ -33,13 +22,12 @@ public:
 	typedef std::pair<int, HMDState> t_id_hmd_state_pair;
 
     AppStage_HMDTrackingTest(class App *app);
-    ~AppStage_HMDTrackingTest();
 
     static void enterStageAndTestTracking(class App *app, PSVRHmdID requested_hmd_id=-1);
 
-	inline void set_tracker_id(int reqeusted_tracker_id)
+	inline void set_tracker_id(PSVRTrackerID reqeusted_tracker_id)
 	{
-		m_ShowTrackerVideoId = reqeusted_tracker_id;
+		m_overrideTrackerId = reqeusted_tracker_id;
 	}
 
     virtual void enter() override;
@@ -69,8 +57,6 @@ protected:
         failedTrackerStartRequest,
 
         verifyTrackers,
-		selectCalibrationMethod,
-        calibrateWithMat,
 
         testTracking,
 		showTrackerVideo,
@@ -87,19 +73,18 @@ protected:
     PSVRHeadMountedDisplay *get_calibration_hmd_view() const;
 
     void request_hmd_list();
-    static void handle_hmd_list_response(const PSVRHmdList &hmd_list);
+    void handle_hmd_list_response(const PSVRHmdList &hmd_list);
 
-    void request_start_hmd_stream(int HmdID, int listIndex, PSVRTrackingColorType trackingColorType);
+    void request_start_hmd_stream(PSVRHmdID HmdID, int listIndex, PSVRTrackingColorType trackingColorType);
     void handle_start_hmd_response();
 
     void request_tracker_list();
     void handle_tracker_list_response(const PSVRTrackerList &tracker_list);
 
-    void request_tracker_start_stream(const PSVRClientTrackerInfo *TrackerInfo, int listIndex);
-    void handle_tracker_start_stream_response();
+    void request_tracker_start_stream(const PSVRClientTrackerInfo *TrackerInfo);
+    void handle_tracker_start_stream_response(const PSVRClientTrackerInfo *TrackerInfo);
 
     void handle_all_devices_ready();
-    bool does_tracker_see_any_device(const PSVRTracker *trackerView);
     bool does_tracker_see_any_hmd(const PSVRTracker *trackerView);
 
     void release_devices();
@@ -108,26 +93,17 @@ protected:
 protected:
     eMenuState m_menuState;
 
-    t_tracker_state_map m_trackerViews;
+    PSVRTracker *m_trackerView;
+    class TextureAsset *m_textureAsset;
     int m_pendingTrackerStartCount;
 
 	t_hmd_state_map m_hmdViews;
 	int m_pendingHmdStartCount;
 
-    int m_renderTrackerIndex;
-    t_tracker_state_map_iterator m_renderTrackerIter;
-
-    class AppSubStage_CalibrateWithHMD *m_pCalibrateWithHMD;
-    friend class AppSubStage_CalibrateWithHMD;
-
-    class AppSubStage_CalibrateWithMat *m_pCalibrateWithMat;
-    friend class AppSubStage_CalibrateWithMat;
-
-    bool m_bSkipCalibration;
-    int m_ShowTrackerVideoId;
+    PSVRTrackerID m_overrideTrackerId;
     PSVRHmdID m_overrideHmdId;
 
-	// Alignment Marker visability
+	// Alignment Marker viability
 	bool m_bShowAlignment;
 	float m_AlignmentOffset;
 };

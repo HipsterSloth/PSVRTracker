@@ -230,39 +230,18 @@ void App::onClientPSVREvent(
     }
 }
 
-void App::onClientPSVRResponse(
-    const PSVRResponseMessage *response)
-{
-    PSVRRequestID request_id= response->request_id;
-    const PSVRProtocol::Response *protocol_response = GET_PSVRPROTOCOL_RESPONSE(response->opaque_response_handle);
-    PSVRProtocol::Response_ResponseType protocol_response_type= protocol_response->type();
-    const std::string& protocol_response_type_name = PSVRProtocol::Response_ResponseType_Name(protocol_response_type);
-
-    // All responses should have been handled by a response handler
-    Log_ERROR("App::onClientPSVRResponse", "Unhandled response type:%s (request id: %d)!", 
-        protocol_response_type_name.c_str(), request_id);
-}
-
 void App::update()
 {
 	if (PSVR_GetIsInitialized())
 	{
 		// Poll any events from the service
-		PSVR_UpdateNoPollMessages();
+		PSVR_UpdateNoPollEvents();
 
 		// Poll events queued up by the call to ClientPSVRAPI::update()
-		PSVRMessage message;
+		PSVREventMessage message;
 		while (PSVR_PollNextMessage(&message, sizeof(message)) == PSVRResult_Success)
 		{
-			switch (message.payload_type)
-			{
-			case PSVRMessage::_messagePayloadType_Response:
-				onClientPSVRResponse(&message.response_data);
-				break;
-			case PSVRMessage::_messagePayloadType_Event:
-				onClientPSVREvent(&message.event_data);
-				break;
-			}
+			onClientPSVREvent(&message);
 		}
 	}
 

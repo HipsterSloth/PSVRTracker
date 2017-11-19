@@ -46,7 +46,10 @@ PSVR_posef_to_glm_mat4(const PSVRQuatf &quat, const PSVRVector3f &pos)
 {
     glm::quat orientation(quat.w, quat.x, quat.y, quat.z);
     glm::vec3 position(pos.x, pos.y, pos.z);
-    glm::mat4 transform = glm_mat4_from_pose(orientation, position);
+
+    glm::mat4 rot = glm::mat4_cast(orientation);
+    glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
+    glm::mat4 transform = trans * rot;
 
     return transform;
 }
