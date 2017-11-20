@@ -148,6 +148,7 @@ private:
     IHMDInterface *m_device;
 
 	// Filter state
+    class IShapeTrackingModel **m_shape_tracking_models;  // array of size TrackerManager::k_max_devices
 	HMDOpticalPoseEstimation *m_tracker_pose_estimations; // array of size TrackerManager::k_max_devices
 	HMDOpticalPoseEstimation *m_multicam_pose_estimation;
 	class IPoseFilter *m_pose_filter;

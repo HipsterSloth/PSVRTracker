@@ -8,6 +8,8 @@
 #include "CompoundPoseFilter.h"
 #include "PoseFilterInterface.h"
 #include "Logger.h"
+#include "PointCloudTrackingModel.h"
+#include "SphereTrackingModel.h"
 #include "ServiceRequestHandler.h"
 #include "ServerTrackerView.h"
 #include "TrackerManager.h"
@@ -40,17 +42,6 @@ static void generate_virtual_hmd_data_frame_for_stream(
     const ServerHMDView *hmd_view, const HMDStreamInfo *stream_info,
     DeviceOutputDataFrame &data_frame);
 
-static void computeSpherePoseForHmdFromSingleTracker(
-    const ServerHMDView *hmdView,
-    const ServerTrackerViewPtr tracker,
-    HMDOpticalPoseEstimation *tracker_pose_estimation,
-    HMDOpticalPoseEstimation *multicam_pose_estimation);
-static void computePointCloudPoseForHmdFromSingleTracker(
-    const ServerHMDView *hmdView,
-    const ServerTrackerViewPtr tracker,
-    HMDOpticalPoseEstimation *tracker_pose_estimation,
-    HMDOpticalPoseEstimation *multicam_pose_estimation);
-
 //-- public implementation -----
 ServerHMDView::ServerHMDView(const int device_id)
     : ServerDeviceView(device_id)
@@ -58,6 +49,7 @@ ServerHMDView::ServerHMDView(const int device_id)
     , m_tracking_enabled(false)
     , m_roi_disable_count(0)
     , m_device(nullptr)
+    , m_shape_tracking_models(nullptr)
     , m_tracker_pose_estimations(nullptr)
     , m_multicam_pose_estimation(nullptr)
     , m_pose_filter(nullptr)
@@ -81,10 +73,18 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
             m_device = new MorpheusHMD();
             m_pose_filter = nullptr; // no pose filter until the device is opened
 
+            PSVRTrackingShape tracking_shape;
+            m_device->getTrackingShape(tracking_shape);
+            assert(tracking_shape.shape_type == PSVRTrackingShape_PointCloud);
+
+            m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
             m_tracker_pose_estimations = new HMDOpticalPoseEstimation[TrackerManager::k_max_devices];
             for (int tracker_index = 0; tracker_index < TrackerManager::k_max_devices; ++tracker_index)
             {
                 m_tracker_pose_estimations[tracker_index].clear();
+
+                m_shape_tracking_models[tracker_index] = new PointCloudTrackingModel();            
+                m_shape_tracking_models[tracker_index]->init(&tracking_shape);
             }
 
             m_multicam_pose_estimation = new HMDOpticalPoseEstimation();
@@ -95,10 +95,28 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
             m_device = new VirtualHMD();
             m_pose_filter = nullptr; // no pose filter until the device is opened
 
+            PSVRTrackingShape tracking_shape;
+            m_device->getTrackingShape(tracking_shape);
+
+            m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
             m_tracker_pose_estimations = new HMDOpticalPoseEstimation[TrackerManager::k_max_devices];
             for (int tracker_index = 0; tracker_index < TrackerManager::k_max_devices; ++tracker_index)
             {
                 m_tracker_pose_estimations[tracker_index].clear();
+
+                switch (tracking_shape.shape_type)
+                {
+                case PSVRTrackingShape_PointCloud:
+                    m_shape_tracking_models[tracker_index] = new PointCloudTrackingModel();
+                    break;
+                case PSVRTrackingShape_Sphere:
+                    m_shape_tracking_models[tracker_index] = new SphereTrackingModel();
+                    break;
+                case PSVRTrackingShape_LightBar:
+                    assert(false && "Lightbar tracking shape not yet implemented");
+                    break;
+                }
+                m_shape_tracking_models[tracker_index]->init(&tracking_shape);
             }
 
             m_multicam_pose_estimation = new HMDOpticalPoseEstimation();
@@ -270,16 +288,15 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
         m_device->getTrackingShape(trackingShape);
         assert(trackingShape.shape_type != PSVRTrackingShape_INVALID);
 
-        // Find the projection of the controller from the perspective of each tracker.
+        // Find the projection of the HMD from the perspective of each tracker.
         // In the case of sphere projections, go ahead and compute the tracker relative position as well.
         for (int tracker_id = 0; tracker_id < tracker_manager->getMaxDevices(); ++tracker_id)
         {
             ServerTrackerViewPtr tracker = tracker_manager->getTrackerViewPtr(tracker_id);
             HMDOpticalPoseEstimation &trackerPoseEstimateRef = m_tracker_pose_estimations[tracker_id];
 
-            const bool bWasTracking= trackerPoseEstimateRef.bCurrentlyTracking;
-
             // Assume we're going to lose tracking this frame
+            const bool bWasTracking= trackerPoseEstimateRef.bCurrentlyTracking;
             bool bCurrentlyTracking = false;
 
             if (tracker->getIsOpen())
@@ -307,16 +324,24 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
                         // set partially valid state
                         HMDOpticalPoseEstimation newTrackerPoseEstimate= trackerPoseEstimateRef;
 
+                        // Compute the projection of the shape on the tracker
                         if (tracker->computeProjectionForHMD(
                                 this, 
                                 &trackingShape,
-                                &newTrackerPoseEstimate))
+                                &newTrackerPoseEstimate.projection))
                         {
-                            bIsVisibleThisUpdate= true;
+                            // Apply the projection to the tracking model 
+                            // to compute a tracker relative pose
+                            if (m_shape_tracking_models[tracker_id]->applyShapeProjectionFromTracker(
+                                    tracker.get(),
+                                    newTrackerPoseEstimate.projection) == true)
+                            {
+                                bIsVisibleThisUpdate= true;
 
-                            // Actually apply the pose estimate state
-                            trackerPoseEstimateRef= newTrackerPoseEstimate;
-                            trackerPoseEstimateRef.last_visible_timestamp = now;
+                                // Actually apply the pose estimate state
+                                trackerPoseEstimateRef= newTrackerPoseEstimate;
+                                trackerPoseEstimateRef.last_visible_timestamp = now;
+                            }
                         }
                     }
 
@@ -350,32 +375,39 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
         // How we compute the final world pose estimate varies based on
         // * Number of trackers that currently have a valid projections of the controller
         // * The kind of projection shape (PSVR sphere or ds4 lightbar)
+        //###HipsterSloth $TODO - Multiple trackers
         if (projections_found > 0)
         {
             const int tracker_id = valid_projection_tracker_ids[0];
             const ServerTrackerViewPtr tracker = tracker_manager->getTrackerViewPtr(tracker_id);
+            const HMDOpticalPoseEstimation &tracker_pose_estimate = m_tracker_pose_estimations[tracker_id];
 
-            // If only one tracker can see the controller, 
-            // then use the tracker to derive a world space location
-            switch (trackingShape.shape_type)
+            if (tracker_pose_estimate.bOrientationValid)
             {
-            case PSVRTrackingShape_Sphere:
-                computeSpherePoseForHmdFromSingleTracker(
-                    this,
-                    tracker,
-                    &m_tracker_pose_estimations[tracker_id],
-                    m_multicam_pose_estimation);
-                break;
-            case PSVRTrackingShape_PointCloud:
-                computePointCloudPoseForHmdFromSingleTracker(
-                    this,
-                    tracker,
-                    &m_tracker_pose_estimations[tracker_id],
-                    m_multicam_pose_estimation);
-                break;
-            default:
-                assert(false && "unreachable");
+                m_multicam_pose_estimation->orientation= 
+                        tracker->computeWorldOrientation(&tracker_pose_estimate.orientation);
+                m_multicam_pose_estimation->bOrientationValid= true;
             }
+            else
+            {
+                m_multicam_pose_estimation->orientation= *k_PSVR_quaternion_identity;
+                m_multicam_pose_estimation->bOrientationValid= false;
+            }
+
+            if (tracker_pose_estimate.bCurrentlyTracking)
+            {
+                m_multicam_pose_estimation->position_cm = 
+                    tracker->computeWorldPosition(&tracker_pose_estimate.position_cm);
+                m_multicam_pose_estimation->bCurrentlyTracking = true;
+            }
+            else
+            {
+                m_multicam_pose_estimation->position_cm = *k_PSVR_float_vector3_zero;
+                m_multicam_pose_estimation->bCurrentlyTracking = true;
+            }
+
+            // Copy over the screen projection area
+            m_multicam_pose_estimation->projection = tracker_pose_estimate.projection;
         }
         // If no trackers can see the controller, maintain the last known position and time it was seen
         else
@@ -1238,42 +1270,4 @@ static void generate_virtual_hmd_data_frame_for_stream(
     }
 
     hmd_data_frame->hmd_type= PSVRHmd_Virtual;
-}
-
-static void computeSpherePoseForHmdFromSingleTracker(
-    const ServerHMDView *hmdView,
-    const ServerTrackerViewPtr tracker,
-    HMDOpticalPoseEstimation *tracker_pose_estimation,
-    HMDOpticalPoseEstimation *multicam_pose_estimation)
-{
-    // No orientation for the sphere projection
-    multicam_pose_estimation->orientation = *k_PSVR_quaternion_identity;
-    multicam_pose_estimation->bOrientationValid = false;
-
-    // For the sphere projection, the tracker relative position has already been computed
-    // Put the tracker relative position into world space
-    multicam_pose_estimation->position_cm = tracker->computeWorldPosition(&tracker_pose_estimation->position_cm);
-    multicam_pose_estimation->bCurrentlyTracking = true;
-
-    // Copy over the screen projection area
-    multicam_pose_estimation->projection = tracker_pose_estimation->projection;
-}
-
-static void computePointCloudPoseForHmdFromSingleTracker(
-    const ServerHMDView *hmdView,
-    const ServerTrackerViewPtr tracker,
-    HMDOpticalPoseEstimation *tracker_pose_estimation,
-    HMDOpticalPoseEstimation *multicam_pose_estimation)
-{
-    // No orientation for the sphere projection
-    multicam_pose_estimation->orientation= tracker->computeWorldOrientation(&tracker_pose_estimation->orientation);
-    multicam_pose_estimation->bOrientationValid = tracker_pose_estimation->bOrientationValid;
-
-    // For the sphere projection, the tracker relative position has already been computed
-    // Put the tracker relative position into world space
-    multicam_pose_estimation->position_cm = tracker->computeWorldPosition(&tracker_pose_estimation->position_cm);
-    multicam_pose_estimation->bCurrentlyTracking = true;
-
-    // Copy over the screen projection area
-    multicam_pose_estimation->projection = tracker_pose_estimation->projection;
 }

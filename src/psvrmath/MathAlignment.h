@@ -4,6 +4,12 @@
 //-- includes -----
 #include "MathEigen.h"
 
+//-- typedefs -----
+namespace Eigen
+{
+    typedef Matrix<double, 3, Eigen::Dynamic> Vector3dMatrix;
+};
+
 //-- structs -----
 struct EigenFitEllipsoid
 {
@@ -140,6 +146,11 @@ eigen_quaternion_compute_weighted_average(
     const int count,
     Eigen::Quaterniond *out_result);
 
+Eigen::Vector3f 
+eigen_vector3f_compute_mean(
+	const Eigen::Vector3f *samples,
+    const int sample_count);
+
 void 
 eigen_vector3f_compute_mean_and_variance(
 	const Eigen::Vector3f *samples,
@@ -182,5 +193,18 @@ eigen_alignment_compute_camera_fundamental_matrix(
 	const Eigen::Matrix3f &Ka, // intrinsic matrix of camera A
 	const Eigen::Matrix3f &Kb, // intrinsic matrix of camera B
 	Eigen::Matrix3f &F_ab); // Output Fundamental matric F_ab
+
+// Computes "best-fit" transform from points in X to corresponding points in Y
+// Best fit transform is returned.
+// X is modified in place to align with Y
+Eigen::Affine3d eigen_alignment_compute_point_to_point_transform(
+    Eigen::Vector3dMatrix& X, /// Source (one 3D point per column)
+    Eigen::Vector3dMatrix& Y, /// Target (one 3D point per column)
+    const Eigen::VectorXd& w); /// Confidence weights
+
+Eigen::Affine3d eigen_alignment_compute_point_to_point_transform(
+    Eigen::Vector3dMatrix& X, // Source (one 3D point per column)
+    Eigen::Vector3dMatrix& Y); // Target (one 3D point per column)
+
 
 #endif // MATH_UTILITY_H

@@ -142,6 +142,17 @@ PSVRVector2f PSVR_Vector2fMax(const PSVRVector2f *a, const PSVRVector2f *b)
 	return { fmaxf(a->x, b->x), fmaxf(a->y, b->y) };
 }
 
+void PSVR_Vector2fArrayTranslate(
+    const PSVRVector2f *in_points, const int point_count,
+    const PSVRVector2f *direction, const float scale,
+    PSVRVector2f *out_points)
+{
+    for (int point_index = 0; point_index < point_count; ++point_index)
+    {
+        out_points[point_index]= PSVR_Vector2fScaleAndAdd(&in_points[point_index], scale, direction);
+    }
+}
+
 // PSVRVector3f Methods
 PSVRVector3f PSVR_Vector3fAdd(const PSVRVector3f *a, const PSVRVector3f *b)
 {

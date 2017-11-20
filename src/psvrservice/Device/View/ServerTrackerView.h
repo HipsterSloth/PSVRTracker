@@ -75,7 +75,7 @@ public:
     bool computeProjectionForHMD(
 		const class ServerHMDView* tracked_hmd,
 		const PSVRTrackingShape *tracking_shape,
-		struct HMDOpticalPoseEstimation *out_pose_estimate);
+		PSVRTrackingProjection *out_projection);
     
     std::vector<PSVRVector2f> projectTrackerRelativePositions(
 		const PSVRVideoFrameSection section,
@@ -119,7 +119,7 @@ protected:
         const ServerHMDView* tracked_controller,
         const PSVRTrackingShape *tracking_shape,
         const PSVRVideoFrameSection section,
-        HMDOpticalPoseEstimation *out_pose_estimate);
+        PSVRTrackingProjection *out_projection);
 
 private:
     char m_shared_memory_name[256];

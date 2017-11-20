@@ -858,17 +858,12 @@ eigen_quaternion_compute_weighted_average(
     return success;
 }
 
-void 
-eigen_vector3f_compute_mean_and_variance(
-	const Eigen::Vector3f *samples,
-    const int sample_count,
-	Eigen::Vector3f *out_mean,
-    Eigen::Vector3f *out_variance)
+Eigen::Vector3f 
+eigen_vector3f_compute_mean(
+    const Eigen::Vector3f *samples,
+    const int sample_count)
 {
-	assert(out_mean != nullptr || out_variance != nullptr);
-
 	Eigen::Vector3f mean= Eigen::Vector3f::Zero();
-	Eigen::Vector3f variance= Eigen::Vector3f::Zero();
 
 	if (sample_count > 0.f)
 	{
@@ -881,6 +876,29 @@ eigen_vector3f_compute_mean_and_variance(
 			mean+= sample;
 		}
 		mean/= N;
+	}
+
+    return mean;
+}
+
+void 
+eigen_vector3f_compute_mean_and_variance(
+	const Eigen::Vector3f *samples,
+    const int sample_count,
+	Eigen::Vector3f *out_mean,
+    Eigen::Vector3f *out_variance)
+{
+	assert(out_mean != nullptr || out_variance != nullptr);
+
+	Eigen::Vector3f mean= Eigen::Vector3f::Zero();
+	Eigen::Vector3f variance= Eigen::Vector3f::Zero();
+
+	if (sample_count > 0)
+	{
+		const float N = static_cast<float>(sample_count);
+
+        // Compute the mean first (needed for variance)
+        mean= eigen_vector3f_compute_mean(samples, sample_count);
 
 		// Compute the variance of the (unsigned) sample error, where "error" = abs(omega_sample)
 		if (out_variance != nullptr)
@@ -1127,4 +1145,59 @@ eigen_alignment_compute_camera_fundamental_matrix(
 
 	// Compute the fundamental matrix from camera A to camera B
 	F_ab = Kb.inverse().transpose() * E * Ka.inverse();
+}
+
+// Computes "best-fit" transform from points in X to corresponding points in Y
+// using veriant of the "Scott and Longuet-Higgens algorithm" 
+// http://www.bmva.org/bmvc/1997/papers/081/node3.htm
+// Adapted from: https://github.com/OpenGP/sparseicp
+Eigen::Affine3d eigen_alignment_compute_point_to_point_transform(
+    Eigen::Vector3dMatrix& X, /// Source (one 3D point per column)
+    Eigen::Vector3dMatrix& Y, /// Target (one 3D point per column)
+    const Eigen::VectorXd& w) /// Confidence weights
+{
+    // Normalize weight vector
+    Eigen::VectorXd w_normalized = w/w.sum();
+
+    // De-mean
+    Eigen::Vector3d X_mean, Y_mean;
+    for(int i=0; i<3; ++i) {
+        X_mean(i) = (X.row(i).array()*w_normalized.transpose().array()).sum();
+        Y_mean(i) = (Y.row(i).array()*w_normalized.transpose().array()).sum();
+    }
+    X.colwise() -= X_mean;
+    Y.colwise() -= Y_mean;
+
+    // Compute transformation
+    Eigen::Affine3d transformation;
+    Eigen::Matrix3d sigma = X * w_normalized.asDiagonal() * Y.transpose();
+    Eigen::JacobiSVD<Eigen::Matrix3d> svd(sigma, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+    if(svd.matrixU().determinant()*svd.matrixV().determinant() < 0.0)
+    {
+        Eigen::Vector3d S = Eigen::Vector3d::Ones(); S(2) = -1.0;
+        transformation.linear().noalias() = svd.matrixV()*S.asDiagonal()*svd.matrixU().transpose();
+    }
+    else 
+    {
+        transformation.linear().noalias() = svd.matrixV()*svd.matrixU().transpose();
+    }
+    transformation.translation().noalias() = Y_mean - transformation.linear()*X_mean;
+
+    // Apply transformation
+    X = transformation*X;
+
+    // Re-apply mean
+    X.colwise() += X_mean;
+    Y.colwise() += Y_mean;
+
+    /// Return transformation
+    return transformation;
+}
+    
+Eigen::Affine3d eigen_alignment_compute_point_to_point_transform(
+    Eigen::Vector3dMatrix& X, // Source (one 3D point per column)
+    Eigen::Vector3dMatrix& Y) // Target (one 3D point per column)
+{
+    return eigen_alignment_compute_point_to_point_transform(X, Y, Eigen::VectorXd::Ones(X.cols()));
 }

@@ -49,6 +49,12 @@ file(GLOB PSVR_DEVICE_VIEW_SRC
 )
 source_group("Device\\View" FILES ${PSVR_DEVICE_VIEW_SRC})
 
+file(GLOB PSVR_DEVICE_MODEL_SRC
+    "${CMAKE_CURRENT_LIST_DIR}/Device/Model/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/Device/Model/*.h"
+)
+source_group("Device\\Model" FILES ${PSVR_DEVICE_MODEL_SRC})
+
 file(GLOB PSVR_HMD_SRC
     "${CMAKE_CURRENT_LIST_DIR}/MorpheusHMD/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/MorpheusHMD/*.h"
@@ -91,6 +97,7 @@ set(PSVR_SERVICE_SRC
     ${PSVR_DEVICE_ENUM_SRC}
     ${PSVR_DEVICE_INT_SRC}
     ${PSVR_DEVICE_MGR_SRC}
+	${PSVR_DEVICE_MODEL_SRC}
     ${PSVR_DEVICE_USB_SRC}
     ${PSVR_DEVICE_VIEW_SRC}
     ${PSVR_HMD_SRC}
@@ -105,6 +112,7 @@ list(APPEND PSVR_SERVICE_INCL_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/Device/Enumerator
     ${CMAKE_CURRENT_LIST_DIR}/Device/Interface
     ${CMAKE_CURRENT_LIST_DIR}/Device/Manager
+	${CMAKE_CURRENT_LIST_DIR}/Device/Model
     ${CMAKE_CURRENT_LIST_DIR}/Device/USB
     ${CMAKE_CURRENT_LIST_DIR}/Device/View
     ${CMAKE_CURRENT_LIST_DIR}/Filter

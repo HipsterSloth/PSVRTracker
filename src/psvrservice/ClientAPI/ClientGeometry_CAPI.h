@@ -140,6 +140,8 @@ typedef struct
             float half_x_extent;
             float half_y_extent;
             float angle;
+            PSVRVector3f source_position; // The source sphere that the ellipse is a projection of
+            float source_radius;
         } ellipse;
         struct {
             PSVRVector2f triangle[TRIANGLE_POINT_COUNT];
@@ -255,6 +257,11 @@ PSVR_PUBLIC_FUNCTION(float) PSVR_Vector2fDistance(const PSVRVector2f *a, const P
 PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fMin(const PSVRVector2f *a, const PSVRVector2f *b);
 /// Computes the max value of two vectors along each component
 PSVR_PUBLIC_FUNCTION(PSVRVector2f) PSVR_Vector2fMax(const PSVRVector2f *a, const PSVRVector2f *b);
+/// Translate an array of points in the given direction
+PSVR_PUBLIC_FUNCTION(void) PSVR_Vector2fArrayTranslate(
+    const PSVRVector2f *in_points, const int point_count,
+    const PSVRVector2f *direction, const float scale, 
+    PSVRVector2f *out_points);
 
 // PSVRVector3f Methods
 

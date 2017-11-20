@@ -603,13 +603,6 @@ static bool computeOpenCVCameraRectification(const ITrackerInterface *tracker_de
                                                PSVRVideoFrameSection section,
                                                cv::Matx33d &rotationOut,
                                                cv::Matx34d &projectionOut);
-static bool computeTrackerRelativePointCloudContourPoseInSection(
-    const ITrackerInterface *tracker_device,
-    const PSVRTrackingShape *tracking_shape,
-	const PSVRVideoFrameSection section,
-    const t_opencv_float_contour_list &opencv_contours,
-    const PSVRPosef *tracker_relative_pose_guess,
-    HMDOpticalPoseEstimation *out_pose_estimate);
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool disabled_roi,
     const ServerTrackerView *tracker,
@@ -1107,7 +1100,7 @@ void ServerTrackerView::getHMDTrackingColorPreset(
 bool ServerTrackerView::computeProjectionForHMD(
     const class ServerHMDView* tracked_hmd,
     const PSVRTrackingShape *tracking_shape,
-    struct HMDOpticalPoseEstimation *out_pose_estimate)
+    PSVRTrackingProjection *out_projection)
 {
     bool bSuccess= false;
 
@@ -1118,38 +1111,30 @@ bool ServerTrackerView::computeProjectionForHMD(
                 tracked_hmd,
                 tracking_shape,
                 PSVRVideoFrameSection_Left,
-                out_pose_estimate);
+                out_projection);
         bool bRightSuccess= true;
             computeProjectionForHmdInSection(
                 tracked_hmd,
                 tracking_shape,
                 PSVRVideoFrameSection_Right,
-                out_pose_estimate);
+                out_projection);
 
         if (bLeftSuccess && bRightSuccess)
         {
-            out_pose_estimate->projection.projection_count= STEREO_PROJECTION_COUNT;
-
-            //TODO: Compute pose estimate using stereo triangulation
-	        //4) Find corresponding points on 2d curves using fundamental matrix
-	        //5) Triangulate a single 3d curve
-	        //6) Compute normals on curve
-	        //7) Use SICP::point_to_plane to align model points to triangulated curve points
-		       // a. Use previous frames best fit model as a starting point
-	        //8) Use RigidMotionEstimator::point_to_point(X, U) to find the transform that best aligned the model points with the curve points
+            out_projection->projection_count= STEREO_PROJECTION_COUNT;
             bSuccess= true;
         }
     }
     else
     {
-        out_pose_estimate->projection.projection_count= MONO_PROJECTION_COUNT;
+        out_projection->projection_count= MONO_PROJECTION_COUNT;
 
         bSuccess=
             computeProjectionForHmdInSection(
                 tracked_hmd,
                 tracking_shape,
                 PSVRVideoFrameSection_Primary,
-                out_pose_estimate);
+                out_projection);
     }
 
     return bSuccess;
@@ -1160,7 +1145,7 @@ ServerTrackerView::computeProjectionForHmdInSection(
     const ServerHMDView* tracked_hmd,
     const PSVRTrackingShape *tracking_shape,
     const PSVRVideoFrameSection section,
-    HMDOpticalPoseEstimation *out_pose_estimate)
+    PSVRTrackingProjection *out_projection)
 {
     bool bSuccess = true;
 
@@ -1273,32 +1258,30 @@ ServerTrackerView::computeProjectionForHmdInSection(
                 if (ellipse_projection.area > k_real_epsilon)
                 {
                     //Save the optically-estimate 3D pose.
-                    out_pose_estimate->position_cm = eigen_vector3f_to_PSVR_vector3f(sphere_center);
-                    out_pose_estimate->bCurrentlyTracking = true;
-                    // Not possible to get an orientation off of a sphere
-                    out_pose_estimate->orientation= *k_PSVR_quaternion_identity;
-                    out_pose_estimate->bOrientationValid = false;
+                    out_projection->projections[section].shape.ellipse.source_position = eigen_vector3f_to_PSVR_vector3f(sphere_center);
+                    out_projection->projections[section].shape.ellipse.source_radius = tracking_shape->shape.sphere.radius;
 
                     // Save off the projection of the sphere (an ellipse)
-                    out_pose_estimate->projection.projections[section].shape.ellipse.angle = ellipse_projection.angle;
-                    out_pose_estimate->projection.projections[section].screen_area= ellipse_projection.area;
+                    out_projection->projections[section].shape.ellipse.angle = ellipse_projection.angle;
+                    out_projection->projections[section].screen_area= ellipse_projection.area;
                     //The ellipse projection is still in normalized space.
                     //i.e., it is a 2-dimensional ellipse floating somewhere.
                     //We must reproject it onto the camera.
                     //TODO: Use opencv's project points instead of manual way below
                     //because it will account for distortion, at least for the center point.
-                    out_pose_estimate->projection.shape_type = PSVRShape_Ellipse;
-                    out_pose_estimate->projection.projections[section].shape.ellipse.center= {
+                    out_projection->shape_type = PSVRShape_Ellipse;
+                    out_projection->projections[section].shape.ellipse.center= {
                         ellipse_projection.center.x()*camera_matrix.val[0] + camera_matrix.val[2],
                         ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]};
-                    out_pose_estimate->projection.projections[section].shape.ellipse.half_x_extent = ellipse_projection.extents.x()*camera_matrix.val[0];
-                    out_pose_estimate->projection.projections[section].shape.ellipse.half_y_extent = ellipse_projection.extents.y()*camera_matrix.val[0];
-                    out_pose_estimate->projection.projections[section].screen_area=
-                        k_real_pi*out_pose_estimate->projection.projections[section].shape.ellipse.half_x_extent
-                        *out_pose_estimate->projection.projections[section].shape.ellipse.half_y_extent;
+                    out_projection->projections[section].shape.ellipse.half_x_extent = ellipse_projection.extents.x()*camera_matrix.val[0];
+                    out_projection->projections[section].shape.ellipse.half_y_extent = ellipse_projection.extents.y()*camera_matrix.val[0];
+                    out_projection->projections[section].screen_area=
+                        k_real_pi
+                        *out_projection->projections[section].shape.ellipse.half_x_extent
+                        *out_projection->projections[section].shape.ellipse.half_y_extent;
                 
                     //Draw results onto m_opencv_buffer_state
-                    m_opencv_buffer_state[section]->draw_pose_projection(out_pose_estimate->projection);
+                    m_opencv_buffer_state[section]->draw_pose_projection(*out_projection);
 
                     bSuccess = true;
                 }
@@ -1341,17 +1324,34 @@ ServerTrackerView::computeProjectionForHmdInSection(
                     undistorted_contours.push_back(undistorted_contour);
                 }
 
-                bSuccess =
-                    computeTrackerRelativePointCloudContourPoseInSection(
-                        m_device,
-                        tracking_shape,
-                        section,
-                        undistorted_contours,
-                        prior_post_est->bCurrentlyTracking ? &tracker_pose_guess : nullptr,
-                        out_pose_estimate);
+                // Compute centers of mass for the contours
+                t_opencv_float_contour cvImagePoints;
+                for (auto it = undistorted_contours.begin(); it != undistorted_contours.end(); ++it)
+                {
+                    cv::Point2f massCenter= computeSafeCenterOfMassForContour<t_opencv_float_contour>(*it);
+
+                    cvImagePoints.push_back(massCenter);
+                }
+
+                // Return the projection of the contour centroids
+                {
+                    const int imagePointCount = static_cast<int>(cvImagePoints.size());
+                    float projectionArea = 0.f;
+
+                    for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
+                    {
+                        const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
+
+                        out_projection->projections[section].shape.pointcloud.points[vertex_index] = {cvPoint.x, cvPoint.y};
+                    }
+
+                    out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
+                    out_projection->projections[section].screen_area = projectionArea;
+                    out_projection->shape_type = PSVRShape_PointCloud;
+                }
 
                 //Draw results onto m_opencv_buffer_state
-                m_opencv_buffer_state[section]->draw_pose_projection(out_pose_estimate->projection);
+                m_opencv_buffer_state[section]->draw_pose_projection(*out_projection);
             } break;
         default:
             assert(0 && "Unreachable");
@@ -1751,58 +1751,6 @@ static bool computeTrackerRelativePointCloudContourPose(
     return bValidTrackerPose;
 }
 
-static bool computeTrackerRelativePointCloudContourPoseInSection(
-    const ITrackerInterface *tracker_device,
-    const PSVRTrackingShape *tracking_shape,
-    const PSVRVideoFrameSection section,
-    const t_opencv_float_contour_list &opencv_contours,
-    const PSVRPosef *tracker_relative_pose_guess,
-    HMDOpticalPoseEstimation *out_pose_estimate)
-{
-    assert(tracking_shape->shape_type == PSVRTrackingShape_PointCloud);
-
-    bool bValidTrackerPose = true;
-    float projectionArea = 0.f;
-
-    // Compute centers of mass for the contours
-    t_opencv_float_contour cvImagePoints;
-    for (auto it = opencv_contours.begin(); it != opencv_contours.end(); ++it)
-    {
-        cv::Point2f massCenter= computeSafeCenterOfMassForContour<t_opencv_float_contour>(*it);
-
-        cvImagePoints.push_back(massCenter);
-    }
-
-    if (cvImagePoints.size() >= 3)
-    {
-        //###HipsterSloth $TODO Solve the pose using SoftPOSIT
-        out_pose_estimate->position_cm= *k_PSVR_float_vector3_zero;
-        out_pose_estimate->orientation= *k_PSVR_quaternion_identity;
-        out_pose_estimate->bOrientationValid = false;
-        bValidTrackerPose = true;
-    }
-
-    // Return the projection of the tracking shape
-    if (bValidTrackerPose)
-    {
-        PSVRTrackingProjection *out_projection = &out_pose_estimate->projection;
-        const int imagePointCount = static_cast<int>(cvImagePoints.size());
-
-        out_projection->shape_type = PSVRShape_PointCloud;
-
-        for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
-        {
-            const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
-
-            out_projection->projections[section].shape.pointcloud.points[vertex_index] = {cvPoint.x, cvPoint.y};
-        }
-
-        out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
-        out_projection->projections[section].screen_area = projectionArea;
-    }
-
-    return bValidTrackerPose;
-}
 
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool roi_disabled,
