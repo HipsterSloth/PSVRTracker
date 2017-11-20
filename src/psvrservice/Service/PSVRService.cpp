@@ -22,6 +22,7 @@ PSVRService::PSVRService()
 	: m_usb_device_manager(nullptr)
 	, m_device_manager(nullptr)
 	, m_request_handler(nullptr)
+    , m_isInitialized(false)
 {
 	PSVRService::m_instance= this;
 	

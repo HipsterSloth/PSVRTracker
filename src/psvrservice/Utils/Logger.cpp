@@ -44,7 +44,7 @@ void log_dispose()
 
 	if (g_file_stream != nullptr)
 	{
-		g_console_stream->flush();
+		g_file_stream->flush();
 		delete g_file_stream;
 		g_file_stream = nullptr;
 	}

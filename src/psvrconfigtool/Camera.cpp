@@ -11,7 +11,7 @@
 static const float k_camera_mouse_zoom_scalar= 50.f;
 static const float k_camera_mouse_rotate_scalar= 0.5f;
 static const float k_camera_mouse_translate_scalar= 1.f;
-static const float k_camera_min_zoom= 100.f;
+static const float k_camera_min_zoom= 1.f;
 static const float k_camera_y_offset = 1.f;
 
 //-- public methods -----

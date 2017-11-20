@@ -71,16 +71,6 @@ int App::exec(int argc, char** argv, const char *initial_state_name)
     return result;
 }
 
-bool App::reconnectToService()
-{
-    if (PSVR_GetIsInitialized())
-    {
-		PSVR_Shutdown();
-    }
-
-    return PSVR_Initialize(PSVRLogSeverityLevel_info) == PSVRResult_Success;
-}
-
 void App::setCameraType(eCameraType cameraType)
 {
     switch (cameraType)
@@ -129,6 +119,12 @@ bool App::init(int argc, char** argv)
 {
     bool success= true;
 
+    if (PSVR_Initialize(PSVRLogSeverityLevel_info) != PSVRResult_Success)
+    {
+        Log_ERROR("App::init", "Failed to initialize PSVRService!");
+        success= false;
+    }
+
     if (success && !m_renderer->init())
     {
         Log_ERROR("App::init", "Failed to initialize renderer!");
@@ -174,6 +170,11 @@ void App::destroy()
 
     m_assetManager->destroy();
     m_renderer->destroy();
+
+    if (PSVR_GetIsInitialized())
+    {
+        PSVR_Shutdown();
+    }
 }
     
 void App::onSDLEvent(const SDL_Event &e)

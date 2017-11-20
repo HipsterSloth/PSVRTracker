@@ -142,13 +142,14 @@ void ServiceRequestHandler::publish_notification(const PSVREventMessage &message
 // -- tracker requests -----
 PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_list)
 {
+    memset(out_tracker_list, 0, sizeof(PSVRTrackerList));
     for (int tracker_id = 0; tracker_id < m_deviceManager->getTrackerViewMaxCount(); ++tracker_id)
     {
         ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
 
         if (tracker_view->getIsOpen())
         {
-            PSVRClientTrackerInfo *tracker_info = &out_tracker_list->trackers[++out_tracker_list->count];
+            PSVRClientTrackerInfo *tracker_info = &out_tracker_list->trackers[out_tracker_list->count++];
 
             switch (tracker_view->getTrackerDeviceType())
             {
@@ -599,13 +600,14 @@ ServerHMDView *ServiceRequestHandler::get_hmd_view_or_null(PSVRHmdID hmd_id)
 PSVRResult ServiceRequestHandler::get_hmd_list(
     PSVRHmdList *out_hmd_list)
 {
+    memset(out_hmd_list, 0, sizeof(PSVRHmdList));
     for (int hmd_id = 0; hmd_id < m_deviceManager->getHMDViewMaxCount(); ++hmd_id)
     {
         ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
 
         if (hmd_view->getIsOpen() && out_hmd_list->count < PSVRSERVICE_MAX_HMD_COUNT)
         {
-            PSVRClientHMDInfo *hmd_info = &out_hmd_list->hmds[hmd_id];
+            PSVRClientHMDInfo *hmd_info = &out_hmd_list->hmds[out_hmd_list->count++];
 
             switch (hmd_view->getHMDDeviceType())
             {

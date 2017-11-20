@@ -40,7 +40,7 @@ PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
-	, frame_rate(40)
+	, frame_rate(60)
     , exposure(32)
     , gain(32)
     , fovSetting(BlueDot)
@@ -347,10 +347,8 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
 		// Save the config back out again in case defaults changed
 		cfg.save();
 
-		VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, cfg.trackerIntrinsics.pixel_width);
 		VideoCapture->set(cv::CAP_PROP_EXPOSURE, cfg.exposure);
 		VideoCapture->set(cv::CAP_PROP_GAIN, cfg.gain);
-		VideoCapture->set(cv::CAP_PROP_FPS, cfg.frame_rate);
     }
 
     return bSuccess;

@@ -13,12 +13,13 @@
 
 #include <imgui.h>
 
+#ifdef _MSC_VER
+#pragma warning (disable: 4996) // 'This function or variable may be unsafe': fopen
+#endif
+
 //-- constants -----
 static const char *k_ps3eye_texture_filename= "./assets/textures/PS3EyeDiffuse.jpg";
-static const char *k_PSVR_texture_filename= "./assets/textures/PSVRDiffuse.jpg";
-static const char *k_virtual_texture_filename = "./assets/textures/VirtualDiffuse.jpg";
 static const char *k_morpheus_texture_filename = "./assets/textures/MorpheusDiffuse.jpg";
-static const char *k_dk2_texture_filename = "./assets/textures/DK2Diffuse.jpg";
 
 static const char *k_default_font_filename= "./assets/fonts/OpenSans-Regular.ttf";
 static const float k_default_font_pixel_height= 24.f;
@@ -35,9 +36,7 @@ AssetManager *AssetManager::m_instance= NULL;
 //-- public methods -----
 AssetManager::AssetManager()
     : m_ps3eyeTexture()
-	, m_PSVRTexture()
     , m_morpheusTexture()
-    , m_dk2Texture()
     , m_defaultFont()
 {
 }
@@ -58,22 +57,7 @@ bool AssetManager::init()
 
     if (success)
     {
-        success= loadTexture(k_PSVR_texture_filename, &m_PSVRTexture);
-    }
-
-    if (success)
-    {
-        success = loadTexture(k_virtual_texture_filename, &m_virtualTexture);
-    }
-
-    if (success)
-    {
         success = loadTexture(k_morpheus_texture_filename, &m_morpheusTexture);
-    }
-
-    if (success)
-    {
-        success = loadTexture(k_dk2_texture_filename, &m_dk2Texture);
     }
     
     if (success)
@@ -101,9 +85,7 @@ bool AssetManager::init()
 void AssetManager::destroy()
 {
 	m_ps3eyeTexture.dispose();
-    m_PSVRTexture.dispose();
     m_morpheusTexture.dispose();
-    m_dk2Texture.dispose();
     m_defaultFont.dispose();
 
     m_instance= NULL;

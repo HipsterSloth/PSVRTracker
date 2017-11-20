@@ -39,7 +39,6 @@ public:
     inline void requestShutdown()
     { m_bShutdownRequested= true; }
 
-    bool reconnectToService();
     void setCameraType(eCameraType cameraType);
     void setAppStage(const char *appStageName);
 

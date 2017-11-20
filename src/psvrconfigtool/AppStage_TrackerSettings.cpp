@@ -30,6 +30,7 @@ AppStage_TrackerSettings::AppStage_TrackerSettings(App *app)
 void AppStage_TrackerSettings::enter()
 {
     m_app->setCameraType(_cameraFixed);
+    m_app->getFixedCamera()->setCameraOrbitRadius(20.f);
 
     request_tracker_list();
 }
@@ -130,7 +131,7 @@ void AppStage_TrackerSettings::renderUI()
     const char *k_window_title = "Tracker Settings";
     const ImGuiWindowFlags window_flags =
         ImGuiWindowFlags_ShowBorders |
-        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoCollapse;
@@ -140,6 +141,7 @@ void AppStage_TrackerSettings::renderUI()
     case eTrackerMenuState::idle:
     {
         ImGui::SetNextWindowPosCenter();
+        ImGui::SetNextWindowSize(ImVec2(350, 215));
         ImGui::Begin(k_window_title, nullptr, window_flags);
 
         if (m_trackerInfos.count > 0)
@@ -209,6 +211,8 @@ void AppStage_TrackerSettings::renderUI()
             ImGui::BulletText("Device Path: ");
             ImGui::SameLine();
             ImGui::TextWrapped("%s", trackerInfo.device_path);
+
+            ImGui::Spacing();
 
             if (ImGui::Button("Test Video Feed"))
             {

@@ -56,14 +56,8 @@ public:
     const TextureAsset *getPS3EyeTextureAsset()
     { return &m_ps3eyeTexture; }
 
-    const TextureAsset *getPSVRTextureAsset()
-    { return &m_PSVRTexture; }
-
     const TextureAsset *getMorpheusTextureAsset()
     { return &m_morpheusTexture; }    
-
-    const TextureAsset *getDK2TextureAsset()
-    { return &m_dk2Texture; }    
     
     const FontAsset *getDefaultFont()
     { return &m_defaultFont; }
@@ -74,10 +68,7 @@ private:
 
     // Utility Textures
 	TextureAsset m_ps3eyeTexture;
-    TextureAsset m_PSVRTexture;
-    TextureAsset m_virtualTexture;
     TextureAsset m_morpheusTexture;
-    TextureAsset m_dk2Texture;
 
     // Font Rendering
     FontAsset m_defaultFont;

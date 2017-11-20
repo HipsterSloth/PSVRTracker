@@ -67,7 +67,7 @@ PSVRConfig::load()
 
     if (Utility::file_exists( configPath ) )
     {
-        configuru::Config cfg = configuru::parse_file("input.json", configuru::JSON);
+        configuru::Config cfg = configuru::parse_file(configPath, configuru::JSON);
         readFromJSON(cfg);
         bLoadedOk = true;
     }

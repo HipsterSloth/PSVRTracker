@@ -62,8 +62,6 @@ bool PSVRClient::startup(
 {
     bool success = true;
 
-    log_init(log_level);
-
     m_requestHandler= request_handler;
 
 	// Reset status flags
