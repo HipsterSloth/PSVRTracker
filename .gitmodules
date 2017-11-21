@@ -29,9 +29,6 @@
 	path = thirdparty/PS3EYEDriver
 	url = https://github.com/zelmon64/PS3EYEDriver.git
 	branch = set_resolution
-[submodule "thirdparty/glm"]
-	path = thirdparty/glm
-	url = https://github.com/g-truc/glm.git
 [submodule "thirdparty/lockfreequeue"]
 	path = thirdparty/lockfreequeue
 	url = https://github.com/cameron314/readerwriterqueue.git
