@@ -28,8 +28,17 @@ public:
         , prediction_time(0.f)
 		, tracking_color_id(PSVRTrackingColorType_Blue)
     {
-        trackingShape.shape_type= PSVRTrackingShape_Sphere;
-        trackingShape.shape.sphere.radius= 2.25f; // The radius of the psmove tracking bulb in cm
+        trackingShape.shape_type = PSVRTrackingShape_PointCloud;
+        trackingShape.shape.pointcloud.points[0] = {0.00f, 0.00f, 0.00f}; // 0
+        trackingShape.shape.pointcloud.points[1] = {7.25f, 4.05f, 3.75f}; // 1
+        trackingShape.shape.pointcloud.points[2] = {9.05f, 0.00f, 9.65f}; // 2
+        trackingShape.shape.pointcloud.points[3] = {7.25f, -4.05f, 3.75f}; // 3
+        trackingShape.shape.pointcloud.points[4] = {-7.25f, 4.05f, 3.75f}; // 4
+        trackingShape.shape.pointcloud.points[5] = {-9.05f, 0.00f, 9.65f}; // 5
+        trackingShape.shape.pointcloud.points[6] = {-7.25f, -4.05f, 3.75f}; // 6
+        trackingShape.shape.pointcloud.points[7] = {5.65f, -1.07f, 27.53f}; // 7
+        trackingShape.shape.pointcloud.points[8] = {-5.65f, -1.07f, 27.53f}; // 8
+	    trackingShape.shape.pointcloud.point_count = 9;
     };
 
     virtual const configuru::Config writeToJSON();

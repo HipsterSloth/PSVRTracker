@@ -464,6 +464,7 @@ static void compute_transform_using_triangle_correlation(
     const int source_point_count = static_cast<int>(state->lastTriangulatedPoints.size());
 
     // Extract the source points into an array    
+    state->sourceVertices.clear();
     std::for_each(state->lastTriangulatedPoints.begin(), state->lastTriangulatedPoints.end(),
         [state](const CorrelatedPixelPair &correlated_pixel_pair){
             state->sourceVertices.push_back(correlated_pixel_pair.triangulated_point_cm);

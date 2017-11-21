@@ -322,24 +322,34 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
                         // Create a copy of the pose estimate state so that in event of a 
                         // failure part way through computing the projection we don't
                         // set partially valid state
-                        HMDOpticalPoseEstimation newTrackerPoseEstimate= trackerPoseEstimateRef;
+                        PSVRTrackingProjection newTrackerProjection;
 
                         // Compute the projection of the shape on the tracker
                         if (tracker->computeProjectionForHMD(
                                 this, 
                                 &trackingShape,
-                                &newTrackerPoseEstimate.projection))
+                                &newTrackerProjection))
                         {
+                            IShapeTrackingModel *shape_tracking_model= m_shape_tracking_models[tracker_id];
+
                             // Apply the projection to the tracking model 
                             // to compute a tracker relative pose
-                            if (m_shape_tracking_models[tracker_id]->applyShapeProjectionFromTracker(
+                            if (shape_tracking_model->applyShapeProjectionFromTracker(
                                     tracker.get(),
-                                    newTrackerPoseEstimate.projection) == true)
+                                    newTrackerProjection) == true)
                             {
                                 bIsVisibleThisUpdate= true;
+                                
+                                // Extract the tracker relative optical pose from the tracking model
+                                trackerPoseEstimateRef.bOrientationValid=
+                                    shape_tracking_model->getShapeOrientation(
+                                        trackerPoseEstimateRef.orientation);
+                                trackerPoseEstimateRef.bCurrentlyTracking=
+                                    shape_tracking_model->getShapePosition(
+                                        trackerPoseEstimateRef.position_cm);
 
                                 // Actually apply the pose estimate state
-                                trackerPoseEstimateRef= newTrackerPoseEstimate;
+                                trackerPoseEstimateRef.projection= newTrackerProjection;
                                 trackerPoseEstimateRef.last_visible_timestamp = now;
                             }
                         }
@@ -933,7 +943,7 @@ pose_filter_factory(
             orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
             break;
         case CommonDeviceState::VirtualHMD:
-            orientation_filter_enum = OrientationFilterTypeNone;
+            orientation_filter_enum = OrientationFilterTypePassThru;
             break;
         default:
             assert(0 && "unreachable");
@@ -1040,7 +1050,20 @@ update_filters_for_virtual_hmd(
         PoseSensorPacket sensorPacket;
 
         sensorPacket.imu_magnetometer_unit = Eigen::Vector3f::Zero();
-        sensorPacket.optical_orientation = Eigen::Quaternionf::Identity();
+
+        if (poseEstimation->bOrientationValid)
+        {
+            sensorPacket.optical_orientation =
+                Eigen::Quaternionf(
+                    poseEstimation->orientation.w,
+                    poseEstimation->orientation.x,
+                    poseEstimation->orientation.y,
+                    poseEstimation->orientation.z);
+        }
+        else
+        {
+            sensorPacket.optical_orientation = Eigen::Quaternionf::Identity();
+        }
 
         if (poseEstimation->bCurrentlyTracking)
         {

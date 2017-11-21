@@ -353,25 +353,28 @@ PSVRConfig::writeColorPreset(
     {
         pt.insert_or_assign(profile_name, {
             {"color_preset", {
-                {"hue_center", colorPreset->hue_range.center},
-                {"hue_range", colorPreset->hue_range.range},
-                {"saturation_center", colorPreset->saturation_range.center},
-                {"saturation_range", colorPreset->saturation_range.range},
-                {"value_center", colorPreset->value_range.center},
-                {"value_range", colorPreset->value_range.range}
+                {color_name, {
+                    {"hue_center", colorPreset->hue_range.center},
+                    {"hue_range", colorPreset->hue_range.range},
+                    {"saturation_center", colorPreset->saturation_range.center},
+                    {"saturation_range", colorPreset->saturation_range.range},
+                    {"value_center", colorPreset->value_range.center},
+                    {"value_range", colorPreset->value_range.range}
+                }},
             }},
         });
     }
     else
     {
         pt.insert_or_assign("color_preset", {
-            {
-                {"hue_center", colorPreset->hue_range.center},
-                {"hue_range", colorPreset->hue_range.range},
-                {"saturation_center", colorPreset->saturation_range.center},
-                {"saturation_range", colorPreset->saturation_range.range},
-                {"value_center", colorPreset->value_range.center},
-                {"value_range", colorPreset->value_range.range}
+            {color_name, {
+                    {"hue_center", colorPreset->hue_range.center},
+                    {"hue_range", colorPreset->hue_range.range},
+                    {"saturation_center", colorPreset->saturation_range.center},
+                    {"saturation_range", colorPreset->saturation_range.range},
+                    {"value_center", colorPreset->value_range.center},
+                    {"value_range", colorPreset->value_range.range}
+                },
             },
         });
     }

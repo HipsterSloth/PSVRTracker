@@ -604,28 +604,15 @@ void
 MorpheusHMD::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
 {
 	outTrackingShape.shape_type = PSVRTrackingShape_PointCloud;
-    //###HipsterSloth: These values came from a 3d morpheus model
     outTrackingShape.shape.pointcloud.points[0] = {0.00f, 0.00f, 0.00f}; // 0
-    outTrackingShape.shape.pointcloud.points[1] = {7.25f, 4.05f, -3.75f}; // 1
-    outTrackingShape.shape.pointcloud.points[2] = {9.05f, 0.00f, -9.65f}; // 2
-    outTrackingShape.shape.pointcloud.points[3] = {7.25f, -4.05f, -3.75f}; // 3
-    outTrackingShape.shape.pointcloud.points[4] = {-7.25f, 4.05f, -3.75f}; // 4
-    outTrackingShape.shape.pointcloud.points[5] = {-9.05f, 0.00f, -9.65f}; // 5
-    outTrackingShape.shape.pointcloud.points[6] = {-7.25f, -4.05f, -3.75f}; // 6
-    outTrackingShape.shape.pointcloud.points[7] = {5.65f, -1.07f, -27.53f}; // 7
-    outTrackingShape.shape.pointcloud.points[8] = {-5.65f, -1.07f, -27.53f}; // 8
-	//###HipsterSloth: These are just me eye balling the LED centers with a ruler
-    /*
-	outTrackingShape.shape.pointcloud.points[0] = {0.f, 0.f, 0.f}; // 0
-    outTrackingShape.shape.pointcloud.points[1] = {8.f, 4.5f, -2.5f}; // 1
-	outTrackingShape.shape.pointcloud.points[2] = {9.f, 0.f, -10.f}; // 2
-	outTrackingShape.shape.pointcloud.points[3] = {8.f, -4.5f, -2.5f}; // 3
-	outTrackingShape.shape.pointcloud.points[4] = {-8.f, 4.5f, -2.5f}; // 4
-	outTrackingShape.shape.pointcloud.points[5] = {-9.f, 0.f, -10.f}; // 5
-	outTrackingShape.shape.pointcloud.points[6] = {-8.f, -4.5f, -2.5f}; // 6
-	outTrackingShape.shape.pointcloud.points[7] = {6.f, -1.f, -24.f}; // 7
-	outTrackingShape.shape.pointcloud.points[8] = {-6.f, -1.f, -24.f}; // 8
-    */
+    outTrackingShape.shape.pointcloud.points[1] = {7.25f, 4.05f, 3.75f}; // 1
+    outTrackingShape.shape.pointcloud.points[2] = {9.05f, 0.00f, 9.65f}; // 2
+    outTrackingShape.shape.pointcloud.points[3] = {7.25f, -4.05f, 3.75f}; // 3
+    outTrackingShape.shape.pointcloud.points[4] = {-7.25f, 4.05f, 3.75f}; // 4
+    outTrackingShape.shape.pointcloud.points[5] = {-9.05f, 0.00f, 9.65f}; // 5
+    outTrackingShape.shape.pointcloud.points[6] = {-7.25f, -4.05f, 3.75f}; // 6
+    outTrackingShape.shape.pointcloud.points[7] = {5.65f, -1.07f, 27.53f}; // 7
+    outTrackingShape.shape.pointcloud.points[8] = {-5.65f, -1.07f, 27.53f}; // 8
 	outTrackingShape.shape.pointcloud.point_count = 9;
 }
 

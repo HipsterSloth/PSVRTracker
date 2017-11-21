@@ -74,12 +74,12 @@ void SharedVideoFrameBuffer::writeVideoFrame(PSVRVideoFrameSection section, cons
 
 const unsigned char *SharedVideoFrameBuffer::getBuffer(PSVRVideoFrameSection section) const
 {
-	return m_buffer;
+	return m_buffer + computeVideoBufferSize(static_cast<int>(section), m_stride, m_height);
 }
 
 unsigned char *SharedVideoFrameBuffer::getBufferMutable(PSVRVideoFrameSection section)
 {
-	return m_buffer;
+	return const_cast<unsigned char *>(getBuffer(section));
 }
 
 size_t SharedVideoFrameBuffer::computeVideoBufferSize(int section_count, int stride, int height)

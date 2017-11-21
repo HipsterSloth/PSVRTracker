@@ -37,11 +37,11 @@ VirtualStereoTrackerConfig::VirtualStereoTrackerConfig(const std::string &fnameb
     : PSVRConfig(fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
-	, frame_rate(40)
+	, frame_rate(60)
     , exposure(32)
     , gain(32)
-    , left_camera_usb_path("USB\\\\VID_1415&PID_2000\\\\bA_pB.C")
-    , right_camera_usb_path("USB\\\\VID_1415&PID_2000\\\\bX_pY.Z")
+    , left_camera_usb_path("USB\\VID_1415&PID_2000\\bA_pB.C")
+    , right_camera_usb_path("USB\\VID_1415&PID_2000\\bX_pY.Z")
 {
     pose= *k_PSVR_pose_identity;
 
@@ -170,7 +170,7 @@ VirtualStereoTrackerConfig::readFromJSON(const configuru::Config &pt)
     {
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
-		frame_rate = pt.get_or<double>("frame_rate", 40);
+		frame_rate = pt.get_or<double>("frame_rate", 60);
         exposure = pt.get_or<double>("exposure", 32);
 		gain = pt.get_or<double>("gain", 32);
 
@@ -491,7 +491,7 @@ bool VirtualStereoTracker::open(const DeviceEnumerator *enumerator)
         LeftTracker->setExposure(cfg.exposure, false);
         LeftTracker->setGain(cfg.gain, false);
         LeftTracker->setFrameRate(cfg.frame_rate, false);
-        RightTracker->setFrameWidth(cfg.tracker_intrinsics.pixel_height, false);
+        RightTracker->setFrameWidth(cfg.tracker_intrinsics.pixel_width, false);
         RightTracker->setExposure(cfg.exposure, false);
         RightTracker->setGain(cfg.gain, false);
         RightTracker->setFrameRate(cfg.frame_rate, false);

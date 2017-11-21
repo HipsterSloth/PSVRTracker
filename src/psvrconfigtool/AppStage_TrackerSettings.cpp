@@ -141,7 +141,7 @@ void AppStage_TrackerSettings::renderUI()
     case eTrackerMenuState::idle:
     {
         ImGui::SetNextWindowPosCenter();
-        ImGui::SetNextWindowSize(ImVec2(350, 215));
+        ImGui::SetNextWindowSize(ImVec2(350, 300));
         ImGui::Begin(k_window_title, nullptr, window_flags);
 
         if (m_trackerInfos.count > 0)

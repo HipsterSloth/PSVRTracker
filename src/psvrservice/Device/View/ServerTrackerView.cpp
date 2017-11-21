@@ -1189,7 +1189,7 @@ ServerTrackerView::computeProjectionForHmdInSection(
     {
         bSuccess = 
             m_opencv_buffer_state[section]->computeBiggestNContours(
-                hsvColorRange, biggest_contours, contour_areas, MAX_PROJECTION_COUNT);
+                hsvColorRange, biggest_contours, contour_areas, MAX_POINT_CLOUD_POINT_COUNT);
     }
 
     // Compute the tracker relative 3d position of the controller from the contour
@@ -1326,17 +1326,18 @@ ServerTrackerView::computeProjectionForHmdInSection(
 
                 // Compute centers of mass for the contours
                 t_opencv_float_contour cvImagePoints;
+                double projectionArea = 0.f;
                 for (auto it = undistorted_contours.begin(); it != undistorted_contours.end(); ++it)
                 {
                     cv::Point2f massCenter= computeSafeCenterOfMassForContour<t_opencv_float_contour>(*it);
 
+                    projectionArea= cv::contourArea(*it);
                     cvImagePoints.push_back(massCenter);
                 }
 
                 // Return the projection of the contour centroids
                 {
                     const int imagePointCount = static_cast<int>(cvImagePoints.size());
-                    float projectionArea = 0.f;
 
                     for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
                     {
@@ -1346,7 +1347,7 @@ ServerTrackerView::computeProjectionForHmdInSection(
                     }
 
                     out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
-                    out_projection->projections[section].screen_area = projectionArea;
+                    out_projection->projections[section].screen_area = static_cast<float>(projectionArea);
                     out_projection->shape_type = PSVRShape_PointCloud;
                 }
 
