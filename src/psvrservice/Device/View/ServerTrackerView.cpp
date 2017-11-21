@@ -1371,7 +1371,7 @@ ServerTrackerView::computeWorldPosition(
     const glm::mat4 cameraTransform= computeGLMCameraTransformMatrix(m_device);
     const glm::vec4 world_pos = cameraTransform * rel_pos;
     
-    PSVRVector3f result= glm_vec3_to_PSVR_vector3f(world_pos);
+    PSVRVector3f result= glm_vec3_to_PSVR_vector3f(glm::vec3(world_pos));
 
     return result;
 }
@@ -1409,7 +1409,7 @@ ServerTrackerView::computeTrackerPosition(
     const glm::vec4 world_pos(world_relative_position->x, world_relative_position->y, world_relative_position->z, 1.f);
     const glm::mat4 invCameraTransform= glm::inverse(computeGLMCameraTransformMatrix(m_device));
     const glm::vec4 rel_pos = invCameraTransform * world_pos;    
-    const PSVRVector3f result= glm_vec3_to_PSVR_vector3f(rel_pos);
+    const PSVRVector3f result= glm_vec3_to_PSVR_vector3f(glm::vec3(rel_pos));
 
     return result;
 }

@@ -30,7 +30,6 @@ AppStage_TrackerSettings::AppStage_TrackerSettings(App *app)
 void AppStage_TrackerSettings::enter()
 {
     m_app->setCameraType(_cameraFixed);
-    m_app->getFixedCamera()->setCameraOrbitRadius(20.f);
 
     request_tracker_list();
 }

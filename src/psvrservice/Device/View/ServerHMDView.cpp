@@ -853,7 +853,7 @@ static void init_filters_for_virtual_hmd(
     *out_pose_filter = pose_filter_factory(
         CommonDeviceState::eDeviceType::VirtualHMD,
         hmd_config->position_filter_type,
-        "",
+        "PassThru",
         constants);
 }
 
