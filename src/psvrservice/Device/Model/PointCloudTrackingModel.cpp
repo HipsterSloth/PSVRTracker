@@ -162,7 +162,7 @@ bool PointCloudTrackingModel::getShapeOrientation(PSVRQuatf &out_orientation) co
 {
     if (m_state->bIsModelToSourceTransformValid)
     {
-        Eigen::Quaternionf q= eigen_matrix3f_to_clockwise_quaternion(
+        Eigen::Quaternionf q= Eigen::Quaternionf(
             m_state->modelToSourceTransform.linear().cast<float>());
 
         out_orientation= eigen_quaternionf_to_PSVR_quatf(q);
