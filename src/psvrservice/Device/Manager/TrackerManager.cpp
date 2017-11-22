@@ -23,15 +23,12 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
 {
     virtual_stereo_tracker_count= 0;
-	controller_position_smoothing = 0.f;
     optical_tracking_timeout= 100;
 	tracker_sleep_ms = 1;
 	use_bgr_to_hsv_lookup_table = true;
-	exclude_opposed_cameras = false;
 	min_valid_projection_area= 16;
 	disable_roi = false;
 	default_tracker_profile.frame_width = 640;
-	//default_tracker_profile.frame_height = 480;
 	default_tracker_profile.frame_rate = 40;
     default_tracker_profile.exposure = 32;
     default_tracker_profile.gain = 32;
@@ -39,7 +36,7 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
         default_tracker_profile.color_preset_table.table_name, 
         "default_tracker_profile", 
         sizeof(default_tracker_profile.color_preset_table.table_name));
-	global_forward_degrees = 270.f; // Down -Z by default
+	global_forward_degrees = 0.f;
     for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
     {
         default_tracker_profile.color_preset_table.color_presets[preset_index] = k_default_color_presets[preset_index];
@@ -51,11 +48,9 @@ TrackerManagerConfig::writeToJSON()
 {
     configuru::Config pt{
         {"version", TrackerManagerConfig::CONFIG_VERSION},
-	    {"controller_position_smoothing", controller_position_smoothing},
         {"optical_tracking_timeout", optical_tracking_timeout},
 	    {"use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table},
 	    {"tracker_sleep_ms", tracker_sleep_ms},
-	    {"excluded_opposed_cameras", exclude_opposed_cameras},	
 	    {"min_valid_projection_area", min_valid_projection_area},	
 	    {"disable_roi", disable_roi},
 	    {"default_tracker_profile.frame_width", default_tracker_profile.frame_width},
@@ -79,15 +74,12 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
     if (version == TrackerManagerConfig::CONFIG_VERSION)
     {
 		virtual_stereo_tracker_count = pt.get_or<int>("virtual_stereo_tracker_count", virtual_stereo_tracker_count);
-		controller_position_smoothing = pt.get_or<float>("controller_position_smoothing", controller_position_smoothing);
         optical_tracking_timeout= pt.get_or<int>("optical_tracking_timeout", optical_tracking_timeout);
 		use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
 		tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
-		exclude_opposed_cameras = pt.get_or<bool>("excluded_opposed_cameras", exclude_opposed_cameras);
 		min_valid_projection_area = pt.get_or<float>("min_valid_projection_area", min_valid_projection_area);	
 		disable_roi = pt.get_or<bool>("disable_roi", disable_roi);
 		default_tracker_profile.frame_width = pt.get_or<float>("default_tracker_profile.frame_width", 640);
-		//default_tracker_profile.frame_height = pt.get_or<float>("default_tracker_profile.frame_height", 480);
 		default_tracker_profile.frame_rate = pt.get_or<float>("default_tracker_profile.frame_rate", 40);
         default_tracker_profile.exposure = pt.get_or<float>("default_tracker_profile.exposure", 32);
         default_tracker_profile.gain = pt.get_or<float>("default_tracker_profile.gain", 32);

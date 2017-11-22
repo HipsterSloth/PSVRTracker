@@ -46,12 +46,10 @@ public:
     virtual void readFromJSON(const configuru::Config &pt);
 
     int virtual_stereo_tracker_count;
-	float controller_position_smoothing;
     long version;
     int optical_tracking_timeout;
 	int tracker_sleep_ms;
 	bool use_bgr_to_hsv_lookup_table;
-	bool exclude_opposed_cameras;
 	float min_valid_projection_area;
 	bool disable_roi;
     TrackerProfile default_tracker_profile;
