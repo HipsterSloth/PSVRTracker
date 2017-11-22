@@ -607,9 +607,7 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool disabled_roi,
     const ServerTrackerView *tracker,
     const PSVRVideoFrameSection section,
-    const IPoseFilter* pose_filter,
-    const PSVRTrackingProjection *prior_tracking_projection,
-    const PSVRTrackingShape *tracking_shape);
+    const PSVRTrackingProjection *prior_tracking_projection);
 static bool computeBestFitTriangleForContour(
     const t_opencv_float_contour &opencv_contour,
     cv::Point2f &out_triangle_top,
@@ -1177,9 +1175,7 @@ ServerTrackerView::computeProjectionForHmdInSection(
         bRoiDisabled,
         this,
         section,
-        bIsTracking ? tracked_hmd->getPoseFilter() : nullptr,
-        bIsTracking ? &priorPoseEst->projection : nullptr,
-        tracking_shape);
+        bIsTracking ? &priorPoseEst->projection : nullptr);
     m_opencv_buffer_state[section]->applyROI(ROI);
 
     // Find the N best contours associated with the HMD
@@ -1190,6 +1186,33 @@ ServerTrackerView::computeProjectionForHmdInSection(
         bSuccess = 
             m_opencv_buffer_state[section]->computeBiggestNContours(
                 hsvColorRange, biggest_contours, contour_areas, MAX_POINT_CLOUD_POINT_COUNT);
+    }
+
+    // Compute the bounding box of the projection contours this frame
+    if (bSuccess)
+    {
+        if (biggest_contours.size() > 0)
+        {
+            cv::Rect bbox;
+            for (auto it = biggest_contours.begin(); it != biggest_contours.end(); ++it)
+            {
+                cv::Rect contour_bounds= cv::boundingRect(*it);
+
+                bbox= bbox | contour_bounds;
+            }
+
+            out_projection->projections[section].screen_bbox_center= 
+                {static_cast<float>(bbox.x + bbox.width/2), 
+                static_cast<float>(bbox.y + bbox.height/2)};
+            out_projection->projections[section].screen_bbox_half_extents= 
+                {static_cast<float>(bbox.width/2), 
+                static_cast<float>(bbox.height/2)};
+        }
+        else
+        {
+            out_projection->projections[section].screen_bbox_center= {0, 0};
+            out_projection->projections[section].screen_bbox_half_extents= {0, 0};
+        }
     }
 
     // Compute the tracker relative 3d position of the controller from the contour
@@ -1757,9 +1780,7 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool roi_disabled,
     const ServerTrackerView *tracker,
     const PSVRVideoFrameSection section,
-    const IPoseFilter* pose_filter,
-    const PSVRTrackingProjection *prior_tracking_projection,
-    const PSVRTrackingShape *tracking_shape)
+    const PSVRTrackingProjection *prior_tracking_projection)
 {
     // Get expected ROI
     // Default to full screen.
@@ -1768,143 +1789,22 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     cv::Rect2i ROI(0, 0, static_cast<int>(screenWidth), static_cast<int>(screenHeight));
 
     //Calculate a more refined ROI.
-    //Based on the physical limits of the object's bounding box
-    //projected onto the image.
-    if (!roi_disabled && pose_filter != nullptr && prior_tracking_projection != nullptr)
+    //Based on the previous frame's projection bounding box.
+    if (!roi_disabled && prior_tracking_projection != nullptr)
     {
-        // Get the (predicted) position in world space.
-        Eigen::Vector3f position_cm = pose_filter->getPositionCm(0.f); 
-        PSVRVector3f world_position_cm= eigen_vector3f_to_PSVR_vector3f(position_cm);
+        const PSVRTrackingProjectionData &projection_data= prior_tracking_projection->projections[section];
+        const PSVRVector2f &proj_center= projection_data.screen_bbox_center;
+        const PSVRVector2f &proj_half_extents= projection_data.screen_bbox_half_extents;
 
-        // Get the (predicted) position in tracker-local space.
-        PSVRVector3f tracker_position_cm = tracker->computeTrackerPosition(&world_position_cm);
+        const cv::Point2i roi_center(static_cast<int>(proj_center.x), static_cast<int>(proj_center.y));
 
-        // Project the state computed position +/- object extents onto the image.
-        PSVRVector3f tl, br;
-        switch (tracking_shape->shape_type)
-        {
-        case PSVRTrackingShape_Sphere:
-            {
-                // Simply: center - radius, center + radius.
-                tl= {tracker_position_cm.x - tracking_shape->shape.sphere.radius,
-                    tracker_position_cm.y + tracking_shape->shape.sphere.radius,
-                    tracker_position_cm.z};
-                br= {tracker_position_cm.x + tracking_shape->shape.sphere.radius,
-                    tracker_position_cm.y - tracking_shape->shape.sphere.radius,
-                    tracker_position_cm.z};
-            } break;
+        const int safe_proj_width = std::max(2*static_cast<int>(proj_half_extents.x), k_min_roi_size);
+        const int safe_proj_height = std::max(2*static_cast<int>(proj_half_extents.y), k_min_roi_size);
 
-        case PSVRTrackingShape_LightBar:
-            {
-                // Compute the bounding radius of the lightbar tracking shape
-                const auto &shape_tl = tracking_shape->shape.lightbar.quad[QUAD_VERTEX_UPPER_LEFT];
-                const auto &shape_br = tracking_shape->shape.lightbar.quad[QUAD_VERTEX_LOWER_RIGHT];
-                const PSVRVector3f half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
-                const auto shape_radius = fmaxf(sqrtf(half_vec.x*half_vec.x + half_vec.y*half_vec.y + half_vec.z*half_vec.z), 1.f);
+        const cv::Point2i roi_top_left = roi_center + cv::Point2i(-safe_proj_width, -safe_proj_height);
+        const cv::Size roi_size(2*safe_proj_width, 2*safe_proj_height);
 
-                // Simply: center - shape_radius, center + shape_radius.
-                tl= {tracker_position_cm.x - shape_radius,
-                    tracker_position_cm.y + shape_radius,
-                    tracker_position_cm.z};
-                br= {tracker_position_cm.x + shape_radius,
-                    tracker_position_cm.y - shape_radius,
-                    tracker_position_cm.z};
-            } break;
-
-        case PSVRTrackingShape_PointCloud:
-            {
-                // Compute the bounding radius of the point cloud
-                PSVRVector3f shape_tl = tracking_shape->shape.pointcloud.points[0];
-                PSVRVector3f shape_br = tracking_shape->shape.pointcloud.points[0];
-                for (int point_index = 1; point_index < tracking_shape->shape.pointcloud.point_count; ++point_index)
-                {
-                    const PSVRVector3f &point = tracking_shape->shape.pointcloud.points[point_index];
-                    shape_tl= {fmaxf(shape_tl.x, point.x), fmaxf(shape_tl.y, point.y), fmaxf(shape_tl.z, point.z)};
-                    shape_br= {fminf(shape_br.x, point.x), fminf(shape_br.y, point.y), fminf(shape_br.z, point.z)};
-                }
-                const PSVRVector3f half_vec = { (shape_tl.x - shape_br.x)*0.5f, (shape_tl.y - shape_br.y)*0.5f, (shape_tl.z - shape_br.z)*0.5f };
-                const auto shape_radius = fmaxf(sqrtf(half_vec.x*half_vec.x + half_vec.y*half_vec.y + half_vec.z*half_vec.z), 1.f);
-
-                // Simply: center - shape_radius, center + shape_radius.
-                tl= {tracker_position_cm.x - shape_radius,
-                    tracker_position_cm.y + shape_radius,
-                    tracker_position_cm.z};
-                br= {tracker_position_cm.x + shape_radius,
-                    tracker_position_cm.y - shape_radius,
-                    tracker_position_cm.z};
-            } break;
-
-        default:
-            {
-                assert(false && "unreachable");
-            } break;
-        }
-
-        // Extract the pixel projection center from the previous frame's projection.
-        PSVRVector2f projection_pixel_center= *k_PSVR_float_vector2_zero;
-
-        switch (prior_tracking_projection->shape_type)
-        {
-        case PSVRShape_Ellipse:
-            {
-                // Use the center of the ellipsoid projection for the ROI area
-                projection_pixel_center = prior_tracking_projection->projections[section].shape.ellipse.center;
-            } break;
-
-        case PSVRShape_LightBar:
-            {
-                // Use the center of the quad projection for the ROI area
-                const auto proj_tl = prior_tracking_projection->projections[section].shape.lightbar.quad[QUAD_VERTEX_UPPER_LEFT];
-                const auto proj_br = prior_tracking_projection->projections[section].shape.lightbar.quad[QUAD_VERTEX_LOWER_RIGHT];
-
-                projection_pixel_center= {0.5f * (proj_tl.x + proj_br.x), 0.5f * (proj_tl.y + proj_br.y)};
-            } break;
-
-        case PSVRShape_PointCloud:
-            {
-                // Compute the centroid of the projection pixels
-                for (int point_index = 0; point_index < prior_tracking_projection->projections[section].shape.pointcloud.point_count; ++point_index)
-                {
-                    const auto &pixel = prior_tracking_projection->projections[section].shape.pointcloud.points[point_index];
-
-                    projection_pixel_center.x += pixel.x;
-                    projection_pixel_center.y += pixel.y;
-                }
-                const float N = static_cast<float>(prior_tracking_projection->projections[section].shape.pointcloud.point_count);
-                projection_pixel_center.x /= N;
-                projection_pixel_center.y /= N;
-            } break;
-
-        default:
-            {
-                assert(false && "unreachable");
-            } break;
-        }
-
-        // The center of the ROI is the pixel projection center from last frame
-        // The size of the ROI computed by projecting the bounding box 
-        {
-            std::vector<PSVRVector3f> trps{ tl, br };
-            std::vector<PSVRVector2f> screen_locs = tracker->projectTrackerRelativePositions(section, trps);
-
-            const int proj_min_x = static_cast<int>(std::min(screen_locs[0].x, screen_locs[1].x));
-            const int proj_max_x = static_cast<int>(std::max(screen_locs[0].x, screen_locs[1].x));
-            const int proj_min_y = static_cast<int>(std::min(screen_locs[0].y, screen_locs[1].y));
-            const int proj_max_y = static_cast<int>(std::max(screen_locs[0].y, screen_locs[1].y));
-
-            const int proj_width = proj_max_x - proj_min_x;
-            const int proj_height = proj_max_y - proj_min_y;
-
-            const cv::Point2i roi_center(static_cast<int>(projection_pixel_center.x), static_cast<int>(projection_pixel_center.y));
-
-            const int safe_proj_width = std::max(proj_width, k_min_roi_size);
-            const int safe_proj_height = std::max(proj_height, k_min_roi_size);
-
-            const cv::Point2i roi_top_left = roi_center + cv::Point2i(-safe_proj_width, -safe_proj_height);
-            const cv::Size roi_size(2*safe_proj_width, 2*safe_proj_height);
-
-            ROI = cv::Rect2i(roi_top_left, roi_size);
-        }
+        ROI = cv::Rect2i(roi_top_left, roi_size);
     }
 
     return ROI;

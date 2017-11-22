@@ -153,6 +153,8 @@ typedef struct
 		} pointcloud;
     } shape;
 
+    PSVRVector2f screen_bbox_center;
+    PSVRVector2f screen_bbox_half_extents;
     float screen_area; // area in pixels^2
 } PSVRTrackingProjectionData;
 
