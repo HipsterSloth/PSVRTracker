@@ -476,7 +476,8 @@ void AppStage_HMDTrackingTest::onEnterState(eMenuState newState)
         break;
     case eMenuState::pendingTrackerStartRequest:
         m_trackerView= nullptr;
-        m_textureAsset= nullptr;
+        m_textureAsset[0]= nullptr;
+        m_textureAsset[1]= nullptr;
         m_pendingTrackerStartCount = 0;
         break;
     case eMenuState::failedHmdListRequest:
@@ -505,17 +506,42 @@ void AppStage_HMDTrackingTest::update_tracker_video()
 
     // Render the latest from the currently active tracker
     const unsigned char *buffer= nullptr;
-    if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Primary, &buffer) == PSVRResult_Success)
+    if (m_bIsStereoTracker)
     {
-        m_textureAsset->copyBufferIntoTexture(buffer);
+        if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Left, &buffer) == PSVRResult_Success)
+        {
+            m_textureAsset[0]->copyBufferIntoTexture(buffer);
+        }
+
+        if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Right, &buffer) == PSVRResult_Success)
+        {
+            m_textureAsset[1]->copyBufferIntoTexture(buffer);
+        }
+    }
+    else
+    {
+        if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Primary, &buffer) == PSVRResult_Success)
+        {
+            m_textureAsset[0]->copyBufferIntoTexture(buffer);
+        }
     }
 }
 
 void AppStage_HMDTrackingTest::render_tracker_video()
 {
-    if (m_textureAsset != nullptr)
+    if (m_bIsStereoTracker)
     {
-        drawFullscreenTexture(m_textureAsset->texture_id);
+        if (m_textureAsset[0] != nullptr && m_textureAsset[1] != nullptr)
+        {
+            drawFullscreenStereoTexture(m_textureAsset[0]->texture_id, m_textureAsset[1]->texture_id);
+        }
+    }
+    else
+    {
+        if (m_textureAsset[0] != nullptr)
+        {
+            drawFullscreenTexture(m_textureAsset[0]->texture_id);
+        }
     }
 }
 
@@ -547,9 +573,16 @@ void AppStage_HMDTrackingTest::release_devices()
 
     if (m_trackerView != nullptr)
     {
-        if (m_textureAsset != nullptr)
+        if (m_textureAsset[1] != nullptr)
         {
-            delete m_textureAsset;
+            delete m_textureAsset[1];
+            m_textureAsset[1]= nullptr;
+        }
+
+        if (m_textureAsset[0] != nullptr)
+        {
+            delete m_textureAsset[0];
+            m_textureAsset[0]= nullptr;
         }
 
         if (m_trackerView != nullptr)
@@ -750,7 +783,9 @@ void AppStage_HMDTrackingTest::request_tracker_start_stream(
     const PSVRTrackerID tracker_id= TrackerInfo->tracker_id;
     PSVR_AllocateTrackerListener(tracker_id, TrackerInfo);
     m_trackerView = PSVR_GetTracker(tracker_id);
-    m_textureAsset = nullptr;
+    m_textureAsset[0] = nullptr;
+    m_textureAsset[1] = nullptr;
+    m_bIsStereoTracker= false;
 
     // Increment the number of requests we're waiting to get back
     ++m_pendingTrackerStartCount;
@@ -781,13 +816,25 @@ void AppStage_HMDTrackingTest::handle_tracker_start_stream_response(
         const unsigned int frameHeight = static_cast<unsigned int>(screenSize.y);
 
         // Create a texture to render the video frame to
-        m_textureAsset = new TextureAsset();
-        m_textureAsset->init(
+        m_textureAsset[0] = new TextureAsset();
+        m_textureAsset[0]->init(
             frameWidth,
             frameHeight,
             GL_RGB, // texture format
             GL_BGR, // buffer format
             nullptr);
+
+        if (TrackerInfo->tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+        {
+            m_textureAsset[1] = new TextureAsset();
+            m_textureAsset[1]->init(
+                frameWidth,
+                frameHeight,
+                GL_RGB, // texture format
+                GL_BGR, // buffer format
+                nullptr);
+            m_bIsStereoTracker= true;
+        }
     }
 
     // See if this was the last tracker we were waiting to get a response from

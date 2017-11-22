@@ -94,7 +94,8 @@ protected:
     eMenuState m_menuState;
 
     PSVRTracker *m_trackerView;
-    class TextureAsset *m_textureAsset;
+    class TextureAsset *m_textureAsset[2];
+    bool m_bIsStereoTracker;
     int m_pendingTrackerStartCount;
 
 	t_hmd_state_map m_hmdViews;
