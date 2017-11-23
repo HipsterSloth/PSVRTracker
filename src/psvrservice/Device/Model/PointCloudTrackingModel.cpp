@@ -183,6 +183,26 @@ bool PointCloudTrackingModel::getShapePosition(PSVRVector3f &out_position) const
     return m_state->bIsModelToSourceTransformValid;
 }
 
+bool PointCloudTrackingModel::getShape(PSVRTrackingShape &out_shape) const
+{
+    if (m_state->bIsModelToSourceTransformValid)
+    {
+        const int point_count= static_cast<int>(m_state->modelVertices.size());
+
+        out_shape.shape_type= PSVRTrackingShape_PointCloud;
+        out_shape.shape.pointcloud.point_count= point_count;
+        for (int point_index = 0; point_index < point_count; ++point_index)
+        {
+            const Eigen::Vector3d model_vertex= m_state->modelVertices[point_index].cast<double>();
+            const Eigen::Vector3f world_vertex= (m_state->modelToSourceTransform * model_vertex).cast<float>();
+
+            out_shape.shape.pointcloud.points[point_index]= eigen_vector3f_to_PSVR_vector3f(world_vertex);
+        }
+    }
+
+    return m_state->bIsModelToSourceTransformValid;
+}
+
 //-- private implementation -----
 static bool triangulate_stereo_projection(
     const ServerTrackerView *tracker_view,

@@ -32,6 +32,8 @@ VirtualHMDConfig::writeToJSON()
         {"Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a},
         {"Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b},
         {"Calibration.Time.MeanUpdateTime", mean_update_time_delta},
+	    {"Calibration.Orientation.Variance", orientation_variance},
+	    {"OrientationFilter.FilterType", orientation_filter_type},
         {"PositionFilter.FilterType", position_filter_type},
         {"PositionFilter.MaxVelocity", max_velocity},
         {"prediction_time", prediction_time}
@@ -41,6 +43,9 @@ VirtualHMDConfig::writeToJSON()
     {
     case PSVRTrackingShape_Sphere:
         pt["tracking_shape"] = "sphere";
+        pt["bulb.center.x"] = trackingShape.shape.sphere.center.x;
+        pt["bulb.center.y"] = trackingShape.shape.sphere.center.y;
+        pt["bulb.center.z"] = trackingShape.shape.sphere.center.z;
         pt["bulb.radius"] = trackingShape.shape.sphere.radius;
         break;
     case PSVRTrackingShape_LightBar:
@@ -110,6 +115,9 @@ VirtualHMDConfig::readFromJSON(const configuru::Config &pt)
         position_filter_type = pt.get_or<std::string>("PositionFilter.FilterType", position_filter_type);
         max_velocity = pt.get_or<float>("PositionFilter.MaxVelocity", max_velocity);
 
+        orientation_variance = pt.get_or<float>("Calibration.Orientation.Variance", orientation_variance);
+        orientation_filter_type = pt.get_or<std::string>("OrientationFilter.FilterType", orientation_filter_type);
+
         // Read the tracking color
         tracking_color_id = static_cast<PSVRTrackingColorType>(readTrackingColor(pt));
 
@@ -125,6 +133,9 @@ VirtualHMDConfig::readFromJSON(const configuru::Config &pt)
         {
         case PSVRTrackingShape_Sphere:
             trackingShape.shape.sphere.radius= pt.get_or<float>("bulb.radius", 2.25f);
+            trackingShape.shape.sphere.center.x= pt.get_or<float>("bulb.center.x", 0.f);
+            trackingShape.shape.sphere.center.y= pt.get_or<float>("bulb.center.y", 0.f);
+            trackingShape.shape.sphere.center.z= pt.get_or<float>("bulb.center.z", 0.f);
             break;
         case PSVRTrackingShape_LightBar:
             trackingShape.shape.lightbar.quad[0].x= pt.get_or<float>("lightbar.quad.v0.x", 0.0f);

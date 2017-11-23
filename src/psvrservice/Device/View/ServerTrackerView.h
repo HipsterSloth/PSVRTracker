@@ -85,6 +85,7 @@ public:
 		const PSVRVideoFrameSection section,
 		const PSVRVector3f *trackerRelativePosition) const;
     
+    void computeWorldShape(const PSVRTrackingShape *tracker_relative_shape, PSVRTrackingShape *out_shape) const;
     PSVRVector3f computeWorldPosition(const PSVRVector3f *tracker_relative_position) const;
     PSVRQuatf computeWorldOrientation(const PSVRQuatf *tracker_relative_orientation) const;
 

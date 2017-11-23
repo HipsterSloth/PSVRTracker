@@ -17,6 +17,7 @@ public:
         const PSVRTrackingProjection &projection) override;
     bool getShapeOrientation(PSVRQuatf &out_orientation) const override;
     bool getShapePosition(PSVRVector3f &out_position) const override;
+    bool getShape(PSVRTrackingShape &out_shape) const override;
 
 private:
     struct PointCloudTrackingModelState *m_state;

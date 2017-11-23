@@ -18,6 +18,7 @@ struct HMDOpticalPoseEstimation
 
 	PSVRVector3f position_cm;
 	PSVRTrackingProjection projection;
+    PSVRTrackingShape shape; // estimated shape from optical tracking
 	bool bCurrentlyTracking;
 
 	PSVRQuatf orientation;
@@ -35,6 +36,7 @@ struct HMDOpticalPoseEstimation
 		orientation= *k_PSVR_quaternion_identity;
 		bOrientationValid = false;
 
+        memset(&shape, 0, sizeof(PSVRTrackingShape));
 		memset(&projection, 0, sizeof(PSVRTrackingProjection));
 		projection.shape_type = PSVRShape_INVALID_PROJECTION;
 	}

@@ -629,6 +629,7 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 
                     hmd_info->hmd_type= PSVRHmd_Virtual;
                     hmd_info->prediction_time= config->prediction_time;
+                    strncpy(hmd_info->orientation_filter, config->orientation_filter_type.c_str(), sizeof(hmd_info->orientation_filter));
                     strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
                 }
                 break;
@@ -873,6 +874,21 @@ PSVRResult ServiceRequestHandler::set_hmd_orientation_filter(
         {
             MorpheusHMD *hmd = HmdView->castChecked<MorpheusHMD>();
             MorpheusHMDConfig *config = hmd->getConfigMutable();
+
+            if (config->orientation_filter_type != orientation_filter)
+            {
+                config->orientation_filter_type = orientation_filter;
+                config->save();
+
+                HmdView->resetPoseFilter();
+            }
+
+            result= PSVRResult_Success;
+        }
+        else if (HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
+        {
+            VirtualHMD *hmd = HmdView->castChecked<VirtualHMD>();
+            VirtualHMDConfig *config = hmd->getConfigMutable();
 
             if (config->orientation_filter_type != orientation_filter)
             {

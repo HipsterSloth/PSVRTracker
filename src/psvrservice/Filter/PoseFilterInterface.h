@@ -2,6 +2,7 @@
 #define POSE_FILTER_INTERFACE_H
 
 //-- includes -----
+#include "ClientGeometry_CAPI.h"
 #include "MathEigen.h"
 
 //-- constants -----
@@ -46,6 +47,7 @@ struct ExponentialCurve
 struct PoseSensorPacket
 {
     // Optical readings in the world reference frame
+    PSVRTrackingShape optical_tracking_shape_cm; // The tracking shape transformed into the world position
     Eigen::Vector3f optical_position_cm; // cm
     Eigen::Quaternionf optical_orientation;
     float tracking_projection_area_px_sqr; // pixels^2
@@ -220,11 +222,13 @@ struct PositionFilterConstants
 /// Filter parameters that remain constant during the lifetime of the the filter
 struct PoseFilterConstants 
 {
+    PSVRTrackingShape shape;
     OrientationFilterConstants orientation_constants;
     PositionFilterConstants position_constants;
 
 	void clear()
 	{
+        memset(&shape, 0, sizeof(PSVRTrackingShape));
 		orientation_constants.clear();
 		position_constants.clear();
 	}

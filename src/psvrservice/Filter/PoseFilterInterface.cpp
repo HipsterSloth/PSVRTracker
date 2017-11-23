@@ -57,7 +57,7 @@ void PoseFilterSpace::createFilterPacket(
 	const IPoseFilter *poseFilter,
     PoseFilterPacket &outFilterPacket) const
 {
-	poseFilter->getOrientation(), poseFilter->getPositionCm(),
+    outFilterPacket.optical_tracking_shape_cm= sensorPacket.optical_tracking_shape_cm;
 
 	outFilterPacket.current_orientation= poseFilter->getOrientation();
 	outFilterPacket.current_position_cm= poseFilter->getPositionCm();

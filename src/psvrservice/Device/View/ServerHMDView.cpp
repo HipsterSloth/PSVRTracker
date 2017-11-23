@@ -6,6 +6,7 @@
 #include "MorpheusHMD.h"
 #include "VirtualHMD.h"
 #include "CompoundPoseFilter.h"
+#include "KalmanPoseFilter.h"
 #include "PoseFilterInterface.h"
 #include "Logger.h"
 #include "PointCloudTrackingModel.h"
@@ -348,6 +349,15 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
                                     shape_tracking_model->getShapePosition(
                                         trackerPoseEstimateRef.position_cm);
 
+                                if (trackerPoseEstimateRef.bCurrentlyTracking)
+                                {
+                                    shape_tracking_model->getShape(trackerPoseEstimateRef.shape);
+                                }
+                                else
+                                {
+                                    memset(&trackerPoseEstimateRef.shape, 0, sizeof(PSVRTrackingShape));
+                                }
+
                                 // Actually apply the pose estimate state
                                 trackerPoseEstimateRef.projection= newTrackerProjection;
                                 trackerPoseEstimateRef.last_visible_timestamp = now;
@@ -384,7 +394,7 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
 
         // How we compute the final world pose estimate varies based on
         // * Number of trackers that currently have a valid projections of the controller
-        // * The kind of projection shape (PSVR sphere or ds4 lightbar)
+        // * The kind of projection shape (psmove sphere, ds4 lightbar, or psvr led cloud)
         //###HipsterSloth $TODO - Multiple trackers
         if (projections_found > 0)
         {
@@ -406,12 +416,16 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
 
             if (tracker_pose_estimate.bCurrentlyTracking)
             {
+                tracker->computeWorldShape(
+                    &tracker_pose_estimate.shape, 
+                    &m_multicam_pose_estimation->shape);
                 m_multicam_pose_estimation->position_cm = 
                     tracker->computeWorldPosition(&tracker_pose_estimate.position_cm);
                 m_multicam_pose_estimation->bCurrentlyTracking = true;
             }
             else
             {
+                memset(&m_multicam_pose_estimation->shape, 0, sizeof(PSVRTrackingShape));
                 m_multicam_pose_estimation->position_cm = *k_PSVR_float_vector3_zero;
                 m_multicam_pose_estimation->bCurrentlyTracking = true;
             }
@@ -779,6 +793,8 @@ init_filters_for_morpheus_hmd(
     PoseFilterConstants constants;
     constants.clear();
 
+    morpheusHMD->getTrackingShape(constants.shape);
+
     constants.orientation_constants.gravity_calibration_direction = pose_filter_space->getGravityCalibrationDirection();
     constants.orientation_constants.accelerometer_variance = Eigen::Vector3f(accel_var.x, accel_var.y, accel_var.z);
     constants.position_constants.accelerometer_drift = Eigen::Vector3f::Zero();
@@ -826,6 +842,8 @@ static void init_filters_for_virtual_hmd(
     PoseFilterConstants constants;
     constants.clear();
 
+    virtualHMD->getTrackingShape(constants.shape);
+
     constants.orientation_constants.gravity_calibration_direction = Eigen::Vector3f::Zero();
     constants.orientation_constants.accelerometer_variance = Eigen::Vector3f::Zero();
     constants.position_constants.accelerometer_drift = Eigen::Vector3f::Zero();
@@ -853,7 +871,7 @@ static void init_filters_for_virtual_hmd(
     *out_pose_filter = pose_filter_factory(
         CommonSensorState::eDeviceType::VirtualHMD,
         hmd_config->position_filter_type,
-        "PassThru",
+        hmd_config->orientation_filter_type,
         constants);
 }
 
@@ -864,95 +882,121 @@ pose_filter_factory(
     const std::string &orientation_filter_type,
     const PoseFilterConstants &constants)
 {
-    static IPoseFilter *filter = nullptr;
+    IPoseFilter *filter = nullptr;
 
-    // Convert the position filter type string into an enum
-    PositionFilterType position_filter_enum = PositionFilterTypeNone;
-    if (position_filter_type == "PassThru")
+    if (position_filter_type == "PositionKalman" &&
+        orientation_filter_type == "OrientationKalman" && 
+        constants.shape.shape_type == PSVRTrackingShape_PointCloud &&
+        constants.shape.shape.pointcloud.point_count == 9) //###HipsterSloth $TODO support other point counts
     {
-        position_filter_enum = PositionFilterTypePassThru;
-    }
-    else if (position_filter_type == "LowPassOptical")
-    {
-        position_filter_enum = PositionFilterTypeLowPassOptical;
-    }
-    else if (position_filter_type == "LowPassIMU")
-    {
-        position_filter_enum = PositionFilterTypeLowPassIMU;
-    }
-    else if (position_filter_type == "LowPassExponential")
-    {
-        position_filter_enum = PositionFilterTypeLowPassExponential;
-    }
-    else if (position_filter_type == "ComplimentaryOpticalIMU")
-    {
-        position_filter_enum = PositionFilterTypeComplimentaryOpticalIMU;
-    }
-    else if (position_filter_type == "PositionKalman")
-    {
-        position_filter_enum = PositionFilterTypeKalman;
-    }
-    else
-    {
-        PSVR_LOG_INFO("pose_filter_factory()") <<
-            "Unknown position filter type: " << position_filter_type << ". Using default.";
-
-        // fallback to a default based on hmd type
         switch (deviceType)
         {
         case CommonSensorState::Morpheus:
+            {
+                KalmanPoseFilterMorpheus *kalman_filter = new KalmanPoseFilterMorpheus();
+                kalman_filter->init(constants);
+                filter= kalman_filter;
+            } break;
         case CommonSensorState::VirtualHMD:
+            {
+                KalmanPoseFilterPointCloud *kalman_filter = new KalmanPoseFilterPointCloud();
+                kalman_filter->init(constants);
+                filter= kalman_filter;
+            } break;
+        default:
+            assert(0 && "unreachable");
+        }
+    }
+    else
+    {
+        // Convert the position filter type string into an enum
+        PositionFilterType position_filter_enum = PositionFilterTypeNone;
+        if (position_filter_type == "PassThru")
+        {
+            position_filter_enum = PositionFilterTypePassThru;
+        }
+        else if (position_filter_type == "LowPassOptical")
+        {
+            position_filter_enum = PositionFilterTypeLowPassOptical;
+        }
+        else if (position_filter_type == "LowPassIMU")
+        {
             position_filter_enum = PositionFilterTypeLowPassIMU;
-            break;
-        default:
-            assert(0 && "unreachable");
         }
-    }
-
-    // Convert the orientation filter type string into an enum
-    OrientationFilterType orientation_filter_enum = OrientationFilterTypeNone;
-    if (orientation_filter_type == "")
-    {
-        orientation_filter_enum = OrientationFilterTypeNone;
-    }
-    else if (orientation_filter_type == "PassThru")
-    {
-        orientation_filter_enum = OrientationFilterTypePassThru;
-    }
-    else if (orientation_filter_type == "MadgwickARG")
-    {
-        orientation_filter_enum = OrientationFilterTypeMadgwickARG;
-    }
-    else if (orientation_filter_type == "ComplementaryOpticalARG")
-    {
-        orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
-    }
-    else if (orientation_filter_type == "OrientationKalman")
-    {
-        orientation_filter_enum = OrientationFilterTypeKalman;
-    }
-    else
-    {
-        PSVR_LOG_INFO("pose_filter_factory()") <<
-            "Unknown orientation filter type: " << orientation_filter_type << ". Using default.";
-
-        // fallback to a default based on controller type
-        switch (deviceType)
+        else if (position_filter_type == "LowPassExponential")
         {
-        case CommonSensorState::Morpheus:
-            orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
-            break;
-        case CommonSensorState::VirtualHMD:
-            orientation_filter_enum = OrientationFilterTypePassThru;
-            break;
-        default:
-            assert(0 && "unreachable");
+            position_filter_enum = PositionFilterTypeLowPassExponential;
         }
-    }
+        else if (position_filter_type == "ComplimentaryOpticalIMU")
+        {
+            position_filter_enum = PositionFilterTypeComplimentaryOpticalIMU;
+        }
+        else if (position_filter_type == "PositionKalman")
+        {
+            position_filter_enum = PositionFilterTypeKalman;
+        }
+        else
+        {
+            PSVR_LOG_INFO("pose_filter_factory()") <<
+                "Unknown position filter type: " << position_filter_type << ". Using default.";
 
-    CompoundPoseFilter *compound_pose_filter = new CompoundPoseFilter();
-    compound_pose_filter->init(deviceType, orientation_filter_enum, position_filter_enum, constants);
-    filter = compound_pose_filter;
+            // fallback to a default based on hmd type
+            switch (deviceType)
+            {
+            case CommonSensorState::Morpheus:
+            case CommonSensorState::VirtualHMD:
+                position_filter_enum = PositionFilterTypeLowPassIMU;
+                break;
+            default:
+                assert(0 && "unreachable");
+            }
+        }
+
+        // Convert the orientation filter type string into an enum
+        OrientationFilterType orientation_filter_enum = OrientationFilterTypeNone;
+        if (orientation_filter_type == "")
+        {
+            orientation_filter_enum = OrientationFilterTypeNone;
+        }
+        else if (orientation_filter_type == "PassThru")
+        {
+            orientation_filter_enum = OrientationFilterTypePassThru;
+        }
+        else if (orientation_filter_type == "MadgwickARG")
+        {
+            orientation_filter_enum = OrientationFilterTypeMadgwickARG;
+        }
+        else if (orientation_filter_type == "ComplementaryOpticalARG")
+        {
+            orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
+        }
+        else if (orientation_filter_type == "OrientationKalman")
+        {
+            orientation_filter_enum = OrientationFilterTypeKalman;
+        }
+        else
+        {
+            PSVR_LOG_INFO("pose_filter_factory()") <<
+                "Unknown orientation filter type: " << orientation_filter_type << ". Using default.";
+
+            // fallback to a default based on controller type
+            switch (deviceType)
+            {
+            case CommonSensorState::Morpheus:
+                orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
+                break;
+            case CommonSensorState::VirtualHMD:
+                orientation_filter_enum = OrientationFilterTypePassThru;
+                break;
+            default:
+                assert(0 && "unreachable");
+            }
+        }
+
+        CompoundPoseFilter *compound_pose_filter = new CompoundPoseFilter();
+        compound_pose_filter->init(deviceType, orientation_filter_enum, position_filter_enum, constants);
+        filter = compound_pose_filter;
+    }
 
     assert(filter != nullptr);
 
@@ -993,6 +1037,7 @@ update_filters_for_morpheus_hmd(
 
         if (poseEstimation->bCurrentlyTracking)
         {
+            sensorPacket.optical_tracking_shape_cm= poseEstimation->shape;
             sensorPacket.optical_position_cm =
                 Eigen::Vector3f(
                     poseEstimation->position_cm.x,
@@ -1067,6 +1112,7 @@ update_filters_for_virtual_hmd(
 
         if (poseEstimation->bCurrentlyTracking)
         {
+            sensorPacket.optical_tracking_shape_cm= poseEstimation->shape;
             sensorPacket.optical_position_cm =
                 PSVR_vector3f_to_eigen_vector3(poseEstimation->position_cm);
             sensorPacket.tracking_projection_area_px_sqr = poseEstimation->projection.projections[0].screen_area;

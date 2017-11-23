@@ -24,11 +24,13 @@ const char *AppStage_HMDSettings::APP_STAGE_NAME= "HMDSettings";
 
 //-- constants -----
 const int k_default_hmd_position_filter_index = 3; // LowPassExponential
+const int k_default_virtual_orientation_filter_index = 0; // PassThru
 const int k_default_morpheus_position_filter_index = 5; // PositionKalman
 const int k_default_morpheus_orientation_filter_index = 3; // OrientationKalman
 
 const char* k_hmd_position_filter_names[] = { "PassThru", "LowPassOptical", "LowPassIMU", "LowPassExponential", "ComplimentaryOpticalIMU", "PositionKalman" };
 const char* k_morpheus_orientation_filter_names[] = { "PassThru", "MadgwickARG", "ComplementaryOpticalARG", "OrientationKalman" };
+const char* k_virtual_orientation_filter_names[] = { "PassThru", "OrientationKalman" };
 
 const float k_max_hmd_prediction_time = 0.15f; // About 150ms seems to be about the point where you start to get really bad over-prediction 
 
@@ -312,6 +314,11 @@ void AppStage_HMDSettings::renderUI()
                     strncpy(hmdInfo.hmd_info.position_filter, k_hmd_position_filter_names[hmdInfo.PositionFilterIndex], sizeof(hmdInfo.hmd_info.position_filter));
                     PSVR_SetHmdPositionFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.position_filter);
                 }
+                if (ImGui::Combo("Orientation Filter", &hmdInfo.OrientationFilterIndex, k_virtual_orientation_filter_names, UI_ARRAYSIZE(k_virtual_orientation_filter_names)))
+                {
+                    strncpy(hmdInfo.hmd_info.orientation_filter, k_virtual_orientation_filter_names[hmdInfo.OrientationFilterIndex], sizeof(hmdInfo.hmd_info.orientation_filter));
+                    PSVR_SetHmdOrientationFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.orientation_filter);
+                }
                 if (ImGui::SliderFloat("Prediction Time", &hmdInfo.hmd_info.prediction_time, 0.f, k_max_hmd_prediction_time))
                 {
                     PSVR_SetHmdPredictionTime(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.prediction_time);
@@ -319,9 +326,9 @@ void AppStage_HMDSettings::renderUI()
                 if (ImGui::Button("Reset Filter Defaults"))
                 {
                     hmdInfo.PositionFilterIndex = k_default_hmd_position_filter_index;
-                    hmdInfo.OrientationFilterIndex = k_default_morpheus_position_filter_index;
+                    hmdInfo.OrientationFilterIndex = k_default_virtual_orientation_filter_index;
                     strncpy(hmdInfo.hmd_info.position_filter, k_hmd_position_filter_names[k_default_hmd_position_filter_index], sizeof(hmdInfo.hmd_info.position_filter));
-                    strncpy(hmdInfo.hmd_info.orientation_filter, k_morpheus_orientation_filter_names[k_default_morpheus_position_filter_index], sizeof(hmdInfo.hmd_info.orientation_filter));
+                    strncpy(hmdInfo.hmd_info.orientation_filter, k_virtual_orientation_filter_names[k_default_virtual_orientation_filter_index], sizeof(hmdInfo.hmd_info.orientation_filter));
                     PSVR_SetHmdPositionFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.position_filter);
                     PSVR_SetHmdOrientationFilter(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.orientation_filter);
                 }
@@ -430,6 +437,18 @@ void AppStage_HMDSettings::handle_hmd_list_response(
                     HmdResponse.orientation_filter,
                     k_morpheus_orientation_filter_names,
                     UI_ARRAYSIZE(k_morpheus_orientation_filter_names));
+            if (HmdInfo.OrientationFilterIndex == -1)
+            {
+                HmdInfo.OrientationFilterIndex = 0;
+            }
+        }
+        else if (HmdInfo.hmd_info.hmd_type == PSVRHmd_Virtual)
+        {
+            HmdInfo.OrientationFilterIndex =
+                find_string_entry(
+                    HmdResponse.orientation_filter,
+                    k_virtual_orientation_filter_names,
+                    UI_ARRAYSIZE(k_virtual_orientation_filter_names));
             if (HmdInfo.OrientationFilterIndex == -1)
             {
                 HmdInfo.OrientationFilterIndex = 0;

@@ -32,7 +32,7 @@ bool SphereTrackingModel::init(PSVRTrackingShape *tracking_shape)
     if (tracking_shape->shape_type == PSVRTrackingShape_Sphere &&
         tracking_shape->shape.sphere.radius > k_real_epsilon)
     {
-        m_state->spherePosition= *k_PSVR_float_vector3_zero;
+        m_state->spherePosition= tracking_shape->shape.sphere.center;
         m_state->sphereRadius= tracking_shape->shape.sphere.radius;
         m_state->bIsSpherePositionValid= false;
         bSuccess= true;
@@ -78,6 +78,18 @@ bool SphereTrackingModel::getShapePosition(PSVRVector3f &out_position) const
     if (m_state->bIsSpherePositionValid)
     {
         out_position= m_state->spherePosition;
+    }
+
+    return m_state->bIsSpherePositionValid;
+}
+
+bool SphereTrackingModel::getShape(PSVRTrackingShape &out_shape) const
+{
+    if (m_state->bIsSpherePositionValid)
+    {
+        out_shape.shape_type= PSVRTrackingShape_Sphere;
+        out_shape.shape.sphere.radius= m_state->sphereRadius;
+        out_shape.shape.sphere.center= m_state->spherePosition;
     }
 
     return m_state->bIsSpherePositionValid;

@@ -18,6 +18,7 @@ public:
         const PSVRTrackingProjection &projection) = 0;
     virtual bool getShapeOrientation(PSVRQuatf &out_orientation) const = 0;
     virtual bool getShapePosition(PSVRVector3f &out_position) const = 0;
+    virtual bool getShape(PSVRTrackingShape &out_shape) const = 0;
 };
 
 #endif // SHAPE_TRACKING_MODEL_INTERFACE_H

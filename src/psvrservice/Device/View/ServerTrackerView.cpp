@@ -1386,6 +1386,46 @@ ServerTrackerView::computeProjectionForHmdInSection(
     return bSuccess;
 }
 
+void 
+ServerTrackerView::computeWorldShape(
+    const PSVRTrackingShape *tracker_relative_shape, 
+    PSVRTrackingShape *out_shape) const
+{
+    switch (tracker_relative_shape->shape_type)
+    {
+    case PSVRTrackingShape_Sphere:
+        {            
+            out_shape->shape_type= PSVRTrackingShape_Sphere;
+            out_shape->shape.sphere.radius= tracker_relative_shape->shape.sphere.radius;
+            out_shape->shape.sphere.center= computeWorldPosition(&tracker_relative_shape->shape.sphere.center);
+        } break;
+    case PSVRTrackingShape_LightBar:
+        {
+            out_shape->shape_type= PSVRTrackingShape_LightBar;
+            for (int index = 0; index < TRIANGLE_POINT_COUNT; ++index)
+            {
+                out_shape->shape.lightbar.triangle[index]= 
+                    computeWorldPosition(&tracker_relative_shape->shape.lightbar.triangle[index]);
+            }
+            for (int index = 0; index < QUAD_POINT_COUNT; ++index)
+            {
+                out_shape->shape.lightbar.quad[index]= 
+                    computeWorldPosition(&tracker_relative_shape->shape.lightbar.quad[index]);
+            }
+        } break;
+    case PSVRTrackingShape_PointCloud:
+        {
+            out_shape->shape_type= PSVRTrackingShape_PointCloud;
+            out_shape->shape.pointcloud.point_count= tracker_relative_shape->shape.pointcloud.point_count;
+            for (int index = 0; index < tracker_relative_shape->shape.pointcloud.point_count; ++index)
+            {
+                out_shape->shape.pointcloud.points[index]= 
+                    computeWorldPosition(&tracker_relative_shape->shape.pointcloud.points[index]);
+            }
+        }break;
+    }
+}
+
 PSVRVector3f
 ServerTrackerView::computeWorldPosition(
     const PSVRVector3f *tracker_relative_position) const

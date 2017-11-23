@@ -202,6 +202,7 @@ typedef struct
 {
     union{
         struct {
+            PSVRVector3f center;
             float radius;
         } sphere;
         struct {

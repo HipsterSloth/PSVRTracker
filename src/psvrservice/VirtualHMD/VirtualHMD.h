@@ -21,10 +21,12 @@ public:
 		, is_valid(false)
 		, version(CONFIG_VERSION)
 		, position_filter_type("LowPassOptical")
+        , orientation_filter_type("PassThru")
         , max_velocity(1.f)
 		, mean_update_time_delta(0.008333f)
 		, position_variance_exp_fit_a(0.0994158462f)
 		, position_variance_exp_fit_b(-0.000567041978f)
+        , orientation_variance(0.005f)
         , prediction_time(0.f)
 		, tracking_color_id(PSVRTrackingColorType_Blue)
     {
@@ -50,6 +52,9 @@ public:
 	// The type of position filter to use
 	std::string position_filter_type;
 
+	// The type of orientation filter to use
+	std::string orientation_filter_type;
+
 	// Maximum velocity for the controller physics (meters/second)
 	float max_velocity;
 
@@ -63,6 +68,9 @@ public:
 	inline float get_position_variance(float projection_area) const {
 		return position_variance_exp_fit_a*exp(position_variance_exp_fit_b*projection_area);
 	}
+
+	// The variance of the hmd orientation (when sitting still) in rad^2
+	float orientation_variance;
 
 	float prediction_time;
 
