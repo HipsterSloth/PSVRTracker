@@ -298,14 +298,14 @@ VirtualHMD::getIsOpen() const
     return bIsOpen;
 }
 
-IControllerInterface::ePollResult
+IDeviceInterface::ePollResult
 VirtualHMD::poll()
 {
     IHMDInterface::ePollResult result = IHMDInterface::_PollResultFailure;
 
     if (getIsOpen())
     {
-        VirtualHMDState newState;
+        VirtualHMDSensorState newState;
 
         // New data available. Keep iterating.
         result = IHMDInterface::_PollResultSuccessNewData;
@@ -360,12 +360,12 @@ VirtualHMD::getPredictionTime() const
     return getConfig()->prediction_time;
 }
 
-const CommonDeviceState *
-VirtualHMD::getState(
+const CommonSensorState *
+VirtualHMD::getSensorState(
     int lookBack) const
 {
     const int queueSize = static_cast<int>(HMDStates.size());
-    const CommonDeviceState * result =
+    const CommonSensorState * result =
         (lookBack < queueSize) ? &HMDStates.at(queueSize - lookBack - 1) : nullptr;
 
     return result;

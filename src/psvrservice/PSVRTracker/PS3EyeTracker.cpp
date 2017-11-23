@@ -265,11 +265,11 @@ PS3EyeTracker::~PS3EyeTracker()
 // PSVRTracker
 bool PS3EyeTracker::open() // Opens the first HID device for the tracker
 {
-    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_USB, CommonDeviceState::PS3EYE);
+    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_USB, CommonSensorState::PS3EYE);
     bool success = false;
 
     // Skip over everything that isn't a PS3EYE
-    while (enumerator.is_valid() && enumerator.get_device_type() != CommonDeviceState::PS3EYE)
+    while (enumerator.is_valid() && enumerator.get_device_type() != CommonSensorState::PS3EYE)
     {
         enumerator.next();
     }
@@ -290,7 +290,7 @@ bool PS3EyeTracker::matchesDeviceEnumerator(const DeviceEnumerator *enumerator) 
 
     bool matches = false;
 
-    if (pEnum->get_device_type() == CommonDeviceState::PS3EYE)
+    if (pEnum->get_device_type() == CommonSensorState::PS3EYE)
     {
         std::string enumerator_path = pEnum->get_path();
 
@@ -374,12 +374,12 @@ IDeviceInterface::ePollResult PS3EyeTracker::poll()
             !VideoCapture->retrieve(CaptureData->frame, cv::CAP_OPENNI_BGR_IMAGE))
         {
             // Device still in valid state
-            result = IControllerInterface::_PollResultSuccessNoData;
+            result = IDeviceInterface::_PollResultSuccessNoData;
         }
         else
         {
             // New data available. Keep iterating.
-            result = IControllerInterface::_PollResultSuccessNewData;
+            result = IDeviceInterface::_PollResultSuccessNewData;
         }
 
         {
@@ -425,15 +425,15 @@ long PS3EyeTracker::getMaxPollFailureCount() const
     return cfg.max_poll_failure_count;
 }
 
-CommonDeviceState::eDeviceType PS3EyeTracker::getDeviceType() const
+CommonSensorState::eDeviceType PS3EyeTracker::getDeviceType() const
 {
-    return CommonDeviceState::PS3EYE;
+    return CommonSensorState::PS3EYE;
 }
 
-const CommonDeviceState *PS3EyeTracker::getState(int lookBack) const
+const CommonSensorState *PS3EyeTracker::getSensorState(int lookBack) const
 {
     const int queueSize = static_cast<int>(TrackerStates.size());
-    const CommonDeviceState * result =
+    const CommonSensorState * result =
         (lookBack < queueSize) ? &TrackerStates.at(queueSize - lookBack - 1) : nullptr;
 
     return result;
@@ -685,30 +685,30 @@ void PS3EyeTracker::getZRange(float &outZNear, float &outZFar) const
 }
 
 void PS3EyeTracker::gatherTrackingColorPresets(
-	const std::string &controller_serial, 
+	const std::string &table_name, 
     PSVRClientTrackerSettings* settings) const
 {
-    settings->color_range_table= *cfg.getColorRangeTable(controller_serial);
+    settings->color_range_table= *cfg.getColorRangeTable(table_name);
 }
 
 void PS3EyeTracker::setTrackingColorPreset(
-	const std::string &controller_serial, 
+	const std::string &table_name, 
     PSVRTrackingColorType color, 
     const PSVR_HSVColorRange *preset)
 {
 //    cfg.ColorPresets[color] = *preset; // from generic_camera conflict
-	PSVR_HSVColorRangeTable *table= cfg.getOrAddColorRangeTable(controller_serial);
+	PSVR_HSVColorRangeTable *table= cfg.getOrAddColorRangeTable(table_name);
 
     table->color_presets[color] = *preset;
     cfg.save();
 }
 
 void PS3EyeTracker::getTrackingColorPreset(
-	const std::string &controller_serial, 
+	const std::string &table_name, 
     PSVRTrackingColorType color, 
     PSVR_HSVColorRange *out_preset) const
 {
-	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
+	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(table_name);
 
     *out_preset = table->color_presets[color];
 }

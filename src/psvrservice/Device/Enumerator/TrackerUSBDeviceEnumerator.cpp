@@ -13,7 +13,7 @@
 #endif
 
 // -- macros ----
-#define MAX_CAMERA_TYPE_INDEX               GET_DEVICE_TYPE_INDEX(CommonDeviceState::SUPPORTED_CAMERA_TYPE_COUNT)
+#define MAX_CAMERA_TYPE_INDEX               GET_DEVICE_TYPE_INDEX(CommonSensorState::SUPPORTED_CAMERA_TYPE_COUNT)
 
 // -- globals -----
 struct TrackerFilter
@@ -22,7 +22,7 @@ struct TrackerFilter
 	bool bUSBApiSupported;
 };
 
-// NOTE: This list must match the tracker order in CommonDeviceState::eDeviceType
+// NOTE: This list must match the tracker order in CommonSensorState::eDeviceType
 TrackerFilter k_supported_tracker_infos[MAX_CAMERA_TYPE_INDEX] = {
     {{ 0x1415, 0x2000 }, true}, // PS3Eye
     //{ 0x05a9, 0x058a }, // PS4 Camera - TODO
@@ -30,7 +30,7 @@ TrackerFilter k_supported_tracker_infos[MAX_CAMERA_TYPE_INDEX] = {
 };
 
 // -- private prototypes -----
-static bool is_tracker_supported(USBDeviceEnumerator* enumerator, CommonDeviceState::eDeviceType device_type_filter, CommonDeviceState::eDeviceType &out_device_type);
+static bool is_tracker_supported(USBDeviceEnumerator* enumerator, CommonSensorState::eDeviceType device_type_filter, CommonSensorState::eDeviceType &out_device_type);
 
 // -- methods -----
 TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator()
@@ -40,7 +40,7 @@ TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator()
 {
 	USBDeviceManager *usbRequestMgr = USBDeviceManager::getInstance();
 
-	m_deviceType= CommonDeviceState::PS3EYE;
+	m_deviceType= CommonSensorState::PS3EYE;
 	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
 	m_usb_enumerator = usb_device_enumerator_allocate(DeviceClass::DeviceClass_Camera);
 
@@ -55,14 +55,14 @@ TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator()
 	}
 }
 
-TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator(CommonDeviceState::eDeviceType deviceTypeFilter)
+TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator(CommonSensorState::eDeviceType deviceTypeFilter)
 	: DeviceEnumerator(deviceTypeFilter)
 	, m_usb_enumerator(nullptr)
     , m_cameraIndex(-1)
 {
 	USBDeviceManager *usbRequestMgr = USBDeviceManager::getInstance();
 
-	m_deviceType= CommonDeviceState::PS3EYE;
+	m_deviceType= CommonSensorState::PS3EYE;
 	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
 	m_usb_enumerator = usb_device_enumerator_allocate(DeviceClass::DeviceClass_Camera);
 
@@ -84,7 +84,7 @@ TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator(const std::string &usb_pa
 {
 	USBDeviceManager *usbRequestMgr = USBDeviceManager::getInstance();
 
-	m_deviceType= CommonDeviceState::PS3EYE;
+	m_deviceType= CommonSensorState::PS3EYE;
 	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
 	m_usb_enumerator = usb_device_enumerator_allocate(DeviceClass::DeviceClass_Camera);
 
@@ -213,8 +213,8 @@ bool TrackerUSBDeviceEnumerator::testUSBEnumerator()
 //-- private methods -----
 static bool is_tracker_supported(
 	USBDeviceEnumerator *enumerator, 
-	CommonDeviceState::eDeviceType device_type_filter,
-	CommonDeviceState::eDeviceType &out_device_type)
+	CommonSensorState::eDeviceType device_type_filter,
+	CommonSensorState::eDeviceType &out_device_type)
 {
 	USBDeviceFilter devInfo;
 	bool bIsValidDevice = false;
@@ -230,10 +230,10 @@ static bool is_tracker_supported(
 				devInfo.product_id == supported_type.filter.product_id &&
 				devInfo.vendor_id == supported_type.filter.vendor_id)
 			{
-				CommonDeviceState::eDeviceType device_type = 
-					static_cast<CommonDeviceState::eDeviceType>(CommonDeviceState::TrackingCamera + tracker_type_index);
+				CommonSensorState::eDeviceType device_type = 
+					static_cast<CommonSensorState::eDeviceType>(CommonSensorState::TrackingCamera + tracker_type_index);
 
-				if (device_type_filter == CommonDeviceState::INVALID_DEVICE_TYPE || // i.e. no filter
+				if (device_type_filter == CommonSensorState::INVALID_DEVICE_TYPE || // i.e. no filter
 					device_type_filter == device_type)
 				{
 					out_device_type = device_type;

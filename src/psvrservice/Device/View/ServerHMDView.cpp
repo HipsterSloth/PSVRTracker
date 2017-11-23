@@ -24,15 +24,15 @@ static void init_filters_for_morpheus_hmd(
 static void init_filters_for_virtual_hmd(
     const VirtualHMD *virtualHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
 static IPoseFilter *pose_filter_factory(
-    const CommonDeviceState::eDeviceType deviceType,
+    const CommonSensorState::eDeviceType deviceType,
     const std::string &position_filter_type, const std::string &orientation_filter_type,
     const PoseFilterConstants &constants);
 static void update_filters_for_morpheus_hmd(
-    const MorpheusHMD *morpheusHMD, const MorpheusHMDState *morpheusHMDState,
+    const MorpheusHMD *morpheusHMD, const MorpheusHMDSensorState *morpheusHMDState,
     const float delta_time,
     const HMDOpticalPoseEstimation *poseEstimation, const PoseFilterSpace *poseFilterSpace, IPoseFilter *poseFilter);
 static void update_filters_for_virtual_hmd(
-    const VirtualHMD *virtualHMD, const VirtualHMDState *virtualHMDState,
+    const VirtualHMD *virtualHMD, const VirtualHMDSensorState *virtualHMDState,
     const float delta_time,
     const HMDOpticalPoseEstimation *poseEstimation, const PoseFilterSpace *poseFilterSpace, IPoseFilter *poseFilter);
 static void generate_morpheus_hmd_data_frame_for_stream(
@@ -68,7 +68,7 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
 {
     switch (enumerator->get_device_type())
     {
-    case CommonDeviceState::Morpheus:
+    case CommonSensorState::Morpheus:
         {
             m_device = new MorpheusHMD();
             m_pose_filter = nullptr; // no pose filter until the device is opened
@@ -90,7 +90,7 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
             m_multicam_pose_estimation = new HMDOpticalPoseEstimation();
             m_multicam_pose_estimation->clear();
         } break;
-    case CommonDeviceState::VirtualHMD:
+    case CommonSensorState::VirtualHMD:
         {
             m_device = new VirtualHMD();
             m_pose_filter = nullptr; // no pose filter until the device is opened
@@ -175,8 +175,8 @@ bool ServerHMDView::open(const class DeviceEnumerator *enumerator)
 
         switch (device->getDeviceType())
         {
-        case CommonDeviceState::Morpheus:
-        case CommonDeviceState::VirtualHMD:
+        case CommonSensorState::Morpheus:
+        case CommonSensorState::VirtualHMD:
             {
                 // Create a pose filter based on the HMD type
                 resetPoseFilter();
@@ -254,13 +254,13 @@ void ServerHMDView::resetPoseFilter()
 
     switch (m_device->getDeviceType())
     {
-    case CommonDeviceState::Morpheus:
+    case CommonSensorState::Morpheus:
         {
             const MorpheusHMD *morpheusHMD = this->castCheckedConst<MorpheusHMD>();
 
             init_filters_for_morpheus_hmd(morpheusHMD, &m_pose_filter_space, &m_pose_filter);
         } break;
-    case CommonDeviceState::VirtualHMD:
+    case CommonSensorState::VirtualHMD:
         {
             const VirtualHMD *virtualHMD = this->castCheckedConst<VirtualHMD>();
 
@@ -446,7 +446,7 @@ void ServerHMDView::updateStateAndPredict()
     // newer than the last sequence number we've processed.
     int firstLookBackIndex = -1;
     int testLookBack = 0;
-    const CommonHMDState *state = getState(testLookBack);
+    const CommonHMDSensorState *state = getState(testLookBack);
     while (state != nullptr && state->PollSequenceNumber > m_lastPollSeqNumProcessed)
     {
         firstLookBackIndex = testLookBack;
@@ -480,14 +480,14 @@ void ServerHMDView::updateStateAndPredict()
     // computing the new orientation along the way.
     for (int lookBackIndex = firstLookBackIndex; lookBackIndex >= 0; --lookBackIndex)
     {
-        const CommonHMDState *hmdState = getState(lookBackIndex);
+        const CommonHMDSensorState *hmdState = getState(lookBackIndex);
 
         switch (hmdState->DeviceType)
         {
-        case CommonHMDState::Morpheus:
+        case CommonHMDSensorState::Morpheus:
             {
                 const MorpheusHMD *morpheusHMD = this->castCheckedConst<MorpheusHMD>();
-                const MorpheusHMDState *morpheusHMDState = static_cast<const MorpheusHMDState *>(hmdState);
+                const MorpheusHMDSensorState *morpheusHMDState = static_cast<const MorpheusHMDSensorState *>(hmdState);
 
                 // Only update the position filter when tracking is enabled
                 update_filters_for_morpheus_hmd(
@@ -497,10 +497,10 @@ void ServerHMDView::updateStateAndPredict()
                     m_pose_filter_space,
                     m_pose_filter);
             } break;
-        case CommonHMDState::VirtualHMD:
+        case CommonHMDSensorState::VirtualHMD:
             {
                 const VirtualHMD *virtualHMD = this->castCheckedConst<VirtualHMD>();
-                const VirtualHMDState *virtualHMDState = static_cast<const VirtualHMDState *>(hmdState);
+                const VirtualHMDSensorState *virtualHMDState = static_cast<const VirtualHMDSensorState *>(hmdState);
 
                 // Only update the position filter when tracking is enabled
                 update_filters_for_virtual_hmd(
@@ -592,11 +592,11 @@ ServerHMDView::getConfigIdentifier() const
 
     if (m_device != nullptr)
     {
-        if (m_device->getDeviceType() == CommonDeviceState::Morpheus)
+        if (m_device->getDeviceType() == CommonSensorState::Morpheus)
         {
             identifier = "hmd_morpheus";
         }
-        else if (m_device->getDeviceType() == CommonDeviceState::VirtualHMD)
+        else if (m_device->getDeviceType() == CommonSensorState::VirtualHMD)
         {
             // THe "USB device path" for a Virtual HMD is actually just the Virtual HMD identifier, i.e. "VirtualHMD_0"
             identifier = "hmd_"+m_device->getUSBDevicePath();
@@ -610,7 +610,7 @@ ServerHMDView::getConfigIdentifier() const
     return identifier;
 }
 
-CommonDeviceState::eDeviceType
+CommonSensorState::eDeviceType
 ServerHMDView::getHMDDeviceType() const
 {
     return m_device->getDeviceType();
@@ -618,15 +618,15 @@ ServerHMDView::getHMDDeviceType() const
 
 // Fetch the controller state at the given sample index.
 // A lookBack of 0 corresponds to the most recent data.
-const struct CommonHMDState * ServerHMDView::getState(
+const struct CommonHMDSensorState * ServerHMDView::getState(
     int lookBack) const
 {
-    const struct CommonDeviceState *device_state = m_device->getState(lookBack);
+    const struct CommonSensorState *device_state = m_device->getSensorState(lookBack);
     assert(device_state == nullptr ||
-        ((int)device_state->DeviceType >= (int)CommonDeviceState::HeadMountedDisplay &&
-        device_state->DeviceType < CommonDeviceState::SUPPORTED_HMD_TYPE_COUNT));
+        ((int)device_state->DeviceType >= (int)CommonSensorState::HeadMountedDisplay &&
+        device_state->DeviceType < CommonSensorState::SUPPORTED_HMD_TYPE_COUNT));
 
-    return static_cast<const CommonHMDState *>(device_state);
+    return static_cast<const CommonHMDSensorState *>(device_state);
 }
 
 void ServerHMDView::startTracking()
@@ -656,10 +656,10 @@ void ServerHMDView::set_tracking_enabled_internal(bool bEnabled)
     {
         switch (getHMDDeviceType())
         {
-        case CommonHMDState::Morpheus:
+        case CommonHMDSensorState::Morpheus:
             castChecked<MorpheusHMD>()->setTrackingEnabled(bEnabled);
             break;
-        case CommonHMDState::VirtualHMD:
+        case CommonHMDSensorState::VirtualHMD:
             castChecked<VirtualHMD>()->setTrackingEnabled(bEnabled);
             break;
         default:
@@ -741,11 +741,11 @@ void ServerHMDView::generate_hmd_data_frame_for_stream(
 
     switch (hmd_view->getHMDDeviceType())
     {
-    case CommonHMDState::Morpheus:
+    case CommonHMDSensorState::Morpheus:
         {
             generate_morpheus_hmd_data_frame_for_stream(hmd_view, stream_info, data_frame);
         } break;
-    case CommonHMDState::VirtualHMD:
+    case CommonHMDSensorState::VirtualHMD:
         {
             generate_virtual_hmd_data_frame_for_stream(hmd_view, stream_info, data_frame);
         } break;
@@ -804,7 +804,7 @@ init_filters_for_morpheus_hmd(
 
     *out_pose_filter_space = pose_filter_space;
     *out_pose_filter = pose_filter_factory(
-        CommonDeviceState::eDeviceType::Morpheus,
+        CommonSensorState::eDeviceType::Morpheus,
         hmd_config->position_filter_type,
         hmd_config->orientation_filter_type,
         constants);
@@ -851,7 +851,7 @@ static void init_filters_for_virtual_hmd(
 
     *out_pose_filter_space = pose_filter_space;
     *out_pose_filter = pose_filter_factory(
-        CommonDeviceState::eDeviceType::VirtualHMD,
+        CommonSensorState::eDeviceType::VirtualHMD,
         hmd_config->position_filter_type,
         "PassThru",
         constants);
@@ -859,7 +859,7 @@ static void init_filters_for_virtual_hmd(
 
 static IPoseFilter *
 pose_filter_factory(
-    const CommonDeviceState::eDeviceType deviceType,
+    const CommonSensorState::eDeviceType deviceType,
     const std::string &position_filter_type,
     const std::string &orientation_filter_type,
     const PoseFilterConstants &constants)
@@ -900,8 +900,8 @@ pose_filter_factory(
         // fallback to a default based on hmd type
         switch (deviceType)
         {
-        case CommonDeviceState::Morpheus:
-        case CommonDeviceState::VirtualHMD:
+        case CommonSensorState::Morpheus:
+        case CommonSensorState::VirtualHMD:
             position_filter_enum = PositionFilterTypeLowPassIMU;
             break;
         default:
@@ -939,10 +939,10 @@ pose_filter_factory(
         // fallback to a default based on controller type
         switch (deviceType)
         {
-        case CommonDeviceState::Morpheus:
+        case CommonSensorState::Morpheus:
             orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
             break;
-        case CommonDeviceState::VirtualHMD:
+        case CommonSensorState::VirtualHMD:
             orientation_filter_enum = OrientationFilterTypePassThru;
             break;
         default:
@@ -962,7 +962,7 @@ pose_filter_factory(
 static void
 update_filters_for_morpheus_hmd(
     const MorpheusHMD *morpheusHMD,
-    const MorpheusHMDState *morpheusHMDState,
+    const MorpheusHMDSensorState *morpheusHMDState,
     const float delta_time,
     const HMDOpticalPoseEstimation *poseEstimation,
     const PoseFilterSpace *poseFilterSpace,
@@ -1036,7 +1036,7 @@ update_filters_for_morpheus_hmd(
 static void
 update_filters_for_virtual_hmd(
     const VirtualHMD *virtualHMD,
-    const VirtualHMDState *virtualHMDState,
+    const VirtualHMDSensorState *virtualHMDState,
     const float delta_time,
     const HMDOpticalPoseEstimation *poseEstimation,
     const PoseFilterSpace *poseFilterSpace,
@@ -1101,15 +1101,15 @@ static void generate_morpheus_hmd_data_frame_for_stream(
     const MorpheusHMD *morpheus_hmd = hmd_view->castCheckedConst<MorpheusHMD>();
     const MorpheusHMDConfig *morpheus_config = morpheus_hmd->getConfig();
     const IPoseFilter *pose_filter = hmd_view->getPoseFilter();
-    const CommonHMDState *hmd_state = hmd_view->getState();
+    const CommonHMDSensorState *hmd_state = hmd_view->getState();
     const PSVRPosef hmd_pose = hmd_view->getFilteredPose();
 
     HMDDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
 
     if (hmd_state != nullptr)
     {
-        assert(hmd_state->DeviceType == CommonDeviceState::Morpheus);
-        const MorpheusHMDState * morpheus_hmd_state = static_cast<const MorpheusHMDState *>(hmd_state);
+        assert(hmd_state->DeviceType == CommonSensorState::Morpheus);
+        const MorpheusHMDSensorState * morpheus_hmd_state = static_cast<const MorpheusHMDSensorState *>(hmd_state);
 
         PSVRMorpheus* morpheus_data_frame = &hmd_data_frame->hmd_state.morpheus_state;
 
@@ -1216,15 +1216,15 @@ static void generate_virtual_hmd_data_frame_for_stream(
     const VirtualHMD *virtual_hmd = hmd_view->castCheckedConst<VirtualHMD>();
     const VirtualHMDConfig *virtual_hmd_config = virtual_hmd->getConfig();
     const IPoseFilter *pose_filter = hmd_view->getPoseFilter();
-    const CommonHMDState *hmd_state = hmd_view->getState();
+    const CommonHMDSensorState *hmd_state = hmd_view->getState();
     const PSVRPosef hmd_pose = hmd_view->getFilteredPose();
 
     HMDDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
 
     if (hmd_state != nullptr)
     {
-        assert(hmd_state->DeviceType == CommonDeviceState::VirtualHMD);
-        const VirtualHMDState * virtual_hmd_state = static_cast<const VirtualHMDState *>(hmd_state);
+        assert(hmd_state->DeviceType == CommonSensorState::VirtualHMD);
+        const VirtualHMDSensorState * virtual_hmd_state = static_cast<const VirtualHMDSensorState *>(hmd_state);
 
         PSVRVirtualHMD *virtual_hmd_data_frame = &hmd_data_frame->hmd_state.virtual_hmd_state;
 

@@ -337,7 +337,7 @@ void MorpheusHMDSensorFrame::parse_data_input(
 }
 
 // -- Morpheus HMD State -----
-void MorpheusHMDState::parse_data_input(
+void MorpheusHMDSensorState::parse_data_input(
 	const MorpheusHMDConfig *config, 
 	const struct MorpheusSensorData *data_input)
 {
@@ -531,7 +531,7 @@ MorpheusHMD::getIsOpen() const
     return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != k_invalid_usb_device_handle;
 }
 
-IControllerInterface::ePollResult
+IDeviceInterface::ePollResult
 MorpheusHMD::poll()
 {
 	IHMDInterface::ePollResult result = IHMDInterface::_PollResultFailure;
@@ -578,7 +578,7 @@ MorpheusHMD::poll()
 			}
 
 			// https://github.com/hrl7/node-psvr/blob/master/lib/psvr.js
-			MorpheusHMDState newState;
+			MorpheusHMDSensorState newState;
 
 			// Increment the sequence for every new polling packet
 			newState.PollSequenceNumber = NextPollSequenceNumber;
@@ -635,12 +635,12 @@ MorpheusHMD::getPredictionTime() const
 	return getConfig()->prediction_time;
 }
 
-const CommonDeviceState *
-MorpheusHMD::getState(
+const CommonSensorState *
+MorpheusHMD::getSensorState(
     int lookBack) const
 {
     const int queueSize = static_cast<int>(HMDStates.size());
-    const CommonDeviceState * result =
+    const CommonSensorState * result =
         (lookBack < queueSize) ? &HMDStates.at(queueSize - lookBack - 1) : nullptr;
 
     return result;

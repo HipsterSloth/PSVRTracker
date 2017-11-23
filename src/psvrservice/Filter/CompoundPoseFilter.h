@@ -38,12 +38,12 @@ public:
     { dispose_filters(); }
 
     bool init(
-		const CommonDeviceState::eDeviceType deviceType,
+		const CommonSensorState::eDeviceType deviceType,
         const OrientationFilterType orientationFilterType, 
         const PositionFilterType positionFilterType,
         const PoseFilterConstants &constant);
 	bool init(
-		const CommonDeviceState::eDeviceType deviceType,
+		const CommonSensorState::eDeviceType deviceType,
 		const OrientationFilterType orientationFilterType,
 		const PositionFilterType positionFilterType,
 		const PoseFilterConstants &constant,
@@ -69,7 +69,7 @@ public:
 
 protected:
 	void allocate_filters(
-		const CommonDeviceState::eDeviceType deviceType,
+		const CommonSensorState::eDeviceType deviceType,
 		const OrientationFilterType orientationFilterType,
 		const PositionFilterType positionFilterType,
 		const PoseFilterConstants &constant);

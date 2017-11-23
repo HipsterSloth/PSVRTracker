@@ -7,7 +7,7 @@
 
 // -- public interface --
 bool CompoundPoseFilter::init(
-	const CommonDeviceState::eDeviceType deviceType,
+	const CommonSensorState::eDeviceType deviceType,
 	const OrientationFilterType orientationFilterType,
 	const PositionFilterType positionFilterType,
 	const PoseFilterConstants &constant)
@@ -30,7 +30,7 @@ bool CompoundPoseFilter::init(
 }
 
 bool CompoundPoseFilter::init(
-	const CommonDeviceState::eDeviceType deviceType,
+	const CommonSensorState::eDeviceType deviceType,
 	const OrientationFilterType orientationFilterType,
 	const PositionFilterType positionFilterType,
 	const PoseFilterConstants &constant,
@@ -55,7 +55,7 @@ bool CompoundPoseFilter::init(
 }
 
 void CompoundPoseFilter::allocate_filters(
-	const CommonDeviceState::eDeviceType deviceType,
+	const CommonSensorState::eDeviceType deviceType,
 	const OrientationFilterType orientationFilterType,
 	const PositionFilterType positionFilterType,
 	const PoseFilterConstants &constant)

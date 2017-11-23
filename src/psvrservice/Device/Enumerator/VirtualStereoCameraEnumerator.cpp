@@ -9,9 +9,9 @@ int VirtualStereoCameraEnumerator::virtual_stereo_camera_count= 0;
 
 // -- VirtualControllerDeviceEnumerator -----
 VirtualStereoCameraEnumerator::VirtualStereoCameraEnumerator()
-    : DeviceEnumerator(CommonDeviceState::VirtualStereoCamera)
+    : DeviceEnumerator(CommonSensorState::VirtualStereoCamera)
 {
-	m_deviceType= CommonDeviceState::VirtualStereoCamera;
+	m_deviceType= CommonSensorState::VirtualStereoCamera;
     m_device_index= 0;
 
     m_current_device_identifier= "VirtualStereoCamera_0";

@@ -182,18 +182,18 @@ struct MorpheusHMDSensorFrame
 	void parse_data_input(const MorpheusHMDConfig *config, const struct MorpheusRawSensorFrame *data_input);
 };
 
-struct MorpheusHMDState : public CommonHMDState
+struct MorpheusHMDSensorState : public CommonHMDSensorState
 {
 	std::array< MorpheusHMDSensorFrame, 2> SensorFrames;
 
-    MorpheusHMDState()
+    MorpheusHMDSensorState()
     {
         clear();
     }
 
     void clear()
     {
-        CommonHMDState::clear();
+        CommonHMDSensorState::clear();
 		DeviceType = Morpheus;
 
 		SensorFrames[0].clear();
@@ -220,15 +220,15 @@ public:
     IDeviceInterface::ePollResult poll() override;
     void close() override;
     long getMaxPollFailureCount() const override;
-    CommonDeviceState::eDeviceType getDeviceType() const override
+    CommonSensorState::eDeviceType getDeviceType() const override
     {
-        return CommonDeviceState::Morpheus;
+        return CommonSensorState::Morpheus;
     }
-    static CommonDeviceState::eDeviceType getDeviceTypeStatic()
+    static CommonSensorState::eDeviceType getDeviceTypeStatic()
     {
-        return CommonDeviceState::Morpheus;
+        return CommonSensorState::Morpheus;
     }
-    const CommonDeviceState * getState(int lookBack = 0) const override;
+    const CommonSensorState * getSensorState(int lookBack = 0) const override;
 
     // -- IHMDInterface
     std::string getUSBDevicePath() const override;
@@ -258,7 +258,7 @@ private:
     // Read HMD State
     int NextPollSequenceNumber;
     struct MorpheusSensorData *InData;                        // Buffer to hold most recent MorpheusAPI tracking state
-    std::deque<MorpheusHMDState> HMDStates;
+    std::deque<MorpheusHMDSensorState> HMDStates;
 
 	bool bIsTracking;
 };

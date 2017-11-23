@@ -10,9 +10,9 @@ int VirtualHMDDeviceEnumerator::virtual_hmd_count= 0;
 
 // -- VirtualHMDDeviceEnumerator -----
 VirtualHMDDeviceEnumerator::VirtualHMDDeviceEnumerator()
-    : DeviceEnumerator(CommonDeviceState::VirtualHMD)
+    : DeviceEnumerator(CommonSensorState::VirtualHMD)
 {
-	m_deviceType= CommonDeviceState::VirtualHMD;
+	m_deviceType= CommonSensorState::VirtualHMD;
     m_device_index= 0;
 
     m_current_device_identifier= "VirtualHMD__0";

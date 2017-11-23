@@ -52,7 +52,7 @@ TrackerDeviceEnumerator::TrackerDeviceEnumerator(
 
 TrackerDeviceEnumerator::TrackerDeviceEnumerator(
 	eAPIType _apiType,
-	CommonDeviceState::eDeviceType deviceTypeFilter)
+	CommonSensorState::eDeviceType deviceTypeFilter)
     : DeviceEnumerator(deviceTypeFilter)
 	, api_type(_apiType)
 	, enumerators(nullptr)
@@ -112,7 +112,7 @@ TrackerDeviceEnumerator::TrackerDeviceEnumerator(const std::string &usb_path)
 	}
 	else
 	{
-		m_deviceType= CommonDeviceState::INVALID_DEVICE_TYPE;
+		m_deviceType= CommonSensorState::INVALID_DEVICE_TYPE;
 	}
 }
 
@@ -278,7 +278,7 @@ bool TrackerDeviceEnumerator::next()
 	}
 	else
 	{
-		m_deviceType = CommonDeviceState::SUPPORTED_CAMERA_TYPE_COUNT; // invalid
+		m_deviceType = CommonSensorState::SUPPORTED_CAMERA_TYPE_COUNT; // invalid
 	}
 
     return foundValid;

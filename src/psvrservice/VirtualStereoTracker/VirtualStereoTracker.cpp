@@ -328,11 +328,11 @@ VirtualStereoTracker::~VirtualStereoTracker()
 // PSMoveTracker
 bool VirtualStereoTracker::open() // Opens the first HID device for the tracker
 {
-    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO, CommonDeviceState::VirtualStereoCamera);
+    TrackerDeviceEnumerator enumerator(TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO, CommonSensorState::VirtualStereoCamera);
     bool success = false;
 
     // Skip over everything that isn't a PS3EYE
-    while (enumerator.is_valid() && enumerator.get_device_type() != CommonDeviceState::VirtualStereoCamera)
+    while (enumerator.is_valid() && enumerator.get_device_type() != CommonSensorState::VirtualStereoCamera)
     {
         enumerator.next();
     }
@@ -353,7 +353,7 @@ bool VirtualStereoTracker::matchesDeviceEnumerator(const DeviceEnumerator *enume
 
     bool matches = false;
 
-    if (pEnum->get_device_type() == CommonDeviceState::VirtualStereoCamera)
+    if (pEnum->get_device_type() == CommonSensorState::VirtualStereoCamera)
     {
         std::string enumerator_path = pEnum->get_path();
 
@@ -524,12 +524,12 @@ IDeviceInterface::ePollResult VirtualStereoTracker::poll()
         if (!LeftTracker->poll() || !RightTracker->poll())
         {
             // Device still in valid state
-            result = IControllerInterface::_PollResultSuccessNoData;
+            result = IDeviceInterface::_PollResultSuccessNoData;
         }
         else
         {
             // New data available. Keep iterating.
-            result = IControllerInterface::_PollResultSuccessNewData;
+            result = IDeviceInterface::_PollResultSuccessNewData;
         }
 
         {
@@ -581,15 +581,15 @@ long VirtualStereoTracker::getMaxPollFailureCount() const
     return cfg.max_poll_failure_count;
 }
 
-CommonDeviceState::eDeviceType VirtualStereoTracker::getDeviceType() const
+CommonSensorState::eDeviceType VirtualStereoTracker::getDeviceType() const
 {
-    return CommonDeviceState::VirtualStereoCamera;
+    return CommonSensorState::VirtualStereoCamera;
 }
 
-const CommonDeviceState *VirtualStereoTracker::getState(int lookBack) const
+const CommonSensorState *VirtualStereoTracker::getSensorState(int lookBack) const
 {
     const int queueSize = static_cast<int>(TrackerStates.size());
-    const CommonDeviceState * result =
+    const CommonSensorState * result =
         (lookBack < queueSize) ? &TrackerStates.at(queueSize - lookBack - 1) : nullptr;
 
     return result;

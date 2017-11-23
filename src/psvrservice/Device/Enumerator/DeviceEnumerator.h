@@ -10,11 +10,11 @@ class DeviceEnumerator
 {
 public:
     DeviceEnumerator() 
-		: m_deviceType(CommonDeviceState::INVALID_DEVICE_TYPE)
-		, m_deviceTypeFilter(CommonDeviceState::INVALID_DEVICE_TYPE)
+		: m_deviceType(CommonSensorState::INVALID_DEVICE_TYPE)
+		, m_deviceTypeFilter(CommonSensorState::INVALID_DEVICE_TYPE)
     { }
-    DeviceEnumerator(CommonDeviceState::eDeviceType deviceTypeFilter)
-		: m_deviceType(CommonDeviceState::INVALID_DEVICE_TYPE)
+    DeviceEnumerator(CommonSensorState::eDeviceType deviceTypeFilter)
+		: m_deviceType(CommonSensorState::INVALID_DEVICE_TYPE)
 		, m_deviceTypeFilter(deviceTypeFilter)
     { }
     virtual ~DeviceEnumerator() {}
@@ -25,19 +25,19 @@ public:
 	virtual int get_product_id() const =0;
     virtual const char *get_path() const =0;
     
-    inline CommonDeviceState::eDeviceType get_device_type() const
+    inline CommonSensorState::eDeviceType get_device_type() const
     {
         return m_deviceType;
     }
 
-    inline CommonDeviceState::eDeviceType get_device_type_filter() const
+    inline CommonSensorState::eDeviceType get_device_type_filter() const
     {
         return m_deviceTypeFilter;
     }
 
 protected:
-    CommonDeviceState::eDeviceType m_deviceType;
-	CommonDeviceState::eDeviceType m_deviceTypeFilter;
+    CommonSensorState::eDeviceType m_deviceType;
+	CommonSensorState::eDeviceType m_deviceTypeFilter;
 };
 
 #endif // DEVICE_ENUMERATOR_H

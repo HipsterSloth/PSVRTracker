@@ -70,16 +70,16 @@ public:
     PSVRTrackingShape trackingShape;
 };
 
-struct VirtualHMDState : public CommonHMDState
+struct VirtualHMDSensorState : public CommonHMDSensorState
 {
-    VirtualHMDState()
+    VirtualHMDSensorState()
     {
         clear();
     }
 
     void clear()
     {
-        CommonHMDState::clear();
+        CommonHMDSensorState::clear();
 		DeviceType = VirtualHMD;
     }
 };
@@ -101,15 +101,15 @@ public:
     IDeviceInterface::ePollResult poll() override;
     void close() override;
     long getMaxPollFailureCount() const override;
-    CommonDeviceState::eDeviceType getDeviceType() const override
+    CommonSensorState::eDeviceType getDeviceType() const override
     {
-        return CommonDeviceState::VirtualHMD;
+        return CommonSensorState::VirtualHMD;
     }
-    static CommonDeviceState::eDeviceType getDeviceTypeStatic()
+    static CommonSensorState::eDeviceType getDeviceTypeStatic()
     {
-        return CommonDeviceState::VirtualHMD;
+        return CommonSensorState::VirtualHMD;
     }
-    const CommonDeviceState * getState(int lookBack = 0) const override;
+    const CommonSensorState * getSensorState(int lookBack = 0) const override;
 
     // -- IHMDInterface
     std::string getUSBDevicePath() const override;
@@ -139,7 +139,7 @@ private:
 
     // Read HMD State
     int NextPollSequenceNumber;
-    std::deque<VirtualHMDState> HMDStates;
+    std::deque<VirtualHMDSensorState> HMDStates;
 
 	bool bIsTracking;
 };

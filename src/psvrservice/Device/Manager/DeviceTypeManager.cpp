@@ -154,7 +154,7 @@ DeviceTypeManager::update_connected_devices()
                         if (availableDeviceView->open(enumerator))
                         {
                             const char *device_type_name =
-                                CommonDeviceState::getDeviceTypeString(availableDeviceView->getDevice()->getDeviceType());
+                                CommonSensorState::getDeviceTypeString(availableDeviceView->getDevice()->getDeviceType());
 
                             PSVR_LOG_INFO("DeviceTypeManager::update_connected_devices") <<
                                 "Device device_id " << device_id_ << " (" << device_type_name << ") opened";
@@ -196,7 +196,7 @@ DeviceTypeManager::update_connected_devices()
             if (existingDevice->getIsOpen() && !exists_in_enumerator[device_id])
             {
                 const char *device_type_name =
-                    CommonDeviceState::getDeviceTypeString(existingDevice->getDevice()->getDeviceType());
+                    CommonSensorState::getDeviceTypeString(existingDevice->getDevice()->getDeviceType());
 
                 PSVR_LOG_WARNING("DeviceTypeManager::update_connected_devices") << "Closing device "
                     << device_id << " (" << device_type_name << ") since it's no longer in the device list.";

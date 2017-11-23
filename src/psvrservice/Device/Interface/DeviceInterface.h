@@ -15,7 +15,7 @@ namespace PSVRProtocol
 
 // -- definitions -----
 
-struct CommonDeviceState
+struct CommonSensorState
 {
     enum eDeviceClass
     {
@@ -40,7 +40,7 @@ struct CommonDeviceState
     eDeviceType DeviceType;
     int PollSequenceNumber;
     
-    inline CommonDeviceState()
+    inline CommonSensorState()
     {
         clear();
     }
@@ -80,18 +80,18 @@ struct CommonDeviceState
     }
 };
 
-struct CommonHMDState : CommonDeviceState
+struct CommonHMDSensorState : CommonSensorState
 {
     PSVRPosef Pose;
 
-    inline CommonHMDState()
+    inline CommonHMDSensorState()
     {
         clear();
     }
 
     inline void clear()
     {
-        CommonDeviceState::clear();
+        CommonSensorState::clear();
 
         Pose= *k_PSVR_pose_identity;
     }
@@ -131,64 +131,11 @@ public:
     virtual long getMaxPollFailureCount() const = 0;
     
     // Returns what type of device
-    virtual CommonDeviceState::eDeviceType getDeviceType() const = 0;
+    virtual CommonSensorState::eDeviceType getDeviceType() const = 0;
     
-    // Fetch the device state at the given sample index.
+    // Fetch the device sensor state at the given sample index.
     // A lookBack of 0 corresponds to the most recent data.
-    virtual const CommonDeviceState * getState(int lookBack = 0) const = 0;   
-};
-
-/// Abstract class for controller interface. Implemented in PSVRController.cpp
-class IControllerInterface : public IDeviceInterface
-{
-public:
-    // Sets the address of the bluetooth adapter on the host PC with the controller
-    virtual bool setHostBluetoothAddress(const std::string &address) = 0;
-
-	// Sets the tracking color enum of the controller
-	virtual bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) = 0;
-
-    // -- Getters
-    // Returns true if the device is connected via Bluetooth, false if by USB
-    virtual bool getIsBluetooth() const = 0;
-
-    // Returns the full usb device path for the controller
-    virtual std::string getUSBDevicePath() const = 0;
-
-	// Returns the vendor ID of the controller
-	virtual int getVendorID() const = 0;
-
-	// Returns the product ID of the controller
-	virtual int getProductID() const = 0;
-
-    // Gets the bluetooth address of the adapter on the host PC that's registered with the controller
-    virtual std::string getAssignedHostBluetoothAddress() const = 0;
-
-    // Returns the serial number for the controller
-    virtual std::string getSerial() const  = 0;
-
-    // Get the tracking color of the controller
-    virtual const std::tuple<unsigned char, unsigned char, unsigned char> getColour() const = 0;
-
-    // Get the tracking shape use by the controller
-    virtual void getTrackingShape(PSVRTrackingShape &outTrackingShape) const = 0;
-
-	// Get the tracking color enum of the controller
-	virtual bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const = 0;
-
-	// Get the identity forward direction yaw direction relative to the global +X axis
-	// * 0 degrees would mean that the controller model was pointing down the globals +X axis 
-	//   when the controller had the identity pose 
-	// * 90 degrees would mean that the controller model was pointing down the globals +Z axis 
-	//   when the controller had the identity pose
-	// ...
-	virtual float getIdentityForwardDegrees() const = 0;
-
-	// Get the state prediction time specified in the controller config
-	virtual float getPredictionTime() const = 0;
-
-    // See if the system button was pressed this frame
-    virtual bool getWasSystemButtonPressed() const = 0;
+    virtual const CommonSensorState * getSensorState(int lookBack = 0) const = 0;   
 };
 
 /// Abstract class for Tracker interface. Implemented Tracker classes
@@ -273,9 +220,9 @@ public:
     virtual void getFOV(float &outHFOV, float &outVFOV) const = 0;
     virtual void getZRange(float &outZNear, float &outZFar) const = 0;
 
-    virtual void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const = 0;
-    virtual void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) = 0;
-    virtual void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const = 0;
+    virtual void gatherTrackingColorPresets(const std::string &table_name, PSVRClientTrackerSettings* settings) const = 0;
+    virtual void setTrackingColorPreset(const std::string &table_name, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) = 0;
+    virtual void getTrackingColorPreset(const std::string &table_name, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const = 0;
 };
 
 /// Abstract class for HMD interface. Implemented HMD classes

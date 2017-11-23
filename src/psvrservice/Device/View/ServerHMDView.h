@@ -73,11 +73,11 @@ public:
 	std::string getConfigIdentifier() const;
 
     // Returns what type of HMD this HMD view represents
-    CommonDeviceState::eDeviceType getHMDDeviceType() const;
+    CommonSensorState::eDeviceType getHMDDeviceType() const;
 
     // Fetch the controller state at the given sample index.
     // A lookBack of 0 corresponds to the most recent data.
-    const struct CommonHMDState * getState(int lookBack = 0) const;
+    const struct CommonHMDSensorState * getState(int lookBack = 0) const;
 
 	// Get the tracking is enabled on this controller
 	inline bool getIsTrackingEnabled() const { return m_tracking_enabled && m_multicam_pose_estimation != nullptr; }

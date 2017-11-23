@@ -15,7 +15,7 @@
 #endif
 
 // -- macros ----
-#define MAX_HMD_TYPE_INDEX                  GET_DEVICE_TYPE_INDEX(CommonDeviceState::SUPPORTED_HMD_TYPE_COUNT)
+#define MAX_HMD_TYPE_INDEX                  GET_DEVICE_TYPE_INDEX(CommonSensorState::SUPPORTED_HMD_TYPE_COUNT)
 
 // -- globals -----
 USBDeviceFilter g_supported_hmd_infos[MAX_HMD_TYPE_INDEX] = {
@@ -25,9 +25,9 @@ USBDeviceFilter g_supported_hmd_infos[MAX_HMD_TYPE_INDEX] = {
 
 // -- HMDHidDeviceEnumerator -----
 HidHMDDeviceEnumerator::HidHMDDeviceEnumerator()
-    : DeviceEnumerator(CommonDeviceState::Morpheus)
+    : DeviceEnumerator(CommonSensorState::Morpheus)
 {
-	m_deviceType= CommonDeviceState::Morpheus;
+	m_deviceType= CommonSensorState::Morpheus;
     assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_HMD_TYPE_INDEX);
 
 	build_interface_list();
@@ -62,12 +62,12 @@ bool HidHMDDeviceEnumerator::next()
 {
 	bool foundValid = false;
 
-	while (!foundValid && m_deviceType < CommonDeviceState::SUPPORTED_HMD_TYPE_COUNT)
+	while (!foundValid && m_deviceType < CommonSensorState::SUPPORTED_HMD_TYPE_COUNT)
 	{
-		m_deviceType = static_cast<CommonDeviceState::eDeviceType>(m_deviceType + 1);
+		m_deviceType = static_cast<CommonSensorState::eDeviceType>(m_deviceType + 1);
 
 		if (GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_HMD_TYPE_INDEX && 
-            m_deviceType != CommonDeviceState::VirtualHMD)
+            m_deviceType != CommonSensorState::VirtualHMD)
 		{
 			build_interface_list();
 

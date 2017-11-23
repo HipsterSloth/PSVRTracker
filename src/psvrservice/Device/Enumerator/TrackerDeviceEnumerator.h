@@ -19,7 +19,7 @@ public:
 	};
 
     TrackerDeviceEnumerator(eAPIType api_type);
-    TrackerDeviceEnumerator(eAPIType api_type, CommonDeviceState::eDeviceType deviceTypeFilter);
+    TrackerDeviceEnumerator(eAPIType api_type, CommonSensorState::eDeviceType deviceTypeFilter);
     TrackerDeviceEnumerator(const std::string &usb_path);
 	~TrackerDeviceEnumerator();
 

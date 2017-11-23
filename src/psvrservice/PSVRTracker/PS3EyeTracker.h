@@ -51,7 +51,7 @@ public:
 	static const int LENS_CALIBRATION_VERSION;
 };
 
-struct PS3EyeTrackerState : public CommonDeviceState
+struct PS3EyeTrackerState : public CommonSensorState
 {   
     PS3EyeTrackerState()
     {
@@ -60,8 +60,8 @@ struct PS3EyeTrackerState : public CommonDeviceState
     
     void clear()
     {
-        CommonDeviceState::clear();
-        DeviceType = CommonDeviceState::PS3EYE;
+        CommonSensorState::clear();
+        DeviceType = CommonSensorState::PS3EYE;
     }
 };
 
@@ -81,10 +81,10 @@ public:
     IDeviceInterface::ePollResult poll() override;
     void close() override;
     long getMaxPollFailureCount() const override;
-    static CommonDeviceState::eDeviceType getDeviceTypeStatic()
-    { return CommonDeviceState::PS3EYE; }
-    CommonDeviceState::eDeviceType getDeviceType() const override;
-    const CommonDeviceState *getState(int lookBack = 0) const override;
+    static CommonSensorState::eDeviceType getDeviceTypeStatic()
+    { return CommonSensorState::PS3EYE; }
+    CommonSensorState::eDeviceType getDeviceType() const override;
+    const CommonSensorState *getSensorState(int lookBack = 0) const override;
     
     // -- ITrackerInterface
     ITrackerInterface::eDriverType getDriverType() const override;

@@ -202,7 +202,7 @@ bool HMDDeviceEnumerator::next()
 	}
 	else
 	{
-		m_deviceType = CommonDeviceState::INVALID_DEVICE_TYPE; // invalid
+		m_deviceType = CommonSensorState::INVALID_DEVICE_TYPE; // invalid
 	}
 
     return foundValid;

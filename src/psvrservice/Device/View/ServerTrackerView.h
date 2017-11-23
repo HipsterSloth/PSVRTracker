@@ -37,7 +37,7 @@ public:
     IDeviceInterface* getDevice() const override {return m_device;}
 
     // Returns what type of tracker this tracker view represents
-    CommonDeviceState::eDeviceType getTrackerDeviceType() const;
+    CommonSensorState::eDeviceType getTrackerDeviceType() const;
 
     // Returns what type of driver this tracker uses
     ITrackerInterface::eDriverType getTrackerDriverType() const;

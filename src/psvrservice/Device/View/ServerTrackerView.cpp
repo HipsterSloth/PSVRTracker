@@ -669,7 +669,7 @@ ServerTrackerView::~ServerTrackerView()
     }
 }
 
-CommonDeviceState::eDeviceType
+CommonSensorState::eDeviceType
 ServerTrackerView::getTrackerDeviceType() const
 {
     return m_device->getDeviceType();
@@ -865,11 +865,11 @@ ITrackerInterface *ServerTrackerView::allocate_tracker_interface(const class Dev
 
     switch (enumerator->get_device_type())
     {
-    case CommonDeviceState::PS3EYE:
+    case CommonSensorState::PS3EYE:
         {
             tracker_interface = new PS3EyeTracker();
         } break;
-    case CommonDeviceState::VirtualStereoCamera:
+    case CommonSensorState::VirtualStereoCamera:
         {
             tracker_interface = new VirtualStereoTracker();
         } break;
@@ -933,11 +933,11 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
 
     switch (tracker_view->getTrackerDeviceType())
     {
-    case CommonDeviceState::PS3EYE:
+    case CommonSensorState::PS3EYE:
         {
             //TODO: PS3EYE tracker location
         } break;
-    case CommonDeviceState::VirtualStereoCamera:
+    case CommonSensorState::VirtualStereoCamera:
         {
             //TODO: PS3EYE tracker location
         } break;

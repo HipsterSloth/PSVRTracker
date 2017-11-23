@@ -46,7 +46,7 @@ public:
     static const int CONFIG_VERSION;
 };
 
-struct VirtualStereoTrackerState : public CommonDeviceState
+struct VirtualStereoTrackerState : public CommonSensorState
 {   
     VirtualStereoTrackerState()
     {
@@ -55,8 +55,8 @@ struct VirtualStereoTrackerState : public CommonDeviceState
     
     void clear()
     {
-        CommonDeviceState::clear();
-        DeviceType = CommonDeviceState::VirtualStereoCamera;
+        CommonSensorState::clear();
+        DeviceType = CommonSensorState::VirtualStereoCamera;
     }
 };
 
@@ -76,10 +76,10 @@ public:
     IDeviceInterface::ePollResult poll() override;
     void close() override;
     long getMaxPollFailureCount() const override;
-    static CommonDeviceState::eDeviceType getDeviceTypeStatic()
-    { return CommonDeviceState::VirtualStereoCamera; }
-    CommonDeviceState::eDeviceType getDeviceType() const override;
-    const CommonDeviceState *getState(int lookBack = 0) const override;
+    static CommonSensorState::eDeviceType getDeviceTypeStatic()
+    { return CommonSensorState::VirtualStereoCamera; }
+    CommonSensorState::eDeviceType getDeviceType() const override;
+    const CommonSensorState *getSensorState(int lookBack = 0) const override;
     
     // -- ITrackerInterface
     ITrackerInterface::eDriverType getDriverType() const override;

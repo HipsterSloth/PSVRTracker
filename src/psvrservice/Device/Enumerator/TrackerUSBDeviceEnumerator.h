@@ -10,7 +10,7 @@ class TrackerUSBDeviceEnumerator : public DeviceEnumerator
 {
 public:
     TrackerUSBDeviceEnumerator();
-    TrackerUSBDeviceEnumerator(CommonDeviceState::eDeviceType deviceTypeFilter);
+    TrackerUSBDeviceEnumerator(CommonSensorState::eDeviceType deviceTypeFilter);
     TrackerUSBDeviceEnumerator(const std::string &usb_path);
 	~TrackerUSBDeviceEnumerator();
 

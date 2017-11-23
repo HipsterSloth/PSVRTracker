@@ -153,13 +153,13 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
 
             switch (tracker_view->getTrackerDeviceType())
             {
-            case CommonDeviceState::PS3EYE:
+            case CommonSensorState::PS3EYE:
                 tracker_info->tracker_type= PSVRTracker_PS3Eye;
                 break;
-            case CommonDeviceState::PS4Camera:
+            case CommonSensorState::PS4Camera:
                 tracker_info->tracker_type= PSVRTracker_PS4Camera;
                 break;					
-            case CommonDeviceState::VirtualStereoCamera:
+            case CommonSensorState::VirtualStereoCamera:
                 tracker_info->tracker_type= PSVRTracker_VirtualStereoCamera;
                 break;					
             default:
@@ -611,7 +611,7 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 
             switch (hmd_view->getHMDDeviceType())
             {
-            case CommonHMDState::Morpheus:
+            case CommonHMDSensorState::Morpheus:
                 {
                     const MorpheusHMD *morpheusHMD= hmd_view->castCheckedConst<MorpheusHMD>();
                     const MorpheusHMDConfig *config= morpheusHMD->getConfig();
@@ -622,7 +622,7 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 					strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
                 }
                 break;
-            case CommonHMDState::VirtualHMD:
+            case CommonHMDSensorState::VirtualHMD:
                 {
                     const VirtualHMD *virtualHMD= hmd_view->castCheckedConst<VirtualHMD>();
                     const VirtualHMDConfig *config= virtualHMD->getConfig();
@@ -762,7 +762,7 @@ PSVRResult ServiceRequestHandler::set_hmd_led_tracking_color(
     ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
 
     if (HmdView && 
-        HmdView->getHMDDeviceType() == CommonDeviceState::VirtualHMD)
+        HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
     {
         const PSVRTrackingColorType oldColorID = HmdView->getTrackingColorID();
 
@@ -803,7 +803,7 @@ PSVRResult ServiceRequestHandler::set_hmd_accelerometer_calibration(
 
     ServerHMDViewPtr HMDView = m_deviceManager->getHMDViewPtr(hmd_id);
 
-    if (HMDView && HMDView->getHMDDeviceType() == CommonDeviceState::Morpheus)
+    if (HMDView && HMDView->getHMDDeviceType() == CommonSensorState::Morpheus)
     {
         MorpheusHMD *hmd = HMDView->castChecked<MorpheusHMD>();
         IPoseFilter *poseFilter = HMDView->getPoseFilterMutable();
@@ -840,7 +840,7 @@ PSVRResult ServiceRequestHandler::set_hmd_gyroscope_calibration(
 
     ServerHMDViewPtr HMDView = m_deviceManager->getHMDViewPtr(hmd_id);
 
-    if (HMDView && HMDView->getHMDDeviceType() == CommonDeviceState::Morpheus)
+    if (HMDView && HMDView->getHMDDeviceType() == CommonSensorState::Morpheus)
     {
         MorpheusHMD *hmd = HMDView->castChecked<MorpheusHMD>();
         MorpheusHMDConfig *config = hmd->getConfigMutable();
@@ -869,7 +869,7 @@ PSVRResult ServiceRequestHandler::set_hmd_orientation_filter(
 
     if (HmdView && HmdView->getIsOpen())
     {
-        if (HmdView->getHMDDeviceType() == CommonDeviceState::Morpheus)
+        if (HmdView->getHMDDeviceType() == CommonSensorState::Morpheus)
         {
             MorpheusHMD *hmd = HmdView->castChecked<MorpheusHMD>();
             MorpheusHMDConfig *config = hmd->getConfigMutable();
@@ -899,7 +899,7 @@ PSVRResult ServiceRequestHandler::set_hmd_position_filter(
 
     if (HmdView && HmdView->getIsOpen())
     {
-        if (HmdView->getHMDDeviceType() == CommonDeviceState::Morpheus)
+        if (HmdView->getHMDDeviceType() == CommonSensorState::Morpheus)
         {
             MorpheusHMD *hmd = HmdView->castChecked<MorpheusHMD>();
             MorpheusHMDConfig *config = hmd->getConfigMutable();
@@ -914,7 +914,7 @@ PSVRResult ServiceRequestHandler::set_hmd_position_filter(
 
             result= PSVRResult_Success;
         }
-        else if (HmdView->getHMDDeviceType() == CommonDeviceState::VirtualHMD)
+        else if (HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
         {
             VirtualHMD *hmd = HmdView->castChecked<VirtualHMD>();
             VirtualHMDConfig *config = hmd->getConfigMutable();
@@ -944,7 +944,7 @@ PSVRResult ServiceRequestHandler::set_hmd_prediction_time(
 
     if (HmdView && HmdView->getIsOpen())
     {
-        if (HmdView->getHMDDeviceType() == CommonDeviceState::Morpheus)
+        if (HmdView->getHMDDeviceType() == CommonSensorState::Morpheus)
         {
             MorpheusHMD *hmd = HmdView->castChecked<MorpheusHMD>();
             MorpheusHMDConfig *config = hmd->getConfigMutable();
@@ -957,7 +957,7 @@ PSVRResult ServiceRequestHandler::set_hmd_prediction_time(
 
             result= PSVRResult_Success;
         }
-        else if (HmdView->getHMDDeviceType() == CommonDeviceState::VirtualHMD)
+        else if (HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
         {
             VirtualHMD *hmd = HmdView->castChecked<VirtualHMD>();
             VirtualHMDConfig *config = hmd->getConfigMutable();
