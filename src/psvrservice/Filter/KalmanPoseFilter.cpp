@@ -519,8 +519,8 @@ public:
 
         // Use the orientation from the state for prediction
         const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
-        const Eigen::Quaterniond world_to_local_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
-        const Eigen::Quaterniond local_to_world_orientation = world_to_local_orientation.conjugate();
+        const Eigen::Quaterniond local_to_world_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
+        const Eigen::Quaterniond world_to_local_orientation = world_to_local_orientation.conjugate();
 
         // Use the current linear acceleration from last frame's state
         // and the current orientation from the state to predict
@@ -528,7 +528,7 @@ public:
         const Eigen::Vector3d &gravity_accel_g_units = identity_gravity_direction;
         const Eigen::Vector3d linear_accel_g_units = m_last_world_linear_acceleration_m_per_sec_sqr * k_ms2_to_g_units;
         const Eigen::Vector3d accel_world = linear_accel_g_units + gravity_accel_g_units;
-        const Eigen::Vector3d accel_local = eigen_vector3d_clockwise_rotate(world_to_local_orientation, accel_world);
+        const Eigen::Vector3d accel_local = world_to_local_orientation._transformVector(accel_world);
 
         // Use the angular velocity from the state to predict what the gyro reading will be
         const Eigen::Vector3d gyro_local = x.get_angular_velocity_rad_per_sec();
@@ -642,8 +642,7 @@ public:
 
         // Use the orientation from the state for prediction
         const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
-        const Eigen::Quaterniond world_to_local_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
-        const Eigen::Quaterniond local_to_world_orientation = world_to_local_orientation.conjugate();
+        const Eigen::Quaterniond local_to_world_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
 
         // Compute where we expect to find the tracking leds
         Eigen::Affine3d local_to_world= Eigen::Affine3d::Identity();
