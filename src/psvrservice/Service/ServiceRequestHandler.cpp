@@ -10,6 +10,7 @@
 #include "OrientationFilter.h"
 #include "PositionFilter.h"
 #include "PS3EyeTracker.h"
+#include "PS4CameraTracker.h"
 #include "ServerDeviceView.h"
 #include "ServerTrackerView.h"
 #include "ServerHMDView.h"

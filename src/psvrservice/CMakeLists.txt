@@ -151,12 +151,14 @@ list(APPEND PSVR_SERVICE_REQ_LIBS ${LIBUSB_LIBRARIES})
 # Platform Specific Device Management
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     # Windows utilities for querying driver infomation (provider name)
-    list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Platform)
-    list(APPEND PSVR_SERVICE_SRC
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.h
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBApi.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBBulkTransferBundle.cpp)
+    list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Platform)	
+	file(GLOB PSVR_WIN32_PLATFORM_SRC
+		"${CMAKE_CURRENT_LIST_DIR}/Platform/*.cpp"
+		"${CMAKE_CURRENT_LIST_DIR}/Platform/*.h"
+	)	
+    list(APPEND PSVR_SERVICE_SRC ${PSVR_WIN32_PLATFORM_SRC})	
+	source_group("Device\\USB" FILES ${PSVR_WIN32_PLATFORM_SRC})
+		
 ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ELSE()
 ENDIF()
@@ -224,6 +226,12 @@ set_target_properties(PSVRService PROPERTIES PUBLIC_HEADER "ClientAPI/ClientCons
 set_target_properties(PSVRService PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(PSVRService PROPERTIES C_VISIBILITY_PRESET hidden)	
 
+# Post build dependencies (resources)
+add_custom_command(TARGET PSVRService POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${ROOT_DIR}/thirdparty/PS4-Eye-Driver/opencv_test/resources"
+        $<TARGET_FILE_DIR:PSVRService>/resources)        
+		
 # Install
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     install(TARGETS PSVRService
@@ -237,6 +245,14 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         RUNTIME DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/bin
         LIBRARY DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/lib
         ARCHIVE DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/lib
-		PUBLIC_HEADER DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/include)        
+		PUBLIC_HEADER DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/include)  
+    install(DIRECTORY ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/opencv_test/resources/ 
+            CONFIGURATIONS Debug
+            DESTINATION ${PSVR_DEBUG_INSTALL_PATH}/bin/resources
+            FILES_MATCHING PATTERN "*.bin")		
+    install(DIRECTORY ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/opencv_test/resources/ 
+            CONFIGURATIONS Release
+            DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/bin/resources
+            FILES_MATCHING PATTERN "*.bin")
 ELSE() #Linux/Darwin
 ENDIF()

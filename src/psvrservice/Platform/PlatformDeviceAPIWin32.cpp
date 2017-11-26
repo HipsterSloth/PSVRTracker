@@ -27,7 +27,7 @@ const char *k_reg_property_vendor = "Vendor";
 GUID GUID_DEVCLASS_IMAGE = { 0x6bdd1fc6, 0x810f, 0x11d0, 0xbe, 0xc7, 0x08, 0x00, 0x2b, 0xe2, 0x09, 0x2f };
 GUID GUID_DEVCLASS_HID = { 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 };
 GUID GUID_DEVCLASS_USB_RAW = { 0xa5dcbf10, 0x6530, 0x11d2, 0x90, 0x1f, 0x00, 0xc0, 0x4f, 0xb9, 0x51, 0xed };
-
+GUID GUID_DEVCLASS_LIBUSB = { 0xeb781aaf, 0x9c70, 0x4523, 0xa5, 0xdf, 0x64, 0x2a, 0x87, 0xec, 0xa5, 0x67 };
 
 #define CLS_NAME "DEVICE_LISTENER_CLASS"
 #define HWND_MESSAGE     ((HWND)-3)
@@ -219,6 +219,10 @@ const void* PlatformDeviceAPIWin32::get_device_class_platform_identifier(
 		break;
     case DeviceClass::DeviceClass_RawUSB:
         result = &GUID_DEVCLASS_USB_RAW;
+        break;
+    case DeviceClass::DeviceClass_LibUSB:
+        result = &GUID_DEVCLASS_LIBUSB;
+        break;
 	default:
 		assert(0 && "Unhandled device class type");
 	}

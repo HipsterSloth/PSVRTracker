@@ -26,8 +26,8 @@ struct CommonSensorState
     enum eDeviceType
     {       
         PS3EYE = TrackingCamera + 0x00,
-        VirtualStereoCamera = TrackingCamera + 0x01,
-        PS4Camera = TrackingCamera + 0x02,
+        PS4Camera = TrackingCamera + 0x01,
+        VirtualStereoCamera = TrackingCamera + 0x02,
         SUPPORTED_CAMERA_TYPE_COUNT = TrackingCamera + 0x03,
         
         Morpheus = HeadMountedDisplay + 0x00,
@@ -60,11 +60,11 @@ struct CommonSensorState
         case PS3EYE:
             result = "PSEYE";
             break;
-        case VirtualStereoCamera:
-            result = "VirtualStereoCamera";
-            break;
         case PS4Camera:
             result = "PS4Camera";
+            break;
+        case VirtualStereoCamera:
+            result = "VirtualStereoCamera";
             break;
         case Morpheus:
             result = "Morpheus";

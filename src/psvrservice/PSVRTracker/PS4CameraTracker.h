@@ -1,5 +1,5 @@
-#ifndef PS3EYE_TRACKER_H
-#define PS3EYE_TRACKER_H
+#ifndef PS4CAMERA_TRACKER_H
+#define PS4CAMERA_TRACKER_H
 
 // -- includes -----
 #include "PSVRConfig.h"
@@ -9,19 +9,16 @@
 #include <vector>
 #include <deque>
 
+// -- pre-declarations -----
+namespace cv {
+    class VideoCapture;
+}
+
 // -- definitions -----
-class PS3EyeTrackerConfig : public PSVRConfig
+class PS4CameraTrackerConfig : public PSVRConfig
 {
 public:
-    enum eFOVSetting
-    {
-        RedDot, // 56 degree FOV
-        BlueDot, // 75 degree FOV
-        
-        MAX_FOV_SETTINGS
-    };
-
-    PS3EyeTrackerConfig(const std::string &fnamebase = "PS3EyeTrackerConfig");
+    PS4CameraTrackerConfig(const std::string &fnamebase = "PS4CameraTrackerConfig");
     
     virtual const configuru::Config writeToJSON();
     virtual void readFromJSON(const configuru::Config &pt);
@@ -35,8 +32,7 @@ public:
     double exposure;
 	double gain;
 
-    eFOVSetting fovSetting;    
-    PSVRMonoTrackerIntrinsics trackerIntrinsics;
+    PSVRStereoTrackerIntrinsics trackerIntrinsics;
     PSVRPosef pose;
 	PSVR_HSVColorRangeTable SharedColorPresets;
 	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
@@ -45,9 +41,9 @@ public:
 	static const int LENS_CALIBRATION_VERSION;
 };
 
-struct PS3EyeTrackerState : public CommonSensorState
+struct PS4CameraTrackerState : public CommonSensorState
 {   
-    PS3EyeTrackerState()
+    PS4CameraTrackerState()
     {
         clear();
     }
@@ -59,11 +55,13 @@ struct PS3EyeTrackerState : public CommonSensorState
     }
 };
 
-class PS3EyeTracker : public ITrackerInterface {
+class PS4CameraTracker : public ITrackerInterface {
 public:
-    PS3EyeTracker();
-    virtual ~PS3EyeTracker();
-        
+    PS4CameraTracker();
+    virtual ~PS4CameraTracker();
+
+    static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path);
+
     // PSVRTracker
     bool open(); // Opens the first HID device for the controller
     
@@ -76,7 +74,7 @@ public:
     void close() override;
     long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
-    { return CommonSensorState::PS3EYE; }
+    { return CommonSensorState::PS4Camera; }
     CommonSensorState::eDeviceType getDeviceType() const override;
     const CommonSensorState *getSensorState(int lookBack = 0) const override;
     
@@ -84,7 +82,7 @@ public:
     ITrackerInterface::eDriverType getDriverType() const override;
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
-    bool getIsStereoCamera() const override { return false; }
+    bool getIsStereoCamera() const override { return true; }
     const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const override;
     void loadSettings() override;
     void saveSettings() override;
@@ -109,18 +107,17 @@ public:
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;
 
     // -- Getters
-    inline const PS3EyeTrackerConfig &getConfig() const
+    inline const PS4CameraTrackerConfig &getConfig() const
     { return cfg; }
 
 private:
-    PS3EyeTrackerConfig cfg;
+    PS4CameraTrackerConfig cfg;
     std::string USBDevicePath;
-    class PSEyeVideoCapture *VideoCapture;
-    class PSEyeCaptureData *CaptureData;
-    ITrackerInterface::eDriverType DriverType;    
+    class cv::VideoCapture *VideoCapture;
+    class PS4CameraCaptureData *CaptureData;
     
     // Read Controller State
     int NextPollSequenceNumber;
-    std::deque<PS3EyeTrackerState> TrackerStates;
+    std::deque<PS4CameraTrackerState> TrackerStates;
 };
-#endif // PS3EYE_TRACKER_H
+#endif // PS4CAMERA_TRACKER_H

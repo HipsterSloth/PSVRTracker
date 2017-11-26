@@ -31,6 +31,98 @@ GUID WINUSB_GUID_DEVCLASS_IMAGE = { 0x6bdd1fc6, 0x810f, 0x11d0, 0xbe, 0xc7, 0x08
 GUID WINUSB_GUID_DEVCLASS_HID = { 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 };
 GUID WINUSB_GUID_DEVCLASS_USB_RAW = { 0xa5dcbf10, 0x6530, 0x11d2, 0x90, 0x1f, 0x00, 0xc0, 0x4f, 0xb9, 0x51, 0xed };
 
+enum libusb_endpoint_direction {
+	/** In: device-to-host */
+	LIBUSB_ENDPOINT_IN = 0x80,
+
+	/** Out: host-to-device */
+	LIBUSB_ENDPOINT_OUT = 0x00
+};
+	
+/** \ingroup libusb_misc
+ * Request type bits of the
+ * \ref libusb_control_setup::bmRequestType "bmRequestType" field in control
+ * transfers. */
+enum libusb_request_type {
+	/** Standard */
+	LIBUSB_REQUEST_TYPE_STANDARD = (0x00 << 5),
+
+	/** Class */
+	LIBUSB_REQUEST_TYPE_CLASS = (0x01 << 5),
+
+	/** Vendor */
+	LIBUSB_REQUEST_TYPE_VENDOR = (0x02 << 5),
+
+	/** Reserved */
+	LIBUSB_REQUEST_TYPE_RESERVED = (0x03 << 5)
+};
+
+/** \ingroup libusb_misc
+ * Recipient bits of the
+ * \ref libusb_control_setup::bmRequestType "bmRequestType" field in control
+ * transfers. Values 4 through 31 are reserved. */
+enum libusb_request_recipient {
+	/** Device */
+	LIBUSB_RECIPIENT_DEVICE = 0x00,
+
+	/** Interface */
+	LIBUSB_RECIPIENT_INTERFACE = 0x01,
+
+	/** Endpoint */
+	LIBUSB_RECIPIENT_ENDPOINT = 0x02,
+
+	/** Other */
+	LIBUSB_RECIPIENT_OTHER = 0x03,
+};
+
+/** \ingroup libusb_misc
+ * Standard requests, as defined in table 9-5 of the USB 3.0 specifications */
+enum libusb_standard_request {
+	/** Request status of the specific recipient */
+	LIBUSB_REQUEST_GET_STATUS = 0x00,
+
+	/** Clear or disable a specific feature */
+	LIBUSB_REQUEST_CLEAR_FEATURE = 0x01,
+
+	/* 0x02 is reserved */
+
+	/** Set or enable a specific feature */
+	LIBUSB_REQUEST_SET_FEATURE = 0x03,
+
+	/* 0x04 is reserved */
+
+	/** Set device address for all future accesses */
+	LIBUSB_REQUEST_SET_ADDRESS = 0x05,
+
+	/** Get the specified descriptor */
+	LIBUSB_REQUEST_GET_DESCRIPTOR = 0x06,
+
+	/** Used to update existing descriptors or add new descriptors */
+	LIBUSB_REQUEST_SET_DESCRIPTOR = 0x07,
+
+	/** Get the current device configuration value */
+	LIBUSB_REQUEST_GET_CONFIGURATION = 0x08,
+
+	/** Set device configuration */
+	LIBUSB_REQUEST_SET_CONFIGURATION = 0x09,
+
+	/** Return the selected alternate setting for the specified interface */
+	LIBUSB_REQUEST_GET_INTERFACE = 0x0A,
+
+	/** Select an alternate interface for the specified interface */
+	LIBUSB_REQUEST_SET_INTERFACE = 0x0B,
+
+	/** Set then report an endpoint's synchronization frame */
+	LIBUSB_REQUEST_SYNCH_FRAME = 0x0C,
+
+	/** Sets both the U1 and U2 Exit Latency */
+	LIBUSB_REQUEST_SET_SEL = 0x30,
+
+	/** Delay from the time a host transmits a packet to the time it is
+	  * received by the device. */
+	LIBUSB_SET_ISOCH_DELAY = 0x31,
+};
+
 //-- public interface -----
 
 //-- definitions -----
@@ -331,10 +423,24 @@ void WinUSBApi::device_enumerator_dispose(USBDeviceEnumerator* enumerator)
     }
 }
 
-USBDeviceState *WinUSBApi::open_usb_device(USBDeviceEnumerator* enumerator, int interface_index)
+USBDeviceState *WinUSBApi::open_usb_device(
+    USBDeviceEnumerator* enumerator, 
+    int interface_index,
+    int configuration_index,
+    bool reset_device)
 {
     WinUSBDeviceEnumerator *winusb_enumerator = static_cast<WinUSBDeviceEnumerator *>(enumerator);
 	WinUSBDeviceState *winusb_device_state = nullptr;
+
+    // RE: reset_device
+    /*
+    * from the "How to Use WinUSB to Communicate with a USB Device" Microsoft white paper
+    * (http://www.microsoft.com/whdc/connect/usb/winusb_howto.mspx):
+    * "WinUSB does not support host-initiated reset port and cycle port operations" and
+    * IOCTL_INTERNAL_USB_CYCLE_PORT is only available in kernel mode and the
+    * IOCTL_USB_HUB_CYCLE_PORT ioctl was removed from Vista => the best we can do is
+    * cycle the pipes (and even then, the control pipe can not be reset using WinUSB)
+    */
 
 	if (device_enumerator_is_valid(enumerator) && 
         (winusb_enumerator->getCompositeInterfaceIndex() == interface_index ||
@@ -364,8 +470,39 @@ USBDeviceState *WinUSBApi::open_usb_device(USBDeviceEnumerator* enumerator, int 
         {
             if (WinUsb_Initialize(winusb_device_state->device_handle, &winusb_device_state->interface_handle) == TRUE)
             {
-                ULONG length = sizeof(UCHAR);
+                // Set the configuration index on the device if one was given
+                if (configuration_index != -1)
+                {
+                    // Mirroring what LibUSB does to set the configuration
+                    // From: https://msdn.microsoft.com/en-us/library/ff539241.aspx:
+                    // "The port driver does not currently expose a service that allows higher-level drivers to set the configuration"
+                    WINUSB_SETUP_PACKET setupPacket;
+                    memset(&setupPacket, 0, sizeof(WINUSB_SETUP_PACKET));
+                    setupPacket.RequestType = USB_ENDPOINT_OUT | USB_REQUEST_TYPE_STANDARD | USB_RECIPIENT_DEVICE;
+                    setupPacket.Request = USB_REQUEST_SET_CONFIGURATION;
+                    setupPacket.Index = 0;
+                    setupPacket.Length = 0;
+                    setupPacket.Value = static_cast<USHORT>(configuration_index);
 
+                    if (WinUsb_ControlTransfer(
+                            winusb_device_state->interface_handle,
+                            setupPacket,
+                            nullptr,
+                            0,
+                            nullptr,
+                            nullptr) == FALSE)
+                    {
+                        #if defined(DEBUG_USB)
+                        DWORD LastErrorCode= GetLastError();
+		                debug("USBMgr RESULT: Failed to set configuration index(%d) - dev: %d, error: 0x%x\n",
+                            configuration_index,
+			                request.usb_device_handle,
+                            LastErrorCode);
+                        #endif
+                    }                
+                }
+
+                ULONG length = sizeof(UCHAR);
                 if (WinUsb_QueryDeviceInformation(
                         winusb_device_state->interface_handle,
                         DEVICE_SPEED, 

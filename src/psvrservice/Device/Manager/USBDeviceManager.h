@@ -75,7 +75,11 @@ void usb_device_enumerator_free(struct USBDeviceEnumerator* enumerator);
 bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize);
 
 // -- Device Actions ----
-t_usb_device_handle usb_device_open(struct USBDeviceEnumerator* enumerator, int interface_index);
+t_usb_device_handle usb_device_open(
+    struct USBDeviceEnumerator* enumerator, 
+    int interface_index= 0,
+    int configuration_index = -1,
+    bool reset_device = false);
 void usb_device_close(t_usb_device_handle usb_device_handle);
 
 // Send the transfer request to the worker thread asynchronously

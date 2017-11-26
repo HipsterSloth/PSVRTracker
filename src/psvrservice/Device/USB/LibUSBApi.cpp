@@ -177,7 +177,11 @@ void LibUSBApi::device_enumerator_dispose(USBDeviceEnumerator* enumerator)
 	delete libusb_enumerator;
 }
 
-USBDeviceState *LibUSBApi::open_usb_device(USBDeviceEnumerator* enumerator, int interface_index)
+USBDeviceState *LibUSBApi::open_usb_device(
+    USBDeviceEnumerator* enumerator, 
+    int interface_index,
+    int configuration_index,
+    bool reset_device)
 {
 	LibUSBDeviceEnumerator *libusb_enumerator = static_cast<LibUSBDeviceEnumerator *>(enumerator);
 	LibUSBDeviceState *libusb_device_state = nullptr;
@@ -195,6 +199,16 @@ USBDeviceState *LibUSBApi::open_usb_device(USBDeviceEnumerator* enumerator, int 
 		int res = libusb_open(libusb_device_state->device, &libusb_device_state->device_handle);
 		if (res == LIBUSB_SUCCESS)
 		{
+            if (reset_device)
+            {
+	            libusb_reset_device(libusb_device_state->device_handle);
+            }
+
+            if (configuration_index >= 0)
+            {
+	            libusb_set_configuration(libusb_device_state->device_handle, configuration_index);
+            }
+
 			res = libusb_claim_interface(libusb_device_state->device_handle, interface_index);
 			if (res == 0)
 			{

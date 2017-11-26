@@ -5,6 +5,7 @@
 #include "DeviceManager.h"
 #include "HMDManager.h"
 #include "Logger.h"
+#include "PS4CameraTracker.h"
 #include "ServerHMDView.h"
 #include "ServerTrackerView.h"
 #include "ServerDeviceView.h"
@@ -24,19 +25,19 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
 {
     virtual_stereo_tracker_count= 0;
     optical_tracking_timeout= 100;
-	tracker_sleep_ms = 1;
-	use_bgr_to_hsv_lookup_table = true;
-	min_valid_projection_area= 16;
-	disable_roi = false;
-	default_tracker_profile.frame_width = 640;
-	default_tracker_profile.frame_rate = 40;
+    tracker_sleep_ms = 1;
+    use_bgr_to_hsv_lookup_table = true;
+    min_valid_projection_area= 16;
+    disable_roi = false;
+    default_tracker_profile.frame_width = 640;
+    default_tracker_profile.frame_rate = 40;
     default_tracker_profile.exposure = 32;
     default_tracker_profile.gain = 32;
-	strncpy(
+    strncpy(
         default_tracker_profile.color_preset_table.table_name, 
         "default_tracker_profile", 
         sizeof(default_tracker_profile.color_preset_table.table_name));
-	global_forward_degrees = 0.f;
+    global_forward_degrees = 0.f;
     for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
     {
         default_tracker_profile.color_preset_table.color_presets[preset_index] = k_default_color_presets[preset_index];
@@ -49,19 +50,19 @@ TrackerManagerConfig::writeToJSON()
     configuru::Config pt{
         {"version", TrackerManagerConfig::CONFIG_VERSION},
         {"optical_tracking_timeout", optical_tracking_timeout},
-	    {"use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table},
-	    {"tracker_sleep_ms", tracker_sleep_ms},
-	    {"min_valid_projection_area", min_valid_projection_area},	
-	    {"disable_roi", disable_roi},
-	    {"default_tracker_profile.frame_width", default_tracker_profile.frame_width},
-	    {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
+        {"use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table},
+        {"tracker_sleep_ms", tracker_sleep_ms},
+        {"min_valid_projection_area", min_valid_projection_area},	
+        {"disable_roi", disable_roi},
+        {"default_tracker_profile.frame_width", default_tracker_profile.frame_width},
+        {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
         {"default_tracker_profile.exposure", default_tracker_profile.exposure},
         {"default_tracker_profile.gain", default_tracker_profile.gain},
-	    {"global_forward_degrees", global_forward_degrees},
-		{"virtual_stereo_tracker_count", virtual_stereo_tracker_count}
+        {"global_forward_degrees", global_forward_degrees},
+        {"virtual_stereo_tracker_count", virtual_stereo_tracker_count}
     };
 
-	writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
+    writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
 
     return pt;
 }
@@ -73,20 +74,20 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
 
     if (version == TrackerManagerConfig::CONFIG_VERSION)
     {
-		virtual_stereo_tracker_count = pt.get_or<int>("virtual_stereo_tracker_count", virtual_stereo_tracker_count);
+        virtual_stereo_tracker_count = pt.get_or<int>("virtual_stereo_tracker_count", virtual_stereo_tracker_count);
         optical_tracking_timeout= pt.get_or<int>("optical_tracking_timeout", optical_tracking_timeout);
-		use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
-		tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
-		min_valid_projection_area = pt.get_or<float>("min_valid_projection_area", min_valid_projection_area);	
-		disable_roi = pt.get_or<bool>("disable_roi", disable_roi);
-		default_tracker_profile.frame_width = pt.get_or<float>("default_tracker_profile.frame_width", 640);
-		default_tracker_profile.frame_rate = pt.get_or<float>("default_tracker_profile.frame_rate", 40);
+        use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
+        tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
+        min_valid_projection_area = pt.get_or<float>("min_valid_projection_area", min_valid_projection_area);	
+        disable_roi = pt.get_or<bool>("disable_roi", disable_roi);
+        default_tracker_profile.frame_width = pt.get_or<float>("default_tracker_profile.frame_width", 640);
+        default_tracker_profile.frame_rate = pt.get_or<float>("default_tracker_profile.frame_rate", 40);
         default_tracker_profile.exposure = pt.get_or<float>("default_tracker_profile.exposure", 32);
         default_tracker_profile.gain = pt.get_or<float>("default_tracker_profile.gain", 32);
 
-		global_forward_degrees= pt.get_or<float>("global_forward_degrees", global_forward_degrees);
+        global_forward_degrees= pt.get_or<float>("global_forward_degrees", global_forward_degrees);
 
-		readColorPropertyPresetTable(pt, &default_tracker_profile.color_preset_table);
+        readColorPropertyPresetTable(pt, &default_tracker_profile.color_preset_table);
     }
     else
     {
@@ -146,8 +147,8 @@ TrackerManager::startup()
 
     if (bSuccess)
     {
-		// Load any config from disk
-		cfg.load();
+        // Load any config from disk
+        cfg.load();
 
         // Save back out the config in case there were updated defaults
         cfg.save();
@@ -155,6 +156,9 @@ TrackerManager::startup()
         // Copy the virtual stereo camera count into the Virtual Stereo Camera Enumerator's static variable.
         // This breaks the dependency between the Tracker Manager and the enumerator.
         VirtualStereoCameraEnumerator::virtual_stereo_camera_count= cfg.virtual_stereo_tracker_count;
+
+        // The PS4 camera needs firmware uploaded first before it will show up as a connected device
+        PS4CameraTracker::uploadFirmwareToAllPS4Cameras("resources/firmware.bin");
 
         // Refresh the tracker list
         mark_tracker_list_dirty();

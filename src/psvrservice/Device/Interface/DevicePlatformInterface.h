@@ -12,6 +12,7 @@ enum DeviceClass
 	DeviceClass_Camera,
 	DeviceClass_HID,
     DeviceClass_RawUSB,
+    DeviceClass_LibUSB,
 
 	k_max_supported_device_classes
 };

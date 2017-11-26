@@ -55,6 +55,54 @@ enum usb_request_recipient
 	USB_RECIPIENT_OTHER = 0x03,
 };
 
+// Standard requests, as defined in table 9-5 of the USB 3.0 specifications
+enum usb_standard_request 
+{
+	/** Request status of the specific recipient */
+	USB_REQUEST_GET_STATUS = 0x00,
+
+	/** Clear or disable a specific feature */
+	USB_REQUEST_CLEAR_FEATURE = 0x01,
+
+	/* 0x02 is reserved */
+
+	/** Set or enable a specific feature */
+	USB_REQUEST_SET_FEATURE = 0x03,
+
+	/* 0x04 is reserved */
+
+	/** Set device address for all future accesses */
+	USB_REQUEST_SET_ADDRESS = 0x05,
+
+	/** Get the specified descriptor */
+	USB_REQUEST_GET_DESCRIPTOR = 0x06,
+
+	/** Used to update existing descriptors or add new descriptors */
+	USB_REQUEST_SET_DESCRIPTOR = 0x07,
+
+	/** Get the current device configuration value */
+	USB_REQUEST_GET_CONFIGURATION = 0x08,
+
+	/** Set device configuration */
+	USB_REQUEST_SET_CONFIGURATION = 0x09,
+
+	/** Return the selected alternate setting for the specified interface */
+	USB_REQUEST_GET_INTERFACE = 0x0A,
+
+	/** Select an alternate interface for the specified interface */
+	USB_REQUEST_SET_INTERFACE = 0x0B,
+
+	/** Set then report an endpoint's synchronization frame */
+	USB_REQUEST_SYNCH_FRAME = 0x0C,
+
+	/** Sets both the U1 and U2 Exit Latency */
+	USB_REQUEST_SET_SEL = 0x30,
+
+	/** Delay from the time a host transmits a packet to the time it is
+	  * received by the device. */
+	USB_SET_ISOCH_DELAY = 0x31,
+};
+
 #define USB_CTRL_IN                   USB_ENDPOINT_IN|USB_REQUEST_TYPE_CLASS|USB_RECIPIENT_INTERFACE 
 #define USB_CTRL_OUT                  USB_ENDPOINT_OUT|USB_REQUEST_TYPE_CLASS|USB_RECIPIENT_INTERFACE 
 
@@ -75,9 +123,9 @@ enum eUSBTransferResultType
     _USBResultType_BulkTransferBundle
 };
 
-#define MAX_INTERRUPT_TRANSFER_PAYLOAD  64
-#define MAX_CONTROL_TRANSFER_PAYLOAD    64
-#define MAX_BULK_TRANSFER_PAYLOAD       256
+#define MAX_INTERRUPT_TRANSFER_PAYLOAD  512
+#define MAX_CONTROL_TRANSFER_PAYLOAD    512
+#define MAX_BULK_TRANSFER_PAYLOAD       512
 
 //-- typedefs -----
 typedef void(*usb_bulk_transfer_cb_fn)(unsigned char *packet_data, int packet_length, void *userdata);

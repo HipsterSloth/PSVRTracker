@@ -20,17 +20,22 @@ struct TrackerFilter
 {
 	USBDeviceFilter filter;
 	bool bUSBApiSupported;
+    bool bTestCanOpen;
 };
 
 // NOTE: This list must match the tracker order in CommonSensorState::eDeviceType
 TrackerFilter k_supported_tracker_infos[MAX_CAMERA_TYPE_INDEX] = {
-    {{ 0x1415, 0x2000 }, true}, // PS3Eye
-    //{ 0x05a9, 0x058a }, // PS4 Camera - TODO
-    {{ 0x0000, 0x0000 }, false} // Virtual Stereo Camera
+    {{ 0x1415, 0x2000 }, true, true}, // PS3Eye
+    {{ 0x05a9, 0x058a }, true, false}, // PS4Camera
+    {{ 0x0000, 0x0000 }, false, false} // Virtual Stereo Camera
 };
 
 // -- private prototypes -----
-static bool is_tracker_supported(USBDeviceEnumerator* enumerator, CommonSensorState::eDeviceType device_type_filter, CommonSensorState::eDeviceType &out_device_type);
+static bool is_tracker_supported(
+    USBDeviceEnumerator* enumerator, 
+    CommonSensorState::eDeviceType device_type_filter, 
+    CommonSensorState::eDeviceType &out_device_type,
+    bool &out_needs_to_test_device_open);
 
 // -- methods -----
 TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator()
@@ -183,9 +188,11 @@ bool TrackerUSBDeviceEnumerator::next()
 
 bool TrackerUSBDeviceEnumerator::testUSBEnumerator()
 {
-	bool foundValid= false;
+	bool found_valid= false;
+    bool needs_to_test_device_open= false;
 
-	if (is_valid() && is_tracker_supported(m_usb_enumerator, m_deviceTypeFilter, m_deviceType))
+	if (is_valid() && 
+        is_tracker_supported(m_usb_enumerator, m_deviceTypeFilter, m_deviceType, needs_to_test_device_open))
 	{
 		char USBPath[256];
 
@@ -194,12 +201,13 @@ bool TrackerUSBDeviceEnumerator::testUSBEnumerator()
 
 		// Test open the device
 		char errorReason[256];
-		if (usb_device_can_be_opened(m_usb_enumerator, errorReason, sizeof(errorReason)))
+		if (!needs_to_test_device_open ||
+            usb_device_can_be_opened(m_usb_enumerator, errorReason, sizeof(errorReason)))
 		{
 			// Remember the last successfully opened tracker path
 			strncpy(m_currentUSBPath, USBPath, sizeof(m_currentUSBPath));
 
-			foundValid = true;
+			found_valid = true;
 		}
 		else
 		{
@@ -207,14 +215,15 @@ bool TrackerUSBDeviceEnumerator::testUSBEnumerator()
 		}
 	}
 
-	return foundValid;
+	return found_valid;
 }
 
 //-- private methods -----
 static bool is_tracker_supported(
 	USBDeviceEnumerator *enumerator, 
 	CommonSensorState::eDeviceType device_type_filter,
-	CommonSensorState::eDeviceType &out_device_type)
+	CommonSensorState::eDeviceType &out_device_type,
+    bool &out_needs_to_test_device_open)
 {
 	USBDeviceFilter devInfo;
 	bool bIsValidDevice = false;
@@ -236,6 +245,7 @@ static bool is_tracker_supported(
 				if (device_type_filter == CommonSensorState::INVALID_DEVICE_TYPE || // i.e. no filter
 					device_type_filter == device_type)
 				{
+                    out_needs_to_test_device_open= supported_type.bTestCanOpen;
 					out_device_type = device_type;
 					bIsValidDevice = true;
 					break;

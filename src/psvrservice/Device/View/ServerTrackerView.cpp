@@ -8,6 +8,7 @@
 #include "MathGLM.h"
 #include "MathAlignment.h"
 #include "PS3EyeTracker.h"
+#include "PS4CameraTracker.h"
 #include "Utility.h"
 #include "Logger.h"
 #include "MathTypeConversion.h"
@@ -869,6 +870,10 @@ ITrackerInterface *ServerTrackerView::allocate_tracker_interface(const class Dev
         {
             tracker_interface = new PS3EyeTracker();
         } break;
+    case CommonSensorState::PS4Camera:
+        {
+            tracker_interface = new PS4CameraTracker();
+        } break;
     case CommonSensorState::VirtualStereoCamera:
         {
             tracker_interface = new VirtualStereoTracker();
@@ -934,6 +939,10 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
     switch (tracker_view->getTrackerDeviceType())
     {
     case CommonSensorState::PS3EYE:
+        {
+            //TODO: PS3EYE tracker location
+        } break;
+    case CommonSensorState::PS4Camera:
         {
             //TODO: PS3EYE tracker location
         } break;
