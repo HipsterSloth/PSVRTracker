@@ -884,8 +884,7 @@ pose_filter_factory(
 {
     IPoseFilter *filter = nullptr;
 
-    if (position_filter_type == "PositionKalman" &&
-        orientation_filter_type == "OrientationKalman" && 
+    if ((position_filter_type == "KalmanPose" || orientation_filter_type == "KalmanPose") && 
         constants.shape.shape_type == PSVRTrackingShape_PointCloud &&
         constants.shape.shape.pointcloud.point_count == 9) //###HipsterSloth $TODO support other point counts
     {
@@ -931,10 +930,6 @@ pose_filter_factory(
         {
             position_filter_enum = PositionFilterTypeComplimentaryOpticalIMU;
         }
-        else if (position_filter_type == "PositionKalman")
-        {
-            position_filter_enum = PositionFilterTypeKalman;
-        }
         else
         {
             PSVR_LOG_INFO("pose_filter_factory()") <<
@@ -969,10 +964,6 @@ pose_filter_factory(
         else if (orientation_filter_type == "ComplementaryOpticalARG")
         {
             orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
-        }
-        else if (orientation_filter_type == "OrientationKalman")
-        {
-            orientation_filter_enum = OrientationFilterTypeKalman;
         }
         else
         {
