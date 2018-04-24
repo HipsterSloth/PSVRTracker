@@ -163,6 +163,9 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
             case CommonSensorState::VirtualStereoCamera:
                 tracker_info->tracker_type= PSVRTracker_VirtualStereoCamera;
                 break;					
+            case CommonSensorState::WMFStereoCamera:
+                tracker_info->tracker_type= PSVRTracker_GenericStereoCamera;
+                break;					
             default:
                 assert(0 && "Unhandled tracker type");
             }

@@ -208,7 +208,10 @@ TrackerManager::mark_tracker_list_dirty()
 DeviceEnumerator *
 TrackerManager::allocate_device_enumerator()
 {
-    return new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_ALL);
+    return 
+		cfg.virtual_stereo_tracker_count > 0 
+		? new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO)
+		: new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_NON_VIRTUAL);
 }
 
 void

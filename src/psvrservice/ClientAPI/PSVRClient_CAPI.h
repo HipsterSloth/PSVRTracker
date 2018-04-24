@@ -44,7 +44,8 @@ typedef enum
     PSVRTracker_None= -1,
     PSVRTracker_PS3Eye,
 	PSVRTracker_PS4Camera,
-    PSVRTracker_VirtualStereoCamera
+    PSVRTracker_VirtualStereoCamera,
+	PSVRTracker_GenericStereoCamera
 } PSVRTrackerType;
 
 /// The list of possible sub sections to extract from a video frame

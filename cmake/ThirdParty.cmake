@@ -24,7 +24,9 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     #hid required for HidD_SetOutputReport() in DualShock4 controller
     #setupapi required by hidapi
     #dinput8 required by libstem_gamepad
-    list(APPEND PLATFORM_LIBS bthprops setupapi hid dinput8)
+    list(APPEND PLATFORM_LIBS bthprops setupapi hid dinput8 shlwapi)
+	# Media foundation plaform for USB cameras in windows
+	list(APPEND PLATFORM_LIBS mfplat)
     IF(MINGW)
         #list(APPEND PLATFORM_LIBS stdc++)
     ENDIF(MINGW)

@@ -1,7 +1,7 @@
 //-- includes -----
 #include "USBApiInterface.h"
 #include "USBDeviceManager.h"
-#include "USBDeviceInfo.h"
+#include "USBDeviceFilter.h"
 #include "LibUSBBulkTransferBundle.h"
 #include "LibUSBApi.h"
 #include "NullUSBApi.h"

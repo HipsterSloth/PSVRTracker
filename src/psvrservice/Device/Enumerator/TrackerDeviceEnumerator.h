@@ -14,8 +14,9 @@ public:
 	{
 		CommunicationType_INVALID= -1,
 		CommunicationType_USB,
+		CommunicationType_WMF,
         CommunicationType_VIRTUAL_STEREO,
-		CommunicationType_ALL
+		CommunicationType_NON_VIRTUAL
 	};
 
     TrackerDeviceEnumerator(eAPIType api_type);
@@ -32,6 +33,7 @@ public:
     inline int get_camera_index() const { return camera_index; }
     eAPIType get_api_type() const;
     const class VirtualStereoCameraEnumerator *get_virtual_stereo_camera_enumerator() const;
+	const class WMFCameraEnumerator *get_windows_media_foundation_camera_enumerator() const;
 	const class TrackerUSBDeviceEnumerator *get_usb_tracker_enumerator() const;
 
 protected:

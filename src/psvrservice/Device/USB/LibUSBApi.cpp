@@ -3,7 +3,7 @@
 #include "LibUSBBulkTransferBundle.h"
 #include "Logger.h"
 #include "Utility.h"
-#include "USBDeviceInfo.h"
+#include "USBDeviceFilter.h"
 #include "USBDeviceRequest.h"
 #include "USBDeviceManager.h"
 

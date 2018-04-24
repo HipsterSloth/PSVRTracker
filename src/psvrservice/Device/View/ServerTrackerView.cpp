@@ -16,6 +16,7 @@
 #include "TrackerManager.h"
 #include "PoseFilterInterface.h"
 #include "VirtualStereoTracker.h"
+#include "WMFStereoTracker.h"
 
 #include <memory>
 
@@ -874,6 +875,10 @@ ITrackerInterface *ServerTrackerView::allocate_tracker_interface(const class Dev
         {
             tracker_interface = new PS4CameraTracker();
         } break;
+    case CommonSensorState::WMFStereoCamera:
+        {
+            tracker_interface = new WMFStereoTracker();
+        } break;
     case CommonSensorState::VirtualStereoCamera:
         {
             tracker_interface = new VirtualStereoTracker();
@@ -935,24 +940,6 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
     tracker_data_frame->tracker_id= tracker_view->getDeviceID();
     tracker_data_frame->sequence_num= tracker_view->m_sequence_number;
     tracker_data_frame->is_connected= tracker_view->getIsOpen();
-
-    switch (tracker_view->getTrackerDeviceType())
-    {
-    case CommonSensorState::PS3EYE:
-        {
-            //TODO: PS3EYE tracker location
-        } break;
-    case CommonSensorState::PS4Camera:
-        {
-            //TODO: PS3EYE tracker location
-        } break;
-    case CommonSensorState::VirtualStereoCamera:
-        {
-            //TODO: PS3EYE tracker location
-        } break;
-    default:
-        assert(0 && "Unhandled Tracker type");
-    }
 
     data_frame.device_category= DeviceCategory_TRACKER;
 }

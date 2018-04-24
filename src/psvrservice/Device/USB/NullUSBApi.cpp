@@ -1,6 +1,6 @@
 //-- includes -----
 #include "NullUSBApi.h"
-#include "USBDeviceInfo.h"
+#include "USBDeviceFilter.h"
 #include "USBDeviceRequest.h"
 #include "USBDeviceManager.h"
 

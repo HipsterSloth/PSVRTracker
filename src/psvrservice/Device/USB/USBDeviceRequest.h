@@ -3,7 +3,7 @@
 
 //-- includes -----
 #include "USBApiInterface.h"
-#include "USBDeviceInfo.h"
+#include "USBDeviceFilter.h"
 #include <functional>
 
 //-- constants -----

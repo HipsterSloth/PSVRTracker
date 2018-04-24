@@ -72,6 +72,11 @@ void AppStage_TrackerSettings::render()
                     drawPS3EyeModel(left);
                     drawPS3EyeModel(right);
                 } break;
+            case PSVRTracker_GenericStereoCamera:
+                {
+                    glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
+                    drawGenericStereoCameraModel(scale3);
+                } break;
 
             default:
                 assert(0 && "Unreachable");
@@ -197,6 +202,10 @@ void AppStage_TrackerSettings::renderUI()
             case PSVRTracker_VirtualStereoCamera:
                 {
                     ImGui::BulletText("Camera Type: Virtual Stereo");
+                } break;
+			case PSVRTracker_GenericStereoCamera:
+                {
+                    ImGui::BulletText("Camera Type: Generic Stereo");
                 } break;
             default:
                 assert(0 && "Unreachable");
