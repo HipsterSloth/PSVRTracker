@@ -889,7 +889,7 @@ void PS4CameraTracker::getTrackingColorPreset(
 
 void PS4CameraTracker::uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
 {
-    USBDeviceEnumerator* enumerator= usb_device_enumerator_allocate(DeviceClass::DeviceClass_LibUSB);
+    USBDeviceEnumerator* enumerator= usb_device_enumerator_allocate();
 
     while (enumerator != nullptr && usb_device_enumerator_is_valid(enumerator))
     {

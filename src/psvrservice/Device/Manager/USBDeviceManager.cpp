@@ -577,7 +577,7 @@ protected:
 		if (state != nullptr)
 		{
 			result_code= m_usb_api->submit_interrupt_transfer(state, &requestState);
-			if (result_code != _USBResultCode_Started)
+			if (result_code != _USBResultCode_Started && result_code != _USBResultCode_Completed)
 			{
 				bSuccess = false;
 			}
@@ -633,7 +633,7 @@ protected:
 		if (state != nullptr)
 		{
 			result_code = m_usb_api->submit_control_transfer(state, &requestState);
-			if (result_code != _USBResultCode_Started)
+			if (result_code != _USBResultCode_Started && result_code != _USBResultCode_Completed)
 			{
                 bSuccess = false;
 			}
@@ -690,7 +690,7 @@ protected:
 		if (state != nullptr)
 		{
 			result_code= m_usb_api->submit_bulk_transfer(state, &requestState);
-			if (result_code != _USBResultCode_Started)
+			if (result_code != _USBResultCode_Started && result_code != _USBResultCode_Completed)
 			{
 				bSuccess = false;
 			}
@@ -956,9 +956,9 @@ void USBDeviceManager::shutdown()
 }
 
 // -- Device Enumeration ----
-USBDeviceEnumerator* usb_device_enumerator_allocate(const DeviceClass deviceClass)
+USBDeviceEnumerator* usb_device_enumerator_allocate()
 {
-	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_create(deviceClass);
+	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_create();
 }
 
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator)

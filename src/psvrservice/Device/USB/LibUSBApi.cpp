@@ -72,7 +72,7 @@ void LibUSBApi::shutdown()
 	}
 }
 
-USBDeviceEnumerator* LibUSBApi::device_enumerator_create(const DeviceClass deviceClass)
+USBDeviceEnumerator* LibUSBApi::device_enumerator_create()
 {
 	LibUSBDeviceEnumerator *libusb_enumerator = new LibUSBDeviceEnumerator;
 	memset(libusb_enumerator, 0, sizeof(LibUSBDeviceEnumerator));

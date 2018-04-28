@@ -528,7 +528,8 @@ MorpheusHMD::getUSBDevicePath() const
 bool
 MorpheusHMD::getIsOpen() const
 {
-    return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != k_invalid_usb_device_handle;
+    return USBContext->sensor_device_handle != nullptr && 
+		(USBContext->usb_device_handle != k_invalid_usb_device_handle || cfg.disable_command_interface);
 }
 
 IDeviceInterface::ePollResult
@@ -674,7 +675,7 @@ static bool morpheus_open_usb_device(
 {
 	bool bSuccess = false;
 
-    USBDeviceEnumerator* usb_device_enumerator= usb_device_enumerator_allocate(DeviceClass::DeviceClass_RawUSB);
+    USBDeviceEnumerator* usb_device_enumerator= usb_device_enumerator_allocate();
 
     if (usb_device_enumerator != nullptr)
     {
@@ -841,7 +842,11 @@ static bool morpheus_send_command(
 
 	if (morpheus_context->usb_device_handle != k_invalid_usb_device_handle)
 	{
-        const int endpointAddress = 0x84;
+		//###HipsterSloth $TODO Don't hard code the endpoint address.
+		// We should instead specify a direction (IN or OUT)
+		// The direction plus the transfer type (interrupt/bulk) is enough to
+		// look up the endpoint address on the USBApi side.
+        const int endpointAddress = 0x04;
 		//const int endpointAddress =
 		//	(morpheus_context->usb_device_descriptor->interface[MORPHEUS_COMMAND_INTERFACE]
 		//		.altsetting[0]

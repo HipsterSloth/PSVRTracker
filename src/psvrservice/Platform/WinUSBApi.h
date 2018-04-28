@@ -51,7 +51,7 @@ public:
 	void poll() override;
 	void shutdown() override;
 
-	USBDeviceEnumerator* device_enumerator_create(const DeviceClass deviceClass) override;
+	USBDeviceEnumerator* device_enumerator_create() override;
 	bool device_enumerator_get_filter(const USBDeviceEnumerator* enumerator, struct USBDeviceFilter *outDeviceInfo) const override;
 	bool device_enumerator_get_path(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const override;
 	bool device_enumerator_is_valid(USBDeviceEnumerator* enumerator) override;

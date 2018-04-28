@@ -13,7 +13,9 @@
 #include <winuser.h>
 #include <Dbt.h>
 #include <guiddef.h>
+#include <cfgmgr32.h>   // for MAX_DEVICE_ID_LEN and CM_Get_Device_ID
 #include <setupapi.h> // Device setup APIs
+#include <Devpkey.h>
 #include <strsafe.h>
 #include <winusb.h>
 #include <usb100.h>
@@ -27,9 +29,10 @@
 // https://msdn.microsoft.com/en-us/library/windows/hardware/ff540174(v=vs.85).aspx
 
 //-- constants ----
-GUID WINUSB_GUID_DEVCLASS_IMAGE = { 0x6bdd1fc6, 0x810f, 0x11d0, 0xbe, 0xc7, 0x08, 0x00, 0x2b, 0xe2, 0x09, 0x2f };
-GUID WINUSB_GUID_DEVCLASS_HID = { 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 };
-GUID WINUSB_GUID_DEVCLASS_USB_RAW = { 0xa5dcbf10, 0x6530, 0x11d2, 0x90, 0x1f, 0x00, 0xc0, 0x4f, 0xb9, 0x51, 0xed };
+static GUID WINUSB_GUID_DEVCLASS_IMAGE = { 0x6bdd1fc6, 0x810f, 0x11d0, 0xbe, 0xc7, 0x08, 0x00, 0x2b, 0xe2, 0x09, 0x2f };
+static GUID WINUSB_GUID_DEVCLASS_HID = { 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 };
+static GUID WINUSB_GUID_DEVCLASS_USB_RAW = { 0xa5dcbf10, 0x6530, 0x11d2, 0x90, 0x1f, 0x00, 0xc0, 0x4f, 0xb9, 0x51, 0xed };
+static GUID WINUSB_GUID_DEVCLASS_LIBUSB = { 0xeb781aaf, 0x9c70, 0x4523, 0xa5, 0xdf, 0x64, 0x2a, 0x87, 0xec, 0xa5, 0x67 };
 
 enum libusb_endpoint_direction {
 	/** In: device-to-host */
@@ -126,179 +129,291 @@ enum libusb_standard_request {
 //-- public interface -----
 
 //-- definitions -----
+struct WinUSBDeviceInfo
+{
+    std::string DevicePath;
+    std::vector<GUID> DeviceInterfaceGUIDs;
+    int ProductId;
+    int VendorId;
+    int CompositeInterfaceIndex;
+
+	WinUSBDeviceInfo()
+		: DevicePath()
+		, DeviceInterfaceGUIDs()
+		, ProductId(-1)
+		, VendorId(-1)
+		, CompositeInterfaceIndex(-1)
+	{
+	}
+
+	bool init(const std::string &path, const GUID &guid)
+	{
+		bool bSuccess= false;
+
+		DevicePath= path;
+		DeviceInterfaceGUIDs.push_back(guid);
+		ProductId= -1;
+		VendorId= -1;
+		CompositeInterfaceIndex= -1;
+
+		// USB Instance ID w/ Interface Index: 
+		//    "\\?\usb#vid_vvvv&pid_pppp&mi_ii#aaaaaaaaaaaaaaaa#{gggggggg-gggg-gggg-gggg-gggggggggggg}"
+		if (sscanf_s(
+				path.c_str(), 
+				"\\\\?\\usb#vid_%X&pid_%X&mi_%X#", 
+				&VendorId, 
+				&ProductId, 
+				&CompositeInterfaceIndex) == 3)
+		{
+			bSuccess= true;
+		}
+		// USB Instance ID: 
+		//    "\\?\usb#vid_vvvv&pid_pppp#ssss#{gggggggg-gggg-gggg-gggg-gggggggggggg}"
+		else if (sscanf_s(
+					path.c_str(),
+					"\\\\?\\usb#vid_%X&pid_%X#",
+					&VendorId, 
+					&ProductId) == 2)
+		{
+			bSuccess= true;
+		}
+
+		return bSuccess;
+	}
+
+	bool hasDeviceInterfaceGUID(const GUID &g) const
+	{
+		return 
+			std::find_if(
+				DeviceInterfaceGUIDs.begin(), DeviceInterfaceGUIDs.end(), 
+				[&g](const GUID &guid) {
+					return IsEqualGUID(guid, g) == TRUE;
+				}) != DeviceInterfaceGUIDs.end();
+	}
+};
+
 struct WinUSBDeviceEnumerator : USBDeviceEnumerator
 {
 public:
-	WinUSBDeviceEnumerator(const GUID &deviceClassGUID)
-		: m_DeviceClassGUID(deviceClassGUID)
-		, m_DeviceInfoSetHandle(INVALID_HANDLE_VALUE)
-        , m_DetailData(NULL)
-        , m_DevicePath("")
-        , m_USBUniqueID("")
-		, m_EnumerationIndex(-1)
-        , m_ProductId(-1)
-        , m_VendorId(-1)
-        , m_CompositeInterfaceIndex(-1)
-        , m_bIsComposite(false)
-		, m_bNoMoreItems(false)
+	WinUSBDeviceEnumerator()
 	{
-		m_DeviceInfoSetHandle = SetupDiGetClassDevs((LPGUID)&m_DeviceClassGUID, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-		m_InterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+		buildUSBDeviceList();
 
-		if (isValid())
-		{
-			next();
-		}
-	}
-
-	virtual ~WinUSBDeviceEnumerator()
-	{
-        if (m_DetailData != NULL)
-        {
-            LocalFree(m_DetailData);
-            m_DetailData= NULL;
-        }
-
-		if (m_DeviceInfoSetHandle != INVALID_HANDLE_VALUE)
-		{
-			SetupDiDestroyDeviceInfoList(m_DeviceInfoSetHandle);
-		}
+		USBDeviceEnumerator::device_index= -1;
+		next();
 	}
 
 	bool isValid() const
 	{
-		return m_DeviceInfoSetHandle != INVALID_HANDLE_VALUE && !m_bNoMoreItems;
+		return USBDeviceEnumerator::device_index < (int)m_deviceInfoList.size();
 	}
 
 	void next()
 	{
-        bool bFoundValidEntry= false;
-
-		while (!bFoundValidEntry && isValid())
-		{
-			++m_EnumerationIndex;
-            m_DevicePath= "";
-
-            if (m_DetailData != NULL)
-            {
-                LocalFree(m_DetailData);
-                m_DetailData= NULL;
-            }
-
-            if (SetupDiEnumDeviceInterfaces(m_DeviceInfoSetHandle, NULL, &m_DeviceClassGUID, 0, &m_InterfaceData) == TRUE)
-            {
-                ULONG length;
-                ULONG requiredLength=0; 
-
-                SetupDiGetDeviceInterfaceDetail(m_DeviceInfoSetHandle, &m_InterfaceData, NULL, 0, &requiredLength, NULL);
-                m_DetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)LocalAlloc(LMEM_FIXED, requiredLength);
-
-                if (m_DetailData != NULL)
-                {
-                    m_DetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-                    length = requiredLength;
-
-                    if (SetupDiGetDeviceInterfaceDetail(m_DeviceInfoSetHandle, &m_InterfaceData, m_DetailData, length, &requiredLength, NULL) == TRUE)
-                    {
-                        char raw_device_path[512];
-                        #ifdef UNICODE
-                        wcstombs(raw_device_path, m_DetailData->DevicePath, (unsigned)_countof(raw_device_path));  
-                        #else
-                        strncpy_s(raw_device_path, m_DetailData->DevicePath, (unsigned)_countof(raw_device_path));
-                        #endif
-
-                        // Save the raw multi-byte device path
-                        m_DevicePath= raw_device_path;
-
-                        // Non-composite Device Path: "USB\VID_0B05&PID_17CB\5CF3707F7940"
-                        // Composite Device Path: "USB\VID_1415&PID_2000&MI_01\8&2DF96CB8&0&0001"
-                        char unique_id[256];
-                        if (sscanf_s(m_DetailData->DevicePath, "USB\\VID_%X&PID_%X\\%255s",
-                                &m_VendorId, &m_ProductId, &unique_id, (unsigned)_countof(unique_id)) == 3)
-                        {
-                            m_USBUniqueID= unique_id;
-                            m_CompositeInterfaceIndex= -1;
-                            m_bIsComposite= false;
-                            bFoundValidEntry= true;
-                        }
-                        else
-                        {
-                            if (sscanf_s(m_DetailData->DevicePath, "USB\\VID_%X&PID_%X&MI_%X\\%255s", 
-                                    &m_VendorId, &m_ProductId, &m_CompositeInterfaceIndex, &unique_id, (unsigned)_countof(unique_id)) == 4)
-                            {
-                                // Replace all instances if '&' with '_'
-                                for (char* p = unique_id; p = strchr(p, '&'); ++p) {
-                                    *p = '_';
-                                }
-
-                                m_USBUniqueID= unique_id;
-                                m_bIsComposite= true;
-                                bFoundValidEntry= true;
-                            }
-                        }
-                    }
-                }
-            }
-            else
-			{
-				m_bNoMoreItems = true;
-			}
-		}
-	}
-
-	inline HDEVINFO getDeviceInfoSetHandle() const
-	{
-		return m_DeviceInfoSetHandle;
-	}
-
-	inline const SP_DEVICE_INTERFACE_DATA &getDeviceInterfaceData() const
-	{
-		return m_InterfaceData;
-	}
-
-	inline const PSP_DEVICE_INTERFACE_DETAIL_DATA getDeviceInterfaceDetailData() const
-	{
-		return m_DetailData;
+		++USBDeviceEnumerator::device_index;
 	}
 
     inline std::string getDevicePath() const
     {
-        return m_DevicePath;
+        return (isValid()) ? m_deviceInfoList[USBDeviceEnumerator::device_index].DevicePath : std::string();
     }
+
+	inline std::string getUniqueID() const 
+	{
+		// https://www.silabs.com/community/interface/knowledge-base.entry.html/2013/11/21/windows_usb_devicep-aGxD
+		//"Windows requires that the device path be unique for every USB device and interface. 
+		//If two USB devices are plugged into the same machine with the same VID/PID/Serial string, 
+		//then the USB Device Path Format described above won’t generate a unique string for the two devices. 
+		//In this case, Windows generates a unique string similar to the format described in the 
+		//Composite USB Device Path Format section. This method is also used if the USB device iSerial index is set to 0, 
+		//indicating that the device does not have a serial string."
+		return getDevicePath();
+	}
 
     inline int getProductId() const
     {
-        return m_ProductId;
+        return (isValid()) ? m_deviceInfoList[USBDeviceEnumerator::device_index].ProductId : -1;
     }
 
     inline int getVendorId() const
     {
-        return m_VendorId;
+        return (isValid()) ? m_deviceInfoList[USBDeviceEnumerator::device_index].VendorId : -1;
     }
 
     inline int getCompositeInterfaceIndex() const
     {
-        return m_bIsComposite ? m_CompositeInterfaceIndex : -1;
+        return (isValid()) ? m_deviceInfoList[USBDeviceEnumerator::device_index].CompositeInterfaceIndex : -1;
     }
 
-    inline std::string getUniqueID() const
+protected:
+    static bool findDevicePathsWithInterfaceGUID(
+		const GUID &deviceInterfaceGuid, 
+		std::vector<std::string> &outDevicePathList)
     {
-        return m_USBUniqueID;
+		HDEVINFO deviceInfoSetHandle = 
+			SetupDiGetClassDevs(&deviceInterfaceGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+		bool bFoundAny= false;
+
+        if (deviceInfoSetHandle != INVALID_HANDLE_VALUE)
+        {
+			DWORD deviceInterfaceIndex = 0;
+
+			SP_DEVICE_INTERFACE_DATA interfaceData;
+			ZeroMemory(&interfaceData, sizeof(SP_DEVICE_INTERFACE_DATA));
+			interfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+			while (SetupDiEnumDeviceInterfaces(
+					deviceInfoSetHandle, 
+					NULL, 
+					&deviceInterfaceGuid, 
+					deviceInterfaceIndex, 
+					&interfaceData) == TRUE)
+            {
+				ULONG requiredLength=0; 
+				SetupDiGetDeviceInterfaceDetail(deviceInfoSetHandle, &interfaceData, NULL, 0, &requiredLength, NULL);
+				PSP_DEVICE_INTERFACE_DETAIL_DATA interfaceDetailData = 
+					(PSP_DEVICE_INTERFACE_DETAIL_DATA)LocalAlloc(LMEM_FIXED, requiredLength);
+                
+				if (interfaceDetailData != NULL)
+				{
+					interfaceDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+					ULONG length = requiredLength;
+
+					if (SetupDiGetDeviceInterfaceDetail(
+							deviceInfoSetHandle, 
+							&interfaceData, 
+							interfaceDetailData, 
+							length, 
+							&requiredLength, 
+							NULL) == TRUE)
+					{
+						char raw_device_path[512];
+						#ifdef UNICODE
+						wcstombs(raw_device_path, interfaceDetailData->DevicePath, (unsigned)_countof(raw_device_path));  
+						#else
+						strncpy_s(raw_device_path, interfaceDetailData->DevicePath, (unsigned)_countof(raw_device_path));
+						#endif
+
+						// Save the raw multi-byte device path
+						outDevicePathList.push_back(std::string(raw_device_path));
+						bFoundAny= true;
+					}
+
+					if (interfaceDetailData != NULL)
+					{
+						LocalFree(interfaceDetailData);
+						interfaceDetailData= NULL;
+					}
+				}
+
+				++deviceInterfaceIndex;
+            }
+			DWORD LastError= GetLastError();
+
+			SetupDiDestroyDeviceInfoList(deviceInfoSetHandle);
+        }
+
+		return bFoundAny;
     }
+
+	void buildUSBDeviceList()
+	{
+		HDEVINFO deviceInfoSetHandle = SetupDiGetClassDevs(NULL, TEXT("USB"), NULL, DIGCF_PRESENT | DIGCF_ALLCLASSES);
+
+		SP_DEVINFO_DATA deviceInfoData;
+		ZeroMemory(&deviceInfoData, sizeof(SP_DEVINFO_DATA));
+		deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+
+		DWORD deviceInfoSetIndex = 0;
+		while(SetupDiEnumDeviceInfo(deviceInfoSetHandle, deviceInfoSetIndex, &deviceInfoData))
+		{
+			TCHAR szDeviceInstanceID[MAX_DEVICE_ID_LEN];
+			CONFIGRET status = CM_Get_Device_ID(deviceInfoData.DevInst, szDeviceInstanceID, MAX_DEVICE_ID_LEN, 0);
+			if (status != CR_SUCCESS)
+			{
+				continue;
+			}
+
+			DWORD propertyType;
+            TCHAR propBuffer[256];
+            DWORD requiredSize;
+			if (SetupDiGetCustomDeviceProperty(
+				  deviceInfoSetHandle,
+				  &deviceInfoData,
+				  TEXT("DeviceInterfaceGuids"),
+				  0,
+				  &propertyType,
+				  (LPBYTE)propBuffer,
+				  sizeof(propBuffer),
+				  &requiredSize) == TRUE)
+			{
+				// Convert a list of '/0' separated GUID strings into a GUID string list
+				std::vector<std::string> devInterfaceGuids;
+				for(const TCHAR* p=propBuffer; p!=propBuffer+requiredSize; p+=devInterfaceGuids.back().size()+1)
+				{
+					devInterfaceGuids.push_back(p);
+				}
+
+				// For each interface GUID:
+				// 1) find all device paths using that interface GUID
+				// 2) Add all unique device paths to the deviceInfoList
+				for(const std::string &strGUID : devInterfaceGuids)
+				{
+					GUID guid;
+					if (sscanf(strGUID.c_str(),
+						   "{%8x-%4hx-%4hx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx}",
+						   &guid.Data1, &guid.Data2, &guid.Data3,
+						   &guid.Data4[0], &guid.Data4[1], &guid.Data4[2], &guid.Data4[3],
+						   &guid.Data4[4], &guid.Data4[5], &guid.Data4[6], &guid.Data4[7] ) == 11)
+					{
+						std::vector<std::string> devicePathList;
+						if (findDevicePathsWithInterfaceGUID(guid, devicePathList))
+						{
+							for (const std::string &devicePath : devicePathList)
+							{
+								// Look for existing device entry by device path
+								auto &existingDevInfoIter = 
+									std::find_if(
+										m_deviceInfoList.begin(), m_deviceInfoList.end(), 
+										[&devicePath](WinUSBDeviceInfo &devInfo) {
+											return devInfo.DevicePath == devicePath;
+										});
+
+								if (existingDevInfoIter != m_deviceInfoList.end())
+								{
+									WinUSBDeviceInfo &existingDeviceInfo= *existingDevInfoIter;
+
+									if (!existingDeviceInfo.hasDeviceInterfaceGUID(guid))
+									{
+										existingDeviceInfo.DeviceInterfaceGUIDs.push_back(guid);
+									}
+								}
+								else
+								{
+									WinUSBDeviceInfo newDeviceInfo;
+
+									if (newDeviceInfo.init(devicePath, guid))
+									{
+										m_deviceInfoList.push_back(newDeviceInfo);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			++deviceInfoSetIndex;
+		}
+
+		if (deviceInfoSetHandle != INVALID_HANDLE_VALUE)
+		{
+			SetupDiDestroyDeviceInfoList(deviceInfoSetHandle);
+		}
+	}
 
 private:
-	const GUID &m_DeviceClassGUID;
-	HDEVINFO m_DeviceInfoSetHandle;
-    SP_DEVICE_INTERFACE_DATA m_InterfaceData;
-    PSP_DEVICE_INTERFACE_DETAIL_DATA m_DetailData; 
-    std::string m_DevicePath;
-    std::string m_USBUniqueID;
-    int m_EnumerationIndex;
-    int m_ProductId;
-    int m_VendorId;
-    int m_CompositeInterfaceIndex;
-    bool m_bIsComposite;
-	bool m_bNoMoreItems;
+	std::vector<WinUSBDeviceInfo> m_deviceInfoList;
 };
 
 //-- private methods -----
@@ -322,38 +437,9 @@ void WinUSBApi::shutdown()
 {
 }
 
-// This function is copied from PlatformDeviceAPIWin32.cpp to avoid dependency to 
-// the DeviceManager class in the controller test programs
-static const GUID * get_device_class_platform_identifier(const DeviceClass deviceClass)
+USBDeviceEnumerator* WinUSBApi::device_enumerator_create()
 {
-    const GUID *result= nullptr;
-
-	switch (deviceClass)
-	{
-	case DeviceClass::DeviceClass_Camera:
-		result = &WINUSB_GUID_DEVCLASS_IMAGE;
-		break;
-	case DeviceClass::DeviceClass_HID:
-		result = &WINUSB_GUID_DEVCLASS_HID;
-		break;
-    case DeviceClass::DeviceClass_RawUSB:
-        result = &WINUSB_GUID_DEVCLASS_USB_RAW;
-	default:
-		assert(0 && "Unhandled device class type");
-	}
-
-    return result;
-}
-
-USBDeviceEnumerator* WinUSBApi::device_enumerator_create(const DeviceClass deviceClass)
-{
-    const GUID *deviceClassGUID= get_device_class_platform_identifier(deviceClass);
-    WinUSBDeviceEnumerator *enumerator= nullptr;
-
-    if (deviceClassGUID != nullptr)
-    {
-        enumerator= new WinUSBDeviceEnumerator(*deviceClassGUID);
-    }
+    WinUSBDeviceEnumerator *enumerator= new WinUSBDeviceEnumerator;
 
     return enumerator;
 }
@@ -570,7 +656,7 @@ USBDeviceState *WinUSBApi::open_usb_device(
 		}
     }
 
-	return nullptr;
+	return winusb_device_state;
 }
 
 void WinUSBApi::close_usb_device(USBDeviceState* device_state)
@@ -709,6 +795,8 @@ eUSBResultCode WinUSBApi::submit_interrupt_transfer(
     {
     case ERROR_SUCCESS:
         result.payload.interrupt_transfer.result_code = _USBResultCode_Completed;
+		// Add the result to the outgoing result queue on success only
+		usb_device_post_transfer_result(result, requestState->callback);
         break;
     case ERROR_INVALID_HANDLE:
         result.payload.interrupt_transfer.result_code = _USBResultCode_BadHandle;
@@ -726,9 +814,6 @@ eUSBResultCode WinUSBApi::submit_interrupt_transfer(
         result.payload.interrupt_transfer.result_code = _USBResultCode_GeneralError;
         break;
     }
-
-	// Add the result to the outgoing result queue
-	usb_device_post_transfer_result(result, requestState->callback);
 
     return result.payload.interrupt_transfer.result_code;
 }
@@ -811,6 +896,8 @@ eUSBResultCode WinUSBApi::submit_control_transfer(
     {
     case ERROR_SUCCESS:
         result.payload.control_transfer.result_code = _USBResultCode_Completed;
+		// Add the result to the outgoing result queue on success only
+		usb_device_post_transfer_result(result, requestState->callback);
         break;
     case ERROR_INVALID_HANDLE:
         result.payload.control_transfer.result_code = _USBResultCode_BadHandle;
@@ -822,9 +909,6 @@ eUSBResultCode WinUSBApi::submit_control_transfer(
         result.payload.control_transfer.result_code = _USBResultCode_GeneralError;
         break;
     }
-
-	// Add the result to the outgoing result queue
-	usb_device_post_transfer_result(result, requestState->callback);
 
     return result.payload.control_transfer.result_code;
 }
@@ -900,6 +984,8 @@ eUSBResultCode WinUSBApi::submit_bulk_transfer(
     {
     case ERROR_SUCCESS:
         result.payload.bulk_transfer.result_code = _USBResultCode_Completed;
+		// Add the result to the outgoing result queue on success only
+		usb_device_post_transfer_result(result, requestState->callback);
         break;
     case ERROR_INVALID_HANDLE:
         result.payload.bulk_transfer.result_code = _USBResultCode_BadHandle;
@@ -917,9 +1003,6 @@ eUSBResultCode WinUSBApi::submit_bulk_transfer(
         result.payload.bulk_transfer.result_code = _USBResultCode_GeneralError;
         break;
     }
-
-	// Add the result to the outgoing result queue
-	usb_device_post_transfer_result(result, requestState->callback);
 
     return result.payload.bulk_transfer.result_code;
 }

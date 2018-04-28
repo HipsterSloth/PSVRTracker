@@ -28,7 +28,7 @@ void NullUSBApi::shutdown()
 {
 }
 
-USBDeviceEnumerator* NullUSBApi::device_enumerator_create(const DeviceClass deviceClass)
+USBDeviceEnumerator* NullUSBApi::device_enumerator_create()
 {
 	USBDeviceEnumerator *nullusb_enumerator = new USBDeviceEnumerator;
 	memset(nullusb_enumerator, 0, sizeof(USBDeviceEnumerator));

@@ -67,7 +67,7 @@ private:
 };
 
 // -- Device Enumeration ----
-struct USBDeviceEnumerator* usb_device_enumerator_allocate(const DeviceClass deviceClass);
+struct USBDeviceEnumerator* usb_device_enumerator_allocate();
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator);
 bool usb_device_enumerator_get_filter(struct USBDeviceEnumerator* enumerator, USBDeviceFilter &outDeviceInfo);
 void usb_device_enumerator_next(struct USBDeviceEnumerator* enumerator);

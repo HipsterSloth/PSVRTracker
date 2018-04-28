@@ -48,7 +48,7 @@ TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator()
 
 	m_deviceType= CommonSensorState::PS3EYE;
 	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
-	m_usb_enumerator = usb_device_enumerator_allocate(DeviceClass::DeviceClass_Camera);
+	m_usb_enumerator = usb_device_enumerator_allocate();
 
 	// If the first USB device handle isn't a tracker, move on to the next device
 	if (testUSBEnumerator())
@@ -70,7 +70,7 @@ TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator(CommonSensorState::eDevic
 
 	m_deviceType= CommonSensorState::PS3EYE;
 	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
-	m_usb_enumerator = usb_device_enumerator_allocate(DeviceClass::DeviceClass_Camera);
+	m_usb_enumerator = usb_device_enumerator_allocate();
 
 	// If the first USB device handle isn't a tracker, move on to the next device
 	if (testUSBEnumerator())
@@ -92,7 +92,7 @@ TrackerUSBDeviceEnumerator::TrackerUSBDeviceEnumerator(const std::string &usb_pa
 
 	m_deviceType= CommonSensorState::PS3EYE;
 	assert(m_deviceType >= 0 && GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_CAMERA_TYPE_INDEX);
-	m_usb_enumerator = usb_device_enumerator_allocate(DeviceClass::DeviceClass_Camera);
+	m_usb_enumerator = usb_device_enumerator_allocate();
 
 	// If the first USB device handle isn't a tracker, move on to the next device
     const char *szTestUSBPath= usb_path.c_str();
