@@ -137,8 +137,6 @@ AppStage_ColorCalibration::AppStage_ColorCalibration(App *app)
     , m_video_buffer_state(nullptr)
     , m_videoDisplayMode(AppStage_ColorCalibration::eVideoDisplayMode::mode_bgr)
     , m_trackerFrameRate(0)
-    , m_trackerExposure(0)
-    , m_trackerGain(0)
     , m_bShowWindows(true)
     , m_bShowAlignment(false)
     , m_bShowAlignmentColor(false)
@@ -146,6 +144,7 @@ AppStage_ColorCalibration::AppStage_ColorCalibration(App *app)
     , m_masterTrackingColorType(PSVRTrackingColorType_Magenta)
 { 
     memset(&m_colorPresetTable, 0, sizeof(m_colorPresetTable));
+	memset(m_videoProperties, 0, sizeof(m_videoProperties));
 }
 
 void AppStage_ColorCalibration::enter()
@@ -401,29 +400,49 @@ void AppStage_ColorCalibration::renderUI()
                 ImGui::SameLine();
                 ImGui::Text("Frame Rate: %.0f", m_trackerFrameRate);
 
-                if (ImGui::Button("-##Exposure"))
-                {
-                    request_tracker_set_exposure(m_trackerExposure - 8);
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("+##Exposure"))
-                {
-                    request_tracker_set_exposure(m_trackerExposure + 8);
-                }
-                ImGui::SameLine();
-                ImGui::Text("Exposure: %.0f", m_trackerExposure);
+				if (canDecVideoProperty(PSVRVideoProperty_Exposure))
+				{
+					if (ImGui::Button("-##Exposure"))
+					{
+						request_tracker_set_video_property(
+							PSVRVideoProperty_Exposure, 
+							m_videoProperties[PSVRVideoProperty_Exposure] - getVideoPropertyStepSize(PSVRVideoProperty_Exposure));
+					}
+					ImGui::SameLine();
+				}
+				if (canIncVideoProperty(PSVRVideoProperty_Exposure))
+				{
+					if (ImGui::Button("+##Exposure"))
+					{
+						request_tracker_set_video_property(
+							PSVRVideoProperty_Exposure, 
+							m_videoProperties[PSVRVideoProperty_Exposure] + getVideoPropertyStepSize(PSVRVideoProperty_Exposure));
+					}
+					ImGui::SameLine();
+				}
+                ImGui::Text("Exposure: %d", m_videoProperties[PSVRVideoProperty_Exposure]);
 
-                if (ImGui::Button("-##Gain"))
-                {
-                    request_tracker_set_gain(m_trackerGain - 8);
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("+##Gain"))
-                {
-                    request_tracker_set_gain(m_trackerGain + 8);
-                }
-                ImGui::SameLine();
-                ImGui::Text("Gain: %.0f", m_trackerGain);
+				if (canDecVideoProperty(PSVRVideoProperty_Gain))
+				{
+					if (ImGui::Button("-##Gain"))
+					{
+						request_tracker_set_video_property(
+							PSVRVideoProperty_Gain, 
+							m_videoProperties[PSVRVideoProperty_Gain] - getVideoPropertyStepSize(PSVRVideoProperty_Gain));
+					}
+					ImGui::SameLine();
+				}
+				if (canIncVideoProperty(PSVRVideoProperty_Gain))
+				{
+					if (ImGui::Button("+##Gain"))
+					{
+						request_tracker_set_video_property(
+							PSVRVideoProperty_Gain, 
+							m_videoProperties[PSVRVideoProperty_Gain] + getVideoPropertyStepSize(PSVRVideoProperty_Gain));
+					}
+					ImGui::SameLine();
+				}
+                ImGui::Text("Gain: %d", m_videoProperties[PSVRVideoProperty_Gain]);
             }
 
             ImGui::End();
@@ -739,7 +758,11 @@ void AppStage_ColorCalibration::request_start_hmd_stream()
     // Start receiving data from the controller
     setState(AppStage_ColorCalibration::pendingHmdStartRequest);
 
-    if (PSVR_StartHmdDataStream(m_hmdView->HmdID, PSMStreamFlags_defaultStreamOptions) == PSVRResult_Success)
+	// Turning on position stream data will enable the tracking lights
+    if (PSVR_StartHmdDataStream(
+			m_hmdView->HmdID, 
+			PSMStreamFlags_defaultStreamOptions | 
+			PSMStreamFlags_includePositionData) == PSVRResult_Success)
     {
         m_isHmdStreamActive = true;
         setState(AppStage_ColorCalibration::waitingForStreamStartResponse);
@@ -798,24 +821,18 @@ void AppStage_ColorCalibration::request_tracker_set_frame_rate(double value)
     }
 }
 
-void AppStage_ColorCalibration::request_tracker_set_exposure(double value)
+void AppStage_ColorCalibration::request_tracker_set_video_property(PSVRVideoPropertyType prop_type, int value)
 {
-    float actual_exposure;
-    if (PSVR_SetTrackerExposure(
-            m_trackerView->tracker_info.tracker_id, (float)value, true, &actual_exposure) == PSVRResult_Success)
-    {
-        m_trackerExposure = (double)actual_exposure;
-    }
-}
-
-void AppStage_ColorCalibration::request_tracker_set_gain(double value)
-{
-    float actual_gain;
-    if (PSVR_SetTrackerGain(
-            m_trackerView->tracker_info.tracker_id, (float)value, true, &actual_gain) == PSVRResult_Success)
-    {
-        m_trackerGain = (double)actual_gain;
-    }
+	int actual_value;
+	if (PSVR_SetTrackerVideoProperty(
+			m_trackerView->tracker_info.tracker_id, 
+			prop_type,
+			value, 
+			true, 
+			&actual_value) == PSVRResult_Success)
+	{
+		m_videoProperties[prop_type] = actual_value;
+	}
 }
 
 void AppStage_ColorCalibration::request_tracker_set_color_filter(
@@ -839,8 +856,7 @@ void AppStage_ColorCalibration::request_tracker_get_settings()
     if (PSVR_GetTrackerSettings(m_trackerView->tracker_info.tracker_id, m_overrideHmdId, &settings) == PSVRResult_Success)
     {
         m_trackerFrameRate = settings.frame_rate;
-        m_trackerExposure = settings.exposure;
-        m_trackerGain = settings.gain;
+		memcpy(m_videoProperties, settings.video_properties, sizeof(m_videoProperties));
         m_colorPresetTable = settings.color_range_table;
     }
 }
@@ -878,4 +894,19 @@ void AppStage_ColorCalibration::request_exit_to_app_stage(const char *app_stage_
     release_devices();
 
     m_app->setAppStage(app_stage_name);
+}
+
+int AppStage_ColorCalibration::getVideoPropertyStepSize(PSVRVideoPropertyType prop_type) const
+{
+	return m_trackerView->tracker_info.video_property_constraints[prop_type].stepping_delta;
+}
+
+bool AppStage_ColorCalibration::canIncVideoProperty(PSVRVideoPropertyType prop_type) const
+{
+	return m_videoProperties[prop_type] < m_trackerView->tracker_info.video_property_constraints[prop_type].max_value;
+}
+
+bool AppStage_ColorCalibration::canDecVideoProperty(PSVRVideoPropertyType prop_type) const
+{
+	return m_videoProperties[prop_type] > m_trackerView->tracker_info.video_property_constraints[prop_type].min_value;
 }

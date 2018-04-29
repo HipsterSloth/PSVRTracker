@@ -28,7 +28,8 @@ struct CommonSensorState
         PS3EYE = TrackingCamera + 0x00,
         PS4Camera = TrackingCamera + 0x01,
         VirtualStereoCamera = TrackingCamera + 0x02,
-        SUPPORTED_CAMERA_TYPE_COUNT = TrackingCamera + 0x03,
+		WMFStereoCamera = TrackingCamera + 0x03,
+        SUPPORTED_CAMERA_TYPE_COUNT = TrackingCamera + 0x04,
         
         Morpheus = HeadMountedDisplay + 0x00,
         VirtualHMD = HeadMountedDisplay + 0x01,
@@ -65,6 +66,9 @@ struct CommonSensorState
             break;
         case VirtualStereoCamera:
             result = "VirtualStereoCamera";
+            break;
+        case WMFStereoCamera:
+            result = "WMFStereoCamera";
             break;
         case Morpheus:
             result = "Morpheus";
@@ -205,11 +209,10 @@ public:
 	virtual void setFrameRate(double value, bool bUpdateConfig) = 0;
 	virtual double getFrameRate() const = 0;
 
-    virtual void setExposure(double value, bool bUpdateConfig) = 0;
-    virtual double getExposure() const = 0;
+	virtual bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const = 0;
 
-	virtual void setGain(double value, bool bUpdateConfig) = 0;
-	virtual double getGain() const = 0;
+    virtual void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting) = 0;
+    virtual int getVideoProperty(const PSVRVideoPropertyType property_type) const = 0;
 
     virtual void getCameraIntrinsics(PSVRTrackerIntrinsics &out_tracker_intrinsics) const = 0;
     virtual void setCameraIntrinsics(const PSVRTrackerIntrinsics &tracker_intrinsics) = 0;

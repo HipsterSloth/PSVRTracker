@@ -1,6 +1,6 @@
 //-- includes -----
 #include "NullUSBApi.h"
-#include "USBDeviceInfo.h"
+#include "USBDeviceFilter.h"
 #include "USBDeviceRequest.h"
 #include "USBDeviceManager.h"
 
@@ -28,7 +28,7 @@ void NullUSBApi::shutdown()
 {
 }
 
-USBDeviceEnumerator* NullUSBApi::device_enumerator_create(const DeviceClass deviceClass)
+USBDeviceEnumerator* NullUSBApi::device_enumerator_create()
 {
 	USBDeviceEnumerator *nullusb_enumerator = new USBDeviceEnumerator;
 	memset(nullusb_enumerator, 0, sizeof(USBDeviceEnumerator));

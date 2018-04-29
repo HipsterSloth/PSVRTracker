@@ -45,18 +45,20 @@ enum eMorpheusRequestType
 };
 
 enum eMorpheusLED
-{
-	_MorpheusLED_A= 1 << 0,
-	_MorpheusLED_B= 1 << 1,
-	_MorpheusLED_C= 1 << 2,
-	_MorpheusLED_D= 1 << 3,
-	_MorpheusLED_E= 1 << 4,
-	_MorpheusLED_F= 1 << 5,
-	_MorpheusLED_G= 1 << 6,
-	_MorpheusLED_H= 1 << 7,
-	_MorpheusLED_I= 1 << 8,
+{                           // Sides relative to looking 
+	_MorpheusLED_A= 1 << 0, // Front-Bottom-Right
+	_MorpheusLED_B= 1 << 1, // Front-Bottom-Left
+	_MorpheusLED_C= 1 << 2, // Front-Top-Right
+	_MorpheusLED_D= 1 << 3, // Front-Top-Left
+	_MorpheusLED_E= 1 << 4, // Front-Middle-Center
+	_MorpheusLED_F= 1 << 5, // Front-Middle-Right
+	_MorpheusLED_G= 1 << 6, // Front-Middle-Left
+	_MorpheusLED_H= 1 << 7, // Rear-Right
+	_MorpheusLED_I= 1 << 8, // Rear-Left
 
-	_MorpheusLED_ALL= 0x1FF
+	_MorpheusLED_ALL_FRONT=_MorpheusLED_A|_MorpheusLED_B|_MorpheusLED_C|_MorpheusLED_D|_MorpheusLED_E|_MorpheusLED_F|_MorpheusLED_G,
+	_MorpheusLED_ALL_BACK=_MorpheusLED_H|_MorpheusLED_I,
+	_MorpheusLED_ALL= _MorpheusLED_ALL_FRONT|_MorpheusLED_ALL_BACK
 };
 
 // -- private definitions -----
@@ -440,7 +442,8 @@ bool MorpheusHMD::open(
 				{
 					if (morpheus_enable_tracking(USBContext))
 					{
-						morpheus_set_led_brightness(USBContext, _MorpheusLED_ALL, 0);
+						morpheus_set_led_brightness(USBContext, _MorpheusLED_ALL_FRONT, 0);
+						morpheus_set_led_brightness(USBContext, _MorpheusLED_ALL_BACK, 50);
 					}
 				}
 			}
@@ -528,7 +531,8 @@ MorpheusHMD::getUSBDevicePath() const
 bool
 MorpheusHMD::getIsOpen() const
 {
-    return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != k_invalid_usb_device_handle;
+    return USBContext->sensor_device_handle != nullptr && 
+		(USBContext->usb_device_handle != k_invalid_usb_device_handle || cfg.disable_command_interface);
 }
 
 IDeviceInterface::ePollResult
@@ -662,7 +666,8 @@ void MorpheusHMD::setTrackingEnabled(bool bEnable)
 		}
 		else if (bIsTracking && !bEnable)
 		{
-			morpheus_set_led_brightness(USBContext, _MorpheusLED_ALL, 0);
+			morpheus_set_led_brightness(USBContext, _MorpheusLED_ALL_FRONT, 0);
+			morpheus_set_led_brightness(USBContext, _MorpheusLED_ALL_BACK, 50);
 			bIsTracking = false;
 		}
 	}
@@ -674,7 +679,7 @@ static bool morpheus_open_usb_device(
 {
 	bool bSuccess = false;
 
-    USBDeviceEnumerator* usb_device_enumerator= usb_device_enumerator_allocate(DeviceClass::DeviceClass_RawUSB);
+    USBDeviceEnumerator* usb_device_enumerator= usb_device_enumerator_allocate();
 
     if (usb_device_enumerator != nullptr)
     {
@@ -841,7 +846,11 @@ static bool morpheus_send_command(
 
 	if (morpheus_context->usb_device_handle != k_invalid_usb_device_handle)
 	{
-        const int endpointAddress = 0x84;
+		//###HipsterSloth $TODO Don't hard code the endpoint address.
+		// We should instead specify a direction (IN or OUT)
+		// The direction plus the transfer type (interrupt/bulk) is enough to
+		// look up the endpoint address on the USBApi side.
+        const int endpointAddress = 0x04;
 		//const int endpointAddress =
 		//	(morpheus_context->usb_device_descriptor->interface[MORPHEUS_COMMAND_INTERFACE]
 		//		.altsetting[0]

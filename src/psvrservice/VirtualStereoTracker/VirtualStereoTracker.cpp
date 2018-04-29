@@ -171,8 +171,8 @@ VirtualStereoTrackerConfig::readFromJSON(const configuru::Config &pt)
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
 		frame_rate = pt.get_or<double>("frame_rate", 60);
-        exposure = pt.get_or<double>("exposure", 32);
-		gain = pt.get_or<double>("gain", 32);
+        exposure = (int)pt.get_or<float>("exposure", 32);
+		gain = (int)pt.get_or<float>("gain", 32);
 
         left_camera_usb_path= pt.get<std::string>("left_camera_usb_path");
         right_camera_usb_path= pt.get<std::string>("right_camera_usb_path");
@@ -488,12 +488,12 @@ bool VirtualStereoTracker::open(const DeviceEnumerator *enumerator)
         CaptureData = new VirtualStereoCaptureData;
 
         LeftTracker->setFrameWidth(cfg.tracker_intrinsics.pixel_width, false);
-        LeftTracker->setExposure(cfg.exposure, false);
-        LeftTracker->setGain(cfg.gain, false);
+		LeftTracker->setVideoProperty(PSVRVideoProperty_Exposure, cfg.exposure, false);
+		LeftTracker->setVideoProperty(PSVRVideoProperty_Gain, cfg.gain, false);
         LeftTracker->setFrameRate(cfg.frame_rate, false);
         RightTracker->setFrameWidth(cfg.tracker_intrinsics.pixel_width, false);
-        RightTracker->setExposure(cfg.exposure, false);
-        RightTracker->setGain(cfg.gain, false);
+		RightTracker->setVideoProperty(PSVRVideoProperty_Exposure, cfg.exposure, false);
+		RightTracker->setVideoProperty(PSVRVideoProperty_Gain, cfg.gain, false);
         RightTracker->setFrameRate(cfg.frame_rate, false);
     }
     else
@@ -639,13 +639,13 @@ void VirtualStereoTracker::loadSettings()
 {
     double leftFrameWidth= LeftTracker->getFrameWidth();
     double leftFrameFPS= LeftTracker->getFrameRate();
-    double leftFrameExposure= LeftTracker->getExposure();
-    double leftFrameGain= LeftTracker->getGain();
+    int leftFrameExposure= LeftTracker->getVideoProperty(PSVRVideoProperty_Exposure);
+    int leftFrameGain= LeftTracker->getVideoProperty(PSVRVideoProperty_Gain);
 
     double rightFrameWidth= RightTracker->getFrameWidth();
     double rightFrameFPS= RightTracker->getFrameRate();
-    double rightFrameExposure= RightTracker->getExposure();
-    double rightFrameGain= RightTracker->getGain();
+    int rightFrameExposure= RightTracker->getVideoProperty(PSVRVideoProperty_Exposure);
+    int rightFrameGain= RightTracker->getVideoProperty(PSVRVideoProperty_Gain);
 
     cfg.load();
 
@@ -662,20 +662,20 @@ void VirtualStereoTracker::loadSettings()
 
 	    if (leftFrameExposure != cfg.exposure)
 	    {
-		    LeftTracker->setExposure(cfg.exposure, false);
+		    LeftTracker->setVideoProperty(PSVRVideoProperty_Exposure, cfg.exposure, false);
 	    }
 	    if (rightFrameExposure != cfg.exposure)
 	    {
-		    RightTracker->setExposure(cfg.exposure, false);
+		    RightTracker->setVideoProperty(PSVRVideoProperty_Exposure, cfg.exposure, false);
 	    }
 
 	    if (leftFrameGain != cfg.gain)
 	    {
-		    LeftTracker->setGain(cfg.gain, false);
+		    LeftTracker->setVideoProperty(PSVRVideoProperty_Gain, cfg.gain, false);
 	    }
 	    if (rightFrameGain != cfg.gain)
 	    {
-		    RightTracker->setGain(cfg.gain, false);
+		    RightTracker->setVideoProperty(PSVRVideoProperty_Gain, cfg.gain, false);
 	    }
 
 	    if (leftFrameFPS != cfg.frame_rate)
@@ -754,44 +754,38 @@ double VirtualStereoTracker::getFrameRate() const
 	return LeftTracker->getFrameRate();
 }
 
-void VirtualStereoTracker::setExposure(double value, bool bUpdateConfig)
+bool VirtualStereoTracker::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
+{
+	//ASSUMPTION: Left and right trackers should have same video frame property constraints
+	return LeftTracker->getVideoPropertyConstraint(property_type, outConstraint);
+}
+
+void VirtualStereoTracker::setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool bUpdateConfig)
 {
     if (getIsOpen())
     {
-        LeftTracker->setExposure(value, false);
-        RightTracker->setExposure(value, false);
+        LeftTracker->setVideoProperty(property_type, desired_value, false);
+        RightTracker->setVideoProperty(property_type, desired_value, false);
     }
 
 	if (bUpdateConfig)
 	{
-		cfg.exposure = value;
+		switch (property_type)
+		{
+		case PSVRVideoProperty_Exposure:
+			cfg.exposure = desired_value;
+			break;
+		case PSVRVideoProperty_Gain:
+			cfg.gain = desired_value;
+			break;
+		}
 	}
 }
 
-double VirtualStereoTracker::getExposure() const
+int VirtualStereoTracker::getVideoProperty(const PSVRVideoPropertyType property_type) const
 {
-    //ASSUMPTION: Left and right trackers should have same video frame properties
-    return LeftTracker->getExposure();
-}
-
-void VirtualStereoTracker::setGain(double value, bool bUpdateConfig)
-{
-    if (getIsOpen())
-    {
-        LeftTracker->setGain(value, false);
-        RightTracker->setGain(value, false);
-    }
-
-	if (bUpdateConfig)
-	{
-		cfg.gain = value;
-	}
-}
-
-double VirtualStereoTracker::getGain() const
-{
-    //ASSUMPTION: Left and right trackers should have same video frame properties
-	return cfg.gain;
+	//ASSUMPTION: Left and right trackers should have same video frame properties
+	return LeftTracker->getVideoProperty(property_type);
 }
 
 void VirtualStereoTracker::getCameraIntrinsics(

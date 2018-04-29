@@ -2,7 +2,6 @@
 #define USB_API_INTERFACE_H
 
 #include <stddef.h>
-#include "DevicePlatformInterface.h"
 
 //-- constants -----
 enum eUSBResultCode
@@ -65,7 +64,7 @@ public:
 	virtual void poll() = 0;
 	virtual void shutdown() = 0;
 
-	virtual USBDeviceEnumerator* device_enumerator_create(const DeviceClass deviceClass) = 0;
+	virtual USBDeviceEnumerator* device_enumerator_create() = 0;
 	virtual bool device_enumerator_get_filter(const USBDeviceEnumerator* enumerator, struct USBDeviceFilter *outDeviceInfo) const = 0;
 	virtual bool device_enumerator_get_path(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const = 0;
 	virtual bool device_enumerator_is_valid(USBDeviceEnumerator* enumerator) = 0;

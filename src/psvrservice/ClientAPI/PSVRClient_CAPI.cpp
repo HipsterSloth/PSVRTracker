@@ -380,27 +380,14 @@ PSVRResult PSVR_SetTrackerFrameRate(PSVRTrackerID tracker_id, float desired_fram
     return result;
 }
 
-PSVRResult PSVR_SetTrackerExposure(PSVRTrackerID tracker_id, float desired_exposure, bool save_setting, float *out_exposure)
+PSVRResult PSVR_SetTrackerVideoProperty(PSVRTrackerID tracker_id, PSVRVideoPropertyType property_type, int desired_value, bool save_setting, int *out_value)
 {
     PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        result= g_psvr_service->getRequestHandler()->set_tracker_exposure(
-            tracker_id, desired_exposure, save_setting, out_exposure);
-    }
-
-    return result;
-}
-
-PSVRResult PSVR_SetTrackerGain(PSVRTrackerID tracker_id, float desired_gain, bool save_setting, float *out_gain)
-{
-    PSVRResult result= PSVRResult_Error;
-
-    if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
-    {
-        result= g_psvr_service->getRequestHandler()->set_tracker_exposure(
-            tracker_id, desired_gain, save_setting, out_gain);
+        result= g_psvr_service->getRequestHandler()->set_tracker_video_property(
+            tracker_id, property_type, desired_value, save_setting, out_value);
     }
 
     return result;

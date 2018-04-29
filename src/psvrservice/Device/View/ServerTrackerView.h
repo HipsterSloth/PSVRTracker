@@ -66,12 +66,11 @@ public:
 	double getFrameRate() const;
 	void setFrameRate(double value, bool bUpdateConfig);
 
-    double getExposure() const;
-    void setExposure(double value, bool bUpdateConfig);
+	bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const;
 
-    double getGain() const;
-    void setGain(double value, bool bUpdateConfig);
-    
+	int getVideoProperty(const PSVRVideoPropertyType property_type) const;
+	void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting);
+
     bool computeProjectionForHMD(
 		const class ServerHMDView* tracked_hmd,
 		const PSVRTrackingShape *tracking_shape,

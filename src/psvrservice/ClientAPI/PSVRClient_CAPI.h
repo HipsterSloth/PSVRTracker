@@ -44,7 +44,8 @@ typedef enum
     PSVRTracker_None= -1,
     PSVRTracker_PS3Eye,
 	PSVRTracker_PS4Camera,
-    PSVRTracker_VirtualStereoCamera
+    PSVRTracker_VirtualStereoCamera,
+	PSVRTracker_GenericStereoCamera
 } PSVRTrackerType;
 
 /// The list of possible sub sections to extract from a video frame
@@ -172,6 +173,39 @@ typedef struct
     PSVRTrackerIntrinsicsType intrinsics_type;
 } PSVRTrackerIntrinsics;
 
+/// The list of possible camera drivers used by PSVRService
+typedef enum
+{
+    PSVRVideoProperty_Brightness,
+	PSVRVideoProperty_Contrast,
+	PSVRVideoProperty_Hue,
+	PSVRVideoProperty_Saturation,
+	PSVRVideoProperty_Sharpness,
+	PSVRVideoProperty_Gamma,
+	PSVRVideoProperty_WhiteBalance,
+	PSVRVideoProperty_Gain,
+	PSVRVideoProperty_Pan,
+	PSVRVideoProperty_Tilt,
+	PSVRVideoProperty_Roll,
+	PSVRVideoProperty_Zoom,
+	PSVRVideoProperty_Exposure,
+	PSVRVideoProperty_Iris,
+	PSVRVideoProperty_Focus,
+
+	PSVRVideoProperty_COUNT
+} PSVRVideoPropertyType;
+
+/// Constraints on the values for a single tracker property
+typedef struct
+{
+	int min_value;
+	int max_value;
+	int stepping_delta;
+	int default_value;
+	bool is_automatic;
+	bool is_supported;
+} PSVRVideoPropertyConstraint;
+
 /// Static properties about a tracker
 typedef struct
 {
@@ -182,6 +216,9 @@ typedef struct
     PSVRTrackerType tracker_type;
     PSVRTrackerDriver tracker_driver;
     char device_path[128];
+
+	// Constraints for each video property of the device (gain, exposure, etc)
+	PSVRVideoPropertyConstraint video_property_constraints[PSVRVideoProperty_COUNT];
 
     // Camera Intrinsic properties
     PSVRTrackerIntrinsics tracker_intrinsics;
@@ -199,8 +236,7 @@ typedef struct
 	float frame_width;
 	float frame_height;
 	float frame_rate;
-	float exposure;
-	float gain;
+	int video_properties[PSVRVideoProperty_COUNT];
 	
 	PSVR_HSVColorRangeTable color_range_table;
 } PSVRClientTrackerSettings;
@@ -575,21 +611,14 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_CloseTrackerVideoStream(PSVRTrackerID trac
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerFrameRate(PSVRTrackerID tracker_id, float desired_frame_rate, bool save_setting, float *out_frame_rate);
 
-/** \brief Set the exposure of the target tracker
+/** \brief Set the video property of the target tracker
 	\param tracker_id The id of the tracker
-    \param desired_exposure The desired exposure of the tracker
-    \param save_setting If true the desired exposure is saved to the tracker config
-    \param[out] out_exposure The actual resulting exposure of the tracker
+	\param property_type The video property to adjust
+    \param desired_value The desired value of the video property for the tracker
+    \param save_setting If true the desired value is saved to the tracker config
+    \param[out] out_value The actual resulting value applied to the property
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerExposure(PSVRTrackerID tracker_id, float desired_exposure, bool save_setting, float *out_exposure);
-
-/** \brief Set the gain of the target tracker
-	\param tracker_id The id of the tracker
-    \param desired_exposure The desired gain of the tracker
-    \param save_setting If true the desired gain is saved to the tracker config
-    \param[out] out_gain The actual resulting gain of the tracker
- */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerGain(PSVRTrackerID tracker_id, float desired_gain, bool save_setting, float *out_gain);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerVideoProperty(PSVRTrackerID tracker_id, PSVRVideoPropertyType property_type, int desired_value, bool save_setting, int *out_value);
 
 /** \brief Get the number of sections contained in a video buffer for the given tracker
 	\remark This will be 2 for stereo cameras and 1 for mono camera. Sections are assumed to have the same dimensions.

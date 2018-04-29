@@ -59,8 +59,7 @@ protected:
 	void request_start_hmd_stream();
     void request_tracker_start_stream();
 	void request_tracker_set_frame_rate(double value);
-    void request_tracker_set_exposure(double value);
-    void request_tracker_set_gain(double value);
+    void request_tracker_set_video_property(PSVRVideoPropertyType prop_type, int value);
     void request_tracker_set_color_filter(const PSVRTrackingColorType color_type, const PSVR_HSVColorRange &color_filter);
     void request_tracker_get_settings();
 
@@ -72,6 +71,9 @@ protected:
 
     inline PSVR_HSVColorRange getColorPreset()
     { return m_colorPresetTable.color_presets[m_masterTrackingColorType]; }
+	int getVideoPropertyStepSize(PSVRVideoPropertyType prop_type) const;
+	bool canIncVideoProperty(PSVRVideoPropertyType prop_type) const;
+	bool canDecVideoProperty(PSVRVideoPropertyType prop_type) const;
 
 private:
     // ClientPSVRAPI state
@@ -89,8 +91,7 @@ private:
 
     // Tracker Settings state
 	double m_trackerFrameRate;
-    double m_trackerExposure;
-    double m_trackerGain;
+	int m_videoProperties[PSVRVideoProperty_COUNT];
     PSVR_HSVColorRangeTable m_colorPresetTable;
 	int tracker_count;
 	int tracker_index;

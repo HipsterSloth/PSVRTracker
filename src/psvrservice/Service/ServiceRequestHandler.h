@@ -151,12 +151,9 @@ public:
     PSVRResult set_tracker_frame_rate(
 		const PSVRTrackerID tracker_id, const float desired_frame_rate, const bool bSaveSetting,
 		float *out_result_frame_rate);
-    PSVRResult set_tracker_exposure(
-		const PSVRTrackerID tracker_id, const float desired_exposure, const bool bSaveSetting,
-		float *out_result_exposure);
-    PSVRResult set_tracker_gain(
-		const PSVRTrackerID tracker_id, const float desired_gain, const bool bSaveSetting,
-		float *out_result_gain);
+    PSVRResult set_tracker_video_property(
+		const PSVRTrackerID tracker_id, const PSVRVideoPropertyType property_type, int desired_value, bool save_setting, 
+		int *out_value);
     PSVRResult set_tracker_color_preset(
         const PSVRTrackerID tracker_id, const PSVRHmdID HmdID, 
         const PSVRTrackingColorType tracking_color_type,

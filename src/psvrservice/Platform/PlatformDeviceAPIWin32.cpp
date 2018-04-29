@@ -14,6 +14,8 @@
 #include <strsafe.h>
 #include <winreg.h>
 
+#include <Mfapi.h>
+
 #include <string>
 #include <iostream>
 
@@ -127,6 +129,8 @@ bool PlatformDeviceAPIWin32::startup(IDeviceHotplugListener *broadcaster)
 {
 	bool bSuccess = true;
 
+	CoInitialize(NULL);
+
 	if (g_hWnd == nullptr)
 	{
 		WNDCLASSEX wx;
@@ -163,6 +167,17 @@ bool PlatformDeviceAPIWin32::startup(IDeviceHotplugListener *broadcaster)
 		PSVR_LOG_WARNING("DeviceHotplugAPIWin32::startup") << "Message handler window already created";
 	}
 
+	if (bSuccess)
+	{
+		HRESULT hr = MFStartup(MF_VERSION);
+
+		if(!SUCCEEDED(hr))
+		{
+			PSVR_LOG_ERROR("DeviceHotplugAPIWin32::startup") << "Failed to initialize MS Media Foundation!";
+			bSuccess = false;
+		}
+	}
+
 	return bSuccess;
 }
 
@@ -178,6 +193,8 @@ void PlatformDeviceAPIWin32::poll()
 
 void PlatformDeviceAPIWin32::shutdown()
 {
+	MFShutdown();  
+
 	if (g_hImageDeviceNotify != nullptr)
 	{
 		UnregisterDeviceNotification(g_hImageDeviceNotify);

@@ -1,5 +1,5 @@
-#ifndef PS4CAMERA_TRACKER_H
-#define PS4CAMERA_TRACKER_H
+#ifndef WMF_STEREO_TRACKER_H
+#define WMF_STEREO_TRACKER_H
 
 // -- includes -----
 #include "PSVRConfig.h"
@@ -7,43 +7,45 @@
 #include "DeviceInterface.h"
 #include <string>
 #include <vector>
+#include <array>
 #include <deque>
 
 // -- pre-declarations -----
-namespace cv {
-    class VideoCapture;
-}
+namespace PSMoveProtocol
+{
+    class Response_ResultTrackerSettings;
+};
 
 // -- definitions -----
-class PS4CameraTrackerConfig : public PSVRConfig
+class WMFStereoTrackerConfig : public PSVRConfig
 {
 public:
-    PS4CameraTrackerConfig(const std::string &fnamebase = "PS4CameraTrackerConfig");
+    WMFStereoTrackerConfig(const std::string &fnamebase = "WMFStereoTrackerConfig");
     
     virtual const configuru::Config writeToJSON();
     virtual void readFromJSON(const configuru::Config &pt);
 
 	const PSVR_HSVColorRangeTable *getColorRangeTable(const std::string &table_name) const;
 	inline PSVR_HSVColorRangeTable *getOrAddColorRangeTable(const std::string &table_name);
-    
+
     bool is_valid;
     long max_poll_failure_count;
-	double frame_rate;
-    int exposure;
-	int gain;
 
-    PSVRStereoTrackerIntrinsics trackerIntrinsics;
+	double frame_rate;
+	int last_video_format_index;
+	int video_properties[PSVRVideoProperty_COUNT];
+
+    PSVRStereoTrackerIntrinsics tracker_intrinsics;
     PSVRPosef pose;
 	PSVR_HSVColorRangeTable SharedColorPresets;
 	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
 
     static const int CONFIG_VERSION;
-	static const int LENS_CALIBRATION_VERSION;
 };
 
-struct PS4CameraTrackerState : public CommonSensorState
+struct WMFStereoTrackerState : public CommonSensorState
 {   
-    PS4CameraTrackerState()
+    WMFStereoTrackerState()
     {
         clear();
     }
@@ -51,19 +53,17 @@ struct PS4CameraTrackerState : public CommonSensorState
     void clear()
     {
         CommonSensorState::clear();
-        DeviceType = CommonSensorState::PS3EYE;
+        DeviceType = CommonSensorState::WMFStereoCamera;
     }
 };
 
-class PS4CameraTracker : public ITrackerInterface {
+class WMFStereoTracker : public ITrackerInterface {
 public:
-    PS4CameraTracker();
-    virtual ~PS4CameraTracker();
-
-    static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path);
-
-    // PSVRTracker
-    bool open(); // Opens the first HID device for the controller
+    WMFStereoTracker();
+    virtual ~WMFStereoTracker();
+        
+    // Stereo Tracker
+    bool open(); // Opens the first virtual stereo tracker
     
     // -- IDeviceInterface
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
@@ -74,7 +74,7 @@ public:
     void close() override;
     long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
-    { return CommonSensorState::PS4Camera; }
+    { return CommonSensorState::WMFStereoCamera; }
     CommonSensorState::eDeviceType getDeviceType() const override;
     const CommonSensorState *getSensorState(int lookBack = 0) const override;
     
@@ -106,17 +106,18 @@ public:
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;
 
     // -- Getters
-    inline const PS4CameraTrackerConfig &getConfig() const
-    { return cfg; }
+    inline const WMFStereoTrackerConfig &getConfig() const
+    { return m_cfg; }
 
 private:
-    PS4CameraTrackerConfig cfg;
-    std::string USBDevicePath;
-    class cv::VideoCapture *VideoCapture;
-    class PS4CameraCaptureData *CaptureData;
+    WMFStereoTrackerConfig m_cfg;
+    std::string m_device_identifier;
+
+	class WMFVideoDevice *m_videoDevice;
+    ITrackerInterface::eDriverType m_DriverType;    
     
-    // Read Controller State
-    int NextPollSequenceNumber;
-    std::deque<PS4CameraTrackerState> TrackerStates;
+    // Read Tracker State
+    int m_nextPollSequenceNumber;
+    std::deque<WMFStereoTrackerState> m_trackerStates;
 };
-#endif // PS4CAMERA_TRACKER_H
+#endif // WMF_STEREO_TRACKER_H

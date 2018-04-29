@@ -18,6 +18,30 @@ namespace Utility
         return index >= 0 && index < count;
     }
 
+	template <class T> void SafeRelease(T **ppT)
+	{
+		if (*ppT)
+		{
+			(*ppT)->Release();
+			*ppT = nullptr;
+		}
+	}
+
+	template <class T> void SafeReleaseAllCount(T **ppT)
+	{
+		if (*ppT)
+		{
+			unsigned long e = (*ppT)->Release();
+
+			while (e)
+			{
+				e = (*ppT)->Release();
+			}
+
+			*ppT = nullptr;
+		}
+	}
+
     unsigned char int32_to_int8_verify(int value);
     bool convert_wcs_to_mbs(const wchar_t *wc_string, char *out_mb_serial, const size_t mb_buffer_size);
 

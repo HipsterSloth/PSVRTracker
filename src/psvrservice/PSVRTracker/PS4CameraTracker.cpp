@@ -257,8 +257,8 @@ PS4CameraTrackerConfig::readFromJSON(const configuru::Config &pt)
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
         frame_rate = pt.get_or<double>("frame_rate", DEFAULT_FRAME_RATE);
-        exposure = pt.get_or<double>("exposure", 32);
-        gain = pt.get_or<double>("gain", 32);
+        exposure = (int)pt.get_or<float>("exposure", 32);
+		gain = (int)pt.get_or<float>("gain", 32);
 
         int lens_calibration_version = pt.get_or<int>("lens_calibration_version", 0);
         if (lens_calibration_version == PS4CameraTrackerConfig::LENS_CALIBRATION_VERSION)
@@ -505,8 +505,8 @@ bool PS4CameraTracker::open(const DeviceEnumerator *enumerator)
         cfg.save();
 
         //TODO: Frame width? Frame height? FPS?
-        VideoCapture->set(cv::CAP_PROP_EXPOSURE, cfg.exposure);
-        VideoCapture->set(cv::CAP_PROP_GAIN, cfg.gain);
+        VideoCapture->set(cv::CAP_PROP_EXPOSURE, (double)cfg.exposure);
+        VideoCapture->set(cv::CAP_PROP_GAIN, (double)cfg.gain);
     }
 
     // Process one frame to retrieve to initialize the capture data
@@ -696,8 +696,8 @@ void PS4CameraTracker::loadSettings()
 {
     const double currentFrameWidth = CaptureData->getImageWidth();
     const double currentFrameRate = VideoCapture->get(cv::CAP_PROP_FPS);
-    const double currentExposure= VideoCapture->get(cv::CAP_PROP_EXPOSURE);
-    const double currentGain= VideoCapture->get(cv::CAP_PROP_GAIN);
+    const int currentExposure= VideoCapture->get(cv::CAP_PROP_EXPOSURE);
+    const int currentGain= VideoCapture->get(cv::CAP_PROP_GAIN);
 
     cfg.load();
 
@@ -709,12 +709,12 @@ void PS4CameraTracker::loadSettings()
 
     if (currentExposure != cfg.exposure)
     {
-        VideoCapture->set(cv::CAP_PROP_EXPOSURE, cfg.exposure);
+        VideoCapture->set(cv::CAP_PROP_EXPOSURE, (double)cfg.exposure);
     }
 
     if (currentGain != cfg.gain)
     {
-        VideoCapture->set(cv::CAP_PROP_GAIN, cfg.gain);
+        VideoCapture->set(cv::CAP_PROP_GAIN, (double)cfg.gain);
     }
 
     if (currentFrameRate != cfg.frame_rate)
@@ -784,40 +784,67 @@ double PS4CameraTracker::getFrameRate() const
     return VideoCapture->get(cv::CAP_PROP_FPS);
 }
 
-void PS4CameraTracker::setExposure(double value, bool bUpdateConfig)
+bool PS4CameraTracker::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
 {
-    if (getExposure() != value)
-    {
-        VideoCapture->set(cv::CAP_PROP_EXPOSURE, value);
+	memset(&outConstraint, 0, sizeof(PSVRVideoPropertyConstraint));
 
-        if (bUpdateConfig)
-        {
-            cfg.exposure = value;
-        }
-    }
+	switch (property_type)
+	{
+	case PSVRVideoProperty_Exposure:
+	case PSVRVideoProperty_Gain:
+		{
+			outConstraint.default_value= 32;
+			outConstraint.is_automatic= false;
+			outConstraint.is_supported= true;
+			outConstraint.min_value= 0;
+			outConstraint.max_value= 255;
+			outConstraint.stepping_delta= 8;
+		} break;
+	}
+
+	return outConstraint.is_supported;
 }
 
-double PS4CameraTracker::getExposure() const
+void PS4CameraTracker::setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool bUpdateConfig)
 {
-    return VideoCapture->get(cv::CAP_PROP_EXPOSURE);
+	switch (property_type)
+	{
+	case PSVRVideoProperty_Exposure:
+		{
+			VideoCapture->set(cv::CAP_PROP_EXPOSURE, (double)desired_value);
+
+			if (bUpdateConfig)
+			{
+				cfg.exposure = desired_value;
+			}
+		} break;
+	case PSVRVideoProperty_Gain:
+		{
+			VideoCapture->set(cv::CAP_PROP_GAIN, (double)desired_value);
+
+			if (bUpdateConfig)
+			{
+				cfg.gain = desired_value;
+			}
+		} break;
+	}
 }
 
-void PS4CameraTracker::setGain(double value, bool bUpdateConfig)
+int PS4CameraTracker::getVideoProperty(const PSVRVideoPropertyType property_type) const
 {
-    if (getGain() != value)
-    {
-        VideoCapture->set(cv::CAP_PROP_GAIN, value);
+	int value= 0;
 
-        if (bUpdateConfig)
-        {
-            cfg.gain = value;
-        }
-    }
-}
+	switch (property_type)
+	{
+	case PSVRVideoProperty_Exposure:
+		value= (int)VideoCapture->get(cv::CAP_PROP_EXPOSURE);
+		break;
+	case PSVRVideoProperty_Gain:
+		value= (int)VideoCapture->get(cv::CAP_PROP_GAIN);
+		break;
+	}
 
-double PS4CameraTracker::getGain() const
-{
-    return VideoCapture->get(cv::CAP_PROP_GAIN);
+	return value;
 }
 
 void PS4CameraTracker::getCameraIntrinsics(
@@ -889,7 +916,7 @@ void PS4CameraTracker::getTrackingColorPreset(
 
 void PS4CameraTracker::uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
 {
-    USBDeviceEnumerator* enumerator= usb_device_enumerator_allocate(DeviceClass::DeviceClass_LibUSB);
+    USBDeviceEnumerator* enumerator= usb_device_enumerator_allocate();
 
     while (enumerator != nullptr && usb_device_enumerator_is_valid(enumerator))
     {

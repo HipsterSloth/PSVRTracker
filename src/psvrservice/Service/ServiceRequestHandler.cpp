@@ -163,6 +163,9 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
             case CommonSensorState::VirtualStereoCamera:
                 tracker_info->tracker_type= PSVRTracker_VirtualStereoCamera;
                 break;					
+            case CommonSensorState::WMFStereoCamera:
+                tracker_info->tracker_type= PSVRTracker_GenericStereoCamera;
+                break;					
             default:
                 assert(0 && "Unhandled tracker type");
             }
@@ -181,6 +184,14 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
 
             tracker_info->tracker_id= tracker_id;
             strncpy(tracker_info->device_path, tracker_view->getUSBDevicePath().c_str(), sizeof(tracker_info->device_path));
+
+			// Get the constraints for each video property
+			for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
+			{
+				tracker_view->getVideoPropertyConstraint(
+					(PSVRVideoPropertyType)prop_index, 
+					tracker_info->video_property_constraints[prop_index]);
+			}
 
             // Get the intrinsic camera lens properties
 			tracker_view->getCameraIntrinsics(tracker_info->tracker_intrinsics);
@@ -289,8 +300,11 @@ PSVRResult ServiceRequestHandler::get_tracker_settings(PSVRTrackerID tracker_id,
             out_settings->frame_width= static_cast<float>(tracker_view->getFrameWidth());
             out_settings->frame_height= static_cast<float>(tracker_view->getFrameHeight());
             out_settings->frame_rate= static_cast<float>(tracker_view->getFrameRate());
-            out_settings->exposure= static_cast<float>(tracker_view->getExposure());
-            out_settings->gain= static_cast<float>(tracker_view->getGain());
+
+			for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
+			{
+				out_settings->video_properties[prop_index]= tracker_view->getVideoProperty((PSVRVideoPropertyType)prop_index);
+			}
 				
 			tracker_view->gatherTrackingColorPresets(hmd_view, out_settings);
 				
@@ -409,47 +423,9 @@ PSVRResult ServiceRequestHandler::set_tracker_frame_rate(
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_tracker_exposure(
-	const PSVRTrackerID tracker_id, 
-	const float desired_exposure, 
-	const bool bSaveSetting,
-	float *out_result_exposure)
-{
-	PSVRResult result= PSVRResult_Error;
-
-	if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
-    {
-        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
-        if (tracker_view->getIsOpen())
-        {
-            // Set the desired exposure on the tracker
-            tracker_view->setExposure(desired_exposure, bSaveSetting);
-
-            // Only save the setting if requested
-            if (bSaveSetting)
-            {
-                tracker_view->saveSettings();
-            }
-            else
-            {
-                m_peristentRequestState->active_tracker_stream_info[tracker_id].has_temp_settings_override = true;
-            }
-
-            // Return back the actual exposure that got set
-            *out_result_exposure= static_cast<float>(tracker_view->getExposure());
-
-            result= PSVRResult_Success;
-        }
-    }
-		
-	return result;
-}
-
-PSVRResult ServiceRequestHandler::set_tracker_gain(
-	const PSVRTrackerID tracker_id, 
-	const float desired_gain, 
-	const bool bSaveSetting,
-	float *out_result_gain)
+PSVRResult ServiceRequestHandler::set_tracker_video_property(
+	const PSVRTrackerID tracker_id, const PSVRVideoPropertyType property_type, int desired_value, bool save_setting,
+	int *out_value)
 {
 	PSVRResult result= PSVRResult_Error;
 		
@@ -458,11 +434,11 @@ PSVRResult ServiceRequestHandler::set_tracker_gain(
         ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
         if (tracker_view->getIsOpen())
         {
-            // Set the desired gain on the tracker
-            tracker_view->setGain(desired_gain, bSaveSetting);
+            // Set the desired property value on the tracker
+            tracker_view->setVideoProperty(property_type, desired_value, save_setting);
 
             // Only save the setting if requested
-            if (bSaveSetting)
+            if (save_setting)
             {
                 tracker_view->saveSettings();
             }
@@ -471,8 +447,8 @@ PSVRResult ServiceRequestHandler::set_tracker_gain(
                 m_peristentRequestState->active_tracker_stream_info[tracker_id].has_temp_settings_override = true;
             }
 
-            // Return back the actual gain that got set
-            *out_result_gain= static_cast<float>(tracker_view->getGain());
+            // Return back the actual property value that got set
+            *out_value= tracker_view->getVideoProperty(property_type);
 
             result= PSVRResult_Success;
         }

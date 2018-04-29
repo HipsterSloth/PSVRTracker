@@ -32,8 +32,8 @@ public:
     bool is_valid;
     long max_poll_failure_count;
 	double frame_rate;
-    double exposure;
-	double gain;
+    int exposure;
+	int gain;
 
     eFOVSetting fovSetting;    
     PSVRMonoTrackerIntrinsics trackerIntrinsics;
@@ -94,10 +94,9 @@ public:
 	double getFrameHeight() const override;
 	void setFrameRate(double value, bool bUpdateConfig) override;
 	double getFrameRate() const override;
-    void setExposure(double value, bool bUpdateConfig) override;
-    double getExposure() const override;
-	void setGain(double value, bool bUpdateConfig) override;
-	double getGain() const override;
+	bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const override;
+    void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting) override;
+    int getVideoProperty(const PSVRVideoPropertyType property_type) const override;
     void getCameraIntrinsics(PSVRTrackerIntrinsics &out_tracker_intrinsics) const override;
     void setCameraIntrinsics(const PSVRTrackerIntrinsics &tracker_intrinsics) override;
     PSVRPosef getTrackerPose() const override;
