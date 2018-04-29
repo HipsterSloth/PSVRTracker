@@ -114,8 +114,8 @@ PS3EyeTrackerConfig::readFromJSON(const configuru::Config &pt)
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
 		frame_rate = pt.get_or<double>("frame_rate", 40);
-        exposure = pt.get_or<double>("exposure", 32);
-		gain = pt.get_or<double>("gain", 32);
+        exposure = (int)pt.get_or<float>("exposure", 32);
+		gain = (int)pt.get_or<float>("gain", 32);
 
 		int lens_calibration_version = pt.get_or<int>("lens_calibration_version", 0);
 		if (lens_calibration_version == PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION)
@@ -347,8 +347,8 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
 		// Save the config back out again in case defaults changed
 		cfg.save();
 
-		VideoCapture->set(cv::CAP_PROP_EXPOSURE, cfg.exposure);
-		VideoCapture->set(cv::CAP_PROP_GAIN, cfg.gain);
+		VideoCapture->set(cv::CAP_PROP_EXPOSURE, (double)cfg.exposure);
+		VideoCapture->set(cv::CAP_PROP_GAIN, (double)cfg.gain);
     }
 
     return bSuccess;
@@ -525,8 +525,8 @@ void PS3EyeTracker::loadSettings()
 {
 	const double currentFrameWidth = VideoCapture->get(cv::CAP_PROP_FRAME_WIDTH);
 	const double currentFrameRate = VideoCapture->get(cv::CAP_PROP_FPS);
-    const double currentExposure= VideoCapture->get(cv::CAP_PROP_EXPOSURE);
-    const double currentGain= VideoCapture->get(cv::CAP_PROP_GAIN);
+    const int currentExposure= (int)VideoCapture->get(cv::CAP_PROP_EXPOSURE);
+    const int currentGain= (int)VideoCapture->get(cv::CAP_PROP_GAIN);
 
     cfg.load();
 
@@ -542,12 +542,12 @@ void PS3EyeTracker::loadSettings()
 
     if (currentGain != cfg.gain)
     {
-        VideoCapture->set(cv::CAP_PROP_GAIN, cfg.gain);
+        VideoCapture->set(cv::CAP_PROP_GAIN, (double)cfg.gain);
     }
 
 	if (currentFrameRate != cfg.frame_rate)
 	{
-		VideoCapture->set(cv::CAP_PROP_FPS, cfg.frame_rate);
+		VideoCapture->set(cv::CAP_PROP_FPS, (double)cfg.frame_rate);
 	}
 }
 
@@ -610,40 +610,67 @@ double PS3EyeTracker::getFrameRate() const
 	return VideoCapture->get(cv::CAP_PROP_FPS);
 }
 
-void PS3EyeTracker::setExposure(double value, bool bUpdateConfig)
+bool PS3EyeTracker::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
 {
-    if (getExposure() != value)
-    {
-        VideoCapture->set(cv::CAP_PROP_EXPOSURE, value);
+	memset(&outConstraint, 0, sizeof(PSVRVideoPropertyConstraint));
 
-	    if (bUpdateConfig)
-	    {
-		    cfg.exposure = value;
-	    }
-    }
+	switch (property_type)
+	{
+	case PSVRVideoProperty_Exposure:
+	case PSVRVideoProperty_Gain:
+		{
+			outConstraint.default_value= 32;
+			outConstraint.is_automatic= false;
+			outConstraint.is_supported= true;
+			outConstraint.min_value= 0;
+			outConstraint.max_value= 255;
+			outConstraint.stepping_delta= 8;
+		} break;
+	}
+
+	return outConstraint.is_supported;
 }
 
-double PS3EyeTracker::getExposure() const
+void PS3EyeTracker::setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool bUpdateConfig)
 {
-    return VideoCapture->get(cv::CAP_PROP_EXPOSURE);
+	switch (property_type)
+	{
+	case PSVRVideoProperty_Exposure:
+		{
+			VideoCapture->set(cv::CAP_PROP_EXPOSURE, (double)desired_value);
+
+			if (bUpdateConfig)
+			{
+				cfg.exposure = desired_value;
+			}
+		} break;
+	case PSVRVideoProperty_Gain:
+		{
+			VideoCapture->set(cv::CAP_PROP_GAIN, (double)desired_value);
+
+			if (bUpdateConfig)
+			{
+				cfg.gain = desired_value;
+			}
+		} break;
+	}
 }
 
-void PS3EyeTracker::setGain(double value, bool bUpdateConfig)
+int PS3EyeTracker::getVideoProperty(const PSVRVideoPropertyType property_type) const
 {
-    if (getGain() != value)
-    {
-	    VideoCapture->set(cv::CAP_PROP_GAIN, value);
+	int value= 0;
 
-	    if (bUpdateConfig)
-	    {
-		    cfg.gain = value;
-	    }
-    }
-}
+	switch (property_type)
+	{
+	case PSVRVideoProperty_Exposure:
+		value= (int)VideoCapture->get(cv::CAP_PROP_EXPOSURE);
+		break;
+	case PSVRVideoProperty_Gain:
+		value= (int)VideoCapture->get(cv::CAP_PROP_GAIN);
+		break;
+	}
 
-double PS3EyeTracker::getGain() const
-{
-	return VideoCapture->get(cv::CAP_PROP_GAIN);
+	return value;
 }
 
 void PS3EyeTracker::getCameraIntrinsics(

@@ -14,6 +14,7 @@
 
 #include <Mfidl.h>
 #include <Mfapi.h>
+#include <Shlwapi.h>
 #include <opencv2/videoio/videoio.hpp>
 
 struct WMFDeviceList
@@ -38,6 +39,7 @@ WMFCameraEnumerator::WMFCameraEnumerator()
 {
 	m_deviceType= CommonSensorState::WMFStereoCamera;
     m_device_index= -1;
+	m_current_device_identifier= "";
 
 	//###HipsterSloth $TODO Pass this in from a global config
 	m_device_filter_set.addFilter(0x05a3, 0x9750); // ELP 1.3MP USB 2.0 Stereo Camera
@@ -72,6 +74,11 @@ int WMFCameraEnumerator::get_product_id() const
 	return is_valid() ? m_wmf_device_list->deviceList[m_device_index].usbProductId : -1;
 }
 
+const char *WMFCameraEnumerator::get_unique_identifier() const
+{
+	return is_valid() ? m_wmf_device_list->deviceList[m_device_index].uniqueIdentifier.c_str() : nullptr;
+}
+
 const WMFDeviceInfo *WMFCameraEnumerator::get_device_info() const
 {
 	return is_valid() ? &m_wmf_device_list->deviceList[m_device_index] : nullptr;
@@ -93,7 +100,11 @@ bool WMFCameraEnumerator::next()
 
 		bFoundValid = m_device_filter_set.passesFilter(device.usbVendorId, device.usbProductId);
 
-		if (!bFoundValid)
+		if (bFoundValid)
+		{
+			m_current_device_identifier= device.deviceSymbolicLink;
+		}
+		else
 		{ 
 			++m_device_index;
 		}
@@ -212,7 +223,9 @@ static bool FetchDeviceInfo(IMFActivate **wmfDeviceList, int deviceIndex, WMFDev
 
 		if (SUCCEEDED(hr))
 		{
-			deviceInfo.deviceSymbolicLink= wszDeviceSymbolicLink;
+			char szDeviceSymbolicLink[512];
+			wcstombs(szDeviceSymbolicLink, wszDeviceSymbolicLink, (unsigned)_countof(szDeviceSymbolicLink));  
+			deviceInfo.deviceSymbolicLink= szDeviceSymbolicLink;
 
 			if (swscanf_s(
 					wszDeviceSymbolicLink, L"\\\\?\\usb#vid_%x&pid_%x#", 
@@ -222,6 +235,29 @@ static bool FetchDeviceInfo(IMFActivate **wmfDeviceList, int deviceIndex, WMFDev
 			}
 
 			CoTaskMemFree(wszDeviceSymbolicLink);
+		}
+	}
+
+	// Compute a unique identifier from using an 8-byte hash of the device symbolic path
+	// This hash encapsulates VID, PID, REV and driver GUID
+	if (SUCCEEDED(hr))
+	{
+		BYTE hash[8];
+
+		hr= HashData(
+				(BYTE *)deviceInfo.deviceSymbolicLink.c_str(),
+				(DWORD)deviceInfo.deviceSymbolicLink.length(),
+				hash, 8);
+
+		if (SUCCEEDED(hr))
+		{
+			char hash_string[32];
+
+			sprintf_s(hash_string, sizeof(hash_string), "%x%x%x%x%x%x%x%x", 
+				hash[0], hash[1], hash[2], hash[3], 
+				hash[4], hash[5], hash[6], hash[7]);
+
+			deviceInfo.uniqueIdentifier= hash_string;
 		}
 	}
 

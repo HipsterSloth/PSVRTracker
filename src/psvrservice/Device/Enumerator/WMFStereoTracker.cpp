@@ -132,9 +132,10 @@ public:
     WMFVideoDevice(const int device_index, const WMFDeviceInfo &device_info);
 	~WMFVideoDevice();
 
-	bool open(int desiredFormatIndex);
+	bool open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg);
 	void close();
 
+	inline const PSVRVideoPropertyConstraint *getVideoPropertyConstraints() const { return m_videoPropertyConstraints; }
 	inline const WMFVideoFrameProcessor *getVideoFrameProcessorConst() const { return m_videoFrameProcessor; }
 	inline WMFVideoFrameProcessor *getVideoFrameProcessor() { return m_videoFrameProcessor; }
 	const WMFDeviceFormatInfo *getCurrentDeviceFormat() const;
@@ -153,11 +154,9 @@ public:
 	  VideoProcAmp_BacklightCompensation		0=off, 1=on
 	  VideoProcAmp_Gain				device dependent
 	*/
-	bool setProcAmpProperty(VideoProcAmpProperty propId, double unitValue, bool bAuto);
-	double getProcAmpProperty(VideoProcAmpProperty propId, bool *bIsAuto = nullptr) const;
-
-	inline double getGain() const;
-	inline bool setGain(double value);
+	bool setProcAmpProperty(VideoProcAmpProperty propId, long desired_value, bool bAuto);
+	long getProcAmpProperty(VideoProcAmpProperty propId, bool *bIsAuto = nullptr) const;
+	bool getProcAmpRange(VideoProcAmpProperty propId, PSVRVideoPropertyConstraint &constraint) const;
 
 	/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/dd318253(v=vs.85).aspx
@@ -169,16 +168,19 @@ public:
 		CameraControl_Iris			units of f_stop*10
 		CameraControl_Focus			 optimally focused target, in millimeters
 	*/
-	bool setCameraControlProperty(CameraControlProperty propId, double unitValue, bool bAuto);
-	double getCameraControlProperty(CameraControlProperty propId, bool *bIsAuto = nullptr) const;
+	bool setCameraControlProperty(CameraControlProperty propId, long desired_value, bool bAuto);
+	long getCameraControlProperty(CameraControlProperty propId, bool *bIsAuto = nullptr) const;
+	bool getCameraControlRange(CameraControlProperty propId, PSVRVideoPropertyConstraint &constraint) const;
 
-	double getExposure() const;
-	bool setExposure(double value);
+	bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const;
+	void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value);
+	int getVideoProperty(const PSVRVideoPropertyType property_type) const;
 
 public:
 	int m_deviceIndex;
 	WMFDeviceInfo m_deviceInfo;
 	int m_deviceFormatIndex;
+	PSVRVideoPropertyConstraint m_videoPropertyConstraints[PSVRVideoProperty_COUNT];
 	IMFMediaSource *m_mediaSource;
 	WMFVideoFrameProcessor *m_videoFrameProcessor;
 };
@@ -192,9 +194,7 @@ WMFStereoTrackerConfig::WMFStereoTrackerConfig(const std::string &fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
 	, frame_rate(60)
-    , exposure(32)
-    , gain(32)
-    , camera_identifier("USB\\VID_1415&PID_2000\\bA_pB.C")
+	, last_video_format_index(-1)
 {
     pose= *k_PSVR_pose_identity;
 
@@ -258,6 +258,8 @@ WMFStereoTrackerConfig::WMFStereoTrackerConfig(const std::string &fnamebase)
     {
         SharedColorPresets.color_presets[preset_index] = k_default_color_presets[preset_index];
     }
+
+	memset(video_properties, 0, sizeof(video_properties));
 };
 
 const configuru::Config 
@@ -270,8 +272,22 @@ WMFStereoTrackerConfig::writeToJSON()
         {"frame_width", tracker_intrinsics.pixel_width},
         {"frame_height", tracker_intrinsics.pixel_height},
         {"frame_rate", frame_rate},
-        {"exposure", exposure},
-        {"gain", gain},
+		{"last_video_format_index", last_video_format_index},
+        {"brightness", video_properties[PSVRVideoProperty_Brightness]},
+		{"contrast", video_properties[PSVRVideoProperty_Contrast]},
+		{"hue", video_properties[PSVRVideoProperty_Hue]},
+		{"saturation", video_properties[PSVRVideoProperty_Saturation]},
+		{"sharpness", video_properties[PSVRVideoProperty_Sharpness]},
+		{"gamma", video_properties[PSVRVideoProperty_Gamma]},
+		{"whitebalance", video_properties[PSVRVideoProperty_WhiteBalance]},
+		{"gain", video_properties[PSVRVideoProperty_Gain]},
+		{"pan", video_properties[PSVRVideoProperty_Pan]},
+		{"tilt", video_properties[PSVRVideoProperty_Tilt]},
+		{"roll", video_properties[PSVRVideoProperty_Roll]},
+		{"zoom", video_properties[PSVRVideoProperty_Zoom]},
+		{"exposure", video_properties[PSVRVideoProperty_Exposure]},
+		{"iris", video_properties[PSVRVideoProperty_Iris]},
+		{"focus", video_properties[PSVRVideoProperty_Focus]},
         {"hfov", tracker_intrinsics.hfov},
         {"vfov", tracker_intrinsics.vfov},
         {"zNear", tracker_intrinsics.znear},
@@ -283,7 +299,6 @@ WMFStereoTrackerConfig::writeToJSON()
         {"pose.position.x", pose.Position.x},
         {"pose.position.y", pose.Position.y},
         {"pose.position.z", pose.Position.z},
-        {"camera_identifier", camera_identifier}
     };
 
     writeMatrix3d(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
@@ -323,10 +338,23 @@ WMFStereoTrackerConfig::readFromJSON(const configuru::Config &pt)
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
 		frame_rate = pt.get_or<double>("frame_rate", 60);
-        exposure = pt.get_or<double>("exposure", 32);
-		gain = pt.get_or<double>("gain", 32);
+		last_video_format_index= pt.get_or<int>("last_video_format_index", last_video_format_index);
 
-        camera_identifier= pt.get<std::string>("camera_identifier");
+        video_properties[PSVRVideoProperty_Brightness]= (int)pt.get_or<float>("brightness", (float)video_properties[PSVRVideoProperty_Brightness]);
+		video_properties[PSVRVideoProperty_Contrast]= (int)pt.get_or<float>("contrast", (float)video_properties[PSVRVideoProperty_Contrast]);
+		video_properties[PSVRVideoProperty_Hue]= (int)pt.get_or<float>("hue", (float)video_properties[PSVRVideoProperty_Hue]);
+		video_properties[PSVRVideoProperty_Saturation]= (int)pt.get_or<float>("saturation", (float)video_properties[PSVRVideoProperty_Saturation]);
+		video_properties[PSVRVideoProperty_Sharpness]= (int)pt.get_or<float>("sharpness", (float)video_properties[PSVRVideoProperty_Sharpness]);
+		video_properties[PSVRVideoProperty_Gamma]= (int)pt.get_or<float>("gamma", (float)video_properties[PSVRVideoProperty_Gamma]);
+		video_properties[PSVRVideoProperty_WhiteBalance]= (int)pt.get_or<float>("whitebalance", (float)video_properties[PSVRVideoProperty_WhiteBalance]);
+		video_properties[PSVRVideoProperty_Gain]= (int)pt.get_or<float>("gain", (float)video_properties[PSVRVideoProperty_Gain]);
+		video_properties[PSVRVideoProperty_Pan]= (int)pt.get_or<float>("pan", (float)video_properties[PSVRVideoProperty_Pan]);
+		video_properties[PSVRVideoProperty_Tilt]= (int)pt.get_or<float>("tilt", (float)video_properties[PSVRVideoProperty_Tilt]);
+		video_properties[PSVRVideoProperty_Roll]= (int)pt.get_or<float>("roll", (float)video_properties[PSVRVideoProperty_Roll]);
+		video_properties[PSVRVideoProperty_Zoom]= (int)pt.get_or<float>("zoom", (float)video_properties[PSVRVideoProperty_Zoom]);
+		video_properties[PSVRVideoProperty_Exposure]= (int)pt.get_or<float>("exposure", (float)video_properties[PSVRVideoProperty_Exposure]);
+		video_properties[PSVRVideoProperty_Iris]= (int)pt.get_or<float>("iris", (float)video_properties[PSVRVideoProperty_Iris]);
+		video_properties[PSVRVideoProperty_Focus]= (int)pt.get_or<float>("focus", (float)video_properties[PSVRVideoProperty_Focus]);
 
 		tracker_intrinsics.pixel_width = pt.get_or<float>("frame_width", 640.f);
 		tracker_intrinsics.pixel_height = pt.get_or<float>("frame_height", 480.f);
@@ -515,6 +543,7 @@ bool WMFStereoTracker::open(const DeviceEnumerator *enumerator)
 {
     const TrackerDeviceEnumerator *tracker_enumerator = static_cast<const TrackerDeviceEnumerator *>(enumerator);
     const char *cur_dev_path = tracker_enumerator->get_path();
+	const int camera_index = tracker_enumerator->get_camera_index();
 
     bool bSuccess = true;
     
@@ -524,57 +553,44 @@ bool WMFStereoTracker::open(const DeviceEnumerator *enumerator)
     }
     else
     {
-        const int camera_index = tracker_enumerator->get_camera_index();
+		const WMFCameraEnumerator *wmf_enumerator= 
+			tracker_enumerator->get_windows_media_foundation_camera_enumerator();
+		const char *unique_id= wmf_enumerator->get_unique_identifier();
 
         PSVR_LOG_INFO("WMFStereoTracker::open") << "Opening WMFStereoTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
 
+		// Remember the path to this camera
         m_device_identifier = cur_dev_path;
 
+		// Build a config file name from the unique id
+		char config_name[256];
+        Utility::format_string(config_name, sizeof(config_name), "WMFStereoCamera_%s", unique_id);
+
         // Load the config file for the tracker
-        m_cfg = WMFStereoTrackerConfig(m_device_identifier);
+        m_cfg = WMFStereoTrackerConfig(config_name);
         m_cfg.load();
 
-        // Save the config back out again in case defaults changed
-        m_cfg.save();
+		int desiredFormatIndex= 
+			wmf_enumerator->get_device_info()->findBestDeviceFormatIndex(
+				2*(unsigned int)m_cfg.tracker_intrinsics.pixel_width,
+				(unsigned int)m_cfg.tracker_intrinsics.pixel_height,
+				(unsigned int)m_cfg.frame_rate,
+				CAMERA_BUFFER_FORMAT_MJPG);
 
-        if (m_cfg.camera_identifier.length() == 0)
-        {
-            PSVR_LOG_WARNING("WMFStereoTracker::open") << 
-                "WMFStereoTracker(" << cur_dev_path << 
-                ", camera_index=" << camera_index << 
-                ") has empty camera identifier";
-            bSuccess= false;
-        }
+		if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
+		{
+			m_videoDevice = 
+				new WMFVideoDevice(
+					wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
 
-        if (bSuccess)
-        {
-			const WMFCameraEnumerator *wmf_enumerator= 
-				tracker_enumerator->get_windows_media_foundation_camera_enumerator();
-
-			PSVR_LOG_INFO("WMFStereoTracker::open") << "Opening WMFTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
-
-			int desiredFormatIndex= 
-				wmf_enumerator->get_device_info()->findBestDeviceFormatIndex(
-					2*(unsigned int)m_cfg.tracker_intrinsics.pixel_width,
-					(unsigned int)m_cfg.tracker_intrinsics.pixel_height,
-					(unsigned int)m_cfg.frame_rate,
-					CAMERA_BUFFER_FORMAT_MJPG);
-
-			if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
+			if (m_videoDevice->open(desiredFormatIndex, m_cfg))
 			{
-				m_videoDevice = 
-					new WMFVideoDevice(
-						wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
-
-				if (m_videoDevice->open(desiredFormatIndex))
-				{
-					setExposure(m_cfg.exposure, false);
-					setGain(m_cfg.gain, false);
-
-					bSuccess = true;
-				}
+				bSuccess = true;
 			}
-        }
+		}
+
+		// Save the config back out again in case defaults changed
+        m_cfg.save();
     }
     
     if (!bSuccess)
@@ -731,20 +747,35 @@ const unsigned char *WMFStereoTracker::getVideoFrameBuffer(PSVRVideoFrameSection
 
 void WMFStereoTracker::loadSettings()
 {
-    const double currentExposure= m_videoDevice->getExposure();
-    const double currentGain= m_videoDevice->getGain();
+	const PSVRVideoPropertyConstraint *constraints= m_videoDevice->getVideoPropertyConstraints();
 
     m_cfg.load();
 
-    if (currentExposure != m_cfg.exposure)
-    {
-        m_videoDevice->setExposure(m_cfg.exposure);
-    }
+	for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
+	{
+		const PSVRVideoPropertyType prop_type = (PSVRVideoPropertyType)prop_index;
+		const PSVRVideoPropertyConstraint &constraint= constraints[prop_index];
 
-    if (currentGain != m_cfg.gain)
-    {
-        m_videoDevice->setGain(m_cfg.gain);
-    }
+		if (constraint.is_supported)
+		{
+			int currentValue= getVideoProperty(prop_type);
+			int desiredValue= m_cfg.video_properties[prop_index];
+
+			if (desiredValue != currentValue)
+			{
+				bool bUpdateConfig= false;
+
+				if (desiredValue < constraint.min_value || 
+					desiredValue > constraint.max_value)
+				{
+					desiredValue= constraint.default_value;
+					bUpdateConfig= true;
+				}
+
+				setVideoProperty(prop_type, desiredValue, bUpdateConfig);
+			}
+		}
+	}
 }
 
 void WMFStereoTracker::saveSettings()
@@ -763,13 +794,15 @@ void WMFStereoTracker::setFrameWidth(double value, bool bUpdateConfig)
 
 	if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 	{
-		m_videoDevice->open(desiredFormatIndex);
+		m_videoDevice->open(desiredFormatIndex, m_cfg);
 	}
 
 	if (bUpdateConfig)
 	{
 		m_cfg.tracker_intrinsics.pixel_width = static_cast<float>(value);
 	}
+
+	m_cfg.save();
 }
 
 double WMFStereoTracker::getFrameWidth() const
@@ -788,13 +821,15 @@ void WMFStereoTracker::setFrameHeight(double value, bool bUpdateConfig)
 
 	if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 	{
-		m_videoDevice->open(desiredFormatIndex);
+		m_videoDevice->open(desiredFormatIndex, m_cfg);
 	}
 
 	if (bUpdateConfig)
 	{
 		m_cfg.tracker_intrinsics.pixel_height = static_cast<float>(value);
 	}
+
+	m_cfg.save();
 }
 
 double WMFStereoTracker::getFrameHeight() const
@@ -815,13 +850,15 @@ void WMFStereoTracker::setFrameRate(double value, bool bUpdateConfig)
 
 		if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 		{
-			m_videoDevice->open(desiredFormatIndex);
+			m_videoDevice->open(desiredFormatIndex, m_cfg);
 		}
 
 	    if (bUpdateConfig)
 	    {
 		    m_cfg.frame_rate = value;
 	    }
+
+		m_cfg.save();
     }
 }
 
@@ -833,40 +870,25 @@ double WMFStereoTracker::getFrameRate() const
 	return frameRate;
 }
 
-void WMFStereoTracker::setExposure(double value, bool bUpdateConfig)
+bool WMFStereoTracker::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
 {
-    if (getExposure() != value)
-    {
-        m_videoDevice->setExposure(value);
-
-	    if (bUpdateConfig)
-	    {
-		    m_cfg.exposure = value;
-	    }
-    }
+	
+	return m_videoDevice->getVideoPropertyConstraint(property_type, outConstraint);
 }
 
-double WMFStereoTracker::getExposure() const
+void WMFStereoTracker::setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool bUpdateConfig)
 {
-	return m_videoDevice->getGain();
+	m_videoDevice->setVideoProperty(property_type, desired_value);
+
+	if (bUpdateConfig)
+	{
+		m_cfg.video_properties[property_type] = desired_value;
+	}
 }
 
-void WMFStereoTracker::setGain(double value, bool bUpdateConfig)
+int WMFStereoTracker::getVideoProperty(const PSVRVideoPropertyType property_type) const
 {
-    if (getGain() != value)
-    {
-		m_videoDevice->setGain(value);
-
-	    if (bUpdateConfig)
-	    {
-		    m_cfg.gain = value;
-	    }
-    }
-}
-
-double WMFStereoTracker::getGain() const
-{
-	return m_videoDevice->getGain();
+	return m_videoDevice->getVideoProperty(property_type);
 }
 
 void WMFStereoTracker::getCameraIntrinsics(
@@ -950,7 +972,7 @@ WMFVideoDevice::~WMFVideoDevice()
 	close();
 }
 
-bool WMFVideoDevice::open(int desiredFormatIndex)
+bool WMFVideoDevice::open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg)
 {
 	HRESULT hr;
 
@@ -1044,6 +1066,69 @@ bool WMFVideoDevice::open(int desiredFormatIndex)
 		}
 
 		if (SUCCEEDED(hr))
+		{
+			// Update the property constraints for the current video format
+			for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
+			{
+				getVideoPropertyConstraint((PSVRVideoPropertyType)prop_index, m_videoPropertyConstraints[prop_index]);
+			}
+
+			// Apply video property settings stored in config onto the camera
+			for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
+			{
+				const PSVRVideoPropertyType prop_type = (PSVRVideoPropertyType)prop_index;
+				const PSVRVideoPropertyConstraint &constraint= m_videoPropertyConstraints[prop_index];
+
+				if (constraint.is_supported)
+				{
+					// Use the properties from the config if we used this video mode previously
+					if (desiredFormatIndex == cfg.last_video_format_index)
+					{
+						int currentValue= getVideoProperty(prop_type);
+						int desiredValue= cfg.video_properties[prop_index];
+
+						if (desiredValue != currentValue)
+						{
+							// Use the desired value if it is in-range
+							if (desiredValue >= constraint.min_value &&
+								desiredValue <= constraint.max_value)
+							{
+								setVideoProperty(prop_type, desiredValue);
+							}
+							// Otherwise update the config to use the current value
+							else
+							{
+								cfg.video_properties[prop_index]= currentValue;
+							}
+						}
+					}
+					// Otherwise use the current value for the property
+					// and update the config to match
+					else
+					{
+						int currentValue= getVideoProperty(prop_type);
+
+						if (currentValue >= constraint.min_value &&
+							currentValue <= constraint.max_value)
+						{
+							cfg.video_properties[prop_index]= currentValue;
+						}
+						else
+						{
+							// If the current value is somehow out-of-range
+							// fallback to the default value
+							setVideoProperty(prop_type, constraint.default_value);
+							cfg.video_properties[prop_index]= constraint.default_value;
+						}
+					}
+				}
+			}
+
+			// Remember which video format index that was last successfully opened
+			cfg.last_video_format_index= desiredFormatIndex;
+		}
+
+		if (SUCCEEDED(hr))
 			hr= m_videoFrameProcessor->start();
 
 		Utility::SafeReleaseAllCount(&pPD);
@@ -1099,7 +1184,7 @@ bool WMFVideoDevice::getIsOpen() const
 	VideoProcAmp_BacklightCompensation		0=off, 1=on
 	VideoProcAmp_Gain				device dependent
 */
-bool WMFVideoDevice::setProcAmpProperty(VideoProcAmpProperty propId, double unitValue, bool bAuto)
+bool WMFVideoDevice::setProcAmpProperty(VideoProcAmpProperty propId, long value, bool bAuto)
 {
 	bool bSuccess= false;
 
@@ -1108,15 +1193,53 @@ bool WMFVideoDevice::setProcAmpProperty(VideoProcAmpProperty propId, double unit
 
 	if (SUCCEEDED(hr))
 	{
+		hr = pProcAmp->Set(propId, value, bAuto ? VideoProcAmp_Flags_Auto : VideoProcAmp_Flags_Manual);
+		pProcAmp->Release();
+	}
+
+	return SUCCEEDED(hr);
+}
+
+long WMFVideoDevice::getProcAmpProperty(VideoProcAmpProperty propId, bool *bIsAuto) const
+{
+	long intValue= 0;
+	IAMVideoProcAmp *pProcAmp = NULL;
+	HRESULT hr = m_mediaSource->QueryInterface(IID_PPV_ARGS(&pProcAmp));
+
+	if (SUCCEEDED(hr))
+	{
+		long flags;
+		hr = pProcAmp->Get(propId, &intValue, &flags);
+
+		if (bIsAuto != nullptr)
+		{
+			*bIsAuto = flags == VideoProcAmp_Flags_Auto;
+		}
+
+		pProcAmp->Release();
+	}
+
+	return intValue;
+}
+
+bool WMFVideoDevice::getProcAmpRange(VideoProcAmpProperty propId, PSVRVideoPropertyConstraint &constraint) const
+{
+	IAMVideoProcAmp *pProcAmp = NULL;
+	HRESULT hr = m_mediaSource->QueryInterface(IID_PPV_ARGS(&pProcAmp));
+
+	memset(&constraint, 0, sizeof(PSVRVideoPropertyConstraint));
+
+	if (SUCCEEDED(hr))
+	{
 		long minValue, maxValue, stepSize, defaultValue, flags;
 		hr = pProcAmp->GetRange(propId, &minValue, &maxValue, &stepSize, &defaultValue, &flags);
 
-		if (SUCCEEDED(hr))
-		{
-			long intValue= (long)((double)minValue*unitValue + (double)maxValue*(1.0-unitValue));
-
-			hr = pProcAmp->Set(propId, intValue, bAuto ? VideoProcAmp_Flags_Auto : VideoProcAmp_Flags_Manual);
-		}
+		constraint.default_value= defaultValue;
+		constraint.min_value= minValue;
+		constraint.max_value= maxValue;
+		constraint.stepping_delta= stepSize;
+		constraint.is_supported= true;
+		constraint.is_automatic= flags == VideoProcAmp_Flags_Auto;
 
 		pProcAmp->Release();
 	}
@@ -1124,47 +1247,7 @@ bool WMFVideoDevice::setProcAmpProperty(VideoProcAmpProperty propId, double unit
 	return SUCCEEDED(hr);
 }
 
-double WMFVideoDevice::getProcAmpProperty(VideoProcAmpProperty propId, bool *bIsAuto) const
-{
-	double unitValue= 0;
-	IAMVideoProcAmp *pProcAmp = NULL;
-	HRESULT hr = m_mediaSource->QueryInterface(IID_PPV_ARGS(&pProcAmp));
-
-	if (SUCCEEDED(hr))
-	{
-		long minValue, maxValue, stepSize, defaultValue, flags;
-		hr = pProcAmp->GetRange(propId, &minValue, &maxValue, &stepSize, &defaultValue, &flags);
-
-		if (SUCCEEDED(hr))
-		{
-			long intValue;
-			hr = pProcAmp->Get(propId, &intValue, &flags);
-
-			unitValue= (double)intValue - (double)(minValue) / ((double)(maxValue - minValue));
-
-			if (bIsAuto != nullptr)
-			{
-				*bIsAuto = flags == VideoProcAmp_Flags_Auto;
-			}
-		}
-
-		pProcAmp->Release();
-	}
-
-	return unitValue;
-}
-
-inline double WMFVideoDevice::getGain() const 
-{
-	return getProcAmpProperty(VideoProcAmp_Gain);
-}
-
-inline bool WMFVideoDevice::setGain(double value)
-{
-	return setProcAmpProperty(VideoProcAmp_Gain, value, false);
-}
-
-bool WMFVideoDevice::setCameraControlProperty(CameraControlProperty propId, double unitValue, bool bAuto)
+bool WMFVideoDevice::setCameraControlProperty(CameraControlProperty propId, long value, bool bAuto)
 {
 	bool bSuccess= false;
 
@@ -1173,15 +1256,7 @@ bool WMFVideoDevice::setCameraControlProperty(CameraControlProperty propId, doub
 
 	if (SUCCEEDED(hr))
 	{
-		long minValue, maxValue, stepSize, defaultValue, flags;
-		hr = pProcControl->GetRange(propId, &minValue, &maxValue, &stepSize, &defaultValue, &flags);
-
-		if (SUCCEEDED(hr))
-		{
-			long intValue= (long)((double)minValue*unitValue + (double)maxValue*(1.0-unitValue));
-
-			hr = pProcControl->Set(propId, intValue, bAuto ? CameraControl_Flags_Auto : CameraControl_Flags_Manual);
-		}
+		hr = pProcControl->Set(propId, value, bAuto ? CameraControl_Flags_Auto : CameraControl_Flags_Manual);
 
 		pProcControl->Release();
 	}
@@ -1189,11 +1264,36 @@ bool WMFVideoDevice::setCameraControlProperty(CameraControlProperty propId, doub
 	return SUCCEEDED(hr);
 }
 
-double WMFVideoDevice::getCameraControlProperty(CameraControlProperty propId, bool *bIsAuto) const
+long WMFVideoDevice::getCameraControlProperty(CameraControlProperty propId, bool *bIsAuto) const
+{
+	long intValue= 0;
+	IAMCameraControl *pCameraControl = NULL;
+	HRESULT hr = m_mediaSource->QueryInterface(IID_PPV_ARGS(&pCameraControl));
+
+	if (SUCCEEDED(hr))
+	{
+		long flags;
+		hr = pCameraControl->Get(propId, &intValue, &flags);
+
+		if (bIsAuto != nullptr)
+		{
+			*bIsAuto = flags == CameraControl_Flags_Auto;
+		}
+
+		pCameraControl->Release();
+	}
+
+	return intValue;
+}
+
+bool WMFVideoDevice::getCameraControlRange(
+	CameraControlProperty propId, PSVRVideoPropertyConstraint &constraint) const
 {
 	double unitValue= 0;
 	IAMCameraControl *pCameraControl = NULL;
 	HRESULT hr = m_mediaSource->QueryInterface(IID_PPV_ARGS(&pCameraControl));
+
+	memset(&constraint, 0, sizeof(PSVRVideoPropertyConstraint));
 
 	if (SUCCEEDED(hr))
 	{
@@ -1202,31 +1302,182 @@ double WMFVideoDevice::getCameraControlProperty(CameraControlProperty propId, bo
 
 		if (SUCCEEDED(hr))
 		{
-			long intValue;
-			hr = pCameraControl->Get(propId, &intValue, &flags);
-
-			unitValue= (double)intValue - (double)(minValue) / ((double)(maxValue - minValue));
-
-			if (bIsAuto != nullptr)
-			{
-				*bIsAuto = flags == CameraControl_Flags_Auto;
-			}
+			constraint.default_value= defaultValue;
+			constraint.min_value= minValue;
+			constraint.max_value= maxValue;
+			constraint.stepping_delta= stepSize;
+			constraint.is_supported= true;
+			constraint.is_automatic= flags == VideoProcAmp_Flags_Auto;
 		}
 
 		pCameraControl->Release();
 	}
 
-	return unitValue;
+	return SUCCEEDED(hr);
 }
 
-double WMFVideoDevice::getExposure() const
+bool WMFVideoDevice::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
 {
-	return getCameraControlProperty(CameraControl_Exposure);
+	bool bSuccess= false;
+
+	switch (property_type)
+	{
+    case PSVRVideoProperty_Brightness:
+		bSuccess= getProcAmpRange(VideoProcAmp_Brightness, outConstraint);
+		break;
+	case PSVRVideoProperty_Contrast:
+		bSuccess= getProcAmpRange(VideoProcAmp_Contrast, outConstraint);
+		break;
+	case PSVRVideoProperty_Hue:
+		bSuccess= getProcAmpRange(VideoProcAmp_Hue, outConstraint);
+		break;
+	case PSVRVideoProperty_Saturation:
+		bSuccess= getProcAmpRange(VideoProcAmp_Saturation, outConstraint);
+		break;
+	case PSVRVideoProperty_Sharpness:
+		bSuccess= getProcAmpRange(VideoProcAmp_Sharpness, outConstraint);
+		break;
+	case PSVRVideoProperty_Gamma:
+		bSuccess= getProcAmpRange(VideoProcAmp_Gamma, outConstraint);
+		break;
+	case PSVRVideoProperty_WhiteBalance:
+		bSuccess= getProcAmpRange(VideoProcAmp_WhiteBalance, outConstraint);
+		break;
+	case PSVRVideoProperty_Gain:
+		bSuccess= getProcAmpRange(VideoProcAmp_Gain, outConstraint);
+		break;
+	case PSVRVideoProperty_Pan:
+		bSuccess= getCameraControlRange(CameraControl_Pan, outConstraint);
+		break;
+	case PSVRVideoProperty_Tilt:
+		bSuccess= getCameraControlRange(CameraControl_Tilt, outConstraint);
+		break;
+	case PSVRVideoProperty_Roll:
+		bSuccess= getCameraControlRange(CameraControl_Roll, outConstraint);
+		break;
+	case PSVRVideoProperty_Zoom:
+		bSuccess= getCameraControlRange(CameraControl_Zoom, outConstraint);
+		break;
+	case PSVRVideoProperty_Exposure:
+		bSuccess= getCameraControlRange(CameraControl_Exposure, outConstraint);
+		break;
+	case PSVRVideoProperty_Iris:
+		bSuccess= getCameraControlRange(CameraControl_Iris, outConstraint);
+		break;
+	case PSVRVideoProperty_Focus:
+		bSuccess= getCameraControlRange(CameraControl_Focus, outConstraint);
+		break;
+	}
+	
+	return bSuccess;
 }
 
-bool WMFVideoDevice::setExposure(double value)
+void WMFVideoDevice::setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value)
 {
-	return setCameraControlProperty(CameraControl_Exposure, value, false);
+	switch (property_type)
+	{
+    case PSVRVideoProperty_Brightness:
+		setProcAmpProperty(VideoProcAmp_Brightness, desired_value, false);
+		break;
+	case PSVRVideoProperty_Contrast:
+		setProcAmpProperty(VideoProcAmp_Contrast, desired_value, false);
+		break;
+	case PSVRVideoProperty_Hue:
+		setProcAmpProperty(VideoProcAmp_Hue, desired_value, false);
+		break;
+	case PSVRVideoProperty_Saturation:
+		setProcAmpProperty(VideoProcAmp_Saturation, desired_value, false);
+		break;
+	case PSVRVideoProperty_Sharpness:
+		setProcAmpProperty(VideoProcAmp_Sharpness, desired_value, false);
+		break;
+	case PSVRVideoProperty_Gamma:
+		setProcAmpProperty(VideoProcAmp_Gamma, desired_value, false);
+		break;
+	case PSVRVideoProperty_WhiteBalance:
+		setProcAmpProperty(VideoProcAmp_WhiteBalance, desired_value, false);
+		break;
+	case PSVRVideoProperty_Gain:
+		setProcAmpProperty(VideoProcAmp_Gain, desired_value, false);
+		break;
+	case PSVRVideoProperty_Pan:
+		setCameraControlProperty(CameraControl_Pan, desired_value, false);
+		break;
+	case PSVRVideoProperty_Tilt:
+		setCameraControlProperty(CameraControl_Tilt, desired_value, false);
+		break;
+	case PSVRVideoProperty_Roll:
+		setCameraControlProperty(CameraControl_Roll, desired_value, false);
+		break;
+	case PSVRVideoProperty_Zoom:
+		setCameraControlProperty(CameraControl_Zoom, desired_value, false);
+		break;
+	case PSVRVideoProperty_Exposure:
+		setCameraControlProperty(CameraControl_Exposure, desired_value, false);
+		break;
+	case PSVRVideoProperty_Iris:
+		setCameraControlProperty(CameraControl_Iris, desired_value, false);
+		break;
+	case PSVRVideoProperty_Focus:
+		setCameraControlProperty(CameraControl_Focus, desired_value, false);
+		break;
+	}
+}
+
+int WMFVideoDevice::getVideoProperty(const PSVRVideoPropertyType property_type) const
+{
+	int value= 0;
+
+	switch (property_type)
+	{
+    case PSVRVideoProperty_Brightness:
+		value= getProcAmpProperty(VideoProcAmp_Brightness);
+		break;
+	case PSVRVideoProperty_Contrast:
+		value= getProcAmpProperty(VideoProcAmp_Contrast);
+		break;
+	case PSVRVideoProperty_Hue:
+		value= getProcAmpProperty(VideoProcAmp_Hue);
+		break;
+	case PSVRVideoProperty_Saturation:
+		value= getProcAmpProperty(VideoProcAmp_Saturation);
+		break;
+	case PSVRVideoProperty_Sharpness:
+		value= getProcAmpProperty(VideoProcAmp_Sharpness);
+		break;
+	case PSVRVideoProperty_Gamma:
+		value= getProcAmpProperty(VideoProcAmp_Gamma);
+		break;
+	case PSVRVideoProperty_WhiteBalance:
+		value= getProcAmpProperty(VideoProcAmp_WhiteBalance);
+		break;
+	case PSVRVideoProperty_Gain:
+		value= getProcAmpProperty(VideoProcAmp_Gain);
+		break;
+	case PSVRVideoProperty_Pan:
+		value= getCameraControlProperty(CameraControl_Pan);
+		break;
+	case PSVRVideoProperty_Tilt:
+		value= getCameraControlProperty(CameraControl_Tilt);
+		break;
+	case PSVRVideoProperty_Roll:
+		value= getCameraControlProperty(CameraControl_Roll);
+		break;
+	case PSVRVideoProperty_Zoom:
+		value= getCameraControlProperty(CameraControl_Zoom);
+		break;
+	case PSVRVideoProperty_Exposure:
+		value= getCameraControlProperty(CameraControl_Exposure);
+		break;
+	case PSVRVideoProperty_Iris:
+		value= getCameraControlProperty(CameraControl_Iris);
+		break;
+	case PSVRVideoProperty_Focus:
+		value= getCameraControlProperty(CameraControl_Focus);
+		break;
+	}
+
+	return value;
 }
 
 const WMFDeviceFormatInfo *WMFVideoDevice::getCurrentDeviceFormat() const

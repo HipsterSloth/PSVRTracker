@@ -999,24 +999,19 @@ void ServerTrackerView::setFrameRate(double value, bool bUpdateConfig)
     m_device->setFrameRate(value, bUpdateConfig);
 }
 
-double ServerTrackerView::getExposure() const
+bool ServerTrackerView::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
 {
-    return m_device->getExposure();
+	return m_device->getVideoPropertyConstraint(property_type, outConstraint);
 }
 
-void ServerTrackerView::setExposure(double value, bool bUpdateConfig)
+int ServerTrackerView::getVideoProperty(const PSVRVideoPropertyType property_type) const
 {
-    m_device->setExposure(value, bUpdateConfig);
+	return m_device->getVideoProperty(property_type);
 }
 
-double ServerTrackerView::getGain() const
+void ServerTrackerView::setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting)
 {
-    return m_device->getGain();
-}
-
-void ServerTrackerView::setGain(double value, bool bUpdateConfig)
-{
-    m_device->setGain(value, bUpdateConfig);
+	m_device->setVideoProperty(property_type, desired_value, save_setting);
 }
 
 void ServerTrackerView::getCameraIntrinsics(

@@ -1077,26 +1077,28 @@ void AppStage_StereoCalibration::renderCameraSettingsUI()
     ImGui::SameLine();
     ImGui::Text("Video Filter Mode: %s", k_video_display_mode_names[m_opencv_stereo_state->m_videoDisplayMode]);
 
+	const int exposure_step= m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].stepping_delta;
     if (ImGui::Button("-##Exposure"))
     {
-        request_tracker_set_temp_exposure(m_trackerExposure - 8);
+        request_tracker_set_temp_exposure(m_trackerExposure - exposure_step);
     }
     ImGui::SameLine();
     if (ImGui::Button("+##Exposure"))
     {
-        request_tracker_set_temp_exposure(m_trackerExposure + 8);
+        request_tracker_set_temp_exposure(m_trackerExposure + exposure_step);
     }
     ImGui::SameLine();
     ImGui::Text("Exposure: %f", m_trackerExposure);
 
+	const int gain_step= m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].stepping_delta;
     if (ImGui::Button("-##Gain"))
     {
-        request_tracker_set_temp_gain(m_trackerGain - 8);
+        request_tracker_set_temp_gain(m_trackerGain - gain_step);
     }
     ImGui::SameLine();
     if (ImGui::Button("+##Gain"))
     {
-        request_tracker_set_temp_gain(m_trackerGain + 8);
+        request_tracker_set_temp_gain(m_trackerGain + gain_step);
     }
     ImGui::SameLine();
     ImGui::Text("Gain: %f", m_trackerGain);
@@ -1424,16 +1426,16 @@ void AppStage_StereoCalibration::handle_tracker_stop_stream_response()
     m_app->setAppStage(AppStage_TrackerSettings::APP_STAGE_NAME);
 }
 
-void AppStage_StereoCalibration::request_tracker_set_temp_gain(float gain)
+void AppStage_StereoCalibration::request_tracker_set_temp_gain(int gain)
 {
     // Tell the PSVR service that we want to change gain, but not save the change
-    PSVR_SetTrackerGain(m_tracker_view->tracker_info.tracker_id, gain, false, &m_trackerGain);
+    PSVR_SetTrackerVideoProperty(m_tracker_view->tracker_info.tracker_id, PSVRVideoProperty_Gain, gain, false, &m_trackerGain);
 }
 
-void AppStage_StereoCalibration::request_tracker_set_temp_exposure(float exposure)
+void AppStage_StereoCalibration::request_tracker_set_temp_exposure(int exposure)
 {
     // Tell the PSVR service that we want to change exposure, but not save the change.
-    PSVR_SetTrackerGain(m_tracker_view->tracker_info.tracker_id, exposure, false, &m_trackerExposure);
+    PSVR_SetTrackerVideoProperty(m_tracker_view->tracker_info.tracker_id, PSVRVideoProperty_Exposure, exposure, false, &m_trackerExposure);
 }
 
 void AppStage_StereoCalibration::request_tracker_set_intrinsic(

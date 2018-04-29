@@ -24,8 +24,8 @@ public:
 
     void request_tracker_start_stream();
     void request_tracker_stop_stream();
-    void request_tracker_set_temp_gain(float gain);
-    void request_tracker_set_temp_exposure(float exposure);
+    void request_tracker_set_temp_gain(int gain);
+    void request_tracker_set_temp_exposure(int exposure);
     void request_tracker_set_intrinsic(const PSVRStereoTrackerIntrinsics &new_stereo_intrinsics);
     void request_tracker_reload_settings();
     void request_exit();
@@ -66,8 +66,8 @@ private:
 	float m_square_length_mm;
 
     // Tracker Settings state
-    float m_trackerExposure;
-    float m_trackerGain;
+    int m_trackerExposure;
+    int m_trackerGain;
     bool m_bypassCalibrationFlag;
 
     bool m_bStreamIsActive;
