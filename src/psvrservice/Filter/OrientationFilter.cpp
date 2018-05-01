@@ -6,7 +6,7 @@
 
 //-- constants -----
 // Maximum we blend against the optically derived orientation
-#define k_max_optical_orientation_weight 0.05f
+#define k_max_optical_orientation_weight 0.005f
 
 // Complementary MARG Filter constants
 #define k_base_earth_frame_align_weight 0.02f
@@ -379,6 +379,7 @@ void OrientationFilterMadgwickMARG::update(const float delta_time, const PoseFil
 }
 
 // -- OrientationFilterComplementaryOpticalARG --
+#define COMPLEMENTARY_FILTER_YAW_ONLY_BLEND 0
 void OrientationFilterComplementaryOpticalARG::update(const float delta_time, const PoseFilterPacket &packet)
 {
     if (packet.tracking_projection_area_px_sqr <= k_real_epsilon)
@@ -446,7 +447,7 @@ void OrientationFilterComplementaryOpticalARG::update(const float delta_time, co
 	Eigen::Quaternionf blended_orientation_new = SEq_new;
 	if (packet.tracking_projection_area_px_sqr > 0)
     {
-        // The final rotation is a blend between the integrated orientation and absolute optical orientation
+		// The final rotation is a blend between the integrated orientation and absolute optical orientation
 		const float fraction_of_max_orientation_variance =
 			safe_divide_with_default(
 				m_constants.orientation_variance_curve.evaluate(packet.tracking_projection_area_px_sqr),
@@ -462,22 +463,28 @@ void OrientationFilterComplementaryOpticalARG::update(const float delta_time, co
             optical_weight= g_weight_override;
         }
 
+#if COMPLEMENTARY_FILTER_YAW_ONLY_BLEND
+		Eigen::Quaternionf optical_yaw, optical_twist;
+		eigen_quaternionf_to_swing_twist(
+			packet.optical_orientation, Eigen::Vector3f(0.f, 1.f, 0.f), 
+			optical_yaw, optical_twist);
+		Eigen::Quaternionf optical_test= optical_yaw * optical_twist;
+
+		Eigen::Quaternionf SEq_new_yaw, SEq_new_twist;
+		eigen_quaternionf_to_swing_twist(
+			SEq_new, Eigen::Vector3f(0.f, 1.f, 0.f), 
+			SEq_new_yaw, SEq_new_twist);
+		Eigen::Quaternionf SEq_new_test= SEq_new_yaw * SEq_new_twist;
+
+		Eigen::Quaternionf blended_swing = 
+			eigen_quaternion_normalized_lerp(SEq_new_yaw, optical_yaw, optical_weight);
+
+		// Keep the twist from the filtered orientation
+		// but use the blended yaw orientation
+		blended_orientation_new = blended_swing * SEq_new_twist;
+#else
 		blended_orientation_new= eigen_quaternion_normalized_lerp(SEq_new, packet.optical_orientation, optical_weight);
-
-		//const Eigen::EulerAnglesf optical_euler_angles = eigen_quaternionf_to_euler_angles(packet.optical_orientation);
-		//const Eigen::EulerAnglesf SEeuler_new= eigen_quaternionf_to_euler_angles(SEq_new);
-
-		//// Blend in the yaw from the optical orientation
-		//const float blended_heading_radians= 
-		//	wrap_lerpf(
-		//		SEeuler_new.get_heading_radians(), 
-		//		optical_euler_angles.get_heading_radians(), 
-		//		optical_weight, 
-		//		-k_real_pi, k_real_pi);
-		//const Eigen::EulerAnglesf new_euler_angles(
-		//	SEeuler_new.get_bank_radians(), blended_heading_radians, SEeuler_new.get_attitude_radians());
-
-		//blended_orientation_new = eigen_euler_angles_to_quaternionf(new_euler_angles);
+#endif
     }
 
 	{
