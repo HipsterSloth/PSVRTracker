@@ -54,6 +54,9 @@ public:
 		videoBufferMat(left_bounds).copyTo(*left_section);
 		videoBufferMat(right_bounds).copyTo(*right_section);
 
+		//cv::flip(*left_section, *left_section, +1);
+		//cv::flip(*right_section, *right_section, +1);
+
 		has_new_frame= true;
 	}
 

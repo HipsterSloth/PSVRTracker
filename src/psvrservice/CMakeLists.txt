@@ -82,6 +82,8 @@ file(GLOB PSVR_TRACKER_SRC
     "${CMAKE_CURRENT_LIST_DIR}/PSVRTracker/PSEye/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/VirtualStereoTracker/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/VirtualStereoTracker/*.h"	
+    "${CMAKE_CURRENT_LIST_DIR}/WMFStereoTracker/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/WMFStereoTracker/*.h"		
 )
 source_group("Tracker" FILES ${PSVR_TRACKER_SRC})
 
@@ -125,6 +127,7 @@ list(APPEND PSVR_SERVICE_INCL_DIRS
 	${CMAKE_CURRENT_LIST_DIR}/Utils
     ${CMAKE_CURRENT_LIST_DIR}/VirtualHMD
 	${CMAKE_CURRENT_LIST_DIR}/VirtualStereoTracker
+	${CMAKE_CURRENT_LIST_DIR}/WMFStereoTracker
 )
 
 # Configuru
