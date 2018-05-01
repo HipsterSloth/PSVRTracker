@@ -689,6 +689,12 @@ ServerTrackerView::getIsStereoCamera() const
     return m_device->getIsStereoCamera();
 }
 
+bool 
+ServerTrackerView::getIsVideoMirrored() const
+{
+    return m_device->getIsVideoMirrored();
+}
+
 std::string
 ServerTrackerView::getUSBDevicePath() const
 {
@@ -1421,7 +1427,12 @@ PSVRVector3f
 ServerTrackerView::computeWorldPosition(
     const PSVRVector3f *tracker_relative_position) const
 {
-    const glm::vec4 rel_pos(tracker_relative_position->x, tracker_relative_position->y, tracker_relative_position->z, 1.f);
+	const bool bIsMirroredAlongX= getIsVideoMirrored();
+    const glm::vec4 rel_pos(
+		bIsMirroredAlongX ? -tracker_relative_position->x : tracker_relative_position->x, 
+		tracker_relative_position->y, 
+		tracker_relative_position->z, 
+		1.f);
     const glm::mat4 cameraTransform= computeGLMCameraTransformMatrix(m_device);
     const glm::vec4 world_pos = cameraTransform * rel_pos;
     
@@ -1438,12 +1449,15 @@ ServerTrackerView::computeWorldOrientation(
     const TrackerManagerConfig &cfg = DeviceManager::getInstance()->m_tracker_manager->getConfig();
     const float global_forward_yaw_radians = cfg.global_forward_degrees*k_degrees_to_radians;
     const glm::quat global_forward_quat= glm::quat(glm::vec3(0.f, global_forward_yaw_radians, 0.f));
-    
+
+	// https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation
+	const bool bIsMirroredAlongX= getIsVideoMirrored();
     const glm::quat rel_orientation(
         tracker_relative_orientation->w,
         tracker_relative_orientation->x,
-        tracker_relative_orientation->y,
-        tracker_relative_orientation->z);    
+        bIsMirroredAlongX ? -tracker_relative_orientation->y : tracker_relative_orientation->y,
+        bIsMirroredAlongX ? -tracker_relative_orientation->z : tracker_relative_orientation->z);  
+
     const glm::quat camera_quat= computeGLMCameraTransformQuaternion(m_device);
     const glm::quat world_quat = global_forward_quat * camera_quat * rel_orientation;
     
@@ -1463,7 +1477,9 @@ ServerTrackerView::computeTrackerPosition(
     const glm::vec4 world_pos(world_relative_position->x, world_relative_position->y, world_relative_position->z, 1.f);
     const glm::mat4 invCameraTransform= glm::inverse(computeGLMCameraTransformMatrix(m_device));
     const glm::vec4 rel_pos = invCameraTransform * world_pos;    
-    const PSVRVector3f result= glm_vec3_to_PSVR_vector3f(glm::vec3(rel_pos));
+
+	const bool bIsMirroredAlongX= getIsVideoMirrored();
+    const PSVRVector3f result= {bIsMirroredAlongX ? -rel_pos.x : rel_pos.x, rel_pos.y, rel_pos.z};
 
     return result;
 }
@@ -1481,11 +1497,13 @@ ServerTrackerView::computeTrackerOrientation(
     // combined_rotation = second_rotation * first_rotation;
     const glm::quat rel_quat = camera_inv_quat * world_orientation;
     
+	// https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation
+	const bool bIsMirroredAlongX= getIsVideoMirrored();
     PSVRQuatf result;
     result.w= rel_quat.w;
     result.x= rel_quat.x;
-    result.y= rel_quat.y;
-    result.z= rel_quat.z;
+    result.y= bIsMirroredAlongX ? -rel_quat.y : rel_quat.y;
+    result.z= bIsMirroredAlongX ? -rel_quat.z : rel_quat.z;
 
     return result;
 }

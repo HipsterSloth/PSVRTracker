@@ -615,6 +615,12 @@ bool VirtualStereoTracker::getVideoFrameDimensions(
     return LeftTracker->getVideoFrameDimensions(out_width, out_height, out_stride);
 }
 
+bool VirtualStereoTracker::getIsVideoMirrored() const
+{
+    //ASSUMPTION: Left and right trackers should have same video frame properties
+    return LeftTracker->getIsVideoMirrored();
+}
+
 const unsigned char *VirtualStereoTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
 {
     const unsigned char *result = nullptr;

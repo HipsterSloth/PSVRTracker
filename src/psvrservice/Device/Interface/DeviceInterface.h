@@ -169,6 +169,10 @@ public:
     // Returns true if this device is a stereo camera
     virtual bool getIsStereoCamera() const = 0;
 
+    // Returns true if the image coming from the camera is mirrored backwards
+	// Trackers that mirror the image for us don't need to flip tracking projections
+    virtual bool getIsVideoMirrored() const = 0;
+
     // Returns a pointer to the last video frame buffer captured
     virtual const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const = 0;
 

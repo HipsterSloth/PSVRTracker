@@ -85,6 +85,7 @@ public:
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
     bool getIsStereoCamera() const override { return false; }
+	bool getIsVideoMirrored() const override { return false; }
     const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const override;
     void loadSettings() override;
     void saveSettings() override;

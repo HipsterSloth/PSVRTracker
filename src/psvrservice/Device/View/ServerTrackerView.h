@@ -45,6 +45,9 @@ public:
     // Returns true if this is a stereo camera
     bool getIsStereoCamera() const;
 
+    // Returns true if this is a stereo camera
+	bool getIsVideoMirrored() const;
+
     // Returns the full usb device path for the controller
     std::string getUSBDevicePath() const;
 
