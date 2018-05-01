@@ -15,6 +15,38 @@
 // i.e. where what we consider the "identity" pose
 #define MORPHEUS_ACCELEROMETER_IDENTITY_PITCH_DEGREES 0.0f
 
+// The Morpheus uses the BMI055 IMU Chip: 
+// https://d3nevzfk7ii3be.cloudfront.net/igi/hnlrYUv5BUb6lMoW.huge
+// https://www.bosch-sensortec.com/bst/products/all_products/bmi055
+
+// I haven't seen any indication that suggests the Morpheus changes modes.
+
+// NOTE: If you are unfamiliar like I was with "LSB/Unit"
+// see http://stackoverflow.com/questions/19161872/meaning-of-lsb-unit-and-unit-lsb
+
+// The Gyroscope can operate in one of 5 modes: 
+//   ±125°/s: 262.4 LSB/°/s
+//   ±250°/s: 131.2 LSB/°/s
+//   ±500°/s:  65.6 LSB/°/s
+//   ±1000°/s: 32.8 LSB/°/s
+//   ±2000°/s: 16.4 LSB/°/s
+// but we want the calibrated gyro value in radians/s so add in a deg->rad conversion as well
+constexpr float GYRO_SENSITIVITY_125DPS = 1.f / (262.4f / k_degrees_to_radians);
+constexpr float GYRO_SENSITIVITY_250DPS = 1.f / (131.2f / k_degrees_to_radians);
+constexpr float GYRO_SENSITIVITY_500DPS = 1.f / (65.6f / k_degrees_to_radians);
+constexpr float GYRO_SENSITIVITY_1000DPS = 1.f / (32.8f / k_degrees_to_radians);
+constexpr float GYRO_SENSITIVITY_2000DPS = 1.f / (16.4f / k_degrees_to_radians);
+
+// The Accelerometer can operate in one of 4 modes: 
+//   ±2g:  1024 LSB/g
+//   ±4g:  512 LSB/g
+//   ±8g:  256 LSB/g
+//   ±16g: 128 LSB/g
+constexpr float ACCELEROMETER_SENSITIVITY_2G = 2.0f / 2048.0f;
+constexpr float ACCELEROMETER_SENSITIVITY_4G = 4.0f / 2048.0f;
+constexpr float ACCELEROMETER_SENSITIVITY_8G = 8.0f / 2048.0f;
+constexpr float ACCELEROMETER_SENSITIVITY_16G = 16.0f / 2048.0f;
+
 class MorpheusHMDConfig : public PSVRConfig
 {
 public:
@@ -39,37 +71,21 @@ public:
         , prediction_time(0.f)
 		, tracking_color_id(PSVRTrackingColorType_Blue)
     {
-		// The Morpheus uses the BMI055 IMU Chip: 
-		// https://d3nevzfk7ii3be.cloudfront.net/igi/hnlrYUv5BUb6lMoW.huge
-		// https://www.bosch-sensortec.com/bst/products/all_products/bmi055
-		//
-		// The Accelerometer can operate in one of 4 modes: 
-		//   ±2g, ±4g, ±8g, ±16g
-		// The Gyroscope can operate in one of 5 modes: 
-		//   ±125°/s, ±250°/s, ±500°/s, ±1000°/s, ±2000°/s
-		//   (or ±2.18 rad/s, ±4.36 rad/s, ±8.72 rad/s, ±17.45 rad/s, ±34.9 rad/s)
-		//
-		// I haven't seen any indication that suggests the Morpheus changes modes.
-		// However we need to calibrate the sensor bias at startup
-		
-		// NOTE: If you are unfamiliar like I was with "LSB/Unit"
-		// see http://stackoverflow.com/questions/19161872/meaning-of-lsb-unit-and-unit-lsb
 
-		// Accelerometer configured at ±2g, 1024 LSB/g
-		accelerometer_gain.x = 1.f / (1024.f);
-		accelerometer_gain.y = 1.f / (1024.f);
-		accelerometer_gain.z = 1.f / (1024.f);
+		// Accelerometer configured at ±2g
+		accelerometer_gain.x = ACCELEROMETER_SENSITIVITY_2G;
+		accelerometer_gain.y = ACCELEROMETER_SENSITIVITY_2G;
+		accelerometer_gain.z = ACCELEROMETER_SENSITIVITY_2G;
 
 		// Assume no bias until calibration says otherwise
 		raw_accelerometer_bias.x = 0.f;
 		raw_accelerometer_bias.y = 0.f;
 		raw_accelerometer_bias.z = 0.f;
 
-		// Gyroscope configured at ±1000°/s, 32.8 LSB/(°/s)
-		// but we want the calibrated gyro value in radians/s so add in a deg->rad conversion as well
-		gyro_gain.x = 1.f / (32.8f / k_degrees_to_radians);
-		gyro_gain.y = 1.f / (32.8f / k_degrees_to_radians);
-		gyro_gain.z = 1.f / (32.8f / k_degrees_to_radians);
+		// Gyroscope configured at ±2000°/s
+		gyro_gain.x = GYRO_SENSITIVITY_2000DPS;
+		gyro_gain.y = GYRO_SENSITIVITY_2000DPS;
+		gyro_gain.z = GYRO_SENSITIVITY_2000DPS;
 
 		// Assume no bias until calibration says otherwise
 		raw_gyro_bias.x = 0.f;
