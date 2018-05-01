@@ -6,7 +6,7 @@
 #include <vector>
 
 //-- constants ---
-static const float k_default_epipolar_correspondance_tolerance_px = 1.0f;
+static const float k_default_epipolar_correspondance_tolerance_px = 3.0f;
 static const double k_max_allowed_icp_alignment_error= 10.0;
 
 //-- private structures ----
