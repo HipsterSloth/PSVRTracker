@@ -180,5 +180,14 @@ eigen_quaterniond_to_euler_angles(const Eigen::Quaterniond &q);
 Eigen::EulerAnglesf
 eigen_quaternionf_to_euler_angles(const Eigen::Quaternionf &q);
 
+Eigen::Vector3f
+eigen_vector3f_projection(const Eigen::Vector3f &a, const Eigen::Vector3f &b);
+
+// Decompose the rotation into "swing" and "twist" rotation
+void 
+eigen_quaternionf_to_swing_twist(
+	const Eigen::Quaternionf &rotation, const Eigen::Vector3f &direction,
+	Eigen::Quaternionf &swing, Eigen::Quaternionf &twist);
+
 
 #endif // MATH_EIGEN_H

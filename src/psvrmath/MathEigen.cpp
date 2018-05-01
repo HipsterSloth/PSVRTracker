@@ -327,3 +327,38 @@ eigen_quaternionf_to_euler_angles(const Eigen::Quaternionf &q)
 {
 	return eigen_quaternion_to_euler_angles<float>(q);
 }
+
+Eigen::Vector3f
+eigen_vector3f_projection(const Eigen::Vector3f &a, const Eigen::Vector3f &b)
+{
+	const float projected_length_of_a_on_b= a.dot(b.normalized());
+	const Eigen::Vector3f a_projected_on_b= projected_length_of_a_on_b * b;
+
+	return a_projected_on_b;
+}
+
+/**
+   https://stackoverflow.com/questions/3684269/component-of-a-quaternion-rotation-around-an-axis
+   Decompose the rotation on to 2 parts.
+   1. Twist - rotation around the "direction" vector
+   2. Swing - rotation around axis that is perpendicular to "direction" vector
+   The rotation can be composed back by 
+   rotation = swing * twist
+
+   has singularity in case of swing_rotation close to 180 degrees rotation.
+   if the input quaternion is of non-unit length, the outputs are non-unit as well
+   otherwise, outputs are both unit
+*/
+void 
+eigen_quaternionf_to_swing_twist(
+	const Eigen::Quaternionf &rotation,
+	const Eigen::Vector3f &direction,
+	Eigen::Quaternionf &swing,
+	Eigen::Quaternionf &twist)
+{
+    Eigen::Vector3f ra( rotation.x(), rotation.y(), rotation.z() ); // rotation axis
+    Eigen::Vector3f p = eigen_vector3f_projection( ra, direction ); // return projection v1 on to v2  (parallel component)
+
+    twist= Eigen::Quaternionf( rotation.w(), p.x(), p.y(), p.z() ).normalized();
+    swing = rotation * twist.conjugate();
+}
