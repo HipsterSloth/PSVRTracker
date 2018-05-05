@@ -41,6 +41,22 @@ enum PoseFilterStateEnum
     STATE_PARAMETER_COUNT
 };
 
+//enum MorpheusMeasurementEnum {
+//    MORPHEUS_ACCELEROMETER_X, // gravity units
+//    MORPHEUS_ACCELEROMETER_Y,
+//    MORPHEUS_ACCELEROMETER_Z,
+//    MORPHEUS_GYROSCOPE_PITCH, // radians/s
+//    MORPHEUS_GYROSCOPE_YAW,
+//    MORPHEUS_GYROSCOPE_ROLL,
+//    MORPHEUS_OPTICAL_X, // meters
+//    MORPHEUS_OPTICAL_Y,
+//    MORPHEUS_OPTICAL_Z,
+//    MORPHEUS_OPTICAL_QUATERNION_W,
+//    MORPHEUS_OPTICAL_QUATERNION_X,
+//    MORPHEUS_OPTICAL_QUATERNION_Y,
+//    MORPHEUS_OPTICAL_QUATERNION_Z,
+//    MORPHEUS_MEASUREMENT_PARAMETER_COUNT
+//};
 enum MorpheusMeasurementEnum {
     MORPHEUS_ACCELEROMETER_X, // gravity units
     MORPHEUS_ACCELEROMETER_Y,
@@ -75,9 +91,21 @@ enum MorpheusMeasurementEnum {
     MORPHEUS_LED8_X_CM,          // LED 8 Optical Position
     MORPHEUS_LED8_Y_CM,
     MORPHEUS_LED8_Z_CM,
+
     MORPHEUS_MEASUREMENT_PARAMETER_COUNT
 };
 
+//enum PointCloudMeasurementEnum {
+//    POINT_CLOUD_OPTICAL_X, // meters
+//    POINT_CLOUD_OPTICAL_Y,
+//    POINT_CLOUD_OPTICAL_Z,
+//    POINT_CLOUD_OPTICAL_QUATERNION_W,
+//    POINT_CLOUD_OPTICAL_QUATERNION_X,
+//    POINT_CLOUD_OPTICAL_QUATERNION_Y,
+//    POINT_CLOUD_OPTICAL_QUATERNION_Z,
+//
+//    POINT_CLOUD_MEASUREMENT_PARAMETER_COUNT
+//};
 enum PointCloudMeasurementEnum {
     POINT_CLOUD_LED0_X_CM,          // LED 0 Optical Position
     POINT_CLOUD_LED0_Y_CM,
@@ -112,6 +140,7 @@ enum PointCloudMeasurementEnum {
 
 // Arbitrary tuning scale applied to the measurement noise
 #define R_SCALE 1.0
+#define R_MIN	1.0e-06
 
 // Arbitrary tuning scale applied to the process noise
 #define Q_SCALE 1.0
@@ -371,6 +400,19 @@ public:
             (*this)[MORPHEUS_GYROSCOPE_YAW], 
             (*this)[MORPHEUS_GYROSCOPE_ROLL]);
     }
+    //Eigen::Vector3d get_optical_position_meters() const {
+    //    return Eigen::Vector3d(
+    //            (*this)[MORPHEUS_OPTICAL_X], 
+    //            (*this)[MORPHEUS_OPTICAL_Y], 
+    //            (*this)[MORPHEUS_OPTICAL_Z]);
+    //}
+    //Eigen::Quaterniond get_optical_orientation() const {
+    //    return Eigen::Quaterniond(
+				//(*this)[MORPHEUS_OPTICAL_QUATERNION_W],
+    //            (*this)[MORPHEUS_OPTICAL_QUATERNION_X], 
+    //            (*this)[MORPHEUS_OPTICAL_QUATERNION_Y], 
+    //            (*this)[MORPHEUS_OPTICAL_QUATERNION_Z]);
+    //}
     Eigen::Vector3d get_LED_position_cm(const int led_index) const {
         assert(led_index >= 0  && led_index < MEASUREMENT_LED_COUNT);
         return Eigen::Vector3d(
@@ -390,6 +432,17 @@ public:
         (*this)[MORPHEUS_GYROSCOPE_YAW] = g.y(); 
         (*this)[MORPHEUS_GYROSCOPE_ROLL] = g.z();
     }
+  //  void set_optical_position_meters(const Eigen::Vector3d &p) {
+  //      (*this)[MORPHEUS_OPTICAL_X] = p.x(); 
+  //      (*this)[MORPHEUS_OPTICAL_Y] = p.y(); 
+  //      (*this)[MORPHEUS_OPTICAL_Z] = p.z();
+  //  }
+  //  void set_optical_orientation(const Eigen::Quaterniond &q) {
+		//(*this)[MORPHEUS_OPTICAL_QUATERNION_W] = q.w(); 
+  //      (*this)[MORPHEUS_OPTICAL_QUATERNION_X] = q.x(); 
+  //      (*this)[MORPHEUS_OPTICAL_QUATERNION_Y] = q.y(); 
+  //      (*this)[MORPHEUS_OPTICAL_QUATERNION_Z] = q.z();
+  //  }
     void set_LED_position_cm(const int led_index, const Eigen::Vector3d &p) {
         assert(led_index >= 0  && led_index < MEASUREMENT_LED_COUNT);
         (*this)[MORPHEUS_LED0_X_CM + 3*led_index] = p.x(); 
@@ -406,6 +459,19 @@ public:
     KALMAN_VECTOR(PointCloud_PoseMeasurementVector, T, POINT_CLOUD_MEASUREMENT_PARAMETER_COUNT)
 
     // Accessors
+    //Eigen::Vector3d get_optical_position_meters() const {
+    //    return Eigen::Vector3d(
+    //            (*this)[MORPHEUS_OPTICAL_X], 
+    //            (*this)[MORPHEUS_OPTICAL_Y], 
+    //            (*this)[MORPHEUS_OPTICAL_Z]);
+    //}
+    //Eigen::Quaterniond get_optical_orientation() const {
+    //    return Eigen::Quaterniond(
+				//(*this)[MORPHEUS_OPTICAL_QUATERNION_W],
+    //            (*this)[MORPHEUS_OPTICAL_QUATERNION_X], 
+    //            (*this)[MORPHEUS_OPTICAL_QUATERNION_Y], 
+    //            (*this)[MORPHEUS_OPTICAL_QUATERNION_Z]);
+    //}
     Eigen::Vector3d get_LED_position_cm(const int led_index) const {
         assert(led_index >= 0  && led_index < MEASUREMENT_LED_COUNT);
         return Eigen::Vector3d(
@@ -415,6 +481,17 @@ public:
     }
 
     // Mutators
+  //  void set_optical_position_meters(const Eigen::Vector3d &p) {
+  //      (*this)[MORPHEUS_OPTICAL_X] = p.x(); 
+  //      (*this)[MORPHEUS_OPTICAL_Y] = p.y(); 
+  //      (*this)[MORPHEUS_OPTICAL_Z] = p.z();
+  //  }
+  //  void set_optical_orientation(const Eigen::Quaterniond &q) {
+		//(*this)[MORPHEUS_OPTICAL_QUATERNION_W] = q.w(); 
+  //      (*this)[MORPHEUS_OPTICAL_QUATERNION_X] = q.x(); 
+  //      (*this)[MORPHEUS_OPTICAL_QUATERNION_Y] = q.y(); 
+  //      (*this)[MORPHEUS_OPTICAL_QUATERNION_Z] = q.z();
+  //  }
     void set_LED_position_cm(const int led_index, const Eigen::Vector3d &p) {
         assert(led_index >= 0  && led_index < MEASUREMENT_LED_COUNT);
         (*this)[POINT_CLOUD_LED0_X_CM + 3*led_index] = p.x(); 
@@ -461,24 +538,40 @@ public:
 		if (m_last_tracking_projection_area_px_sqr < 0.f ||
 			!is_nearly_equal(tracking_projection_area_px_sqr, m_last_tracking_projection_area_px_sqr, 10.f))
 		{
+			//const double orientation_variance = 
+			//	static_cast<double>(
+			//		constants.orientation_constants.orientation_variance_curve.evaluate(
+			//			tracking_projection_area_px_sqr));
 			const double position_variance_cm_sqr = 
                 static_cast<double>(
                     constants.position_constants.position_variance_curve.evaluate(
                         tracking_projection_area_px_sqr));
+			// variance_meters = variance_cm * (0.01)^2 because ...
+			// var(k*x) = sum(k*x_i - k*mu)^2/(N-1) = k^2*sum(x_i - mu)^2/(N-1)
+			// where k = k_centimeters_to_meters = 0.01
+			//const double position_variance_m_sqr = k_centimeters_to_meters*k_centimeters_to_meters*position_variance_cm_sqr;
 
 			// Update the measurement covariance R
             // Only diagonals used so no need to compute Cholesky
             static float r_accelerometer_scale = R_SCALE;
             static float r_gyro_scale = R_SCALE;
             static float r_position_scale = R_SCALE;
+			//static float r_orientation_scale = R_SCALE;
 			Kalman::Covariance<Morpheus_PoseMeasurementVectord> R =
 				Kalman::Covariance<Morpheus_PoseMeasurementVectord>::Zero();
-            R(MORPHEUS_ACCELEROMETER_X, MORPHEUS_ACCELEROMETER_X) = r_accelerometer_scale*constants.orientation_constants.accelerometer_variance.x();
-            R(MORPHEUS_ACCELEROMETER_Y, MORPHEUS_ACCELEROMETER_Y) = r_accelerometer_scale*constants.orientation_constants.accelerometer_variance.y();
-            R(MORPHEUS_ACCELEROMETER_Z, MORPHEUS_ACCELEROMETER_Z) = r_accelerometer_scale*constants.orientation_constants.accelerometer_variance.z();
-            R(MORPHEUS_GYROSCOPE_PITCH, MORPHEUS_GYROSCOPE_PITCH) = r_gyro_scale*constants.orientation_constants.gyro_variance.x();
-            R(MORPHEUS_GYROSCOPE_YAW, MORPHEUS_GYROSCOPE_YAW) = r_gyro_scale*constants.orientation_constants.gyro_variance.y();
-            R(MORPHEUS_GYROSCOPE_ROLL, MORPHEUS_GYROSCOPE_ROLL) = r_gyro_scale*constants.orientation_constants.gyro_variance.z();
+            R(MORPHEUS_ACCELEROMETER_X, MORPHEUS_ACCELEROMETER_X) = fmax(r_accelerometer_scale*constants.orientation_constants.accelerometer_variance.x(), R_MIN);
+            R(MORPHEUS_ACCELEROMETER_Y, MORPHEUS_ACCELEROMETER_Y) = fmax(r_accelerometer_scale*constants.orientation_constants.accelerometer_variance.y(), R_MIN);
+            R(MORPHEUS_ACCELEROMETER_Z, MORPHEUS_ACCELEROMETER_Z) = fmax(r_accelerometer_scale*constants.orientation_constants.accelerometer_variance.z(), R_MIN);
+            R(MORPHEUS_GYROSCOPE_PITCH, MORPHEUS_GYROSCOPE_PITCH) = fmax(r_gyro_scale*constants.orientation_constants.gyro_variance.x(), R_MIN);
+            R(MORPHEUS_GYROSCOPE_YAW, MORPHEUS_GYROSCOPE_YAW) = fmax(r_gyro_scale*constants.orientation_constants.gyro_variance.y(), R_MIN);
+            R(MORPHEUS_GYROSCOPE_ROLL, MORPHEUS_GYROSCOPE_ROLL) = fmax(r_gyro_scale*constants.orientation_constants.gyro_variance.z(), R_MIN);
+			//R(MORPHEUS_OPTICAL_X, MORPHEUS_OPTICAL_X) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			//R(MORPHEUS_OPTICAL_Y, MORPHEUS_OPTICAL_Y) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			//R(MORPHEUS_OPTICAL_Z, MORPHEUS_OPTICAL_Z) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			//R(MORPHEUS_OPTICAL_QUATERNION_W, MORPHEUS_OPTICAL_QUATERNION_W) = fmax(r_orientation_scale*orientation_variance, R_MIN);
+			//R(MORPHEUS_OPTICAL_QUATERNION_X, MORPHEUS_OPTICAL_QUATERNION_X) = fmax(r_orientation_scale*orientation_variance, R_MIN);
+			//R(MORPHEUS_OPTICAL_QUATERNION_Y, MORPHEUS_OPTICAL_QUATERNION_Y) = fmax(r_orientation_scale*orientation_variance, R_MIN);
+			//R(MORPHEUS_OPTICAL_QUATERNION_Z, MORPHEUS_OPTICAL_QUATERNION_Z) = fmax(r_orientation_scale*orientation_variance, R_MIN);
             for (int i = 0; i < MEASUREMENT_LED_COUNT; ++i)
             {
                 int offset= 3*i;
@@ -517,10 +610,11 @@ public:
     {
         Morpheus_PoseMeasurementVectord predicted_measurement;
 
-        // Use the orientation from the state for prediction
+        // Use the position and orientation from the state for predictions
+        const Eigen::Vector3d position_meters= x.get_position_meters();
         const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
         const Eigen::Quaterniond local_to_world_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
-        const Eigen::Quaterniond world_to_local_orientation = world_to_local_orientation.conjugate();
+        const Eigen::Quaterniond world_to_local_orientation = local_to_world_orientation.conjugate();
 
         // Use the current linear acceleration from last frame's state
         // and the current orientation from the state to predict
@@ -536,7 +630,8 @@ public:
         // Save the predictions into the measurement vector
         predicted_measurement.set_accelerometer(accel_local);
         predicted_measurement.set_gyroscope(gyro_local);
-
+		//predicted_measurement.set_optical_orientation(local_to_world_orientation);
+		//predicted_measurement.set_optical_position_meters(position_meters);
         // Compute where we expect to find the tracking LEDs
         Eigen::Affine3d local_to_world= Eigen::Affine3d::Identity();
         local_to_world.linear()= local_to_world_orientation.toRotationMatrix();
@@ -597,16 +692,32 @@ public:
 		if (m_last_tracking_projection_area_px_sqr < 0.f ||
 			!is_nearly_equal(tracking_projection_area_px_sqr, m_last_tracking_projection_area_px_sqr, 10.f))
 		{
+			//const double orientation_variance = 
+			//	static_cast<double>(
+			//		constants.orientation_constants.orientation_variance_curve.evaluate(
+			//			tracking_projection_area_px_sqr));
 			const double position_variance_cm_sqr = 
                 static_cast<double>(
                     constants.position_constants.position_variance_curve.evaluate(
                         tracking_projection_area_px_sqr));
+			// variance_meters = variance_cm * (0.01)^2 because ...
+			// var(k*x) = sum(k*x_i - k*mu)^2/(N-1) = k^2*sum(x_i - mu)^2/(N-1)
+			// where k = k_centimeters_to_meters = 0.01
+			//const double position_variance_m_sqr = k_centimeters_to_meters*k_centimeters_to_meters*position_variance_cm_sqr;
 
 			// Update the measurement covariance R
             // Only diagonals used so no need to compute Cholesky
             static float r_position_scale = R_SCALE;
+			//static float r_orientation_scale = R_SCALE;
 			Kalman::Covariance<PointCloud_PoseMeasurementVectord> R =
 				Kalman::Covariance<PointCloud_PoseMeasurementVectord>::Zero();
+			//R(POINT_CLOUD_OPTICAL_X, POINT_CLOUD_OPTICAL_X) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			//R(POINT_CLOUD_OPTICAL_Y, POINT_CLOUD_OPTICAL_Y) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			//R(POINT_CLOUD_OPTICAL_Z, POINT_CLOUD_OPTICAL_Z) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			//R(POINT_CLOUD_OPTICAL_QUATERNION_W, POINT_CLOUD_OPTICAL_QUATERNION_W) = fmax(r_orientation_scale*orientation_variance, R_MIN);
+			//R(POINT_CLOUD_OPTICAL_QUATERNION_X, POINT_CLOUD_OPTICAL_QUATERNION_X) = fmax(r_orientation_scale*orientation_variance, R_MIN);
+			//R(POINT_CLOUD_OPTICAL_QUATERNION_Y, POINT_CLOUD_OPTICAL_QUATERNION_Y) = fmax(r_orientation_scale*orientation_variance, R_MIN);
+			//R(POINT_CLOUD_OPTICAL_QUATERNION_Z, POINT_CLOUD_OPTICAL_QUATERNION_Z) = fmax(r_orientation_scale*orientation_variance, R_MIN);
             for (int i = 0; i < MEASUREMENT_LED_COUNT; ++i)
             {
                 int offset= 3*i;
@@ -640,10 +751,14 @@ public:
     {
         PointCloud_PoseMeasurementVectord predicted_measurement;
 
-        // Use the orientation from the state for prediction
+        // Use the position and orientation from the state for predictions
+        const Eigen::Vector3d position_meters= x.get_position_meters();
         const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
         const Eigen::Quaterniond local_to_world_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
 
+        // Save the predictions into the measurement vector
+		//predicted_measurement.set_optical_orientation(local_to_world_orientation);
+		//predicted_measurement.set_optical_position_meters(position_meters);
         // Compute where we expect to find the tracking leds
         Eigen::Affine3d local_to_world= Eigen::Affine3d::Identity();
         local_to_world.linear()= local_to_world_orientation.toRotationMatrix();
@@ -1027,8 +1142,11 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
         // If available, use the optical LED measurements
         if (packet.tracking_projection_area_px_sqr > 0.f)
         {
-            Eigen::Vector3f optical_position_meters= packet.get_optical_position_in_meters();
+            Eigen::Vector3d optical_position_meters= packet.get_optical_position_in_meters().cast<double>();
+			//Eigen::Quaterniond optical_orientation= packet.optical_orientation.cast<double>();
 
+   //         local_measurement.set_optical_position_meters(optical_position_meters);
+			//local_measurement.set_optical_orientation(optical_orientation);
             assert(packet.optical_tracking_shape_cm.shape_type == PSVRTrackingShape_PointCloud);
             assert(packet.optical_tracking_shape_cm.shape.pointcloud.point_count == MEASUREMENT_LED_COUNT);
             for (int led_index = 0; led_index < MEASUREMENT_LED_COUNT; ++led_index)
@@ -1043,7 +1161,7 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
 			// If this is the first time we have seen the position, snap the position state
 			if (!m_filter->bSeenPositionMeasurement)
 			{
-				m_filter->ukf.getStateMutable().set_position_meters(optical_position_meters.cast<double>());
+				m_filter->ukf.getStateMutable().set_position_meters(optical_position_meters);
 				m_filter->bSeenPositionMeasurement= true;
 			}
         }
@@ -1157,8 +1275,11 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
         // If available, use the optical LED measurements
         if (packet.tracking_projection_area_px_sqr > 0.f)
         {
-            Eigen::Vector3f optical_position_meters= packet.get_optical_position_in_meters();
+            Eigen::Vector3d optical_position_meters= packet.get_optical_position_in_meters().cast<double>();
+			//Eigen::Quaterniond optical_orientation= packet.optical_orientation.cast<double>();
 
+			//local_measurement.set_optical_position_meters(optical_position_meters);
+			//local_measurement.set_optical_orientation(optical_orientation);
             assert(packet.optical_tracking_shape_cm.shape_type == PSVRTrackingShape_PointCloud);
             assert(packet.optical_tracking_shape_cm.shape.pointcloud.point_count == MEASUREMENT_LED_COUNT);
             for (int led_index = 0; led_index < MEASUREMENT_LED_COUNT; ++led_index)

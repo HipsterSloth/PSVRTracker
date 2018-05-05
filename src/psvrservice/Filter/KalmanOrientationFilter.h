@@ -29,16 +29,7 @@ protected:
 	class KalmanOrientationFilterImpl *m_filter;
 };
 
-/// Kalman Orientation filter for Optical Yaw + Angular Rate(Gyroscope) + Gravity(Accelerometer)
-class KalmanOrientationFilterDS4 : public KalmanOrientationFilter
-{
-public:
-	bool init(const OrientationFilterConstants &constant) override;
-	bool init(const OrientationFilterConstants &constant, const Eigen::Quaternionf &orientation) override;
-	void update(const float delta_time, const PoseFilterPacket &packet) override;
-};
-
-/// Kalman Orientation filter for Magnetometer + Angular Rate(Gyroscope) + Gravity(Accelerometer)
+/// Kalman Orientation filter for Optical + Angular Rate(Gyroscope) + Gravity(Accelerometer)
 class KalmanOrientationFilterPSVR : public KalmanOrientationFilter
 {
 public:

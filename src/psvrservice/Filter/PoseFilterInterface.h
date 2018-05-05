@@ -56,10 +56,23 @@ struct PoseSensorPacket
     Eigen::Vector3f imu_accelerometer_g_units; // g-units
     Eigen::Vector3f imu_magnetometer_unit; // unit vector
     Eigen::Vector3f imu_gyroscope_rad_per_sec; // rad/s
+	bool has_accelerometer_measurement;
+	bool has_magnetometer_measurement;
+	bool has_gyroscope_measurement;
 
 	inline Eigen::Vector3f get_optical_position_in_meters() const
 	{
 		return optical_position_cm * k_centimeters_to_meters;
+	}
+
+	inline bool has_imu_measurements() const
+	{
+		return has_accelerometer_measurement || has_magnetometer_measurement || has_gyroscope_measurement;
+	}
+
+	inline bool has_optical_measurement() const
+	{
+		return tracking_projection_area_px_sqr > 0.f;
 	}
 };
 

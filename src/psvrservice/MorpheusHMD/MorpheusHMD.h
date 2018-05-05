@@ -59,7 +59,7 @@ public:
 		, disable_command_interface(true)
 		, position_filter_type("LowPassOptical")
 		, orientation_filter_type("MadgwickARG")
-		, raw_accelerometer_variance(0.f)
+		, raw_accelerometer_variance(4.74999979e-06f)
         , max_velocity(1.f)
 		, raw_gyro_variance(0.f)
 		, raw_gyro_drift(0.f)
