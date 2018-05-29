@@ -16,6 +16,9 @@ struct CorrelatedPixelPair
 {
     PSVRVector2f left_pixel;
     PSVRVector2f right_pixel;
+	int left_pixel_projection_index; // index into PSVRTrackingProjectionData::shape.pointcloud.points
+	int right_pixel_projection_index; // index into PSVRTrackingProjectionData::shape.pointcloud.points
+	int best_correlated_model_point_index; // index in PSVRTrackingShape::shape.pointcloud.points
     float disparity;
     Eigen::Vector3f triangulated_point_cm;
 };
@@ -203,6 +206,29 @@ bool PointCloudTrackingModel::getShape(PSVRTrackingShape &out_shape) const
     return m_state->bIsModelToSourceTransformValid;
 }
 
+bool PointCloudTrackingModel::getPointCloudProjectionShapeCorrelation(PSVRTrackingProjection &projection) const
+{
+	assert(projection.shape_type == PSVRShape_PointCloud);
+
+	if (m_state->bIsModelToSourceTransformValid)
+    {
+		for (const CorrelatedPixelPair &pixel_pair : m_state->lastTriangulatedPoints)
+		{
+			if (pixel_pair.left_pixel_projection_index != -1 &&
+				pixel_pair.right_pixel_projection_index != -1 &&
+				pixel_pair.best_correlated_model_point_index != -1)
+			{
+				projection.projections[LEFT_PROJECTION_INDEX].shape.pointcloud.shape_point_index[pixel_pair.left_pixel_projection_index]= 
+					pixel_pair.best_correlated_model_point_index;
+				projection.projections[RIGHT_PROJECTION_INDEX].shape.pointcloud.shape_point_index[pixel_pair.right_pixel_projection_index]= 
+					pixel_pair.best_correlated_model_point_index;
+			}
+		}
+    }
+
+    return m_state->bIsModelToSourceTransformValid;
+}
+
 //-- private implementation -----
 static bool triangulate_stereo_projection(
     const ServerTrackerView *tracker_view,
@@ -265,6 +291,9 @@ static bool triangulate_stereo_projection(
                     CorrelatedPixelPair pair;
                     pair.left_pixel= leftPoint;
                     pair.right_pixel= rightPoint;
+					pair.left_pixel_projection_index= leftPointIndex;
+					pair.right_pixel_projection_index= rightPointIndex;
+					pair.best_correlated_model_point_index= -1;
                     pair.disparity= (float)disparity;
 
                     // Q matrix transforms pixels to tracker relative positions in millimeters
@@ -560,6 +589,10 @@ static void compute_transform_using_triangle_correlation(
                         state->icpModelVertices.col(corresponding_model_point_index);
 
                     ++write_col_index;
+
+					// Also keep track of which model point we believe the projections correspond to
+					state->lastTriangulatedPoints[source_point_index].best_correlated_model_point_index= 
+						corresponding_model_point_index;
                 }
             }
         }

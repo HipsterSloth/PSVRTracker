@@ -48,9 +48,9 @@ struct PoseSensorPacket
 {
     // Optical readings in the world reference frame
     PSVRTrackingShape optical_tracking_shape_cm; // The tracking shape transformed into the world position
+	PSVRTrackingProjection optical_tracking_projection; // Screen area of the tracking LEDs (used for tracking confidence)
     Eigen::Vector3f optical_position_cm; // cm
     Eigen::Quaternionf optical_orientation;
-    float tracking_projection_area_px_sqr; // pixels^2
 
     // Sensor readings in the controller's reference frame
     Eigen::Vector3f imu_accelerometer_g_units; // g-units
@@ -59,6 +59,22 @@ struct PoseSensorPacket
 	bool has_accelerometer_measurement;
 	bool has_magnetometer_measurement;
 	bool has_gyroscope_measurement;
+
+	inline void clear()
+	{
+		memset(&optical_tracking_shape_cm, 0, sizeof(PSVRTrackingShape));
+		memset(&optical_tracking_projection, 0, sizeof(PSVRTrackingProjection));
+		optical_tracking_shape_cm.shape_type= PSVRTrackingShape_INVALID;
+		optical_tracking_projection.shape_type= PSVRShape_INVALID_PROJECTION;
+		optical_position_cm= Eigen::Vector3f::Zero();
+		optical_orientation= Eigen::Quaternionf::Identity();
+		imu_accelerometer_g_units= Eigen::Vector3f::Zero();
+		imu_magnetometer_unit= Eigen::Vector3f::Zero();
+		imu_gyroscope_rad_per_sec= Eigen::Vector3f::Zero();
+		has_accelerometer_measurement= false;
+		has_magnetometer_measurement= false;
+		has_gyroscope_measurement= false;
+	}
 
 	inline Eigen::Vector3f get_optical_position_in_meters() const
 	{
@@ -72,7 +88,8 @@ struct PoseSensorPacket
 
 	inline bool has_optical_measurement() const
 	{
-		return tracking_projection_area_px_sqr > 0.f;
+		return optical_tracking_projection.shape_type != PSVRShape_INVALID_PROJECTION &&
+			optical_tracking_projection.projections[0].screen_area > 0.f;
 	}
 };
 
@@ -94,6 +111,16 @@ struct PoseFilterPacket : PoseSensorPacket
 
     /// The accelerometer reading in the world reference frame
     Eigen::Vector3f world_accelerometer; // g-units
+
+	inline void clear()
+	{
+		PoseSensorPacket::clear();
+		current_orientation= Eigen::Quaternionf::Identity();
+		current_position_cm= Eigen::Vector3f::Zero();
+		current_linear_velocity_cm_s= Eigen::Vector3f::Zero();
+		current_linear_acceleration_cm_s2= Eigen::Vector3f::Zero();
+		world_accelerometer= Eigen::Vector3f::Zero();
+	}
 
 	inline Eigen::Vector3f get_current_position_in_meters() const
 	{

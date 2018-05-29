@@ -78,6 +78,8 @@ public:
 		const class ServerHMDView* tracked_hmd,
 		const PSVRTrackingShape *tracking_shape,
 		PSVRTrackingProjection *out_projection);
+
+	void drawPoseProjection(const PSVRTrackingProjection *projection) const;
     
     std::vector<PSVRVector2f> projectTrackerRelativePositions(
 		const PSVRVideoFrameSection section,

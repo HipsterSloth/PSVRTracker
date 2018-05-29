@@ -453,7 +453,9 @@ void KalmanPositionFilter::update(const float delta_time, const PoseFilterPacket
     if (m_filter->bIsValid)
     {
 		// Adjust the amount we trust the optical state based on the tracking projection area
-		m_filter->system_model.update_process_noise(m_constants, packet.tracking_projection_area_px_sqr);
+		m_filter->system_model.update_process_noise(
+			m_constants, 
+			packet.optical_tracking_projection.projections[0].screen_area);
 
         // Predict state for current time-step using the filters
         m_filter->system_model.set_time_step(delta_time);
@@ -511,9 +513,9 @@ void KalmanPositionFilter::update(const float delta_time, const PoseFilterPacket
 		// Adjust the amount we trust the optical measurements based on the tracking projection area
 		measurement_model.update_measurement_covariance(
 			m_constants,
-			packet.tracking_projection_area_px_sqr);
+			packet.optical_tracking_projection.projections[0].screen_area);
 
-        if (packet.tracking_projection_area_px_sqr > 0.f)
+        if (packet.optical_tracking_projection.projections[0].screen_area > 0.f)
         {
 			Eigen::Vector3f optical_position_meters= packet.get_optical_position_in_meters();
 
@@ -536,7 +538,7 @@ void KalmanPositionFilter::update(const float delta_time, const PoseFilterPacket
     {
 		PositionStateVectord state_vector = PositionStateVectord::Zero();
 
-		if (packet.tracking_projection_area_px_sqr > 0.f)
+		if (packet.optical_tracking_projection.projections[0].screen_area > 0.f)
 		{
 			Eigen::Vector3f optical_position_meters= packet.get_optical_position_in_meters();
 

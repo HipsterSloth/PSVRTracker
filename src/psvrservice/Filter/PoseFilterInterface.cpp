@@ -68,7 +68,7 @@ void PoseFilterSpace::createFilterPacket(
 
 	// Positional filtering is done is meters to improve numerical stability
     outFilterPacket.optical_position_cm = sensorPacket.optical_position_cm;
-    outFilterPacket.tracking_projection_area_px_sqr= sensorPacket.tracking_projection_area_px_sqr;
+    outFilterPacket.optical_tracking_projection = sensorPacket.optical_tracking_projection;
 
     outFilterPacket.imu_gyroscope_rad_per_sec= m_SensorTransform * sensorPacket.imu_gyroscope_rad_per_sec;
     outFilterPacket.imu_accelerometer_g_units= m_SensorTransform * sensorPacket.imu_accelerometer_g_units;

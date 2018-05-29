@@ -753,7 +753,7 @@ void KalmanOrientationFilterPSVR::update(const float delta_time, const PoseFilte
 		// Apply any optical measurement to the filter
 		if (packet.has_optical_measurement())
 		{
-			assert(packet.tracking_projection_area_px_sqr > 0.f);
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
 			Eigen::Quaterniond optical_orientation= packet.optical_orientation.cast<double>();
 
 			// If this is the first time we have seen an orientation measurement, 

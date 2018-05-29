@@ -234,7 +234,7 @@ void PositionFilterPassThru::update(
 {
 	// Use the current position if the optical orientation is unavailable
     const Eigen::Vector3f new_position= 
-		(packet.tracking_projection_area_px_sqr > 0.f) 
+		(packet.optical_tracking_projection.projections[0].screen_area > 0.f) 
 		? packet.get_optical_position_in_meters()
 		: packet.get_current_position_in_meters();
 
@@ -254,7 +254,8 @@ void PositionFilterLowPassOptical::update(
 	const float delta_time, 
 	const PoseFilterPacket &packet)
 {
-    if (packet.tracking_projection_area_px_sqr > 0.f && eigen_vector3f_is_valid(packet.optical_position_cm))
+    if (packet.optical_tracking_projection.projections[0].screen_area > 0.f && 
+		eigen_vector3f_is_valid(packet.optical_position_cm))
     {        
 		PositionFilterState new_state;
 
@@ -339,7 +340,7 @@ void PositionFilterComplimentaryOpticalIMU::resetState()
 
 void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const PoseFilterPacket &packet)
 {
-    if (packet.tracking_projection_area_px_sqr > 0)
+    if (packet.optical_tracking_projection.projections[0].screen_area > 0)
     {
         last_visible_position_timestamp= std::chrono::high_resolution_clock::now();
         bLast_visible_position_timestamp_valid= true;
@@ -374,7 +375,7 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
                 m_state,
                 &new_imu_state);
 
-            if (packet.tracking_projection_area_px_sqr > 0)
+            if (packet.optical_tracking_projection.projections[0].screen_area > 0)
             {
 				const Eigen::Vector3f &imu_position= new_imu_state.position_meters;
 
@@ -384,7 +385,7 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
                 // Blend the optical and IMU derived positions based on optical tracking quality
 				const float max_variance_fraction=
 					safe_divide_with_default(
-						m_constants.position_variance_curve.evaluate(packet.tracking_projection_area_px_sqr),
+						m_constants.position_variance_curve.evaluate(packet.optical_tracking_projection.projections[0].screen_area),
 						m_constants.position_variance_curve.MaxValue,
 						1.f);
 				const float optical_weight = clampf01(1.f - max_variance_fraction);
@@ -415,7 +416,8 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
             m_state->bIsValid = false;
         }
     }
-    else if (packet.tracking_projection_area_px_sqr > 0.f && eigen_vector3f_is_valid(packet.get_optical_position_in_meters()))
+    else if (packet.optical_tracking_projection.projections[0].screen_area > 0.f && 
+			eigen_vector3f_is_valid(packet.get_optical_position_in_meters()))
     {
         // If this is the first filter packet, just accept the position and accelerometer as gospel
 		m_state->apply_state(
@@ -431,7 +433,8 @@ void PositionFilterComplimentaryOpticalIMU::update(const float delta_time, const
 // -- PositionFilterComplimentaryOpticalIMU --
 void PositionFilterLowPassExponential::update(const float delta_time, const PoseFilterPacket &packet)
 {
-	if (packet.tracking_projection_area_px_sqr > 0.f && eigen_vector3f_is_valid(packet.optical_position_cm))
+	if (packet.optical_tracking_projection.projections[0].screen_area > 0.f && 
+		eigen_vector3f_is_valid(packet.optical_position_cm))
 	{
 		m_state->accelerometer_g_units = packet.world_accelerometer;
 		m_state->accelerometer_derivative_g_per_sec = Eigen::Vector3f::Zero();
@@ -537,7 +540,7 @@ static Eigen::Vector3f lowpass_filter_optical_position(
     const PositionFilterState *state)
 {
     assert(state->bIsValid);
-	assert(packet->tracking_projection_area_px_sqr > 0.f);
+	assert(packet->optical_tracking_projection.projections[0].screen_area > 0.f);
 
     // Traveling k_max_lowpass_smoothing_distance in one frame should have 0 smoothing
     // Traveling 0+noise cm in one frame should have 60% smoothing

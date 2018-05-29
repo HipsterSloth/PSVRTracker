@@ -352,6 +352,18 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
                                 if (trackerPoseEstimateRef.bCurrentlyTracking)
                                 {
                                     shape_tracking_model->getShape(trackerPoseEstimateRef.shape);
+
+									// If the tracking model is a point cloud, 
+									// also get the correlation from 3d tracking model point to 2d camera projection.
+									// This is used to get the projection area for a given point,
+									// which in turn is used to compute measurement confidence
+									if (trackingShape.shape_type == PSVRTrackingShape_PointCloud)
+									{
+										PointCloudTrackingModel *point_cloud_tracking_model=
+											static_cast<PointCloudTrackingModel *>(shape_tracking_model);
+
+										point_cloud_tracking_model->getPointCloudProjectionShapeCorrelation(newTrackerProjection);
+									}
                                 }
                                 else
                                 {
@@ -362,6 +374,9 @@ void ServerHMDView::updateOpticalPoseEstimation(TrackerManager* tracker_manager)
                                 trackerPoseEstimateRef.projection= newTrackerProjection;
                                 trackerPoseEstimateRef.last_visible_timestamp = now;
                             }
+
+							// Draw projection debugging now that shape tracking model has been applied
+							tracker->drawPoseProjection(&newTrackerProjection);
                         }
                     }
 
@@ -1014,7 +1029,7 @@ update_filters_for_morpheus_hmd(
     {
         PoseSensorPacket sensorPacket;
 
-        sensorPacket.imu_magnetometer_unit = Eigen::Vector3f::Zero();
+        sensorPacket.clear();
 
         if (poseEstimation->bOrientationValid)
         {
@@ -1025,10 +1040,6 @@ update_filters_for_morpheus_hmd(
                     poseEstimation->orientation.y,
                     poseEstimation->orientation.z);
         }
-        else
-        {
-            sensorPacket.optical_orientation = Eigen::Quaternionf::Identity();
-        }
 
         if (poseEstimation->bCurrentlyTracking)
         {
@@ -1038,12 +1049,7 @@ update_filters_for_morpheus_hmd(
                     poseEstimation->position_cm.x,
                     poseEstimation->position_cm.y,
                     poseEstimation->position_cm.z);
-            sensorPacket.tracking_projection_area_px_sqr = poseEstimation->projection.projections[0].screen_area;
-        }
-        else
-        {
-            sensorPacket.optical_position_cm = Eigen::Vector3f::Zero();
-            sensorPacket.tracking_projection_area_px_sqr = 0.f;
+			sensorPacket.optical_tracking_projection= poseEstimation->projection;
         }
 
         // Each state update contains two readings (one earlier and one later) of accelerometer and gyro data
@@ -1059,6 +1065,8 @@ update_filters_for_morpheus_hmd(
 
             {
                 PoseFilterPacket filterPacket;
+
+				filterPacket.clear();
 
                 // Create a filter input packet from the sensor data 
                 // and the filter's previous orientation and position
@@ -1110,12 +1118,12 @@ update_filters_for_virtual_hmd(
             sensorPacket.optical_tracking_shape_cm= poseEstimation->shape;
             sensorPacket.optical_position_cm =
                 PSVR_vector3f_to_eigen_vector3(poseEstimation->position_cm);
-            sensorPacket.tracking_projection_area_px_sqr = poseEstimation->projection.projections[0].screen_area;
+            sensorPacket.optical_tracking_projection= poseEstimation->projection;
         }
         else
         {
             sensorPacket.optical_position_cm = Eigen::Vector3f::Zero();
-            sensorPacket.tracking_projection_area_px_sqr = 0.f;
+            sensorPacket.optical_tracking_projection.shape_type= PSVRShape_INVALID_PROJECTION;
         }
 
         sensorPacket.imu_accelerometer_g_units = Eigen::Vector3f::Zero();

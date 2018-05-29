@@ -172,7 +172,7 @@ void OrientationFilterPassThru::update(const float delta_time, const PoseFilterP
 {
 	// Use the current orientation if the optical orientation is unavailable
     const Eigen::Quaternionf &new_orientation= 
-		(packet.tracking_projection_area_px_sqr > 0.f) 
+		(packet.optical_tracking_projection.projections[0].screen_area > 0.f) 
 		? packet.optical_orientation
 		: packet.current_orientation;
 
@@ -382,7 +382,7 @@ void OrientationFilterMadgwickMARG::update(const float delta_time, const PoseFil
 #define COMPLEMENTARY_FILTER_YAW_ONLY_BLEND 0
 void OrientationFilterComplementaryOpticalARG::update(const float delta_time, const PoseFilterPacket &packet)
 {
-    if (packet.tracking_projection_area_px_sqr <= k_real_epsilon)
+    if (packet.optical_tracking_projection.projections[0].screen_area <= k_real_epsilon)
     {
         OrientationFilterMadgwickARG::update(delta_time, packet);
 		return;
@@ -445,12 +445,12 @@ void OrientationFilterComplementaryOpticalARG::update(const float delta_time, co
 
 	// Blend with optical yaw
 	Eigen::Quaternionf blended_orientation_new = SEq_new;
-	if (packet.tracking_projection_area_px_sqr > 0)
+	if (packet.optical_tracking_projection.projections[0].screen_area > 0)
     {
 		// The final rotation is a blend between the integrated orientation and absolute optical orientation
 		const float fraction_of_max_orientation_variance =
 			safe_divide_with_default(
-				m_constants.orientation_variance_curve.evaluate(packet.tracking_projection_area_px_sqr),
+				m_constants.orientation_variance_curve.evaluate(packet.optical_tracking_projection.projections[0].screen_area),
 				m_constants.orientation_variance_curve.MaxValue,
 				1.f);
 		const float optical_orientation_quality = clampf01(1.f - fraction_of_max_orientation_variance);

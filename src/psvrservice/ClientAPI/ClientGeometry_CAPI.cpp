@@ -582,32 +582,38 @@ void PSVR_FrustumSetPose(PSVRFrustum *frustum, const PSVRPosef *pose)
 }
 
 // -- PSVRTrackingProjection -- 
-float PSVR_TrackingProjectionGetArea(const PSVRTrackingProjection *proj, const PSVRTrackingProjectionCount area_index)
+float PSVR_TrackingProjectionGetTotalArea(const PSVRTrackingProjection *proj, const PSVRTrackingProjectionCount area_index)
 {
-	float area = 0.f;
+	return proj->projections[area_index].screen_area;
+}
 
-	switch (proj->shape_type)
+float PSVR_PointCloudTrackingProjectionGetPointArea(const PSVRTrackingProjection *proj, const int model_point_index)
+{
+	assert(proj->shape_type == PSVRShape_PointCloud);
+
+	// Find all projections that correspond to the given model point index.
+	// This index was baked into the projection by the PointCloudTrackingModel during pose calculation.
+	float point_area= 0.f;
+	int point_count= 0;
+	for (int section_index = 0; section_index < proj->projection_count; ++section_index)
 	{
-	case PSVRShape_Ellipse:
+		int point_count= proj->projections[section_index].shape.pointcloud.point_count;
+		for (int point_index = 0; point_index < point_count; ++point_index)
 		{
-			area = k_real_pi
-                *proj->projections[area_index].shape.ellipse.half_x_extent
-                *proj->projections[area_index].shape.ellipse.half_y_extent;
-		} break;
-	case PSVRShape_LightBar:
-		{
-			PSVRVector2f edge1 = 
-                PSVR_Vector2fSubtract(
-                    &proj->projections[area_index].shape.lightbar.quad[0],
-                    &proj->projections[area_index].shape.lightbar.quad[1]);
-			PSVRVector2f edge2 = 
-                PSVR_Vector2fSubtract(
-                    &proj->projections[area_index].shape.lightbar.quad[0],
-                    &proj->projections[area_index].shape.lightbar.quad[3]);
-
-			area = PSVR_Vector2fLength(&edge1)*PSVR_Vector2fLength(&edge2);
-		} break;
+			if (proj->projections[section_index].shape.pointcloud.shape_point_index[point_index] == model_point_index)
+			{
+				point_area+= proj->projections[section_index].shape.pointcloud.screen_area[point_index];
+				point_count++;
+				break;
+			}
+		}
 	}
 
-	return area;
+	// If there was a left and a right projection, just take the average of the projection areas
+	if (point_count > 1)
+	{
+		point_area/= static_cast<float>(point_count);
+	}
+
+	return point_area;
 }

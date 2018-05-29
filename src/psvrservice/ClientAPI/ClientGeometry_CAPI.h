@@ -149,6 +149,8 @@ typedef struct
         } lightbar;
 		struct {
 			PSVRVector2f points[MAX_POINT_CLOUD_POINT_COUNT];
+			float screen_area[MAX_POINT_CLOUD_POINT_COUNT];
+			int shape_point_index[MAX_POINT_CLOUD_POINT_COUNT]; // Index of the corresponding point in the 3d tracking shape
 			int point_count;
 		} pointcloud;
     } shape;
@@ -417,7 +419,9 @@ PSVR_PUBLIC_FUNCTION(void) PSVR_FrustumSetPose(PSVRFrustum *frustum, const PSVRP
 
 // PSVRTrackingProjection
 /// Compute the area in pixels^2 of a tracking projection
-PSVR_PUBLIC_FUNCTION(float) PSVR_TrackingProjectionGetArea(const PSVRTrackingProjection *proj, const PSVRTrackingProjectionCount area_index);
+PSVR_PUBLIC_FUNCTION(float) PSVR_TrackingProjectionGetTotalArea(const PSVRTrackingProjection *proj, const PSVRTrackingProjectionCount area_index);
+/// Compute the area in pixels^2 of a point in a point cloud tracking projection
+PSVR_PUBLIC_FUNCTION(float) PSVR_PointCloudTrackingProjectionGetPointArea(const PSVRTrackingProjection *proj, const int model_point_index);
 
 //-- constants -----
 /// A 2D float vector whose components are all 0.0f

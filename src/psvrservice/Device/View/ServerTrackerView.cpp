@@ -34,6 +34,7 @@ static const int k_min_roi_size= 32;
 typedef std::vector<cv::Point> t_opencv_int_contour;
 typedef std::vector<t_opencv_int_contour> t_opencv_int_contour_list;
 
+typedef std::vector<float> t_opencv_float_list;
 typedef std::vector<cv::Point2f> t_opencv_float_contour;
 typedef std::vector<t_opencv_float_contour> t_opencv_float_contour_list;
 
@@ -496,6 +497,19 @@ public:
             cv::boundingRect(contour).height : cv::boundingRect(contour).width);
     }
     
+	cv::Scalar getQualityDebugColorForArea(float area)
+	{
+		static float kMinAreaSize= 3; 
+		static float kMaxAreaSize= 50; 
+
+		const float size= safe_sqrt_with_default(area, 0.f);
+		const float unit_score= clampf01((size - kMinAreaSize) / (kMaxAreaSize-kMinAreaSize));
+		const double red= 255 - 255*unit_score;
+		const double green= 255*unit_score;
+
+		return cv::Scalar(red, green, 0);
+	}
+
     void
     draw_pose_projection(const PSVRTrackingProjection &pose_projection)
     {
@@ -504,6 +518,8 @@ public:
         {
         case PSVRShape_Ellipse:
             {
+				const cv::Scalar areaColor= getQualityDebugColorForArea(pose_projection.projections[section].screen_area);
+
                 // For the sphere, its ellipse projection parameters should already
                 // be calculated, so we can use those parameters to draw an ellipse.
 
@@ -520,13 +536,14 @@ public:
                     ell_center,
                     ell_size,
                     pose_projection.projections[section].shape.ellipse.angle,
-                    0, 360, cv::Scalar(0, 0, 255));
+                    0, 360, areaColor);
                 cv::drawMarker(*bgrShmemBuffer, ell_center, cv::Scalar(0, 0, 255), 0,
                     (ell_size.height < ell_size.width) ? ell_size.height * 2 : ell_size.width * 2);
             } break;
         case PSVRShape_LightBar:
             {
                 int prev_point_index;
+				const cv::Scalar areaColor= getQualityDebugColorForArea(pose_projection.projections[section].screen_area);
 
                 prev_point_index = QUAD_POINT_COUNT - 1;
                 for (int point_index = 0; point_index < QUAD_POINT_COUNT; ++point_index)
@@ -537,7 +554,7 @@ public:
                     cv::Point pt2(
                         static_cast<int>(pose_projection.projections[section].shape.lightbar.quad[point_index].x),
                         static_cast<int>(pose_projection.projections[section].shape.lightbar.quad[point_index].y));
-                    cv::line(*bgrShmemBuffer, pt1, pt2, cv::Scalar(0, 0, 255));
+                    cv::line(*bgrShmemBuffer, pt1, pt2, areaColor);
 
                     prev_point_index = point_index;
                 }
@@ -551,7 +568,7 @@ public:
                     cv::Point pt2(
                         static_cast<int>(pose_projection.projections[section].shape.lightbar.triangle[point_index].x),
                         static_cast<int>(pose_projection.projections[section].shape.lightbar.triangle[point_index].y));
-                    cv::line(*bgrShmemBuffer, pt1, pt2, cv::Scalar(0, 0, 255));
+                    cv::line(*bgrShmemBuffer, pt1, pt2, areaColor);
 
                     prev_point_index = point_index;
                 }
@@ -561,10 +578,26 @@ public:
             {
                 for (int point_index = 0; point_index < pose_projection.projections[section].shape.pointcloud.point_count; ++point_index)
                 {
-                    cv::Point pt(
+					const cv::Scalar areaColor= 
+						getQualityDebugColorForArea(pose_projection.projections[section].shape.pointcloud.screen_area[point_index]);
+                    const cv::Point pt(
                         static_cast<int>(pose_projection.projections[section].shape.pointcloud.points[point_index].x),
                         static_cast<int>(pose_projection.projections[section].shape.pointcloud.points[point_index].y));
-                    cv::drawMarker(*bgrShmemBuffer, pt, cv::Scalar(0, 0, 255));
+                    cv::drawMarker(*bgrShmemBuffer, pt, areaColor);
+
+					// Show which model point we believe this projection to be associated with
+					const int model_point_index=
+						pose_projection.projections[section].shape.pointcloud.shape_point_index[point_index];
+					char point_label[32];
+					Utility::format_string(point_label, sizeof(point_label), "%d", model_point_index);
+					cv::putText(*bgrShmemBuffer, 
+								point_label,
+								pt + cv::Point(0,5),
+								cv::FONT_HERSHEY_COMPLEX_SMALL,
+								1.0, // Scale. 2.0 = 2x bigger
+								cv::Scalar(255,255,255), // Color
+								1, // Thickness
+								CV_AA); // Anti-alias
                 }
             } break;
         default:
@@ -1135,6 +1168,21 @@ bool ServerTrackerView::computeProjectionForHMD(
     return bSuccess;
 }
 
+void
+ServerTrackerView::drawPoseProjection(
+	const PSVRTrackingProjection *projection) const
+{
+	if (m_device->getIsStereoCamera())
+	{
+		m_opencv_buffer_state[PSVRVideoFrameSection_Left]->draw_pose_projection(*projection);
+		m_opencv_buffer_state[PSVRVideoFrameSection_Right]->draw_pose_projection(*projection);
+	}
+	else
+	{
+		m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->draw_pose_projection(*projection);
+	}
+}
+
 bool
 ServerTrackerView::computeProjectionForHmdInSection(
     const ServerHMDView* tracked_hmd,
@@ -1300,9 +1348,6 @@ ServerTrackerView::computeProjectionForHmdInSection(
                         *out_projection->projections[section].shape.ellipse.half_x_extent
                         *out_projection->projections[section].shape.ellipse.half_y_extent;
                 
-                    //Draw results onto m_opencv_buffer_state
-                    m_opencv_buffer_state[section]->draw_pose_projection(*out_projection);
-
                     bSuccess = true;
                 }
             } break;
@@ -1345,34 +1390,26 @@ ServerTrackerView::computeProjectionForHmdInSection(
                 }
 
                 // Compute centers of mass for the contours
-                t_opencv_float_contour cvImagePoints;
-                double projectionArea = 0.f;
+				t_opencv_float_list cvProjectionAreas;
+				int cvImagePointCount= 0;
+                float totalProjectionArea = 0.f;
                 for (auto it = undistorted_contours.begin(); it != undistorted_contours.end(); ++it)
                 {
                     cv::Point2f massCenter= computeSafeCenterOfMassForContour<t_opencv_float_contour>(*it);
+					float projectionArea= (float)cv::contourArea(*it);
 
-                    projectionArea= cv::contourArea(*it);
-                    cvImagePoints.push_back(massCenter);
+					out_projection->projections[section].shape.pointcloud.points[cvImagePointCount] = {massCenter.x, massCenter.y};
+					out_projection->projections[section].shape.pointcloud.screen_area[cvImagePointCount]= projectionArea;
+					out_projection->projections[section].shape.pointcloud.shape_point_index[cvImagePointCount]= -1;
+
+					totalProjectionArea+= projectionArea;
+
+					++cvImagePointCount;
                 }
 
-                // Return the projection of the contour centroids
-                {
-                    const int imagePointCount = static_cast<int>(cvImagePoints.size());
-
-                    for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
-                    {
-                        const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
-
-                        out_projection->projections[section].shape.pointcloud.points[vertex_index] = {cvPoint.x, cvPoint.y};
-                    }
-
-                    out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
-                    out_projection->projections[section].screen_area = static_cast<float>(projectionArea);
-                    out_projection->shape_type = PSVRShape_PointCloud;
-                }
-
-                //Draw results onto m_opencv_buffer_state
-                m_opencv_buffer_state[section]->draw_pose_projection(*out_projection);
+                out_projection->projections[section].shape.pointcloud.point_count = cvImagePointCount;
+                out_projection->projections[section].screen_area = totalProjectionArea;
+                out_projection->shape_type = PSVRShape_PointCloud;
             } break;
         default:
             assert(0 && "Unreachable");
