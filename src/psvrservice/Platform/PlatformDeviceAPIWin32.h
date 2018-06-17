@@ -20,7 +20,7 @@ public:
 
 	// System
 	bool startup(IDeviceHotplugListener *broadcaster) override;
-	void poll() override;
+	void pollSystemEvents() override;
 	void shutdown() override;
 
 	// Queries

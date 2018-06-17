@@ -181,7 +181,7 @@ bool PlatformDeviceAPIWin32::startup(IDeviceHotplugListener *broadcaster)
 	return bSuccess;
 }
 
-void PlatformDeviceAPIWin32::poll()
+void PlatformDeviceAPIWin32::pollSystemEvents()
 {
 	MSG msg;
 	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) > 0)

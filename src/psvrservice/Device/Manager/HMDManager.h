@@ -37,8 +37,6 @@ public:
     virtual bool startup() override;
     virtual void shutdown() override;
 
-	void updateStateAndPredict(TrackerManager* tracker_manager);
-
     static const int k_max_devices = PSVRSERVICE_MAX_HMD_COUNT;
     int getMaxDevices() const override
     {
@@ -51,6 +49,12 @@ public:
     {
         return cfg;
     }
+
+	// Broadcasts new video frame from a single tracker on tracker thread
+	void notifyVideoFrameReceived(class ServerTrackerView* tracker_view);
+
+	// Update Pose Filter using update packets from the tracker and IMU threads
+	void updatePoseFilters();
 
 protected:
     bool can_update_connected_devices() override;

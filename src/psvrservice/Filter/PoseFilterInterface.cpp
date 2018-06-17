@@ -57,6 +57,9 @@ void PoseFilterSpace::createFilterPacket(
 	const IPoseFilter *poseFilter,
     PoseFilterPacket &outFilterPacket) const
 {
+	outFilterPacket.timestamp= sensorPacket.timestamp;
+	outFilterPacket.tracker_id= sensorPacket.tracker_id;
+
     outFilterPacket.optical_tracking_shape_cm= sensorPacket.optical_tracking_shape_cm;
 
 	outFilterPacket.current_orientation= poseFilter->getOrientation();
@@ -64,15 +67,30 @@ void PoseFilterSpace::createFilterPacket(
 	outFilterPacket.current_linear_velocity_cm_s = poseFilter->getVelocityCmPerSec();
 	outFilterPacket.current_linear_acceleration_cm_s2 = poseFilter->getAccelerationCmPerSecSqr();
 
+	outFilterPacket.tracker_relative_orientation= sensorPacket.tracker_relative_orientation;
     outFilterPacket.optical_orientation = sensorPacket.optical_orientation;
 
-	// Positional filtering is done is meters to improve numerical stability
+	outFilterPacket.tracker_relative_position_cm= sensorPacket.tracker_relative_position_cm;
     outFilterPacket.optical_position_cm = sensorPacket.optical_position_cm;
     outFilterPacket.optical_tracking_projection = sensorPacket.optical_tracking_projection;
 
-    outFilterPacket.imu_gyroscope_rad_per_sec= m_SensorTransform * sensorPacket.imu_gyroscope_rad_per_sec;
-    outFilterPacket.imu_accelerometer_g_units= m_SensorTransform * sensorPacket.imu_accelerometer_g_units;
-    outFilterPacket.imu_magnetometer_unit= m_SensorTransform * sensorPacket.imu_magnetometer_unit;
+	if (sensorPacket.has_gyroscope_measurement)
+	{
+	    outFilterPacket.imu_gyroscope_rad_per_sec= m_SensorTransform * sensorPacket.imu_gyroscope_rad_per_sec;
+		outFilterPacket.has_gyroscope_measurement= true;
+	}
+
+	if (sensorPacket.has_accelerometer_measurement)
+	{
+	    outFilterPacket.imu_accelerometer_g_units= m_SensorTransform * sensorPacket.imu_accelerometer_g_units;
+		outFilterPacket.has_accelerometer_measurement= true;
+	}
+
+	if (sensorPacket.has_magnetometer_measurement)
+	{
+	    outFilterPacket.imu_magnetometer_unit= m_SensorTransform * sensorPacket.imu_magnetometer_unit;
+		outFilterPacket.has_magnetometer_measurement= true;
+	}
         
 	outFilterPacket.world_accelerometer=
 		eigen_vector3f_clockwise_rotate(outFilterPacket.current_orientation, outFilterPacket.imu_accelerometer_g_units);

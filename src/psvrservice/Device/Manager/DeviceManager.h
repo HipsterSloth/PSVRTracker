@@ -51,7 +51,10 @@ public:
     { return m_instance; }
 
 	// -- Accessors ---
+	class TrackerManager *getTrackerManager() { return m_tracker_manager; }
 	ServerTrackerViewPtr getTrackerViewPtr(int tracker_id);
+
+	class HMDManager *getHMDManager() { return m_hmd_manager; }
 	ServerHMDViewPtr getHMDViewPtr(int hmd_id);
 
 	// -- Queries ---

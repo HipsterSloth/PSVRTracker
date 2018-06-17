@@ -21,55 +21,66 @@
 enum PoseFilterStateEnum
 {
     // Position State
-    POSITION_X, // meters
-    LINEAR_VELOCITY_X, // meters / s
-    LINEAR_ACCELERATION_X, // meters /s^2
-    POSITION_Y,
-    LINEAR_VELOCITY_Y,
-    LINEAR_ACCELERATION_Y,
-    POSITION_Z,
-    LINEAR_VELOCITY_Z,
-    LINEAR_ACCELERATION_Z,
+    POSE_POSITION_X, // meters
+    POSE_LINEAR_VELOCITY_X, // meters / s
+    POSE_LINEAR_ACCELERATION_X, // meters /s^2
+    POSE_POSITION_Y,
+    POSE_LINEAR_VELOCITY_Y,
+    POSE_LINEAR_ACCELERATION_Y,
+    POSE_POSITION_Z,
+    POSE_LINEAR_VELOCITY_Z,
+    POSE_LINEAR_ACCELERATION_Z,
     // Orientation State
-    ERROR_QUATERNION_W,
-    ERROR_QUATERNION_X,
-    ERROR_QUATERNION_Y,
-    ERROR_QUATERNION_Z,
+    POSE_ERROR_QUATERNION_W,
+    POSE_ERROR_QUATERNION_X,
+    POSE_ERROR_QUATERNION_Y,
+    POSE_ERROR_QUATERNION_Z,
 
-    STATE_PARAMETER_COUNT
+    POSE_STATE_PARAMETER_COUNT
 };
 
 enum PoseControlEnum
 {
-	CONTROL_GYROSCOPE_PITCH, // radians/s
-	CONTROL_GYROSCOPE_YAW,
-	CONTROL_GYROSCOPE_ROLL,
+	POSE_CONTROL_GYROSCOPE_PITCH, // radians/s
+	POSE_CONTROL_GYROSCOPE_YAW,
+	POSE_CONTROL_GYROSCOPE_ROLL,
 
-	CONTROL_PARAMETER_COUNT
+	POSE_CONTROL_PARAMETER_COUNT
 };
 
-enum IMUMeasurementEnum {
-	ACCELEROMETER_X, // gravity units
-	ACCELEROMETER_Y,
-	ACCELEROMETER_Z,
+enum PoseIMUMeasurementEnum {
+	POSE_ACCELEROMETER_X, // gravity units
+	POSE_ACCELEROMETER_Y,
+	POSE_ACCELEROMETER_Z,
 
-	G_MEASUREMENT_PARAMETER_COUNT,
+	POSE_G_MEASUREMENT_PARAMETER_COUNT,
 
-	MAGNETOMETER_X = G_MEASUREMENT_PARAMETER_COUNT, // unit vector
-	MAGNETOMETER_Y,
-	MAGNETOMETER_Z,
+	POSE_MAGNETOMETER_X = POSE_G_MEASUREMENT_PARAMETER_COUNT, // unit vector
+	POSE_MAGNETOMETER_Y,
+	POSE_MAGNETOMETER_Z,
 
-	MG_MEASUREMENT_PARAMETER_COUNT
+	POSE_MG_MEASUREMENT_PARAMETER_COUNT
 };
 
-enum LEDMeasurementEnum
+enum PoseLEDMeasurementEnum
 {
-	LED_POSITION_X,
-	LED_POSITION_Y,
-	LED_POSITION_Z,
+	POSE_LED_POSITION_X,
+	POSE_LED_POSITION_Y,
+	POSE_LED_POSITION_Z,
 
-	LED_MEASUREMENT_PARAMETER_COUNT
+	POSE_LED_MEASUREMENT_PARAMETER_COUNT
 };
+
+enum PoseOpticalMeasurementEnum
+{
+	POSE_OPTICAL_QUATERNION_W,
+    POSE_OPTICAL_QUATERNION_X,
+	POSE_OPTICAL_QUATERNION_Y,
+	POSE_OPTICAL_QUATERNION_Z,
+
+    POSE_OPTICAL_MEASUREMENT_PARAMETER_COUNT
+};
+
 
 // Arbitrary tuning scale applied to the measurement noise
 #define R_SCALE 1.0
@@ -83,9 +94,9 @@ enum LEDMeasurementEnum
 // kappa=3-n where n is the size of x is a good choice for kappa, 
 // 0<=alpha<=1 is an appropriate choice for alpha, 
 // where a larger value for alpha spreads the sigma points further from the mean.
-#define k_ukf_alpha 0.6
+#define k_ukf_alpha 0.01
 #define k_ukf_beta 2.0
-#define k_ukf_kappa -10.0 // 3 - STATE_PARAMETER_COUNT
+#define k_ukf_kappa -10.0 // 3 - POSE_STATE_PARAMETER_COUNT
 
 //-- private methods ---
 template <class StateType>
@@ -95,69 +106,69 @@ void Q_discrete_3rd_order_white_noise(const double dT, const double var, const i
 
 //-- private definitions --
 template<typename T>
-class PoseStateVector : public Kalman::Vector<T, STATE_PARAMETER_COUNT>
+class PoseStateVector : public Kalman::Vector<T, POSE_STATE_PARAMETER_COUNT>
 {
 public:
-    KALMAN_VECTOR(PoseStateVector, T, STATE_PARAMETER_COUNT)
+    KALMAN_VECTOR(PoseStateVector, T, POSE_STATE_PARAMETER_COUNT)
 
     static PoseStateVector<T> Identity()
     {
         PoseStateVector<T> result= PoseStateVector<T>::Zero();
 
-        result[ERROR_QUATERNION_W] = 1.0;
+        result[POSE_ERROR_QUATERNION_W] = 1.0;
 
         return result;
     }
 
     // Accessors
     Eigen::Vector3d get_position_meters() const { 
-        return Eigen::Vector3d((*this)[POSITION_X], (*this)[POSITION_Y], (*this)[POSITION_Z]); 
+        return Eigen::Vector3d((*this)[POSE_POSITION_X], (*this)[POSE_POSITION_Y], (*this)[POSE_POSITION_Z]); 
     }
     Eigen::Vector3d get_linear_velocity_m_per_sec() const {
-        return Eigen::Vector3d((*this)[LINEAR_VELOCITY_X], (*this)[LINEAR_VELOCITY_Y], (*this)[LINEAR_VELOCITY_Z]);
+        return Eigen::Vector3d((*this)[POSE_LINEAR_VELOCITY_X], (*this)[POSE_LINEAR_VELOCITY_Y], (*this)[POSE_LINEAR_VELOCITY_Z]);
     }
     Eigen::Vector3d get_linear_acceleration_m_per_sec_sqr() const {
-        return Eigen::Vector3d((*this)[LINEAR_ACCELERATION_X], (*this)[LINEAR_ACCELERATION_Y], (*this)[LINEAR_ACCELERATION_Z]);
+        return Eigen::Vector3d((*this)[POSE_LINEAR_ACCELERATION_X], (*this)[POSE_LINEAR_ACCELERATION_Y], (*this)[POSE_LINEAR_ACCELERATION_Z]);
     }
     Eigen::Quaterniond get_error_quaterniond() const {
-        return Eigen::Quaterniond((*this)[ERROR_QUATERNION_W], (*this)[ERROR_QUATERNION_X], (*this)[ERROR_QUATERNION_Y], (*this)[ERROR_QUATERNION_Z]);
+        return Eigen::Quaterniond((*this)[POSE_ERROR_QUATERNION_W], (*this)[POSE_ERROR_QUATERNION_X], (*this)[POSE_ERROR_QUATERNION_Y], (*this)[POSE_ERROR_QUATERNION_Z]);
     }
 
     // Mutators
     void set_position_meters(const Eigen::Vector3d &p) {
-        (*this)[POSITION_X] = p.x(); (*this)[POSITION_Y] = p.y(); (*this)[POSITION_Z] = p.z();
+        (*this)[POSE_POSITION_X] = p.x(); (*this)[POSE_POSITION_Y] = p.y(); (*this)[POSE_POSITION_Z] = p.z();
     }
     void set_linear_velocity_m_per_sec(const Eigen::Vector3d &v) {
-        (*this)[LINEAR_VELOCITY_X] = v.x(); (*this)[LINEAR_VELOCITY_Y] = v.y(); (*this)[LINEAR_VELOCITY_Z] = v.z();
+        (*this)[POSE_LINEAR_VELOCITY_X] = v.x(); (*this)[POSE_LINEAR_VELOCITY_Y] = v.y(); (*this)[POSE_LINEAR_VELOCITY_Z] = v.z();
     }
     void set_linear_acceleration_m_per_sec_sqr(const Eigen::Vector3d &a) {
-        (*this)[LINEAR_ACCELERATION_X] = a.x(); (*this)[LINEAR_ACCELERATION_Y] = a.y(); (*this)[LINEAR_ACCELERATION_Z] = a.z();
+        (*this)[POSE_LINEAR_ACCELERATION_X] = a.x(); (*this)[POSE_LINEAR_ACCELERATION_Y] = a.y(); (*this)[POSE_LINEAR_ACCELERATION_Z] = a.z();
     }
     void set_error_quaterniond(const Eigen::Quaterniond &q) {
-        (*this)[ERROR_QUATERNION_W] = q.w();
-        (*this)[ERROR_QUATERNION_X] = q.x();
-        (*this)[ERROR_QUATERNION_Y] = q.y();
-        (*this)[ERROR_QUATERNION_Z] = q.z();
+        (*this)[POSE_ERROR_QUATERNION_W] = q.w();
+        (*this)[POSE_ERROR_QUATERNION_X] = q.x();
+        (*this)[POSE_ERROR_QUATERNION_Y] = q.y();
+        (*this)[POSE_ERROR_QUATERNION_Z] = q.z();
     }
 };
 typedef PoseStateVector<double> PoseStateVectord;
 
 template<typename T>
-class PoseControlVector : public Kalman::Vector<T, CONTROL_PARAMETER_COUNT>
+class PoseControlVector : public Kalman::Vector<T, POSE_CONTROL_PARAMETER_COUNT>
 {
 public:
-	KALMAN_VECTOR(PoseControlVector, T, CONTROL_PARAMETER_COUNT)
+	KALMAN_VECTOR(PoseControlVector, T, POSE_CONTROL_PARAMETER_COUNT)
 
 	// Accessors
 	Eigen::Vector3d get_angular_rates() const {
-		return Eigen::Vector3d((*this)[CONTROL_GYROSCOPE_PITCH], (*this)[CONTROL_GYROSCOPE_YAW], (*this)[CONTROL_GYROSCOPE_ROLL]);
+		return Eigen::Vector3d((*this)[POSE_CONTROL_GYROSCOPE_PITCH], (*this)[POSE_CONTROL_GYROSCOPE_YAW], (*this)[POSE_CONTROL_GYROSCOPE_ROLL]);
 	}
 
 	// Mutators
 	void set_angular_rates(const Eigen::Vector3d &v) {
-		(*this)[CONTROL_GYROSCOPE_PITCH] = v.x();
-		(*this)[CONTROL_GYROSCOPE_YAW] = v.y();
-		(*this)[CONTROL_GYROSCOPE_ROLL] = v.z();
+		(*this)[POSE_CONTROL_GYROSCOPE_PITCH] = v.x();
+		(*this)[POSE_CONTROL_GYROSCOPE_YAW] = v.y();
+		(*this)[POSE_CONTROL_GYROSCOPE_ROLL] = v.z();
 	}
 };
 typedef PoseControlVector<double> PoseControlVectord;
@@ -210,13 +221,13 @@ public:
 
             // Initialize the process covariance matrix Q
             Kalman::Covariance<PoseStateVectord> Q = Kalman::Covariance<PoseStateVectord>::Zero();
-            Q_discrete_3rd_order_white_noise<PoseStateVectord>(mean_position_dT, position_variance_m_sqr, POSITION_X, Q);
-            Q_discrete_3rd_order_white_noise<PoseStateVectord>(mean_position_dT, position_variance_m_sqr, POSITION_Y, Q);
-            Q_discrete_3rd_order_white_noise<PoseStateVectord>(mean_position_dT, position_variance_m_sqr, POSITION_Z, Q);
-			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, ERROR_QUATERNION_W, Q);
-			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, ERROR_QUATERNION_X, Q);
-			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, ERROR_QUATERNION_Y, Q);
-			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, ERROR_QUATERNION_Z, Q);
+            Q_discrete_3rd_order_white_noise<PoseStateVectord>(mean_position_dT, position_variance_m_sqr, POSE_POSITION_X, Q);
+            Q_discrete_3rd_order_white_noise<PoseStateVectord>(mean_position_dT, position_variance_m_sqr, POSE_POSITION_Y, Q);
+            Q_discrete_3rd_order_white_noise<PoseStateVectord>(mean_position_dT, position_variance_m_sqr, POSE_POSITION_Z, Q);
+			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, POSE_ERROR_QUATERNION_W, Q);
+			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, POSE_ERROR_QUATERNION_X, Q);
+			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, POSE_ERROR_QUATERNION_Y, Q);
+			Q_discrete_1st_order_white_noise<PoseStateVectord>(mean_orientation_dT, orientation_variance, POSE_ERROR_QUATERNION_Z, Q);
             setCovariance(Q);
 
             // Keep track last tracking projection area we built the covariance matrix for
@@ -317,47 +328,42 @@ public:
 };
 
 template<typename T>
-class GravMeasurementVector : public Kalman::Vector<T, G_MEASUREMENT_PARAMETER_COUNT>
+class PoseGravMeasurementVector : public Kalman::Vector<T, POSE_G_MEASUREMENT_PARAMETER_COUNT>
 {
 public:
-	KALMAN_VECTOR(GravMeasurementVector, T, G_MEASUREMENT_PARAMETER_COUNT)
+	KALMAN_VECTOR(PoseGravMeasurementVector, T, POSE_G_MEASUREMENT_PARAMETER_COUNT)
 
 		// Accessors
 		Eigen::Vector3d get_accelerometer() const {
-		return Eigen::Vector3d((*this)[ACCELEROMETER_X], (*this)[ACCELEROMETER_Y], (*this)[ACCELEROMETER_Z]);
+		return Eigen::Vector3d((*this)[POSE_ACCELEROMETER_X], (*this)[POSE_ACCELEROMETER_Y], (*this)[POSE_ACCELEROMETER_Z]);
 	}
 
 	// Mutators
 	void set_accelerometer(const Eigen::Vector3d &a) {
-		(*this)[ACCELEROMETER_X] = a.x(); (*this)[ACCELEROMETER_Y] = a.y(); (*this)[ACCELEROMETER_Z] = a.z();
+		(*this)[POSE_ACCELEROMETER_X] = a.x(); (*this)[POSE_ACCELEROMETER_Y] = a.y(); (*this)[POSE_ACCELEROMETER_Z] = a.z();
 	}
 };
-typedef GravMeasurementVector<double> GravMeasurementVectord;
+typedef PoseGravMeasurementVector<double> PoseGravMeasurementVectord;
 
-class GravMeasurementModel :
-	public Kalman::MeasurementModel<PoseStateVectord, GravMeasurementVectord, Kalman::SquareRootBase>
+class PoseGravMeasurementModel :
+	public Kalman::MeasurementModel<PoseStateVectord, PoseGravMeasurementVectord, Kalman::SquareRootBase>
 {
 public:
-	void init(const OrientationFilterConstants &constants)
+	void init(const OrientationFilterConstants &constants, const Eigen::Quaterniond *last_world_orientation_ptr)
 	{
 		// Update the measurement covariance R
-		Kalman::Covariance<GravMeasurementVectord> R =
-			Kalman::Covariance<GravMeasurementVectord>::Zero();
+		Kalman::Covariance<PoseGravMeasurementVectord> R =
+			Kalman::Covariance<PoseGravMeasurementVectord>::Zero();
 
 		// Only diagonals used so no need to compute Cholesky
 		static float r_accelerometer_scale = R_SCALE;
-		R(ACCELEROMETER_X, ACCELEROMETER_X) = r_accelerometer_scale*constants.accelerometer_variance.x();
-		R(ACCELEROMETER_Y, ACCELEROMETER_Y) = r_accelerometer_scale*constants.accelerometer_variance.y();
-		R(ACCELEROMETER_Z, ACCELEROMETER_Z) = r_accelerometer_scale*constants.accelerometer_variance.z();
+		R(POSE_ACCELEROMETER_X, POSE_ACCELEROMETER_X) = r_accelerometer_scale*constants.accelerometer_variance.x();
+		R(POSE_ACCELEROMETER_Y, POSE_ACCELEROMETER_Y) = r_accelerometer_scale*constants.accelerometer_variance.y();
+		R(POSE_ACCELEROMETER_Z, POSE_ACCELEROMETER_Z) = r_accelerometer_scale*constants.accelerometer_variance.z();
 		setCovariance(R);
 
 		identity_gravity_direction = constants.gravity_calibration_direction.cast<double>();
-		m_last_world_orientation = Eigen::Quaterniond::Identity();
-	}
-
-	void update_world_orientation(const Eigen::Quaterniond &orientation)
-	{
-		m_last_world_orientation = orientation;
+		m_last_world_orientation_ptr = last_world_orientation_ptr;
 	}
 
 	/**
@@ -370,13 +376,14 @@ public:
 	* @param [in] x The system state in current time-step
 	* @returns The (predicted) sensor measurement for the system state
 	*/
-	GravMeasurementVectord h(const PoseStateVectord& x) const
+	PoseGravMeasurementVectord h(const PoseStateVectord& x) const
 	{
-		GravMeasurementVectord predicted_measurement;
+		PoseGravMeasurementVectord predicted_measurement;
 
 		// Use the orientation + linear acceleration state from the state for prediction
 		const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
-		const Eigen::Quaterniond world_to_local_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
+		const Eigen::Quaterniond world_to_local_orientation = 
+			eigen_quaternion_concatenate(*m_last_world_orientation_ptr, error_orientation).normalized();
 
 		// Convert the world space linear acceleration in the state into a local space predicted measurement in the accelerometer 
 		const Eigen::Vector3d world_linear_accel_g_units = x.get_linear_acceleration_m_per_sec_sqr() * k_ms2_to_g_units;
@@ -397,62 +404,57 @@ public:
 
 public:
 	Eigen::Vector3d identity_gravity_direction;
-	Eigen::Quaterniond m_last_world_orientation;
+	const Eigen::Quaterniond *m_last_world_orientation_ptr;
 };
 
 template<typename T>
-class MagGravMeasurementVector : public Kalman::Vector<T, MG_MEASUREMENT_PARAMETER_COUNT>
+class PoseMagGravMeasurementVector : public Kalman::Vector<T, POSE_MG_MEASUREMENT_PARAMETER_COUNT>
 {
 public:
-	KALMAN_VECTOR(MagGravMeasurementVector, T, MG_MEASUREMENT_PARAMETER_COUNT)
+	KALMAN_VECTOR(PoseMagGravMeasurementVector, T, POSE_MG_MEASUREMENT_PARAMETER_COUNT)
 
 	// Accessors
 	Eigen::Vector3d get_accelerometer() const {
-		return Eigen::Vector3d((*this)[ACCELEROMETER_X], (*this)[ACCELEROMETER_Y], (*this)[ACCELEROMETER_Z]);
+		return Eigen::Vector3d((*this)[POSE_ACCELEROMETER_X], (*this)[POSE_ACCELEROMETER_Y], (*this)[POSE_ACCELEROMETER_Z]);
 	}
 	Eigen::Vector3d get_magnetometer() const {
-		return Eigen::Vector3d((*this)[MAGNETOMETER_X], (*this)[MAGNETOMETER_Y], (*this)[MAGNETOMETER_Z]);
+		return Eigen::Vector3d((*this)[POSE_MAGNETOMETER_X], (*this)[POSE_MAGNETOMETER_Y], (*this)[POSE_MAGNETOMETER_Z]);
 	}
 
 	// Mutators
 	void set_accelerometer(const Eigen::Vector3d &a) {
-		(*this)[ACCELEROMETER_X] = a.x(); (*this)[ACCELEROMETER_Y] = a.y(); (*this)[ACCELEROMETER_Z] = a.z();
+		(*this)[POSE_ACCELEROMETER_X] = a.x(); (*this)[POSE_ACCELEROMETER_Y] = a.y(); (*this)[POSE_ACCELEROMETER_Z] = a.z();
 	}
 	void set_magnetometer(const Eigen::Vector3d &m) {
-		(*this)[MAGNETOMETER_X] = m.x(); (*this)[MAGNETOMETER_Y] = m.y(); (*this)[MAGNETOMETER_Z] = m.z();
+		(*this)[POSE_MAGNETOMETER_X] = m.x(); (*this)[POSE_MAGNETOMETER_Y] = m.y(); (*this)[POSE_MAGNETOMETER_Z] = m.z();
 	}
 };
-typedef MagGravMeasurementVector<double> MagGravMeasurementVectord;
+typedef PoseMagGravMeasurementVector<double> PoseMagGravMeasurementVectord;
 
-class MagGravMeasurementModel :
-	public Kalman::MeasurementModel<PoseStateVectord, MagGravMeasurementVectord, Kalman::SquareRootBase>
+class PoseMagGravMeasurementModel :
+	public Kalman::MeasurementModel<PoseStateVectord, PoseMagGravMeasurementVectord, Kalman::SquareRootBase>
 {
 public:
-	void init(const OrientationFilterConstants &constants)
+	void init(const OrientationFilterConstants &constants, const Eigen::Quaterniond *last_world_orientation_ptr)
 	{
 		// Update the measurement covariance R
-		Kalman::Covariance<MagGravMeasurementVectord> R =
-			Kalman::Covariance<MagGravMeasurementVectord>::Zero();
+		Kalman::Covariance<PoseMagGravMeasurementVectord> R =
+			Kalman::Covariance<PoseMagGravMeasurementVectord>::Zero();
 
 		// Only diagonals used so no need to compute Cholesky
 		static float r_accelerometer_scale = R_SCALE;
 		static float r_magnetometer_scale = R_SCALE;
-		R(ACCELEROMETER_X, ACCELEROMETER_X) = r_accelerometer_scale*constants.accelerometer_variance.x();
-		R(ACCELEROMETER_Y, ACCELEROMETER_Y) = r_accelerometer_scale*constants.accelerometer_variance.y();
-		R(ACCELEROMETER_Z, ACCELEROMETER_Z) = r_accelerometer_scale*constants.accelerometer_variance.z();
-		R(MAGNETOMETER_X, MAGNETOMETER_X) = r_magnetometer_scale*constants.magnetometer_variance.x();
-		R(MAGNETOMETER_Y, MAGNETOMETER_Y) = r_magnetometer_scale*constants.magnetometer_variance.y();
-		R(MAGNETOMETER_Z, MAGNETOMETER_Z) = r_magnetometer_scale*constants.magnetometer_variance.z();
+		R(POSE_ACCELEROMETER_X, POSE_ACCELEROMETER_X) = r_accelerometer_scale*constants.accelerometer_variance.x();
+		R(POSE_ACCELEROMETER_Y, POSE_ACCELEROMETER_Y) = r_accelerometer_scale*constants.accelerometer_variance.y();
+		R(POSE_ACCELEROMETER_Z, POSE_ACCELEROMETER_Z) = r_accelerometer_scale*constants.accelerometer_variance.z();
+		R(POSE_MAGNETOMETER_X, POSE_MAGNETOMETER_X) = r_magnetometer_scale*constants.magnetometer_variance.x();
+		R(POSE_MAGNETOMETER_Y, POSE_MAGNETOMETER_Y) = r_magnetometer_scale*constants.magnetometer_variance.y();
+		R(POSE_MAGNETOMETER_Z, POSE_MAGNETOMETER_Z) = r_magnetometer_scale*constants.magnetometer_variance.z();
 		setCovariance(R);
 
 		identity_gravity_direction = constants.gravity_calibration_direction.cast<double>();
 		identity_magnetometer_direction = constants.magnetometer_calibration_direction.cast<double>();
-		m_last_world_orientation = Eigen::Quaterniond::Identity();
-	}
-
-	void update_world_orientation(const Eigen::Quaterniond &orientation)
-	{
-		m_last_world_orientation = orientation;
+		m_last_world_orientation_ptr = last_world_orientation_ptr;
 	}
 
 	/**
@@ -465,13 +467,14 @@ public:
 	* @param [in] x The system state in current time-step
 	* @returns The (predicted) sensor measurement for the system state
 	*/
-	MagGravMeasurementVectord h(const PoseStateVectord& x) const
+	PoseMagGravMeasurementVectord h(const PoseStateVectord& x) const
 	{
-		MagGravMeasurementVectord predicted_measurement;
+		PoseMagGravMeasurementVectord predicted_measurement;
 
 		// Use the orientation + linear acceleration state from the state for prediction
 		const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
-		const Eigen::Quaterniond world_to_local_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
+		const Eigen::Quaterniond world_to_local_orientation = 
+			eigen_quaternion_concatenate(*m_last_world_orientation_ptr, error_orientation).normalized();
 
 		// Convert the world space linear acceleration in the state into a local space predicted measurement in the accelerometer 
 		const Eigen::Vector3d world_linear_accel_g_units = x.get_linear_acceleration_m_per_sec_sqr() * k_ms2_to_g_units;
@@ -499,32 +502,32 @@ public:
 public:
 	Eigen::Vector3d identity_gravity_direction;
 	Eigen::Vector3d identity_magnetometer_direction;
-	Eigen::Quaterniond m_last_world_orientation;
+	const Eigen::Quaterniond *m_last_world_orientation_ptr;
 	//Eigen::Vector3d m_last_world_linear_acceleration_m_per_sec_sqr;
 };
 
 template<typename T>
-class LEDMeasurementVector : public Kalman::Vector<T, LED_MEASUREMENT_PARAMETER_COUNT>
+class PoseLEDMeasurementVector : public Kalman::Vector<T, POSE_LED_MEASUREMENT_PARAMETER_COUNT>
 {
 public:
-    KALMAN_VECTOR(LEDMeasurementVector, T, LED_MEASUREMENT_PARAMETER_COUNT)
+    KALMAN_VECTOR(PoseLEDMeasurementVector, T, POSE_LED_MEASUREMENT_PARAMETER_COUNT)
 
     // Accessors
     Eigen::Vector3d get_LED_position_meters() const {
         return Eigen::Vector3d(
-                (*this)[LED_POSITION_X], 
-                (*this)[LED_POSITION_Y],
-                (*this)[LED_POSITION_Z]);
+                (*this)[POSE_LED_POSITION_X], 
+                (*this)[POSE_LED_POSITION_Y],
+                (*this)[POSE_LED_POSITION_Z]);
     }
 
     // Mutators
     void set_LED_position_meters(const Eigen::Vector3d &p) {
-        (*this)[LED_POSITION_X] = p.x();
-		(*this)[LED_POSITION_Y] = p.y();
-		(*this)[LED_POSITION_Z] = p.z();
+        (*this)[POSE_LED_POSITION_X] = p.x();
+		(*this)[POSE_LED_POSITION_Y] = p.y();
+		(*this)[POSE_LED_POSITION_Z] = p.z();
     }
 };
-typedef LEDMeasurementVector<double> LEDMeasurementVectord;
+typedef PoseLEDMeasurementVector<double> PoseLEDMeasurementVectord;
 
 /**
 * @brief LED Measurement model for measuring PSVR controller
@@ -532,15 +535,16 @@ typedef LEDMeasurementVector<double> LEDMeasurementVectord;
 * This is the measurement model for measuring the position and magnetometer of the PSVR controller.
 * The measurement is given by the optical trackers.
 */
-class LEDMeasurementModel : 
-    public Kalman::MeasurementModel<PoseStateVectord, LEDMeasurementVectord, Kalman::SquareRootBase>
+class PoseLEDMeasurementModel : 
+    public Kalman::MeasurementModel<PoseStateVectord, PoseLEDMeasurementVectord, Kalman::SquareRootBase>
 {
 public:
-    void init(const PoseFilterConstants &constants, int led_index)
+    void init(const PoseFilterConstants &constants, int led_index, const Eigen::Quaterniond *last_world_orientation)
     {
-        m_last_world_orientation = Eigen::Quaterniond::Identity();
+        m_last_world_orientation_ptr = last_world_orientation;
 		m_last_tracking_projection_area_px_sqr = -1.f;
-		update_measurement_covariance(constants, 0.f);
+		m_bIsVideoMirrored= false;
+		updateMeasurementCovariance(constants, 0.f);
 
         assert(constants.shape.shape_type == PSVRTrackingShape_PointCloud);
         assert(led_index <= constants.shape.shape.pointcloud.point_count);
@@ -554,7 +558,14 @@ public:
 				static_cast<double>(p.z * k_centimeters_to_meters));
     }
 
-	void update_measurement_covariance(
+	// Parameter needed by the h() function
+	// This gets called before h() is called
+	inline void setVideoMirrorFlag(bool is_video_mirrored)
+	{
+		m_bIsVideoMirrored= is_video_mirrored;
+	}
+
+	void updateMeasurementCovariance(
 		const PoseFilterConstants &constants,
 		const float tracking_projection_area_px_sqr)
 	{
@@ -574,21 +585,16 @@ public:
 			// Update the measurement covariance R
             // Only diagonals used so no need to compute Cholesky
             static float r_position_scale = R_SCALE;
-			Kalman::Covariance<LEDMeasurementVectord> R = Kalman::Covariance<LEDMeasurementVectord>::Zero();
-			R(LED_POSITION_X, LED_POSITION_X) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
-			R(LED_POSITION_Y, LED_POSITION_Y) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
-			R(LED_POSITION_Z, LED_POSITION_Z) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			Kalman::Covariance<PoseLEDMeasurementVectord> R = Kalman::Covariance<PoseLEDMeasurementVectord>::Zero();
+			R(POSE_LED_POSITION_X, POSE_LED_POSITION_X) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			R(POSE_LED_POSITION_Y, POSE_LED_POSITION_Y) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
+			R(POSE_LED_POSITION_Z, POSE_LED_POSITION_Z) = fmax(r_position_scale*position_variance_m_sqr, R_MIN);
 			setCovariance(R);
 
 			// Keep track last position quality we built the covariance matrix for
 			m_last_tracking_projection_area_px_sqr = tracking_projection_area_px_sqr;
 		}
 	}
-
-    void update_world_orientation(const Eigen::Quaterniond &orientation)
-    {
-        m_last_world_orientation = orientation;
-    }
 
     /**
     * @brief Definition of (possibly non-linear) measurement function
@@ -600,15 +606,15 @@ public:
     * @param [in] x The system state in current time-step
     * @returns The (predicted) sensor measurement for the system state
     */
-    LEDMeasurementVectord h(const PoseStateVectord& x) const
+    PoseLEDMeasurementVectord h(const PoseStateVectord& x) const
     {
-		LEDMeasurementVectord predicted_measurement;
+		PoseLEDMeasurementVectord predicted_measurement;
 
         // Use the position and orientation from the state for predictions
         const Eigen::Vector3d position_meters= x.get_position_meters();
         const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
-        const Eigen::Quaterniond local_to_world_orientation = eigen_quaternion_concatenate(m_last_world_orientation, error_orientation).normalized();
-        const Eigen::Quaterniond world_to_local_orientation = local_to_world_orientation.conjugate();
+        const Eigen::Quaterniond local_to_world_orientation = 
+			eigen_quaternion_concatenate(*m_last_world_orientation_ptr, error_orientation).normalized();
 
 		//predicted_measurement.set_optical_orientation(local_to_world_orientation);
 		//predicted_measurement.set_optical_position_meters(position_meters);
@@ -617,7 +623,14 @@ public:
         local_to_world.linear()= local_to_world_orientation.toRotationMatrix();
         local_to_world.translation()= x.get_position_meters();
 
-        const Eigen::Vector3d predicted_led_position= local_to_world * m_LED_model_vertex;
+		// If the projection we are trying to predict came from a mirrored video source,
+		// then we need to mirror the source model position about the x-axis as well
+		const Eigen::Vector3d led_model_vertex=
+			Eigen::Vector3d(
+				m_bIsVideoMirrored ? -m_LED_model_vertex.x() : m_LED_model_vertex.x(),
+				m_LED_model_vertex.y(),
+				m_LED_model_vertex.z());
+        const Eigen::Vector3d predicted_led_position= local_to_world * led_model_vertex;
 
         predicted_measurement.set_LED_position_meters(predicted_led_position);
 
@@ -626,10 +639,103 @@ public:
 
 public:
     Eigen::Vector3d m_LED_model_vertex; // in meters!
-    Eigen::Quaterniond m_last_world_orientation;
+    const Eigen::Quaterniond *m_last_world_orientation_ptr;
     double m_time_step;
 	float m_last_tracking_projection_area_px_sqr;
+	bool m_bIsVideoMirrored;
 };
+
+template<typename T>
+class PoseOrientationMeasurementVector : public Kalman::Vector<T, POSE_OPTICAL_MEASUREMENT_PARAMETER_COUNT>
+{
+public:
+	KALMAN_VECTOR(PoseOrientationMeasurementVector, T, POSE_OPTICAL_MEASUREMENT_PARAMETER_COUNT)
+
+    // Accessors
+	Eigen::Quaterniond get_optical_quaterniond() const {
+		return Eigen::Quaterniond(
+			(*this)[POSE_OPTICAL_QUATERNION_W], 
+			(*this)[POSE_OPTICAL_QUATERNION_X],
+			(*this)[POSE_OPTICAL_QUATERNION_Y], 
+			(*this)[POSE_OPTICAL_QUATERNION_Z]);
+	}
+
+    // Mutators
+	void set_optical_quaterniond(const Eigen::Quaterniond &q) {
+		(*this)[POSE_OPTICAL_QUATERNION_W] = q.w();
+		(*this)[POSE_OPTICAL_QUATERNION_X] = q.x();
+		(*this)[POSE_OPTICAL_QUATERNION_Y] = q.y();
+		(*this)[POSE_OPTICAL_QUATERNION_Z] = q.z();
+	}
+};
+typedef PoseOrientationMeasurementVector<double> PoseOrientationMeasurementVectord;
+
+class PoseOrientationMeasurementModel
+	: public Kalman::MeasurementModel<PoseStateVectord, PoseOrientationMeasurementVectord, Kalman::SquareRootBase>
+{
+public:
+	void init(const OrientationFilterConstants &constants, const Eigen::Quaterniond *last_world_orientation)
+	{
+		m_last_tracking_projection_area = -1.f;
+		m_last_world_orientation_ptr= last_world_orientation;
+		update_measurement_statistics(constants, 0.f);
+	}
+
+	void update_measurement_statistics(
+		const OrientationFilterConstants &constants,
+		const float tracking_projection_area)
+	{
+		// Only update the covariance when there is more than a 10px change in position quality
+		if (m_last_tracking_projection_area < 0.f ||
+			!is_nearly_equal(tracking_projection_area, m_last_tracking_projection_area, 10.f))
+		{
+			// Update the measurement covariance R
+			Kalman::Covariance<PoseOrientationMeasurementVectord> R =
+				Kalman::Covariance<PoseOrientationMeasurementVectord>::Zero();
+			const float orientation_variance = constants.orientation_variance_curve.evaluate(tracking_projection_area);
+
+			static float r_scale = R_SCALE;
+			R(POSE_OPTICAL_QUATERNION_W, POSE_OPTICAL_QUATERNION_W) = r_scale*orientation_variance;
+			R(POSE_OPTICAL_QUATERNION_X, POSE_OPTICAL_QUATERNION_X) = r_scale*orientation_variance;
+			R(POSE_OPTICAL_QUATERNION_Y, POSE_OPTICAL_QUATERNION_Y) = r_scale*orientation_variance;
+			R(POSE_OPTICAL_QUATERNION_Z, POSE_OPTICAL_QUATERNION_Z) = r_scale*orientation_variance;
+			setCovariance(R);
+
+			// Keep track last tracking projection area we built the covariance matrix for
+			m_last_tracking_projection_area = tracking_projection_area;
+		}
+	}
+
+	/**
+	* @brief Definition of (possibly non-linear) measurement function
+	*
+	* This function maps the system state to the measurement that is expected
+	* to be received from the sensor assuming the system is currently in the
+	* estimated state.
+	*
+	* @param [in] x The system state in current time-step
+	* @returns The (predicted) sensor measurement for the system state
+	*/
+	PoseOrientationMeasurementVectord h(const PoseStateVectord& x) const
+	{
+		PoseOrientationMeasurementVectord predicted_measurement;
+
+		// Use the orientation from the state for prediction
+		const Eigen::Quaterniond error_orientation = x.get_error_quaterniond();
+		const Eigen::Quaterniond world_to_local_orientation = 
+			eigen_quaternion_concatenate(*m_last_world_orientation_ptr, error_orientation).normalized();
+
+		// Save the predictions into the measurement vector
+		predicted_measurement.set_optical_quaterniond(world_to_local_orientation);
+
+		return predicted_measurement;
+	}
+
+public:
+	float m_last_tracking_projection_area;
+	const Eigen::Quaterniond *m_last_world_orientation_ptr;
+};
+
 
 class KalmanPoseFilterImpl
 {
@@ -733,7 +839,8 @@ public:
 		cleanup();
 	}
 
-    std::vector<LEDMeasurementModel *> led_measurement_models;
+    std::vector<PoseLEDMeasurementModel *> led_measurement_models;
+	PoseOrientationMeasurementModel optical_measurement_model;
 
     void init(const PoseFilterConstants &constants) override
     {
@@ -742,11 +849,12 @@ public:
         KalmanPoseFilterImpl::init(constants);
 		for (int led_index = 0; led_index < constants.shape.shape.pointcloud.point_count; ++led_index)
 		{
-			LEDMeasurementModel*led_model = new LEDMeasurementModel();
+			PoseLEDMeasurementModel*led_model = new PoseLEDMeasurementModel();
 
-			led_model->init(constants, led_index);
+			led_model->init(constants, led_index, &world_orientation);
 			led_measurement_models.push_back(led_model);
 		}
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
     }
 
     void init(
@@ -759,16 +867,17 @@ public:
         KalmanPoseFilterImpl::init(constants, position, orientation);
 		for (int led_index = 0; led_index < constants.shape.shape.pointcloud.point_count; ++led_index)
 		{
-			LEDMeasurementModel*led_model = new LEDMeasurementModel();
+			PoseLEDMeasurementModel*led_model = new PoseLEDMeasurementModel();
 
-			led_model->init(constants, led_index);
+			led_model->init(constants, led_index, &world_orientation);
 			led_measurement_models.push_back(led_model);
 		}
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
     }
 
 	void cleanup()
 	{
-		for (LEDMeasurementModel *model : led_measurement_models)
+		for (PoseLEDMeasurementModel *model : led_measurement_models)
 		{
 			delete model;
 		}
@@ -784,20 +893,22 @@ public:
 		cleanup();
 	}
 
-	GravMeasurementModel imu_measurement_model;
-	std::vector<LEDMeasurementModel *> led_measurement_models;
+	PoseGravMeasurementModel imu_measurement_model;
+	std::vector<PoseLEDMeasurementModel *> led_measurement_models;
+	PoseOrientationMeasurementModel optical_measurement_model;
 
     void init(const PoseFilterConstants &constants) override
     {
         KalmanPoseFilterImpl::init(constants);
-		imu_measurement_model.init(constants.orientation_constants);
+		imu_measurement_model.init(constants.orientation_constants, &world_orientation);
 		for (int led_index = 0; led_index < constants.shape.shape.pointcloud.point_count; ++led_index)
 		{
-			LEDMeasurementModel*led_model = new LEDMeasurementModel();
+			PoseLEDMeasurementModel*led_model = new PoseLEDMeasurementModel();
 
-			led_model->init(constants, led_index);
+			led_model->init(constants, led_index, &world_orientation);
 			led_measurement_models.push_back(led_model);
 		}
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
 	}
 
     void init(
@@ -806,19 +917,20 @@ public:
         const Eigen::Quaternionf &orientation) override
     {
         KalmanPoseFilterImpl::init(constants, position, orientation);
-		imu_measurement_model.init(constants.orientation_constants);
+		imu_measurement_model.init(constants.orientation_constants, &world_orientation);
 		for (int led_index = 0; led_index < constants.shape.shape.pointcloud.point_count; ++led_index)
 		{
-			LEDMeasurementModel*led_model = new LEDMeasurementModel();
+			PoseLEDMeasurementModel*led_model = new PoseLEDMeasurementModel();
 
-			led_model->init(constants, led_index);
+			led_model->init(constants, led_index, &world_orientation);
 			led_measurement_models.push_back(led_model);
 		}
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
 	}
 
 	void cleanup()
 	{
-		for (LEDMeasurementModel *model : led_measurement_models)
+		for (PoseLEDMeasurementModel *model : led_measurement_models)
 		{
 			delete model;
 		}
@@ -1016,6 +1128,7 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
     if (m_filter->bIsValid)
     {
         PointCloudKalmanPoseFilterImpl *filter = static_cast<PointCloudKalmanPoseFilterImpl *>(m_filter);
+		PoseOrientationMeasurementModel &optical_measurement_model = filter->optical_measurement_model;
 
         // Adjust the amount we trust the process model based on the total tracking projection area
         filter->system_model.update_process_noise(
@@ -1024,13 +1137,11 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
 
         // Predict state for current time-step using the filters
         filter->system_model.set_time_step(delta_time);
-        filter->ukf.predict(filter->system_model);
 
-		// Apply any optical measurement to the filter
+		// Snap filter state if we haven't seen an optical measurement before
 		if (packet.has_optical_measurement())
 		{
 			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
-			const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
 
 			// If this is the first time we have seen the position, snap the position state
 			if (!m_filter->bSeenPositionMeasurement)
@@ -1040,6 +1151,35 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
 				m_filter->ukf.getStateMutable().set_position_meters(optical_position_meters);
 				m_filter->bSeenPositionMeasurement = true;
 			}
+
+			// If this is the first time we have seen the orientation, snap the orientation state
+			if (!m_filter->bSeenOrientationMeasurement)
+			{
+				const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
+
+				filter->set_world_quaternion(world_quaternion);
+				m_filter->bSeenOrientationMeasurement = true;
+			}
+		}
+
+		// Apply a physics update to the filter state
+		if (packet.has_imu_measurements())
+		{
+			PoseControlVectord control;
+			control.set_angular_rates(packet.imu_gyroscope_rad_per_sec.cast<double>());
+
+			filter->ukf.predict(filter->system_model, control);
+		}
+		else
+		{
+			filter->ukf.predict(filter->system_model);
+		}
+
+		// Apply any optical measurement to the filter
+		if (packet.has_optical_measurement())
+		{
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
+			const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
 
 			for (int model_led_index = 0; model_led_index < packet.optical_tracking_shape_cm.shape.pointcloud.point_count; ++model_led_index)
 			{
@@ -1051,14 +1191,10 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
 				{
 					const PSVRVector3f &p = packet.optical_tracking_shape_cm.shape.pointcloud.points[model_led_index];
 					
-					LEDMeasurementModel *led_model= filter->led_measurement_models[model_led_index];
-					led_model->update_measurement_covariance(m_constants, led_screen_area);
-					if (!m_filter->bSeenOrientationMeasurement)
-					{
-						led_model->update_world_orientation(world_quaternion);
-					}
+					PoseLEDMeasurementModel *led_model= filter->led_measurement_models[model_led_index];
+					led_model->updateMeasurementCovariance(m_constants, led_screen_area);
 
-					LEDMeasurementVectord led_measurement = LEDMeasurementVectord::Zero();
+					PoseLEDMeasurementVectord led_measurement = PoseLEDMeasurementVectord::Zero();
 					led_measurement.set_LED_position_meters(
 						Eigen::Vector3d(
 							static_cast<double>(p.x * k_centimeters_to_meters), 
@@ -1069,24 +1205,14 @@ void KalmanPoseFilterPointCloud::update(const float delta_time, const PoseFilter
 				}
 			}
 
-			// If this is the first time we have seen an orientation measurement, snap the orientation state
-			if (!m_filter->bSeenOrientationMeasurement)
-			{
-				filter->set_world_quaternion(world_quaternion);
-				filter->bSeenOrientationMeasurement = true;
-			}
+			PoseOrientationMeasurementVectord measurement = PoseOrientationMeasurementVectord::Zero();
+			measurement.set_optical_quaterniond(world_quaternion);
+			filter->ukf.update(optical_measurement_model, measurement);
 		}
 
         // Apply the orientation error in the UKF state to the output quaternion.
         // Zero out the error in the UKF state vector.
         filter->apply_error_to_world_quaternion();
-
-        // Update the measurement model with the latest estimate of the orientation (without error)
-        // so that we can predict what the controller relative sensor measurements will be
-		for (LEDMeasurementModel *led_model : filter->led_measurement_models)
-		{
-			led_model->update_world_orientation(filter->world_orientation);
-		}
 
         filter->time+= (double)delta_time;
     }
@@ -1129,6 +1255,8 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 	if (m_filter->bIsValid)
 	{
 		MorpheusKalmanPoseFilterImpl *filter = static_cast<MorpheusKalmanPoseFilterImpl *>(m_filter);
+		PoseOrientationMeasurementModel &optical_measurement_model = filter->optical_measurement_model;
+		PoseGravMeasurementModel &imu_measurement_model= filter->imu_measurement_model;
 
 		// Adjust the amount we trust the process model based on the tracking projection area
 		filter->system_model.update_process_noise(
@@ -1137,13 +1265,11 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 
 		// Predict state for current time-step using the filters
 		filter->system_model.set_time_step(delta_time);
-		filter->ukf.predict(filter->system_model);
 
-		// Apply any optical measurement to the filter
+		// Snap filter state if we haven't seen an optical measurement before
 		if (packet.has_optical_measurement())
 		{
 			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
-			const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
 
 			// If this is the first time we have seen the position, snap the position state
 			if (!m_filter->bSeenPositionMeasurement)
@@ -1153,6 +1279,35 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 				m_filter->ukf.getStateMutable().set_position_meters(optical_position_meters);
 				m_filter->bSeenPositionMeasurement = true;
 			}
+
+			// If this is the first time we have seen the orientation, snap the orientation state
+			if (!m_filter->bSeenOrientationMeasurement)
+			{
+				const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
+
+				filter->set_world_quaternion(world_quaternion);
+				m_filter->bSeenOrientationMeasurement = true;
+			}
+		}
+
+		// Apply a physics update to the filter state
+		if (packet.has_imu_measurements())
+		{
+			PoseControlVectord control;
+			control.set_angular_rates(packet.imu_gyroscope_rad_per_sec.cast<double>());
+
+			filter->ukf.predict(filter->system_model, control);
+		}
+		else
+		{
+			filter->ukf.predict(filter->system_model);
+		}
+
+		// Apply any optical measurement to the filter
+		if (packet.has_optical_measurement())
+		{
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
+			const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
 
 			for (int model_led_index = 0; model_led_index < packet.optical_tracking_shape_cm.shape.pointcloud.point_count; ++model_led_index)
 			{
@@ -1164,14 +1319,12 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 				{
 					const PSVRVector3f &p = packet.optical_tracking_shape_cm.shape.pointcloud.points[model_led_index];
 
-					LEDMeasurementModel *led_model = filter->led_measurement_models[model_led_index];
-					led_model->update_measurement_covariance(m_constants, led_screen_area);
-					if (!m_filter->bSeenOrientationMeasurement)
-					{
-						led_model->update_world_orientation(world_quaternion);
-					}
+					// Update parameters on the LED model before applying the measurement
+					PoseLEDMeasurementModel *led_model = filter->led_measurement_models[model_led_index];
+					led_model->updateMeasurementCovariance(m_constants, led_screen_area);
+					led_model->setVideoMirrorFlag(packet.optical_tracking_projection.is_video_mirrored);
 
-					LEDMeasurementVectord led_measurement = LEDMeasurementVectord::Zero();
+					PoseLEDMeasurementVectord led_measurement = PoseLEDMeasurementVectord::Zero();
 					led_measurement.set_LED_position_meters(
 						Eigen::Vector3d(
 							static_cast<double>(p.x * k_centimeters_to_meters),
@@ -1182,12 +1335,9 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 				}
 			}
 
-			// If this is the first time we have seen an orientation measurement, snap the orientation state
-			if (!m_filter->bSeenOrientationMeasurement)
-			{
-				filter->set_world_quaternion(world_quaternion);
-				filter->bSeenOrientationMeasurement = true;
-			}
+			PoseOrientationMeasurementVectord measurement = PoseOrientationMeasurementVectord::Zero();
+			measurement.set_optical_quaterniond(world_quaternion);
+			filter->ukf.update(optical_measurement_model, measurement);
 		}
 
 		// Apply any IMU measurement to the filter
@@ -1195,7 +1345,7 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 		{
 			assert(packet.has_accelerometer_measurement);
 
-			GravMeasurementVectord measurement = GravMeasurementVectord::Zero();
+			PoseGravMeasurementVectord measurement = PoseGravMeasurementVectord::Zero();
 			measurement.set_accelerometer(packet.imu_accelerometer_g_units.cast<double>());
 			filter->ukf.update(filter->imu_measurement_model, measurement);
 		}
@@ -1203,14 +1353,6 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 		// Apply the orientation error in the UKF state to the output quaternion.
 		// Zero out the error in the UKF state vector.
 		filter->apply_error_to_world_quaternion();
-
-		// Update the measurement model with the latest estimate of the orientation (without error)
-		// so that we can predict what the controller relative sensor measurements will be
-		for (LEDMeasurementModel *led_model : filter->led_measurement_models)
-		{
-			led_model->update_world_orientation(filter->world_orientation);
-		}
-
 		filter->time += (double)delta_time;
 	}
 	else

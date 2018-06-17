@@ -188,6 +188,7 @@ typedef struct
     PSVRTrackingProjectionData projections[MAX_PROJECTION_COUNT];
     PSVRTrackingProjectionCount projection_count;
     PSVRProjectionShapeType shape_type;
+	bool is_video_mirrored;
 } PSVRTrackingProjection;
 
 typedef enum 

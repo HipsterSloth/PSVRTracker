@@ -84,34 +84,11 @@ struct CommonSensorState
     }
 };
 
-struct CommonHMDSensorState : CommonSensorState
-{
-    PSVRPosef Pose;
-
-    inline CommonHMDSensorState()
-    {
-        clear();
-    }
-
-    inline void clear()
-    {
-        CommonSensorState::clear();
-
-        Pose= *k_PSVR_pose_identity;
-    }
-};
-
-/// Abstract base class for any device interface. Further defined in specific device abstractions.
+/// Interface base class for any device interface. Further defined in specific device abstractions.
 class IDeviceInterface
 {
 public:
-    enum ePollResult
-    {
-        _PollResultSuccessNoData,
-        _PollResultSuccessNewData,
-        _PollResultFailure,
-    };
-    
+   
 	virtual ~IDeviceInterface() {};
 
     // Return true if device path matches
@@ -122,27 +99,23 @@ public:
     
     // Returns true if hidapi opened successfully
     virtual bool getIsOpen() const  = 0;
-    
-    virtual bool getIsReadyToPoll() const = 0;
-    
-    // Polls for new device data
-    virtual ePollResult poll() = 0;
-    
+       
     // Closes the HID device for the device
     virtual void close() = 0;
-    
-    // Get the number of milliseconds we're willing to accept no data from the device before we disconnect it
-    virtual long getMaxPollFailureCount() const = 0;
-    
+        
     // Returns what type of device
-    virtual CommonSensorState::eDeviceType getDeviceType() const = 0;
-    
-    // Fetch the device sensor state at the given sample index.
-    // A lookBack of 0 corresponds to the most recent data.
-    virtual const CommonSensorState * getSensorState(int lookBack = 0) const = 0;   
+    virtual CommonSensorState::eDeviceType getDeviceType() const = 0;    
 };
 
-/// Abstract class for Tracker interface. Implemented Tracker classes
+/// Interface class for HMD events. Implemented HMD Server View
+class ITrackerListener
+{
+public:
+	// Called when new video frame has been received from the tracker device
+	virtual void notifyVideoFrameReceived(const unsigned char *raw_video_frame) = 0;
+};
+
+/// Interface class for Tracker interface. Implemented Tracker classes
 class ITrackerInterface : public IDeviceInterface
 {
 public:
@@ -156,7 +129,6 @@ public:
         SUPPORTED_DRIVER_TYPE_COUNT,
     };
 
-    // -- Getters
     // Returns the driver type being used by this camera
     virtual eDriverType getDriverType() const = 0;
 
@@ -172,9 +144,6 @@ public:
     // Returns true if the image coming from the camera is mirrored backwards
 	// Trackers that mirror the image for us don't need to flip tracking projections
     virtual bool getIsVideoMirrored() const = 0;
-
-    // Returns a pointer to the last video frame buffer captured
-    virtual const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const = 0;
 
     static const char *getDriverTypeString(eDriverType device_type)
     {
@@ -230,9 +199,20 @@ public:
     virtual void gatherTrackingColorPresets(const std::string &table_name, PSVRClientTrackerSettings* settings) const = 0;
     virtual void setTrackingColorPreset(const std::string &table_name, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) = 0;
     virtual void getTrackingColorPreset(const std::string &table_name, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const = 0;
+
+	// Assign a Tracker listener to send Tracker events to
+	virtual void setTrackerListener(ITrackerListener *listener) = 0;
 };
 
-/// Abstract class for HMD interface. Implemented HMD classes
+/// Interface class for HMD events. Implemented HMD Server View
+class IHMDListener
+{
+public:
+	// Called when new sensor state has been read from the HMD
+	virtual void notifySensorDataReceived(const CommonSensorState *sensor_state) = 0;
+};
+
+/// Interface class for HMD interface. Implemented by HMD classes
 class IHMDInterface : public IDeviceInterface
 {
 public:
@@ -243,14 +223,18 @@ public:
 	// Get the tracking shape use by the controller
 	virtual void getTrackingShape(PSVRTrackingShape &outTrackingShape) const = 0;
 
-	// Sets the tracking color enum of the controller
-	virtual bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) = 0;
-
 	// Get the tracking color enum of the controller
 	virtual bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const = 0;
 
 	// Get the state prediction time from the HMD config
 	virtual float getPredictionTime() const = 0;
+
+    // -- Mutators
+	// Sets the tracking color enum of the controller
+	virtual bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) = 0;
+
+	// Assign an HMD listener to send HMD events to
+	virtual void setHMDListener(IHMDListener *listener) = 0;
 };
 
 #endif // DEVICE_INTERFACE_H

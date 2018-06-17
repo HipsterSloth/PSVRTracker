@@ -46,20 +46,6 @@ public:
     static const int CONFIG_VERSION;
 };
 
-struct VirtualStereoTrackerState : public CommonSensorState
-{   
-    VirtualStereoTrackerState()
-    {
-        clear();
-    }
-    
-    void clear()
-    {
-        CommonSensorState::clear();
-        DeviceType = CommonSensorState::VirtualStereoCamera;
-    }
-};
-
 class VirtualStereoTracker : public ITrackerInterface {
 public:
     VirtualStereoTracker();
@@ -72,14 +58,13 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    bool getIsReadyToPoll() const override;
-    IDeviceInterface::ePollResult poll() override;
+    //bool getIsReadyToPoll() const override;
+    //IDeviceInterface::ePollResult poll() override;
     void close() override;
-    long getMaxPollFailureCount() const override;
+    //long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
     { return CommonSensorState::VirtualStereoCamera; }
     CommonSensorState::eDeviceType getDeviceType() const override;
-    const CommonSensorState *getSensorState(int lookBack = 0) const override;
     
     // -- ITrackerInterface
     ITrackerInterface::eDriverType getDriverType() const override;
@@ -87,7 +72,6 @@ public:
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
     bool getIsStereoCamera() const override { return true; }
 	bool getIsVideoMirrored() const override;
-    const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const override;
     void loadSettings() override;
     void saveSettings() override;
 	void setFrameWidth(double value, bool bUpdateConfig) override;
@@ -108,6 +92,7 @@ public:
     void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const override;
     void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) override;
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;
+	void setTrackerListener(ITrackerListener *listener) override;
 
     // -- Getters
     inline const VirtualStereoTrackerConfig &getConfig() const
@@ -121,9 +106,6 @@ private:
     class ITrackerInterface *RightTracker;
     class VirtualStereoCaptureData *CaptureData;
     ITrackerInterface::eDriverType DriverType;    
-    
-    // Read Tracker State
-    int NextPollSequenceNumber;
-    std::deque<VirtualStereoTrackerState> TrackerStates;
+	ITrackerListener *m_listener;
 };
 #endif // PS3EYE_TRACKER_H

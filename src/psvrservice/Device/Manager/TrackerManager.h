@@ -47,7 +47,7 @@ public:
 
     int virtual_stereo_tracker_count;
     long version;
-    int optical_tracking_timeout;
+    //int optical_tracking_timeout;
 	int tracker_sleep_ms;
 	bool use_bgr_to_hsv_lookup_table;
 	float min_valid_projection_area;
@@ -70,6 +70,7 @@ public:
 
     bool startup() override;
 
+	void pollUpdatedVideoFrames();
     void closeAllTrackers();
 
     static const int k_max_devices = PSVRSERVICE_MAX_TRACKER_COUNT;

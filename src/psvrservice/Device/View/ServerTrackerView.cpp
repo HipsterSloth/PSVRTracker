@@ -1,6 +1,7 @@
 //-- includes -----
 #include "DeviceEnumerator.h"
 #include "DeviceManager.h"
+#include "HMDManager.h"
 #include "ServerTrackerView.h"
 #include "ServerHMDView.h"
 #include "MathUtility.h"
@@ -289,6 +290,14 @@ public:
 
         videoBufferMat.copyTo(*bgrBuffer);
         videoBufferMat.copyTo(*bgrShmemBuffer);
+    }
+
+    void writeStereoVideoFrameSection(const unsigned char *video_buffer, const cv::Rect &buffer_bounds)
+    {
+        const cv::Mat videoBufferMat(frameHeight, 2*frameWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
+
+        videoBufferMat(buffer_bounds).copyTo(*bgrBuffer);
+        videoBufferMat(buffer_bounds).copyTo(*bgrShmemBuffer);
     }
     
     void updateHsvBuffer()
@@ -673,7 +682,8 @@ static void angleAxisVectorToCommonDeviceOrientation(
 ServerTrackerView::ServerTrackerView(const int device_id)
     : ServerDeviceView(device_id)
     , m_shared_memory_accesor(nullptr)
-    , m_shared_memory_video_stream_count(0)
+	, m_shared_memory_video_stream_count({0})
+	, m_lastVideoFrameIndexPolled(-1)
     , m_device(nullptr)
 {
     Utility::format_string(m_shared_memory_name, sizeof(m_shared_memory_name), "tracker_view_%d", device_id);
@@ -764,6 +774,8 @@ bool ServerTrackerView::open(const class DeviceEnumerator *enumerator)
 
 void ServerTrackerView::close()
 {
+    ServerDeviceView::close();
+
     if (m_shared_memory_accesor != nullptr)
     {
         delete m_shared_memory_accesor;
@@ -778,8 +790,6 @@ void ServerTrackerView::close()
             m_opencv_buffer_state[i]= nullptr;
         }
     }
-
-    ServerDeviceView::close();
 }
 
 void ServerTrackerView::startSharedMemoryVideoStream()
@@ -793,48 +803,95 @@ void ServerTrackerView::stopSharedMemoryVideoStream()
     --m_shared_memory_video_stream_count;
 }
 
-bool ServerTrackerView::poll()
+void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_frame_buffer)
 {
-    bool bSuccess = ServerDeviceView::poll();
+	if (m_device == nullptr)
+	{
+		return;
+	}
 
-    if (bSuccess && m_device != nullptr)
-    {
-        if (m_device->getIsStereoCamera())
+	// Fetch the latest video buffer frame from the device
+    if (m_device->getIsStereoCamera())
+    {		
+		int section_width= (int)m_device->getFrameWidth();
+		int section_height= (int)m_device->getFrameHeight();
+		const cv::Rect left_bounds(0, 0, section_width, section_height);
+		const cv::Rect right_bounds(section_width, 0, section_width, section_height);
+
+        // Cache the left raw video frame
+        if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr)
         {
-            const unsigned char *left_buffer = m_device->getVideoFrameBuffer(PSVRVideoFrameSection_Left);
-            const unsigned char *right_buffer = m_device->getVideoFrameBuffer(PSVRVideoFrameSection_Right);
-
-            if (left_buffer != nullptr && right_buffer != nullptr)
-            {
-                // Cache the left raw video frame
-                if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr)
-                {
-                    m_opencv_buffer_state[PSVRVideoFrameSection_Left]->writeVideoFrame(left_buffer);
-                }
-
-                // Cache the right raw video frame
-                if (m_opencv_buffer_state[PSVRVideoFrameSection_Right] != nullptr)
-                {
-                    m_opencv_buffer_state[PSVRVideoFrameSection_Right]->writeVideoFrame(right_buffer);
-                }
-            }
+            m_opencv_buffer_state[PSVRVideoFrameSection_Left]->writeStereoVideoFrameSection(raw_video_frame_buffer, left_bounds);
         }
-        else
-        {
-            const unsigned char *buffer = m_device->getVideoFrameBuffer(PSVRVideoFrameSection_Primary);
 
-            if (buffer != nullptr)
-            {
-                // Cache the raw video frame
-                if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
-                {
-                    m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->writeVideoFrame(buffer);
-                }
-            }
+        // Cache the right raw video frame
+        if (m_opencv_buffer_state[PSVRVideoFrameSection_Right] != nullptr)
+        {
+            m_opencv_buffer_state[PSVRVideoFrameSection_Right]->writeStereoVideoFrameSection(raw_video_frame_buffer, right_bounds);
+        }
+    }
+    else
+    {
+        // Cache the raw video frame
+        if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
+        {
+            m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->writeVideoFrame(raw_video_frame_buffer);
         }
     }
 
-    return bSuccess;
+	// Broadcast new tracking frame to all devices that are optically tracked
+	{
+		DeviceManager *device_manager= DeviceManager::getInstance();
+		HMDManager *hmd_manager= device_manager->getHMDManager();
+
+		hmd_manager->notifyVideoFrameReceived(this);
+	}
+
+	// Copy the final opencv RGB buffer (annotated with debug info by he HMD) to the client API
+	if (m_shared_memory_accesor != nullptr && m_shared_memory_video_stream_count > 0)
+	{
+		if (m_device->getIsStereoCamera())
+		{
+			if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr &&
+				m_opencv_buffer_state[PSVRVideoFrameSection_Right] != nullptr)
+			{
+				// Copy the video frame to shared memory (if requested)
+				m_shared_memory_accesor->writeVideoFrame(
+					PSVRVideoFrameSection_Left, 
+					m_opencv_buffer_state[PSVRVideoFrameSection_Left]->bgrShmemBuffer->data);
+				m_shared_memory_accesor->writeVideoFrame(
+					PSVRVideoFrameSection_Right, 
+					m_opencv_buffer_state[PSVRVideoFrameSection_Right]->bgrShmemBuffer->data);
+				m_shared_memory_accesor->finalizeVideoFrameWrite();
+			}
+		}
+		else
+		{
+			if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
+			{
+				m_shared_memory_accesor->writeVideoFrame(
+					PSVRVideoFrameSection_Primary,
+					m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->bgrShmemBuffer->data);
+				m_shared_memory_accesor->finalizeVideoFrameWrite();
+			}
+		}
+	}
+}
+
+void ServerTrackerView::pollUpdatedVideoFrame()
+{
+	if (m_shared_memory_accesor != nullptr && m_shared_memory_video_stream_count > 0)
+	{
+		int newVideoFrameIndex= m_shared_memory_accesor->getFrameIndex();
+
+		if (newVideoFrameIndex > m_lastVideoFrameIndexPolled)
+		{
+			m_lastVideoFrameIndexPolled= newVideoFrameIndex;
+
+			// Publish the new video frame to the client API
+			markStateAsUnpublished();
+		}
+	}
 }
 
 void ServerTrackerView::reallocate_shared_memory()
@@ -897,6 +954,11 @@ bool ServerTrackerView::allocate_device_interface(const class DeviceEnumerator *
 {
     m_device= ServerTrackerView::allocate_tracker_interface(enumerator);
 
+	if (m_device != nullptr)
+	{
+		m_device->setTrackerListener(this);
+	}
+
     return m_device != nullptr;
 }
 
@@ -942,27 +1004,7 @@ void ServerTrackerView::free_device_interface()
 }
 
 void ServerTrackerView::publish_device_data_frame()
-{
-    // Copy the video frame to shared memory (if requested)
-    if (m_shared_memory_accesor != nullptr && m_shared_memory_video_stream_count > 0)
-    {
-        if (m_device->getIsStereoCamera())
-        {
-            m_shared_memory_accesor->writeVideoFrame(
-                PSVRVideoFrameSection_Left, 
-                m_opencv_buffer_state[PSVRVideoFrameSection_Left]->bgrShmemBuffer->data);
-            m_shared_memory_accesor->writeVideoFrame(
-                PSVRVideoFrameSection_Right, 
-                m_opencv_buffer_state[PSVRVideoFrameSection_Right]->bgrShmemBuffer->data);
-        }
-        else
-        {
-            m_shared_memory_accesor->writeVideoFrame(
-                PSVRVideoFrameSection_Primary,
-                m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->bgrShmemBuffer->data);
-        }
-    }
-    
+{    
     // Tell the server request handler we want to send out tracker updates.
     // This will call generate_tracker_data_frame_for_stream for each listening connection.
     ServiceRequestHandler::get_instance()->publish_tracker_data_frame(
@@ -1165,6 +1207,9 @@ bool ServerTrackerView::computeProjectionForHMD(
                 out_projection);
     }
 
+	// Flag if this projection came from a tracker with a mirrored video frame
+	out_projection->is_video_mirrored= getIsVideoMirrored();
+
     return bSuccess;
 }
 
@@ -1213,7 +1258,7 @@ ServerTrackerView::computeProjectionForHmdInSection(
     const bool bRoiDisabled = tracked_hmd->getIsROIDisabled() || trackerMgrConfig.disable_roi;
 
     const HMDOpticalPoseEstimation *priorPoseEst= 
-        tracked_hmd->getTrackerPoseEstimate(this->getDeviceID());
+        tracked_hmd->getOpticalPoseEstimateOnTrackerThread(this->getDeviceID());
     const bool bIsTracking = priorPoseEst->bCurrentlyTracking;
 
     cv::Rect2i ROI = computeTrackerROIForPoseProjection(
@@ -1353,8 +1398,8 @@ ServerTrackerView::computeProjectionForHmdInSection(
             } break;
         case PSVRTrackingShape_PointCloud:
             {
-                const HMDOpticalPoseEstimation *prior_post_est= tracked_hmd->getTrackerPoseEstimate(getDeviceID());
-                PSVRPosef tracker_pose_guess= {prior_post_est->position_cm, prior_post_est->orientation};
+                const HMDOpticalPoseEstimation *prior_post_est= tracked_hmd->getOpticalPoseEstimateOnTrackerThread(getDeviceID());
+                PSVRPosef tracker_pose_guess= {prior_post_est->tracker_relative_position_cm, prior_post_est->tracker_relative_orientation};
 
                 // Undistort the source contours
                 t_opencv_float_contour_list undistorted_contours;
@@ -1807,60 +1852,6 @@ static bool computeTrackerRelativeLightBarProjection(
 
     return bValidTrackerProjection;
 }
-
-static bool computeTrackerRelativePointCloudContourPose(
-    const ITrackerInterface *tracker_device,
-    const PSVRTrackingShape *tracking_shape,
-    const PSVRVideoFrameSection section,
-    const t_opencv_float_contour_list &opencv_contours,
-    const PSVRPosef *tracker_relative_pose_guess,
-    HMDOpticalPoseEstimation *out_pose_estimate)
-{
-    assert(tracking_shape->shape_type == PSVRTrackingShape_PointCloud);
-
-    bool bValidTrackerPose = true;
-    float projectionArea = 0.f;
-
-    // Compute centers of mass for the contours
-    t_opencv_float_contour cvImagePoints;
-    for (auto it = opencv_contours.begin(); it != opencv_contours.end(); ++it)
-    {
-        cv::Point2f massCenter= computeSafeCenterOfMassForContour<t_opencv_float_contour>(*it);
-
-        cvImagePoints.push_back(massCenter);
-    }
-
-    if (cvImagePoints.size() >= 3)
-    {
-        //###HipsterSloth $TODO Solve the pose using SoftPOSIT
-        out_pose_estimate->position_cm= *k_PSVR_float_vector3_zero;
-        out_pose_estimate->orientation= *k_PSVR_quaternion_identity;
-        out_pose_estimate->bOrientationValid = false;
-        bValidTrackerPose = true;
-    }
-
-    // Return the projection of the tracking shape
-    if (bValidTrackerPose)
-    {
-        PSVRTrackingProjection *out_projection = &out_pose_estimate->projection;
-        const int imagePointCount = static_cast<int>(cvImagePoints.size());
-
-        out_projection->shape_type = PSVRShape_PointCloud;
-
-        for (int vertex_index = 0; vertex_index < imagePointCount; ++vertex_index)
-        {
-            const cv::Point2f &cvPoint = cvImagePoints[vertex_index];
-
-            out_projection->projections[section].shape.pointcloud.points[vertex_index] = {cvPoint.x, cvPoint.y};
-        }
-
-        out_projection->projections[section].shape.pointcloud.point_count = imagePointCount;
-        out_projection->projections[section].screen_area = projectionArea;
-    }
-
-    return bValidTrackerPose;
-}
-
 
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool roi_disabled,

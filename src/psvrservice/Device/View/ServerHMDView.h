@@ -5,9 +5,15 @@
 #include "ServerDeviceView.h"
 #include "PSVRServiceInterface.h"
 #include <cstring>
+#include <mutex>
+#include <atomic>
+#include "readerwriterqueue.h" // lockfree queue
 
 // -- pre-declarations -----
 class TrackerManager;
+
+struct PoseSensorPacket;
+using t_hmd_pose_sensor_queue= moodycamel::ReaderWriterQueue<PoseSensorPacket, 1024>;
 
 // -- declarations -----
 struct HMDOpticalPoseEstimation
@@ -16,12 +22,15 @@ struct HMDOpticalPoseEstimation
 	std::chrono::time_point<std::chrono::high_resolution_clock> last_visible_timestamp;
 	bool bValidTimestamps;
 
-	PSVRVector3f position_cm;
+	PSVRVector3f tracker_relative_position_cm;
+	PSVRVector3f world_relative_position_cm;
 	PSVRTrackingProjection projection;
-    PSVRTrackingShape shape; // estimated shape from optical tracking
+    PSVRTrackingShape tracker_relative_shape; // estimated shape from optical tracking
+	PSVRTrackingShape world_relative_shape;
 	bool bCurrentlyTracking;
 
-	PSVRQuatf orientation;
+	PSVRQuatf tracker_relative_orientation;
+	PSVRQuatf world_relative_orientation;
 	bool bOrientationValid;
 
 	inline void clear()
@@ -30,19 +39,22 @@ struct HMDOpticalPoseEstimation
 		last_visible_timestamp = std::chrono::time_point<std::chrono::high_resolution_clock>();
 		bValidTimestamps = false;
 
-		position_cm= *k_PSVR_float_vector3_zero;
+		tracker_relative_position_cm= *k_PSVR_float_vector3_zero;
+		world_relative_position_cm= *k_PSVR_float_vector3_zero;
 		bCurrentlyTracking = false;
 
-		orientation= *k_PSVR_quaternion_identity;
+		tracker_relative_orientation= *k_PSVR_quaternion_identity;
+		world_relative_orientation= *k_PSVR_quaternion_identity;
 		bOrientationValid = false;
 
-        memset(&shape, 0, sizeof(PSVRTrackingShape));
+        memset(&tracker_relative_shape, 0, sizeof(PSVRTrackingShape));
+		memset(&world_relative_shape, 0, sizeof(PSVRTrackingShape));
 		memset(&projection, 0, sizeof(PSVRTrackingProjection));
 		projection.shape_type = PSVRShape_INVALID_PROJECTION;
 	}
 };
 
-class ServerHMDView : public ServerDeviceView
+class ServerHMDView : public ServerDeviceView, public IHMDListener
 {
 public:
     ServerHMDView(const int device_id);
@@ -51,12 +63,11 @@ public:
     bool open(const class DeviceEnumerator *enumerator) override;
     void close() override;
 
+	// Update Pose Filter using update packets from the tracker and IMU threads
+	void updatePoseFilter();
+
 	// Recreate and initialize the pose filter for the HMD
 	void resetPoseFilter();
-
-	// Compute pose/prediction of tracking blob+IMU state
-	void updateOpticalPoseEstimation(TrackerManager* tracker_manager);
-    void updateStateAndPredict();
 
     IDeviceInterface* getDevice() const override { return m_device; }
 	inline class IPoseFilter * getPoseFilterMutable() { return m_pose_filter; }
@@ -77,12 +88,14 @@ public:
     // Returns what type of HMD this HMD view represents
     CommonSensorState::eDeviceType getHMDDeviceType() const;
 
-    // Fetch the controller state at the given sample index.
-    // A lookBack of 0 corresponds to the most recent data.
-    const struct CommonHMDSensorState * getState(int lookBack = 0) const;
+	// Get the last IMU sensor packet posted for this HMD
+	const PoseSensorPacket *getLastIMUSensorPacket() const;
+
+	// Get the last optical sensor packet posted for this HMD from the given tracker ID
+	const PoseSensorPacket *getLastOpticalSensorPacket(int tracker_id) const;
 
 	// Get the tracking is enabled on this controller
-	inline bool getIsTrackingEnabled() const { return m_tracking_enabled && m_multicam_pose_estimation != nullptr; }
+	inline bool getIsTrackingEnabled() const { return m_tracking_enabled.load(); }
 
 	// Increment the position tracking listener count
 	// Starts position tracking this HMD if the count was zero
@@ -113,20 +126,25 @@ public:
 	// get the prediction time used for region of interest calculation
 	float getROIPredictionTime() const;
 
-	// Get the pose estimate relative to the given tracker id
-	inline const HMDOpticalPoseEstimation *getTrackerPoseEstimate(int trackerId) const {
-		return (m_tracker_pose_estimations != nullptr) ? &m_tracker_pose_estimations[trackerId] : nullptr;
+	// Get the pose estimate relative to the given tracker id on the tracker worker thread
+	inline const HMDOpticalPoseEstimation *getOpticalPoseEstimateOnTrackerThread(int trackerId) const {
+		return (m_optical_pose_estimations != nullptr) ? &m_optical_pose_estimations[trackerId] : nullptr;
 	}
 
-	// Get the pose estimate derived from multicam pose tracking
-	inline const HMDOpticalPoseEstimation *getMulticamPoseEstimate() const {
-		return m_multicam_pose_estimation;
-	}
-
-	// return true if one or more cameras saw this controller last update
+	// return true if one or more trackers saw this HMD last update
 	inline bool getIsCurrentlyTracking() const {
-		return getIsTrackingEnabled() ? m_multicam_pose_estimation->bCurrentlyTracking : false;
+		return getIsTrackingEnabled() ? m_currentlyTrackingBitmask.load() != 0 : false;
 	}
+
+	// return true if the given tracker saw this HMD last update
+	inline bool getIsTrackedByTracker(int tracker_id) const {
+		unsigned long tracker_bitmask= (1 << tracker_id);
+		return getIsTrackingEnabled() ? (m_currentlyTrackingBitmask.load() & tracker_bitmask) > 0 : false;
+	}
+
+	// Incoming device data callbacks
+	void notifyTrackerDataReceived(class ServerTrackerView* tracker);
+	void notifySensorDataReceived(const CommonSensorState *sensor_state) override;
 
 protected:
 	void set_tracking_enabled_internal(bool bEnabled);
@@ -141,7 +159,7 @@ protected:
 private:
 	// Tracking color state
 	int m_tracking_listener_count;
-	bool m_tracking_enabled;
+	std::atomic_bool m_tracking_enabled;
 
 	// ROI state
 	int m_roi_disable_count;
@@ -149,15 +167,27 @@ private:
 	// Device State
     IHMDInterface *m_device;
 
-	// Filter state
+	// Filter State (Tracker Thread)
     class IShapeTrackingModel **m_shape_tracking_models;  // array of size TrackerManager::k_max_devices
-	HMDOpticalPoseEstimation *m_tracker_pose_estimations; // array of size TrackerManager::k_max_devices
-	HMDOpticalPoseEstimation *m_multicam_pose_estimation;
+	struct HMDOpticalPoseEstimation *m_optical_pose_estimations; // array of size TrackerManager::k_max_devices
+
+	// Filter State (IMU Thread)
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastSensorDataTimestamp;
+	bool m_bIsLastSensorDataTimestampValid;
+
+	// Filter State (Shared)
+	t_hmd_pose_sensor_queue m_PoseSensorIMUPacketQueue;
+	t_hmd_pose_sensor_queue m_PoseSensorOpticalPacketQueue;
+	std::atomic_ulong m_currentlyTrackingBitmask;
+
+	// Filter State (Main Thread)
+	struct PoseSensorPacket *m_lastIMUSensorPacket;
+	struct PoseSensorPacket *m_lastOpticalSensorPacket; // array of size TrackerManager::k_max_devices
 	class IPoseFilter *m_pose_filter;
 	class PoseFilterSpace *m_pose_filter_space;
     int m_lastPollSeqNumProcessed;
-	std::chrono::time_point<std::chrono::high_resolution_clock> m_last_filter_update_timestamp;
-	bool m_last_filter_update_timestamp_valid;
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastFilterUpdateTimestamp;
+	bool m_bIsLastFilterUpdateTimestampValid;
 };
 
 #endif // SERVER_HMD_VIEW_H

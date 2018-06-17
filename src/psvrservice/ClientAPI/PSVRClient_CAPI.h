@@ -99,6 +99,8 @@ typedef struct
     PSVRQuatf                RelativeOrientation;
 	/// Tracker relative device projection geometry on each tracker
     PSVRTrackingProjection   TrackingProjection;
+	/// World relative estimated tracking shape
+	PSVRTrackingShape        WorldRelativeShape;
 	/// A bitmask of the trackers with valid projections
     unsigned int            ValidTrackerBitmask;
 } PSVRRawTrackerData;
@@ -739,6 +741,15 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, 
 	\return PSVRResult_Success if HMD has a valid optical orientation relative to the tracker.
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *out_tracker_id, PSVRQuatf *out_orientation);
+
+/** \brief Helper function for getting raw tracker projection state of an HMD
+	Each tracking camera can have a projection of the HMD.
+	This method fetches the full PSVRRawTrackerData state of that projection.
+	\param hmd_id The hmd id to get the tracking projection for
+	\param[out] out_raw_tracker_data The full set of tracker projection state for the given HMD.
+	\return PSVRResult_Success if HMD has a valid projection on the tracker.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *out_raw_tracker_data);
 
 /** \brief Helper function for getting the tracker relative projection of an HMD
 	Each tracking camera can have a projection of the HMD.

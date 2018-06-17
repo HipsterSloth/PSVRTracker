@@ -742,6 +742,32 @@ void drawPointCloudProjectionInSubWindow(
 	glPopMatrix();
 }
 
+void drawTrackingShape(const PSVRTrackingShape *world_relative_shape, const glm::vec3 &color)
+{
+	assert(Renderer::getIsRenderingStage());
+
+	switch (world_relative_shape->shape_type)
+	{
+    case PSVRTrackingShape_Sphere:
+		{
+			const float radius= world_relative_shape->shape.sphere.radius;
+			const glm::vec3 center= PSVR_vector3f_to_glm_vec3(world_relative_shape->shape.sphere.center);
+
+			drawEllipsoid(glm::mat4(1.f), color, glm::mat3(1.f), center, glm::vec3(radius, radius, radius));
+		} break;
+	case PSVRTrackingShape_LightBar:
+		//TODO
+		break;
+	case PSVRTrackingShape_PointCloud:
+		drawPointCloud(
+			glm::mat4(1), 
+			color, 
+			reinterpret_cast<const float *>(world_relative_shape->shape.pointcloud.points), 
+			world_relative_shape->shape.pointcloud.point_count);
+		break;
+	}
+}
+
 void drawTransformedAxes(const glm::mat4 &transform, float scale)
 {
     drawTransformedAxes(transform, scale, scale, scale);

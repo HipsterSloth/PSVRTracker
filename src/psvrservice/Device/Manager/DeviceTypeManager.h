@@ -23,7 +23,7 @@ public:
     virtual bool startup();
     virtual void shutdown();
 
-    void poll();
+    void pollConnectedDevices();
     virtual void publish();
 
     virtual int getMaxDevices() const = 0;
@@ -68,7 +68,6 @@ protected:
     int find_open_device_device_id(const class DeviceEnumerator *enumerator);
 
     std::chrono::time_point<std::chrono::high_resolution_clock> m_last_reconnect_time;
-    std::chrono::time_point<std::chrono::high_resolution_clock> m_last_poll_time;
 
     ServerDeviceViewPtr *m_deviceViews;
 

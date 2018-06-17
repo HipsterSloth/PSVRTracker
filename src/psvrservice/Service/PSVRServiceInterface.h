@@ -3,6 +3,7 @@
 
 //-- includes -----
 #include "PSVRClient_CAPI.h"
+#include <atomic>
 
 //-- definitions -----
 enum DeviceCategory
@@ -51,7 +52,9 @@ public:
     bool initialize(const char *buffer_name, int width, int height, int stride, int section_count);
     void dispose();
     void writeVideoFrame(PSVRVideoFrameSection section, const unsigned char *buffer);
+	void finalizeVideoFrameWrite();
     inline int getSectionCount() const { return m_section_count; }
+	inline int getFrameIndex() const { return m_frame_index; } 
     const unsigned char *getBuffer(PSVRVideoFrameSection section) const;
     unsigned char *getBufferMutable(PSVRVideoFrameSection section);
     static size_t computeVideoBufferSize(int section_count, int stride, int height);
@@ -62,8 +65,8 @@ private:
     int m_height;
     int m_stride;
     int m_section_count;
-	unsigned char *m_buffer;
-	int m_frame_index;	
+	unsigned char *m_buffer[2];
+	std::atomic_int m_frame_index;
 };
 
 //-- interface -----

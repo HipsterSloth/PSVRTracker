@@ -588,7 +588,7 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 
             switch (hmd_view->getHMDDeviceType())
             {
-            case CommonHMDSensorState::Morpheus:
+            case CommonSensorState::Morpheus:
                 {
                     const MorpheusHMD *morpheusHMD= hmd_view->castCheckedConst<MorpheusHMD>();
                     const MorpheusHMDConfig *config= morpheusHMD->getConfig();
@@ -599,7 +599,7 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 					strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
                 }
                 break;
-            case CommonHMDSensorState::VirtualHMD:
+            case CommonSensorState::VirtualHMD:
                 {
                     const VirtualHMD *virtualHMD= hmd_view->castCheckedConst<VirtualHMD>();
                     const VirtualHMDConfig *config= virtualHMD->getConfig();

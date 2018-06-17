@@ -191,10 +191,8 @@ VirtualHMD::VirtualHMD()
     : cfg()
     , NextPollSequenceNumber(0)
     , bIsOpen(false)
-    , HMDStates()
     , bIsTracking(false)
 {
-    HMDStates.clear();
 }
 
 VirtualHMD::~VirtualHMD()
@@ -291,12 +289,6 @@ VirtualHMD::matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const
     return matches;
 }
 
-bool
-VirtualHMD::getIsReadyToPoll() const
-{
-    return (getIsOpen());
-}
-
 std::string
 VirtualHMD::getUSBDevicePath() const
 {
@@ -307,34 +299,6 @@ bool
 VirtualHMD::getIsOpen() const
 {
     return bIsOpen;
-}
-
-IDeviceInterface::ePollResult
-VirtualHMD::poll()
-{
-    IHMDInterface::ePollResult result = IHMDInterface::_PollResultFailure;
-
-    if (getIsOpen())
-    {
-        VirtualHMDSensorState newState;
-
-        // New data available. Keep iterating.
-        result = IHMDInterface::_PollResultSuccessNewData;
-
-        // Increment the sequence for every new polling packet
-        newState.PollSequenceNumber = NextPollSequenceNumber;
-        ++NextPollSequenceNumber;
-
-        // Make room for new entry if at the max queue size
-        if (HMDStates.size() >= VIRTUAL_HMD_STATE_BUFFER_MAX)
-        {
-            HMDStates.erase(HMDStates.begin(), HMDStates.begin() + HMDStates.size() - VIRTUAL_HMD_STATE_BUFFER_MAX);
-        }
-
-        HMDStates.push_back(newState);
-    }
-
-    return result;
 }
 
 void
@@ -369,22 +333,6 @@ float
 VirtualHMD::getPredictionTime() const
 {
     return getConfig()->prediction_time;
-}
-
-const CommonSensorState *
-VirtualHMD::getSensorState(
-    int lookBack) const
-{
-    const int queueSize = static_cast<int>(HMDStates.size());
-    const CommonSensorState * result =
-        (lookBack < queueSize) ? &HMDStates.at(queueSize - lookBack - 1) : nullptr;
-
-    return result;
-}
-
-long VirtualHMD::getMaxPollFailureCount() const
-{
-    return 1;
 }
 
 void VirtualHMD::setTrackingEnabled(bool bEnable)

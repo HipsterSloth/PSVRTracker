@@ -45,20 +45,6 @@ public:
 	static const int LENS_CALIBRATION_VERSION;
 };
 
-struct PS3EyeTrackerState : public CommonSensorState
-{   
-    PS3EyeTrackerState()
-    {
-        clear();
-    }
-    
-    void clear()
-    {
-        CommonSensorState::clear();
-        DeviceType = CommonSensorState::PS3EYE;
-    }
-};
-
 class PS3EyeTracker : public ITrackerInterface {
 public:
     PS3EyeTracker();
@@ -71,14 +57,13 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    bool getIsReadyToPoll() const override;
-    IDeviceInterface::ePollResult poll() override;
+    //bool getIsReadyToPoll() const override;
+    //IDeviceInterface::ePollResult poll() override;
     void close() override;
-    long getMaxPollFailureCount() const override;
+    //long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
     { return CommonSensorState::PS3EYE; }
     CommonSensorState::eDeviceType getDeviceType() const override;
-    const CommonSensorState *getSensorState(int lookBack = 0) const override;
     
     // -- ITrackerInterface
     ITrackerInterface::eDriverType getDriverType() const override;
@@ -86,7 +71,6 @@ public:
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
     bool getIsStereoCamera() const override { return false; }
 	bool getIsVideoMirrored() const override { return false; }
-    const unsigned char *getVideoFrameBuffer(PSVRVideoFrameSection section) const override;
     void loadSettings() override;
     void saveSettings() override;
 	void setFrameWidth(double value, bool bUpdateConfig) override;
@@ -107,6 +91,7 @@ public:
     void gatherTrackingColorPresets(const std::string &controller_serial, PSVRClientTrackerSettings* settings) const override;
     void setTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset) override;
     void getTrackingColorPreset(const std::string &controller_serial, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const override;
+	void setTrackerListener(ITrackerListener *listener) override;
 
     // -- Getters
     inline const PS3EyeTrackerConfig &getConfig() const
@@ -118,9 +103,6 @@ private:
     class PSEyeVideoCapture *VideoCapture;
     class PSEyeCaptureData *CaptureData;
     ITrackerInterface::eDriverType DriverType;    
-    
-    // Read Controller State
-    int NextPollSequenceNumber;
-    std::deque<PS3EyeTrackerState> TrackerStates;
+	ITrackerListener *m_listener;
 };
 #endif // PS3EYE_TRACKER_H

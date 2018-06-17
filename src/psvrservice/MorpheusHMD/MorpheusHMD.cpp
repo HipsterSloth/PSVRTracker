@@ -8,6 +8,7 @@
 #include "Logger.h"
 #include "Utility.h"
 #include "USBDeviceManager.h"
+#include "WorkerThread.h"
 #include "hidapi.h"
 #include <vector>
 #include <cstdlib>
@@ -174,6 +175,93 @@ struct MorpheusCommand
 };
 #pragma pack()
 
+class MorpheusSensorProcessor : public WorkerThread
+{
+public:
+	MorpheusSensorProcessor(const MorpheusHMDConfig &cfg) 
+		: WorkerThread("MorpheusSensorProcessor")
+		, m_cfg(cfg)
+		, m_hidDevice(nullptr)
+		, m_nextPollSequenceNumber(0)
+		, m_rawHIDPacket(nullptr)
+	{
+		m_rawHIDPacket = new MorpheusSensorData;
+	}
+
+	~MorpheusSensorProcessor()
+	{
+		delete m_rawHIDPacket;
+	}
+
+    void start(hid_device *in_hid_device, IHMDListener *hmd_listener)
+    {
+		if (!hasThreadStarted())
+		{
+			m_hidDevice= in_hid_device;
+			m_hmdListener= hmd_listener;
+			WorkerThread::startThread();
+		}
+    }
+
+	void stop()
+	{
+		WorkerThread::stopThread();
+	}
+
+protected:
+	virtual bool doWork() override
+    {
+		bool bWorking= true;
+
+		// Attempt to read the next sensor update packet from the HMD
+		int res = hid_read_timeout(
+			m_hidDevice, 
+			(unsigned char*)m_rawHIDPacket,
+			sizeof(MorpheusSensorData),
+			m_cfg.poll_timeout_ms);
+
+		if (res > 0)
+		{
+			// https://github.com/hrl7/node-psvr/blob/master/lib/psvr.js
+			MorpheusHMDSensorState newState;
+
+			// Increment the sequence for every new polling packet
+			newState.PollSequenceNumber = m_nextPollSequenceNumber;
+			++m_nextPollSequenceNumber;
+
+			// Processes the IMU data
+			newState.parse_data_input(&m_cfg, m_rawHIDPacket);
+
+			m_hmdListener->notifySensorDataReceived(&newState);
+		}
+		else if (res < 0)
+		{
+			char hidapi_err_mbs[256];
+			bool valid_error_mesg = 
+				Utility::convert_wcs_to_mbs(hid_error(m_hidDevice), hidapi_err_mbs, sizeof(hidapi_err_mbs));
+
+			// Device no longer in valid state.
+			if (valid_error_mesg)
+			{
+				PSVR_MT_LOG_ERROR("MorpheusSensorProcessor::workerThreadFunc") << "HID ERROR: " << hidapi_err_mbs;
+			}
+
+			bWorking= false;
+		}
+
+		return bWorking;
+    }
+
+    // Multithreaded state
+	const MorpheusHMDConfig m_cfg;
+	hid_device *m_hidDevice;
+	IHMDListener *m_hmdListener;
+
+    // Worker thread state
+    int m_nextPollSequenceNumber;
+    struct MorpheusSensorData *m_rawHIDPacket;                        // Buffer to hold most recent MorpheusAPI tracking state
+};
+
 // -- private methods
 static bool morpheus_open_usb_device(MorpheusUSBContext *morpheus_context);
 static void morpheus_close_usb_device(MorpheusUSBContext *morpheus_context);
@@ -224,7 +312,7 @@ MorpheusHMDConfig::writeToJSON()
 	    {"PositionFilter.FilterType", position_filter_type},
 	    {"PositionFilter.MaxVelocity", max_velocity},
 	    {"prediction_time", prediction_time},
-	    {"max_poll_failure_count", max_poll_failure_count}
+	    {"poll_timeout_ms", poll_timeout_ms}
     };
 
 	writeTrackingColor(pt, tracking_color_id);
@@ -244,7 +332,7 @@ MorpheusHMDConfig::readFromJSON(const configuru::Config &pt)
 		disable_command_interface= pt.get_or<bool>("disable_command_interface", disable_command_interface);
 
 		prediction_time = pt.get_or<float>("prediction_time", 0.f);
-		max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
+		poll_timeout_ms = pt.get_or<long>("poll_timeout_ms", poll_timeout_ms);
 
 		// Use the current accelerometer values (constructor defaults) as the default values
 		accelerometer_gain.x = pt.get_or<float>("Calibration.Accel.X.k", accelerometer_gain.x);
@@ -353,13 +441,12 @@ MorpheusHMD::MorpheusHMD()
     , USBContext(nullptr)
     , NextPollSequenceNumber(0)
     , InData(nullptr)
-    , HMDStates()
+	, m_sensorProcessor(nullptr)
 	, bIsTracking(false)
 {
     USBContext = new MorpheusUSBContext;
     InData = new MorpheusSensorData;
-
-    HMDStates.clear();
+	m_sensorProcessor = new MorpheusSensorProcessor(cfg);
 }
 
 MorpheusHMD::~MorpheusHMD()
@@ -369,6 +456,7 @@ MorpheusHMD::~MorpheusHMD()
         PSVR_LOG_ERROR("~MorpheusHMD") << "HMD deleted without calling close() first!";
     }
 
+	delete m_sensorProcessor;
     delete InData;
     delete USBContext;
 }
@@ -414,7 +502,11 @@ bool MorpheusHMD::open(
 		USBContext->sensor_device_handle = hid_open_path(USBContext->sensor_device_path.c_str());
 		if (USBContext->sensor_device_handle != nullptr)
 		{
-			hid_set_nonblocking(USBContext->sensor_device_handle, 1);
+			// Perform blocking reads in the IMU thread
+			hid_set_nonblocking(USBContext->sensor_device_handle, 0);
+
+			// Start the HID packet processing thread
+			m_sensorProcessor->start(USBContext->sensor_device_handle, m_hmdListener);
 		}
 
 		// Open the command interface using libusb.
@@ -472,6 +564,9 @@ void MorpheusHMD::close()
     {
 		if (USBContext->sensor_device_handle != nullptr)
 		{
+			// halt the HID packet processing thread
+			m_sensorProcessor->stop();
+
 			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD sensor interface(" << USBContext->sensor_device_path << ")";
 			hid_close(USBContext->sensor_device_handle);
 		}
@@ -516,11 +611,11 @@ MorpheusHMD::matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const
     return matches;
 }
 
-bool
-MorpheusHMD::getIsReadyToPoll() const
-{
-    return (getIsOpen());
-}
+//bool
+//MorpheusHMD::getIsReadyToPoll() const
+//{
+//    return (getIsOpen());
+//}
 
 std::string
 MorpheusHMD::getUSBDevicePath() const
@@ -535,6 +630,7 @@ MorpheusHMD::getIsOpen() const
 		(USBContext->usb_device_handle != k_invalid_usb_device_handle || cfg.disable_command_interface);
 }
 
+#if 0
 IDeviceInterface::ePollResult
 MorpheusHMD::poll()
 {
@@ -603,6 +699,7 @@ MorpheusHMD::poll()
 
 	return result;
 }
+#endif 
 
 void
 MorpheusHMD::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
@@ -639,21 +736,16 @@ MorpheusHMD::getPredictionTime() const
 	return getConfig()->prediction_time;
 }
 
-const CommonSensorState *
-MorpheusHMD::getSensorState(
-    int lookBack) const
+void 
+MorpheusHMD::setHMDListener(IHMDListener *listener)
 {
-    const int queueSize = static_cast<int>(HMDStates.size());
-    const CommonSensorState * result =
-        (lookBack < queueSize) ? &HMDStates.at(queueSize - lookBack - 1) : nullptr;
-
-    return result;
+	m_hmdListener= listener;
 }
 
-long MorpheusHMD::getMaxPollFailureCount() const
-{
-    return cfg.max_poll_failure_count;
-}
+//long MorpheusHMD::getMaxPollFailureCount() const
+//{
+//    return cfg.max_poll_failure_count;
+//}
 
 void MorpheusHMD::setTrackingEnabled(bool bEnable)
 {

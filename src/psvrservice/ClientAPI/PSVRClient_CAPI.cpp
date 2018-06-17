@@ -727,10 +727,9 @@ PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outT
     return result;
 }
 
-PSVRResult PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRTrackingProjection *outProjection)
+PSVRResult PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *outRawTrackerData)
 {
-	assert(outProjection);
-    assert(outTrackerId);
+	assert(outRawTrackerData);
 	PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
@@ -742,20 +741,32 @@ PSVRResult PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTr
         {
         case PSVRHmd_Morpheus:
             {
-				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
+				*outRawTrackerData= hmd->HmdState.MorpheusState.RawTrackerData;
+				result= PSVRResult_Success;
             } break;
         case PSVRHmd_Virtual:
             {
-				trackerData= &hmd->HmdState.VirtualHMDState.RawTrackerData;
+				*outRawTrackerData= hmd->HmdState.VirtualHMDState.RawTrackerData;
+				result= PSVRResult_Success;
             } break;
         }
+	}
 
-		if (trackerData != nullptr)
-		{
-            *outTrackerId= trackerData->TrackerID;
-			*outProjection = trackerData->TrackingProjection;
-			result= PSVRResult_Success;
-        }
+    return result;
+}
+
+PSVRResult PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRTrackingProjection *outProjection)
+{
+	assert(outProjection);
+    assert(outTrackerId);
+
+	PSVRRawTrackerData rawTrackerData;
+	PSVRResult result= PSVR_GetHmdRawTrackerData(hmd_id, &rawTrackerData);
+
+    if (result == PSVRResult_Success)
+    {
+        *outTrackerId= rawTrackerData.TrackerID;
+		*outProjection = rawTrackerData.TrackingProjection;
 	}
 
     return result;

@@ -14,7 +14,7 @@ namespace PSVRProtocol
 };
 
 // -- declarations -----
-class ServerTrackerView : public ServerDeviceView
+class ServerTrackerView : public ServerDeviceView, public ITrackerListener
 {
 public:
     ServerTrackerView(const int device_id);
@@ -25,14 +25,12 @@ public:
 
     bool open(const class DeviceEnumerator *enumerator) override;
     void close() override;
+	void pollUpdatedVideoFrame();
 
     // Starts or stops streaming of the video feed to the shared memory buffer.
     // Keep a ref count of how many clients are following the stream.
     void startSharedMemoryVideoStream();
     void stopSharedMemoryVideoStream();
-
-    // Fetch the next video frame and copy to shared memory
-    bool poll() override;
 
     IDeviceInterface* getDevice() const override {return m_device;}
 
@@ -110,6 +108,9 @@ public:
 	void setHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
 	void getHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 
+	//-- ITrackerListener
+	virtual void notifyVideoFrameReceived(const unsigned char *raw_video_frame_buffer) override;
+
 protected:
     void reallocate_shared_memory();
     void reallocate_opencv_buffer_state();
@@ -129,7 +130,8 @@ protected:
 private:
     char m_shared_memory_name[256];
     class SharedVideoFrameBuffer *m_shared_memory_accesor;
-    int m_shared_memory_video_stream_count;
+    std::atomic_int m_shared_memory_video_stream_count;
+	int m_lastVideoFrameIndexPolled;
     class OpenCVBufferState *m_opencv_buffer_state[MAX_PROJECTION_COUNT];
     ITrackerInterface *m_device;
 };

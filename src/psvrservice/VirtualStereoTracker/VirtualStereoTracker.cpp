@@ -312,8 +312,6 @@ VirtualStereoTracker::VirtualStereoTracker()
     , RightTracker(nullptr)
     , CaptureData(nullptr)
     , DriverType(VirtualStereoTracker::Libusb)
-    , NextPollSequenceNumber(0)
-    , TrackerStates()
 {
 }
 
@@ -510,51 +508,6 @@ bool VirtualStereoTracker::getIsOpen() const
             RightTracker != nullptr && RightTracker->getIsOpen();
 }
 
-bool VirtualStereoTracker::getIsReadyToPoll() const
-{
-    return getIsOpen();
-}
-
-IDeviceInterface::ePollResult VirtualStereoTracker::poll()
-{
-    IDeviceInterface::ePollResult result = IDeviceInterface::_PollResultFailure;
-
-    if (getIsOpen())
-    {        
-        if (!LeftTracker->poll() || !RightTracker->poll())
-        {
-            // Device still in valid state
-            result = IDeviceInterface::_PollResultSuccessNoData;
-        }
-        else
-        {
-            // New data available. Keep iterating.
-            result = IDeviceInterface::_PollResultSuccessNewData;
-        }
-
-        {
-            VirtualStereoTrackerState newState;
-
-            // TODO: Process the frame and extract the blobs
-
-            // Increment the sequence for every new polling packet
-            newState.PollSequenceNumber = NextPollSequenceNumber;
-            ++NextPollSequenceNumber;
-
-            // Make room for new entry if at the max queue size
-            //###bwalker $TODO Make this a fixed size circular buffer
-            if (TrackerStates.size() >= VIRTUAL_STEREO_STATE_BUFFER_MAX)
-            {
-                TrackerStates.erase(TrackerStates.begin(), TrackerStates.begin() + TrackerStates.size() - VIRTUAL_STEREO_STATE_BUFFER_MAX);
-            }
-
-            TrackerStates.push_back(newState);
-        }
-    }
-
-    return result;
-}
-
 void VirtualStereoTracker::close()
 {
     if (CaptureData != nullptr)
@@ -576,23 +529,9 @@ void VirtualStereoTracker::close()
     }
 }
 
-long VirtualStereoTracker::getMaxPollFailureCount() const
-{
-    return cfg.max_poll_failure_count;
-}
-
 CommonSensorState::eDeviceType VirtualStereoTracker::getDeviceType() const
 {
     return CommonSensorState::VirtualStereoCamera;
-}
-
-const CommonSensorState *VirtualStereoTracker::getSensorState(int lookBack) const
-{
-    const int queueSize = static_cast<int>(TrackerStates.size());
-    const CommonSensorState * result =
-        (lookBack < queueSize) ? &TrackerStates.at(queueSize - lookBack - 1) : nullptr;
-
-    return result;
 }
 
 ITrackerInterface::eDriverType VirtualStereoTracker::getDriverType() const
@@ -619,26 +558,6 @@ bool VirtualStereoTracker::getIsVideoMirrored() const
 {
     //ASSUMPTION: Left and right trackers should have same video frame properties
     return LeftTracker->getIsVideoMirrored();
-}
-
-const unsigned char *VirtualStereoTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
-{
-    const unsigned char *result = nullptr;
-
-    if (getIsOpen())
-    {
-        switch (section)
-        {
-        case PSVRVideoFrameSection_Left:
-            result= LeftTracker->getVideoFrameBuffer(PSVRVideoFrameSection_Primary);
-            break;
-        case PSVRVideoFrameSection_Right:
-            result= RightTracker->getVideoFrameBuffer(PSVRVideoFrameSection_Primary);
-            break;
-        }
-    }
-
-    return result;
 }
 
 void VirtualStereoTracker::loadSettings()
@@ -858,4 +777,9 @@ void VirtualStereoTracker::getTrackingColorPreset(
 	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(controller_serial);
 
     *out_preset = table->color_presets[color];
+}
+
+void VirtualStereoTracker::setTrackerListener(ITrackerListener *listener)
+{
+	m_listener= listener;
 }

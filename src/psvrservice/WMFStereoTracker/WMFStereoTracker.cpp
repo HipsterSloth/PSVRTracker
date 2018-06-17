@@ -7,6 +7,7 @@
 #include "TrackerDeviceEnumerator.h"
 #include "WMFCameraEnumerator.h"
 #include "TrackerManager.h"
+#include "WorkerThread.h"
 
 #include <Mfidl.h>
 #include <Mfapi.h>
@@ -25,52 +26,10 @@
 #define VIRTUAL_STEREO_STATE_BUFFER_MAX		16
 
 // -- private definitions -----
-class WMFStereoCaptureData
+class WMFVideoFrameProcessor : public IMFSampleGrabberSinkCallback, public WorkerThread
 {
 public:
-    WMFStereoCaptureData(const WMFDeviceFormatInfo &deviceFormat)
-        : section_width(deviceFormat.width / 2)
-		, section_height(deviceFormat.height)
-		, left_section(nullptr)
-		, right_section(nullptr)
-		, has_new_frame(false)
-    {
-		left_section = new cv::Mat(section_height, section_width,  CV_8UC3);
-		right_section = new cv::Mat(section_height, section_width, CV_8UC3);
-    }
-
-	~WMFStereoCaptureData()
-	{
-		delete left_section;
-		delete right_section;
-	}
-
-	void writeFrame(unsigned char *pSampleBuffer)
-	{
-		const cv::Mat videoBufferMat(section_height, 2*section_width, CV_8UC3, pSampleBuffer);
-		const cv::Rect left_bounds(0, 0, section_width, section_height);
-		const cv::Rect right_bounds(section_width, 0, section_width, section_height);
-
-		videoBufferMat(left_bounds).copyTo(*left_section);
-		videoBufferMat(right_bounds).copyTo(*right_section);
-
-		//cv::flip(*left_section, *left_section, +1);
-		//cv::flip(*right_section, *right_section, +1);
-
-		has_new_frame= true;
-	}
-
-	int section_width;
-	int section_height;
-	cv::Mat *left_section;
-	cv::Mat *right_section;
-	bool has_new_frame;
-};
-
-class WMFVideoFrameProcessor : public IMFSampleGrabberSinkCallback
-{
-public:
-	WMFVideoFrameProcessor(const WMFDeviceFormatInfo &deviceFormat);
+	WMFVideoFrameProcessor(const WMFDeviceFormatInfo &deviceFormat, ITrackerListener *listener);
 	~WMFVideoFrameProcessor();
 
 	HRESULT init(IMFMediaSource *pSource);
@@ -78,13 +37,12 @@ public:
 	
 	HRESULT start();
 	void stop();
-	bool pollNextEvent();
 
-	inline const WMFStereoCaptureData *getStereoCaptureDataConst() const { return m_captureData; }
-	inline WMFStereoCaptureData *getStereoCaptureData() { return m_captureData; }
 	inline bool getIsRunning() const { return m_bIsRunning; }
 
 protected:
+	virtual bool doWork() override;
+
 	HRESULT CreateTopology(IMFMediaSource *pSource, IMFActivate *pSinkActivate, IMFTopology **ppTopo);
 	HRESULT AddSourceNode(
 		IMFTopology *pTopology,           
@@ -125,8 +83,9 @@ private:
 	IMFMediaSession *m_pSession;
 	IMFTopology *m_pTopology;
 	
-	WMFStereoCaptureData *m_captureData;
 	bool m_bIsRunning;
+
+	ITrackerListener *m_trackerListener;
 };
 
 class WMFVideoDevice
@@ -135,7 +94,7 @@ public:
     WMFVideoDevice(const int device_index, const WMFDeviceInfo &device_info);
 	~WMFVideoDevice();
 
-	bool open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg);
+	bool open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg, ITrackerListener *trackerListener);
 	void close();
 
 	inline const PSVRVideoPropertyConstraint *getVideoPropertyConstraints() const { return m_videoPropertyConstraints; }
@@ -492,8 +451,6 @@ WMFStereoTracker::WMFStereoTracker()
     : m_cfg()
 	, m_videoDevice(nullptr)
     , m_DriverType(WMFStereoTracker::Generic_Webcam)
-    , m_nextPollSequenceNumber(0)
-    , m_trackerStates()
 {
 }
 
@@ -586,7 +543,7 @@ bool WMFStereoTracker::open(const DeviceEnumerator *enumerator)
 				new WMFVideoDevice(
 					wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
 
-			if (m_videoDevice->open(desiredFormatIndex, m_cfg))
+			if (m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener))
 			{
 				bSuccess = true;
 			}
@@ -609,53 +566,6 @@ bool WMFStereoTracker::getIsOpen() const
     return m_videoDevice != nullptr && m_videoDevice->getIsOpen();
 }
 
-bool WMFStereoTracker::getIsReadyToPoll() const
-{
-    return getIsOpen();
-}
-
-IDeviceInterface::ePollResult WMFStereoTracker::poll()
-{
-    IDeviceInterface::ePollResult result = IDeviceInterface::_PollResultFailure;
-
-    if (getIsOpen())
-    {
-		// Poll any incoming device events
-		WMFVideoFrameProcessor *frameProcessor= m_videoDevice->getVideoFrameProcessor();
-		while (frameProcessor->pollNextEvent());
-
-		// See if new frame data is available
-		WMFStereoCaptureData *captureData= frameProcessor->getStereoCaptureData();
-        if (captureData->has_new_frame)
-        {
-			captureData->has_new_frame= false;
-            result = IDeviceInterface::_PollResultSuccessNewData;
-        }
-        else
-        {
-            result = IDeviceInterface::_PollResultSuccessNoData;
-		}
-
-        {
-            WMFStereoTrackerState newState;
-
-            // Increment the sequence for every new polling packet
-            newState.PollSequenceNumber = m_nextPollSequenceNumber;
-            ++m_nextPollSequenceNumber;
-
-            // Make room for new entry if at the max queue size
-            //###bwalker $TODO Make this a fixed size circular buffer
-            if (m_trackerStates.size() >= VIRTUAL_STEREO_STATE_BUFFER_MAX)
-            {
-                m_trackerStates.erase(m_trackerStates.begin(), m_trackerStates.begin() + m_trackerStates.size() - VIRTUAL_STEREO_STATE_BUFFER_MAX);
-            }
-
-            m_trackerStates.push_back(newState);
-        }
-    }
-
-    return result;
-}
 
 void WMFStereoTracker::close()
 {
@@ -666,23 +576,9 @@ void WMFStereoTracker::close()
 	}
 }
 
-long WMFStereoTracker::getMaxPollFailureCount() const
-{
-    return m_cfg.max_poll_failure_count;
-}
-
 CommonSensorState::eDeviceType WMFStereoTracker::getDeviceType() const
 {
     return CommonSensorState::WMFStereoCamera;
-}
-
-const CommonSensorState *WMFStereoTracker::getSensorState(int lookBack) const
-{
-    const int queueSize = static_cast<int>(m_trackerStates.size());
-    const CommonSensorState * result =
-        (lookBack < queueSize) ? &m_trackerStates.at(queueSize - lookBack - 1) : nullptr;
-
-    return result;
 }
 
 ITrackerInterface::eDriverType WMFStereoTracker::getDriverType() const
@@ -723,29 +619,6 @@ bool WMFStereoTracker::getVideoFrameDimensions(
     }
 
     return bSuccess;
-}
-
-const unsigned char *WMFStereoTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
-{
-    const unsigned char *result = nullptr;
-
-    if (getIsOpen())
-    {
-		const WMFVideoFrameProcessor *frameProcessor= m_videoDevice->getVideoFrameProcessorConst();
-		const WMFStereoCaptureData *captureData= frameProcessor->getStereoCaptureDataConst();
-
-        switch (section)
-        {
-        case PSVRVideoFrameSection_Left:
-            result= static_cast<const unsigned char *>(captureData->left_section->data);
-            break;
-        case PSVRVideoFrameSection_Right:
-            result= static_cast<const unsigned char *>(captureData->right_section->data);
-            break;
-        }
-    }
-
-    return result;
 }
 
 void WMFStereoTracker::loadSettings()
@@ -797,7 +670,7 @@ void WMFStereoTracker::setFrameWidth(double value, bool bUpdateConfig)
 
 	if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 	{
-		m_videoDevice->open(desiredFormatIndex, m_cfg);
+		m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
 	}
 
 	if (bUpdateConfig)
@@ -824,7 +697,7 @@ void WMFStereoTracker::setFrameHeight(double value, bool bUpdateConfig)
 
 	if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 	{
-		m_videoDevice->open(desiredFormatIndex, m_cfg);
+		m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
 	}
 
 	if (bUpdateConfig)
@@ -853,7 +726,7 @@ void WMFStereoTracker::setFrameRate(double value, bool bUpdateConfig)
 
 		if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 		{
-			m_videoDevice->open(desiredFormatIndex, m_cfg);
+			m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
 		}
 
 	    if (bUpdateConfig)
@@ -960,6 +833,11 @@ void WMFStereoTracker::getTrackingColorPreset(
     *out_preset = table->color_presets[color];
 }
 
+void WMFStereoTracker::setTrackerListener(ITrackerListener *listener)
+{
+	m_listener= listener;
+}
+
 // -- WMF Video Device -----
 WMFVideoDevice::WMFVideoDevice(const int device_index, const WMFDeviceInfo &device_info) 
 	: m_deviceIndex(device_index)
@@ -975,7 +853,7 @@ WMFVideoDevice::~WMFVideoDevice()
 	close();
 }
 
-bool WMFVideoDevice::open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg)
+bool WMFVideoDevice::open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg, ITrackerListener *trackerListener)
 {
 	HRESULT hr;
 
@@ -1064,7 +942,7 @@ bool WMFVideoDevice::open(int desiredFormatIndex, WMFStereoTrackerConfig &cfg)
 			const WMFDeviceFormatInfo &deviceFormat= 
 				m_deviceInfo.deviceAvailableFormats[desiredFormatIndex];
 
-			m_videoFrameProcessor = new WMFVideoFrameProcessor(deviceFormat);
+			m_videoFrameProcessor = new WMFVideoFrameProcessor(deviceFormat, trackerListener);
 			hr= m_videoFrameProcessor->init(m_mediaSource);
 		}
 
@@ -1493,12 +1371,13 @@ const WMFDeviceFormatInfo *WMFVideoDevice::getCurrentDeviceFormat() const
 
 // -- WMF Video Frame Processor -----
 WMFVideoFrameProcessor::WMFVideoFrameProcessor(
-	const WMFDeviceFormatInfo &deviceFormat)
-	: m_referenceCount(1)
+	const WMFDeviceFormatInfo &deviceFormat, ITrackerListener *listener)
+	: WorkerThread("WMFVideoFrameProcessor")
+	, m_referenceCount(1)
 	, m_pSession(nullptr)
 	, m_pTopology(nullptr)
-	, m_captureData(new WMFStereoCaptureData(deviceFormat))
 	, m_bIsRunning(false)
+	, m_trackerListener(listener)
 {
 }
 
@@ -1595,71 +1474,88 @@ HRESULT WMFVideoFrameProcessor::start(void)
 	if (SUCCEEDED(hr))
 	{
 		m_bIsRunning= true;
+		WorkerThread::startThread();
 	}
 
     return hr;
 }
 
-bool WMFVideoFrameProcessor::pollNextEvent()
+bool WMFVideoFrameProcessor::doWork()
 {
-	bool bAnyEvents= false;
+	bool bKeepRunning= true;
 
-	if (m_bIsRunning)
+	IMFMediaEvent *pEvent = nullptr;
+	HRESULT hr = m_pSession->GetEvent(0, &pEvent);
+
+	if (SUCCEEDED(hr))
 	{
-		IMFMediaEvent *pEvent = nullptr;
-		HRESULT hr = m_pSession->GetEvent(MF_EVENT_FLAG_NO_WAIT, &pEvent);
+		HRESULT hrStatus;
+		hr = pEvent->GetStatus(&hrStatus);
 
-		if (SUCCEEDED(hr) && hr != MF_E_NO_EVENTS_AVAILABLE)
+		if (!SUCCEEDED(hr) || !SUCCEEDED(hrStatus))
 		{
-			HRESULT hrStatus;
-			hr = pEvent->GetStatus(&hrStatus);
-
-			if (!SUCCEEDED(hr) || !SUCCEEDED(hrStatus))
-			{
-				hr= E_FAIL;
-			}
-
-			MediaEventType met;
-			if (SUCCEEDED(hr))
-			{
-				hr = pEvent->GetType(&met);
-			}
-
-			if(SUCCEEDED(hr))
-			{
-				switch (met)
-				{
-				case MESessionEnded:
-					{			
-						stop();
-					} break;
-
-				case MESessionStopped:
-					{
-					} break;
-
-				case MEVideoCaptureDeviceRemoved:
-					{
-					} break;
-				}
-			}
-
-			bAnyEvents= true;
+			bKeepRunning= false;
+			hr= E_FAIL;
 		}
 
-		Utility::SafeRelease(&pEvent);
+		MediaEventType met;
+		if (SUCCEEDED(hr))
+		{
+			hr = pEvent->GetType(&met);
+		}
+
+		if(SUCCEEDED(hr))
+		{
+			switch (met)
+			{
+			case MESessionEnded:
+				{
+					PSVR_MT_LOG_INFO("WMFVideoFrameProcessor::doWork") << "MESessionEnded: " << m_deviceIndex;
+					bKeepRunning= false;
+				} break;
+
+			case MESessionStopped:
+				{
+					PSVR_MT_LOG_INFO("WMFVideoFrameProcessor::doWork") << "MESessionStopped: " << m_deviceIndex;
+					bKeepRunning= false;
+				} break;
+
+			case MEVideoCaptureDeviceRemoved:
+				{
+					PSVR_MT_LOG_INFO("WMFVideoFrameProcessor::doWork") << "MEVideoCaptureDeviceRemoved: " << m_deviceIndex;
+					bKeepRunning= false;
+				} break;
+			}
+		}
+		else
+		{
+			bKeepRunning= false;
+		}
+	}
+	else
+	{
+		bKeepRunning= false;
 	}
 
-	return bAnyEvents;
+	Utility::SafeRelease(&pEvent);
+
+	return bKeepRunning;
 }
 
 void WMFVideoFrameProcessor::stop()
 {
 	PSVR_LOG_INFO("WMFVideoFrameProcessor::stop") << "Stopping video frame grabbing on device: " << m_deviceIndex;
 
-	if (m_bIsRunning && m_pSession)
+	if (m_bIsRunning)
 	{
-		m_pSession->Stop();
+		if (m_pSession != nullptr)
+		{
+			// This will send a MESessionStopped event to the worker thread
+			m_pSession->Stop();
+		}
+
+		WorkerThread::stopThread();
+
 		m_bIsRunning= false;
 	}
 }
@@ -1840,7 +1736,10 @@ STDMETHODIMP WMFVideoFrameProcessor::OnProcessSample(REFGUID guidMajorMediaType,
 	LONGLONG llSampleTime, LONGLONG llSampleDuration, const BYTE * pSampleBuffer,
 	DWORD dwSampleSize)
 {
-	m_captureData->writeFrame(const_cast<unsigned char *>(pSampleBuffer));
+	if (m_trackerListener)
+	{
+		m_trackerListener->notifyVideoFrameReceived(static_cast<const unsigned char *>(pSampleBuffer));
+	}
 
 	return S_OK;
 }

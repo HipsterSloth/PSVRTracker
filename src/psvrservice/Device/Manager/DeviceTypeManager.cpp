@@ -72,18 +72,9 @@ DeviceTypeManager::shutdown()
 
 /// Calls poll_devices and update_connected_devices if poll_interval and reconnect_interval has elapsed, respectively.
 void
-DeviceTypeManager::poll()
+DeviceTypeManager::pollConnectedDevices()
 {
     std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
-
-    // See if it's time to poll controllers for data
-    std::chrono::duration<double, std::milli> update_diff = now - m_last_poll_time;
-
-    if (update_diff.count() >= poll_interval)
-    {
-        poll_devices();
-        m_last_poll_time = now;
-    }
 
     // See if it's time to try update the list of connected devices
 	if (reconnect_interval > 0)
@@ -255,18 +246,7 @@ DeviceTypeManager::poll_devices()
 {
     if (can_poll_connected_devices())
     {
-        bool bAllUpdatedOk = true;
-
-        for (int device_id = 0; device_id < getMaxDevices(); ++device_id)
-        {
-            ServerDeviceViewPtr device = getDeviceViewPtr(device_id);
-            bAllUpdatedOk &= device->poll();
-        }
-
-        if (!bAllUpdatedOk)
-        {
-            send_device_list_changed_notification();
-        }
+        send_device_list_changed_notification();
     }
 }
 

@@ -160,6 +160,12 @@ void AppStage_HMDTrackingTest::render()
 
                 drawHMD(hmdView, hmdMat4, trackingColorType);
                 drawTransformedAxes(hmdMat4, 10.f);
+
+				PSVRRawTrackerData rawTrackerData;
+				if (PSVR_GetHmdRawTrackerData(hmdView->HmdID, &rawTrackerData) == PSVRResult_Success)
+				{
+					drawTrackingShape(&rawTrackerData.WorldRelativeShape, glm::vec3(1.f, 1.f, 0.f));
+				}
             }
 
         } break;

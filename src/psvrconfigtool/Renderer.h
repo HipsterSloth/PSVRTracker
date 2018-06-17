@@ -107,6 +107,7 @@ void drawPointCloudProjectionInSubWindow(
     const float windowX1, const float windowY1,
     const glm::vec3 &color,
     const PSVRVector2f *points, const int point_count, const float point_size);
+void drawTrackingShape(const PSVRTrackingShape *world_relative_shape, const glm::vec3 &color);
 void drawTransformedAxes(const glm::mat4 &transform, float scale);
 void drawTransformedAxes(const glm::mat4 &transform, float xScale, float yScale, float zScale);
 void drawTransformedBox(const glm::mat4 &transform, const glm::vec3 &half_extents, const glm::vec3 &color);

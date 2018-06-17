@@ -409,7 +409,6 @@ PS4CameraTracker::PS4CameraTracker()
     , VideoCapture(nullptr)
     , CaptureData(nullptr)
     , NextPollSequenceNumber(0)
-    , TrackerStates()
 {
 }
 
@@ -530,50 +529,6 @@ bool PS4CameraTracker::getIsOpen() const
     return VideoCapture != nullptr;
 }
 
-bool PS4CameraTracker::getIsReadyToPoll() const
-{
-    return getIsOpen();
-}
-
-IDeviceInterface::ePollResult PS4CameraTracker::poll()
-{
-    IDeviceInterface::ePollResult result = IDeviceInterface::_PollResultFailure;
-
-    if (getIsOpen())
-    {
-        if (VideoCapture->grab() &&
-            VideoCapture->retrieve(CaptureData->getRawMutable()))
-        {
-            PS4CameraTrackerState newState;
-
-            // Extract raw YUY2 buffer to BGR stereo images
-            CaptureData->processRawFrame();
-
-            // Increment the sequence for every new polling packet
-            //TODO: Add timestamp to state
-            newState.PollSequenceNumber = NextPollSequenceNumber;
-            ++NextPollSequenceNumber;
-
-            // Make room for new entry if at the max queue size
-            if (TrackerStates.size() >= PS4CAMERA_STATE_BUFFER_MAX)
-            {
-                TrackerStates.erase(TrackerStates.begin(), TrackerStates.begin() + TrackerStates.size() - PS4CAMERA_STATE_BUFFER_MAX);
-            }
-
-            TrackerStates.push_back(newState);
-
-            result = IDeviceInterface::_PollResultSuccessNewData;
-        }
-        else
-        {
-            // Device still in valid state
-            result = IDeviceInterface::_PollResultSuccessNoData;
-        }
-    }
-
-    return result;
-}
-
 void PS4CameraTracker::close()
 {
     if (CaptureData != nullptr)
@@ -589,23 +544,9 @@ void PS4CameraTracker::close()
     }
 }
 
-long PS4CameraTracker::getMaxPollFailureCount() const
-{
-    return cfg.max_poll_failure_count;
-}
-
 CommonSensorState::eDeviceType PS4CameraTracker::getDeviceType() const
 {
     return CommonSensorState::PS4Camera;
-}
-
-const CommonSensorState *PS4CameraTracker::getSensorState(int lookBack) const
-{
-    const int queueSize = static_cast<int>(TrackerStates.size());
-    const CommonSensorState * result =
-        (lookBack < queueSize) ? &TrackerStates.at(queueSize - lookBack - 1) : nullptr;
-
-    return result;
 }
 
 ITrackerInterface::eDriverType PS4CameraTracker::getDriverType() const
@@ -675,21 +616,6 @@ bool PS4CameraTracker::getVideoFrameDimensions(
     }
 
     return bSuccess;
-}
-
-//###HipsterSloth $TODO Support level input
-const unsigned char *PS4CameraTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
-{
-    const unsigned char *result = nullptr;
-
-    if (CaptureData != nullptr &&
-        (section == PSVRVideoFrameSection_Left || section == PSVRVideoFrameSection_Right))
-    {
-        //###HipsterSloth $TODO for now always assume we want the top level image
-        return static_cast<const unsigned char *>(CaptureData->getImage(section, 0).data);
-    }
-
-    return result;
 }
 
 void PS4CameraTracker::loadSettings()
@@ -912,6 +838,11 @@ void PS4CameraTracker::getTrackingColorPreset(
     const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(table_name);
 
     *out_preset = table->color_presets[color];
+}
+
+void PS4CameraTracker::setTrackerListener(ITrackerListener *listener)
+{
+	m_listener= listener;
 }
 
 void PS4CameraTracker::uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)

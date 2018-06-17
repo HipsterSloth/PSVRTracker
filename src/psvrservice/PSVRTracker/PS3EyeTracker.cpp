@@ -249,8 +249,6 @@ PS3EyeTracker::PS3EyeTracker()
     , VideoCapture(nullptr)
     , CaptureData(nullptr)
     , DriverType(PS3EyeTracker::Libusb)
-    , NextPollSequenceNumber(0)
-    , TrackerStates()
 {
 }
 
@@ -359,52 +357,6 @@ bool PS3EyeTracker::getIsOpen() const
     return VideoCapture != nullptr;
 }
 
-bool PS3EyeTracker::getIsReadyToPoll() const
-{
-    return getIsOpen();
-}
-
-IDeviceInterface::ePollResult PS3EyeTracker::poll()
-{
-    IDeviceInterface::ePollResult result = IDeviceInterface::_PollResultFailure;
-
-    if (getIsOpen())
-    {
-        if (!VideoCapture->grab() || 
-            !VideoCapture->retrieve(CaptureData->frame, cv::CAP_OPENNI_BGR_IMAGE))
-        {
-            // Device still in valid state
-            result = IDeviceInterface::_PollResultSuccessNoData;
-        }
-        else
-        {
-            // New data available. Keep iterating.
-            result = IDeviceInterface::_PollResultSuccessNewData;
-        }
-
-        {
-            PS3EyeTrackerState newState;
-
-            // TODO: Process the frame and extract the blobs
-
-            // Increment the sequence for every new polling packet
-            newState.PollSequenceNumber = NextPollSequenceNumber;
-            ++NextPollSequenceNumber;
-
-            // Make room for new entry if at the max queue size
-            //###bwalker $TODO Make this a fixed size circular buffer
-            if (TrackerStates.size() >= PS3EYE_STATE_BUFFER_MAX)
-            {
-                TrackerStates.erase(TrackerStates.begin(), TrackerStates.begin() + TrackerStates.size() - PS3EYE_STATE_BUFFER_MAX);
-            }
-
-            TrackerStates.push_back(newState);
-        }
-    }
-
-    return result;
-}
-
 void PS3EyeTracker::close()
 {
     if (CaptureData != nullptr)
@@ -420,23 +372,9 @@ void PS3EyeTracker::close()
     }
 }
 
-long PS3EyeTracker::getMaxPollFailureCount() const
-{
-    return cfg.max_poll_failure_count;
-}
-
 CommonSensorState::eDeviceType PS3EyeTracker::getDeviceType() const
 {
     return CommonSensorState::PS3EYE;
-}
-
-const CommonSensorState *PS3EyeTracker::getSensorState(int lookBack) const
-{
-    const int queueSize = static_cast<int>(TrackerStates.size());
-    const CommonSensorState * result =
-        (lookBack < queueSize) ? &TrackerStates.at(queueSize - lookBack - 1) : nullptr;
-
-    return result;
 }
 
 ITrackerInterface::eDriverType PS3EyeTracker::getDriverType() const
@@ -506,19 +444,6 @@ bool PS3EyeTracker::getVideoFrameDimensions(
     }
 
     return bSuccess;
-}
-
-const unsigned char *PS3EyeTracker::getVideoFrameBuffer(PSVRVideoFrameSection section) const
-{
-    const unsigned char *result = nullptr;
-
-    if (CaptureData != nullptr &&
-        section == PSVRVideoFrameSection_Primary)
-    {
-        return static_cast<const unsigned char *>(CaptureData->frame.data);
-    }
-
-    return result;
 }
 
 void PS3EyeTracker::loadSettings()
@@ -738,4 +663,9 @@ void PS3EyeTracker::getTrackingColorPreset(
 	const PSVR_HSVColorRangeTable *table= cfg.getColorRangeTable(table_name);
 
     *out_preset = table->color_presets[color];
+}
+
+void PS3EyeTracker::setTrackerListener(ITrackerListener *listener)
+{
+	m_listener= listener;
 }

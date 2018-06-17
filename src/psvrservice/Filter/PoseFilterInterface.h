@@ -4,6 +4,7 @@
 //-- includes -----
 #include "ClientGeometry_CAPI.h"
 #include "MathEigen.h"
+#include <chrono>
 
 //-- constants -----
 // Calibration Pose transform
@@ -46,13 +47,21 @@ struct ExponentialCurve
 /// Intended to only exist on the stack.
 struct PoseSensorPacket
 {
+	std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
+
     // Optical readings in the world reference frame
+	int tracker_id;
     PSVRTrackingShape optical_tracking_shape_cm; // The tracking shape transformed into the world position
 	PSVRTrackingProjection optical_tracking_projection; // Screen area of the tracking LEDs (used for tracking confidence)
-    Eigen::Vector3f optical_position_cm; // cm
+	PSVRVector3f tracker_relative_position_cm;
+	PSVRQuatf tracker_relative_orientation;
+    Eigen::Vector3f optical_position_cm;
     Eigen::Quaternionf optical_orientation;
 
     // Sensor readings in the controller's reference frame
+	PSVRVector3i raw_imu_accelerometer;
+	PSVRVector3i raw_imu_magnetometer;
+	PSVRVector3i raw_imu_gyroscope;
     Eigen::Vector3f imu_accelerometer_g_units; // g-units
     Eigen::Vector3f imu_magnetometer_unit; // unit vector
     Eigen::Vector3f imu_gyroscope_rad_per_sec; // rad/s
@@ -62,12 +71,19 @@ struct PoseSensorPacket
 
 	inline void clear()
 	{
+		timestamp= std::chrono::time_point<std::chrono::high_resolution_clock>();
+		tracker_id= -1;
 		memset(&optical_tracking_shape_cm, 0, sizeof(PSVRTrackingShape));
 		memset(&optical_tracking_projection, 0, sizeof(PSVRTrackingProjection));
 		optical_tracking_shape_cm.shape_type= PSVRTrackingShape_INVALID;
 		optical_tracking_projection.shape_type= PSVRShape_INVALID_PROJECTION;
+		tracker_relative_position_cm= *k_PSVR_float_vector3_zero;
+		tracker_relative_orientation= *k_PSVR_quaternion_identity;
 		optical_position_cm= Eigen::Vector3f::Zero();
 		optical_orientation= Eigen::Quaternionf::Identity();
+		raw_imu_accelerometer= {0, 0, 0};
+		raw_imu_magnetometer= {0, 0, 0};
+		raw_imu_gyroscope= {0, 0, 0};
 		imu_accelerometer_g_units= Eigen::Vector3f::Zero();
 		imu_magnetometer_unit= Eigen::Vector3f::Zero();
 		imu_gyroscope_rad_per_sec= Eigen::Vector3f::Zero();
@@ -88,7 +104,9 @@ struct PoseSensorPacket
 
 	inline bool has_optical_measurement() const
 	{
-		return optical_tracking_projection.shape_type != PSVRShape_INVALID_PROJECTION &&
+		return 
+			tracker_id != -1 &&
+			optical_tracking_projection.shape_type != PSVRShape_INVALID_PROJECTION &&
 			optical_tracking_projection.projections[0].screen_area > 0.f;
 	}
 };

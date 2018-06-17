@@ -9,10 +9,12 @@ SharedVideoFrameBuffer::SharedVideoFrameBuffer()
 	, m_width(-1)
 	, m_height(-1)
 	, m_stride(-1)
-	, m_buffer(nullptr)
     , m_section_count(0)
 	, m_frame_index(-1)
-{}
+{
+	m_buffer[0]= nullptr;
+	m_buffer[1]= nullptr;
+}
 
 SharedVideoFrameBuffer::~SharedVideoFrameBuffer()
 {
@@ -23,13 +25,15 @@ bool SharedVideoFrameBuffer::initialize(const char *buffer_name, int width, int 
 {
 	bool bSuccess = false;
 
-	if (m_buffer == nullptr)
+	if (m_buffer[0] == nullptr && m_buffer[1] == nullptr)
 	{			
 		PSVR_LOG_INFO("SharedVideoFrameBuffer::initialize()") << "Allocating video frame buffer: " << m_buffer_name;
 
 		size_t buffer_size= computeVideoBufferSize(section_count, stride, height);
-		m_buffer= new unsigned char[buffer_size];
-		std::memset(m_buffer, 0, buffer_size);			
+		m_buffer[0]= new unsigned char[buffer_size];
+		m_buffer[1]= new unsigned char[buffer_size];
+		std::memset(m_buffer[0], 0, buffer_size);
+		std::memset(m_buffer[1], 0, buffer_size);
 		
 		m_buffer_name = buffer_name;
 	   
@@ -47,12 +51,14 @@ bool SharedVideoFrameBuffer::initialize(const char *buffer_name, int width, int 
 
 void SharedVideoFrameBuffer::dispose()
 {
-	if (m_buffer != nullptr)
+	if (m_buffer[0] != nullptr && m_buffer[1] != nullptr)
 	{
 		PSVR_LOG_INFO("SharedVideoFrameBuffer::dispose()") << "Deallocating video frame buffer: " << m_buffer_name;
 		
-		delete[] m_buffer;
-		m_buffer = nullptr;
+		delete[] m_buffer[0];
+		delete[] m_buffer[1];
+		m_buffer[0] = nullptr;
+		m_buffer[1] = nullptr;
 		
 		m_buffer_name= "";
 		m_width= -1;
@@ -65,16 +71,23 @@ void SharedVideoFrameBuffer::dispose()
 
 void SharedVideoFrameBuffer::writeVideoFrame(PSVRVideoFrameSection section, const unsigned char *buffer)
 {
-	size_t buffer_size = computeVideoBufferSize(1, m_stride, m_height);
-    size_t buffer_offset = computeVideoBufferSize(section, m_stride, m_height);
+	const size_t buffer_size = computeVideoBufferSize(1, m_stride, m_height);
+    const size_t buffer_offset = computeVideoBufferSize(section, m_stride, m_height);
+	const int write_buffer_index= m_frame_index % 2;
 
+	std::memcpy(m_buffer[write_buffer_index]+buffer_offset, buffer, buffer_size);
+}
+
+void SharedVideoFrameBuffer::finalizeVideoFrameWrite()
+{
 	++m_frame_index;
-	std::memcpy(m_buffer+buffer_offset, buffer, buffer_size);
 }
 
 const unsigned char *SharedVideoFrameBuffer::getBuffer(PSVRVideoFrameSection section) const
 {
-	return m_buffer + computeVideoBufferSize(static_cast<int>(section), m_stride, m_height);
+	const int read_buffer_index= (m_frame_index + 1) % 2;
+
+	return m_buffer[read_buffer_index] + computeVideoBufferSize(static_cast<int>(section), m_stride, m_height);
 }
 
 unsigned char *SharedVideoFrameBuffer::getBufferMutable(PSVRVideoFrameSection section)

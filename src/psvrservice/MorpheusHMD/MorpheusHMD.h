@@ -59,7 +59,7 @@ public:
 		, disable_command_interface(true)
 		, position_filter_type("LowPassOptical")
 		, orientation_filter_type("MadgwickARG")
-		, raw_accelerometer_variance(4.74999979e-06f)
+		, raw_accelerometer_variance(4.74999979e-03f)
         , max_velocity(1.f)
 		, raw_gyro_variance(0.f)
 		, raw_gyro_drift(0.f)
@@ -67,7 +67,7 @@ public:
 		, position_variance_exp_fit_a(0.0994158462f)
 		, position_variance_exp_fit_b(-0.000567041978f)
 		, orientation_variance(0.005f)
-        , max_poll_failure_count(100)
+        , poll_timeout_ms(1000)
         , prediction_time(0.f)
 		, tracking_color_id(PSVRTrackingColorType_Blue)
     {
@@ -130,9 +130,9 @@ public:
 
 	inline PSVRVector3f get_calibrated_accelerometer_variance() const {
 		return 
-            {accelerometer_gain.x*raw_accelerometer_variance, 
-			accelerometer_gain.y*raw_accelerometer_variance,
-            accelerometer_gain.z*raw_accelerometer_variance};
+            {raw_accelerometer_variance, 
+			raw_accelerometer_variance,
+            raw_accelerometer_variance};
 	}
 
 	// Maximum velocity for the controller physics (meters/second)
@@ -170,7 +170,7 @@ public:
 		return position_variance_exp_fit_a*exp(position_variance_exp_fit_b*projection_area);
 	}
 
-    long max_poll_failure_count;
+    long poll_timeout_ms;
 	float prediction_time;
 
 	PSVRTrackingColorType tracking_color_id;
@@ -198,7 +198,7 @@ struct MorpheusHMDSensorFrame
 	void parse_data_input(const MorpheusHMDConfig *config, const struct MorpheusRawSensorFrame *data_input);
 };
 
-struct MorpheusHMDSensorState : public CommonHMDSensorState
+struct MorpheusHMDSensorState : public CommonSensorState
 {
 	std::array< MorpheusHMDSensorFrame, 2> SensorFrames;
 
@@ -209,7 +209,7 @@ struct MorpheusHMDSensorState : public CommonHMDSensorState
 
     void clear()
     {
-        CommonHMDSensorState::clear();
+        CommonSensorState::clear();
 		DeviceType = Morpheus;
 
 		SensorFrames[0].clear();
@@ -232,10 +232,10 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    bool getIsReadyToPoll() const override;
-    IDeviceInterface::ePollResult poll() override;
+    //bool getIsReadyToPoll() const override;
+    //IDeviceInterface::ePollResult poll() override;
     void close() override;
-    long getMaxPollFailureCount() const override;
+    //long getMaxPollFailureCount() const override;
     CommonSensorState::eDeviceType getDeviceType() const override
     {
         return CommonSensorState::Morpheus;
@@ -244,7 +244,6 @@ public:
     {
         return CommonSensorState::Morpheus;
     }
-    const CommonSensorState * getSensorState(int lookBack = 0) const override;
 
     // -- IHMDInterface
     std::string getUSBDevicePath() const override;
@@ -252,6 +251,7 @@ public:
 	bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) override;
 	bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const override;
 	float getPredictionTime() const override;
+	void setHMDListener(IHMDListener *listener) override;
 
     // -- Getters
     inline const MorpheusHMDConfig *getConfig() const
@@ -274,7 +274,9 @@ private:
     // Read HMD State
     int NextPollSequenceNumber;
     struct MorpheusSensorData *InData;                        // Buffer to hold most recent MorpheusAPI tracking state
-    std::deque<MorpheusHMDSensorState> HMDStates;
+
+	class MorpheusSensorProcessor* m_sensorProcessor;
+	IHMDListener* m_hmdListener;
 
 	bool bIsTracking;
 };

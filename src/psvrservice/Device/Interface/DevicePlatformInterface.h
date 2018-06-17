@@ -33,7 +33,7 @@ public:
 
 	// System
 	virtual bool startup(IDeviceHotplugListener *broadcaster) = 0;
-	virtual void poll() = 0;
+	virtual void pollSystemEvents() = 0;
 	virtual void shutdown() = 0;
 
 	// Queries

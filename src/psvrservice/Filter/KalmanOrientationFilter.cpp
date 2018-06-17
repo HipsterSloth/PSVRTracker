@@ -70,7 +70,7 @@ enum OpticalMeasurementEnum
 // where a larger value for alpha spreads the sigma points further from the mean.
 #define k_ukf_beta 2.0
 #define k_ukf_kappa -1.0 // 3 - STATE_PARAMETER_COUNT
-#define k_ukf_alpha 0.6
+#define k_ukf_alpha 0.01
 
 //-- private definitions --
 template<typename T>
@@ -748,7 +748,18 @@ void KalmanOrientationFilterPSVR::update(const float delta_time, const PoseFilte
 
         // Predict state for current time-step using the filters
 		filter->system_model.set_time_step(delta_time);
-		filter->ukf.predict(filter->system_model);
+
+		if (packet.has_imu_measurements())
+		{
+			OrientationControlVectord control;
+			control.set_angular_rates(packet.imu_gyroscope_rad_per_sec.cast<double>());
+
+			filter->ukf.predict(filter->system_model, control);
+		}
+		else
+		{
+			filter->ukf.predict(filter->system_model);
+		}
 
 		// Apply any optical measurement to the filter
 		if (packet.has_optical_measurement())

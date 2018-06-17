@@ -78,20 +78,6 @@ public:
     PSVRTrackingShape trackingShape;
 };
 
-struct VirtualHMDSensorState : public CommonHMDSensorState
-{
-    VirtualHMDSensorState()
-    {
-        clear();
-    }
-
-    void clear()
-    {
-        CommonHMDSensorState::clear();
-		DeviceType = VirtualHMD;
-    }
-};
-
 class VirtualHMD : public IHMDInterface 
 {
 public:
@@ -105,10 +91,8 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    bool getIsReadyToPoll() const override;
-    IDeviceInterface::ePollResult poll() override;
     void close() override;
-    long getMaxPollFailureCount() const override;
+    //long getMaxPollFailureCount() const override;
     CommonSensorState::eDeviceType getDeviceType() const override
     {
         return CommonSensorState::VirtualHMD;
@@ -117,7 +101,6 @@ public:
     {
         return CommonSensorState::VirtualHMD;
     }
-    const CommonSensorState * getSensorState(int lookBack = 0) const override;
 
     // -- IHMDInterface
     std::string getUSBDevicePath() const override;
@@ -125,6 +108,9 @@ public:
 	bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) override;
 	bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const override;
 	float getPredictionTime() const override;
+	void setHMDListener(IHMDListener *listener) override { 
+		// No HMD events from a VirtualHMD
+	}
 
     // -- Getters
     inline const VirtualHMDConfig *getConfig() const
@@ -147,7 +133,6 @@ private:
 
     // Read HMD State
     int NextPollSequenceNumber;
-    std::deque<VirtualHMDSensorState> HMDStates;
 
 	bool bIsTracking;
 };

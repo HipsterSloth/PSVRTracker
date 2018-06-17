@@ -82,7 +82,7 @@ HMDManager::shutdown()
 }
 
 void
-HMDManager::updateStateAndPredict(TrackerManager* tracker_manager)
+HMDManager::notifyVideoFrameReceived(ServerTrackerView* tracker_view)
 {
 	for (int device_id = 0; device_id < getMaxDevices(); ++device_id)
 	{
@@ -90,8 +90,21 @@ HMDManager::updateStateAndPredict(TrackerManager* tracker_manager)
 
 		if (hmdView->getIsOpen())
 		{
-			hmdView->updateOpticalPoseEstimation(tracker_manager);
-			hmdView->updateStateAndPredict();
+			hmdView->notifyTrackerDataReceived(tracker_view);
+		}
+	}
+}
+
+void 
+HMDManager::updatePoseFilters()
+{
+	for (int device_id = 0; device_id < getMaxDevices(); ++device_id)
+	{
+		ServerHMDViewPtr hmdView = getHMDViewPtr(device_id);
+
+		if (hmdView->getIsOpen())
+		{
+			hmdView->updatePoseFilter();
 		}
 	}
 }
