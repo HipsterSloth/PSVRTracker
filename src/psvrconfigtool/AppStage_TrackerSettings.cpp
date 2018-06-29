@@ -2,6 +2,7 @@
 #include "AppStage_TrackerSettings.h"
 #include "AppStage_TrackerTest.h"
 #include "AppStage_ColorCalibration.h"
+#include "AppStage_MonoCalibration.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_HMDTrackingTest.h"
 #include "AppStage_MainMenu.h"
@@ -64,13 +65,10 @@ void AppStage_TrackerSettings::render()
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
                     drawPS4CameraModel(scale3);
                 } break;
-            case PSVRTracker_VirtualStereoCamera:
+            case PSVRTracker_GenericMonoCamera:
                 {
-                    glm::mat4 left = glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(-5.f, 0.f, 0.f)), glm::vec3(3.f, 3.f, 3.f));
-                    glm::mat4 right = glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(5.f, 0.f, 0.f)), glm::vec3(3.f, 3.f, 3.f));
-
-                    drawPS3EyeModel(left);
-                    drawPS3EyeModel(right);
+                    glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
+                    drawPS3EyeModel(scale3);
                 } break;
             case PSVRTracker_GenericStereoCamera:
                 {
@@ -199,9 +197,9 @@ void AppStage_TrackerSettings::renderUI()
                 {
                     ImGui::BulletText("Camera Type: PS4 Camera");
                 } break;
-            case PSVRTracker_VirtualStereoCamera:
+            case PSVRTracker_GenericMonoCamera:
                 {
-                    ImGui::BulletText("Camera Type: Virtual Stereo");
+                    ImGui::BulletText("Camera Type: Generic Mono");
                 } break;
 			case PSVRTracker_GenericStereoCamera:
                 {
@@ -236,7 +234,20 @@ void AppStage_TrackerSettings::renderUI()
                 m_app->setAppStage(AppStage_TrackerTest::APP_STAGE_NAME);
             }
 
-            if (trackerInfo.tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+            if (trackerInfo.tracker_intrinsics.intrinsics_type == PSVR_MONO_TRACKER_INTRINSICS)
+            {
+                if (ImGui::Button("Calibrate Mono Tracker"))
+                {
+                    m_app->getAppStage<AppStage_MonoCalibration>()->setBypassCalibrationFlag(false);
+                    m_app->setAppStage(AppStage_MonoCalibration::APP_STAGE_NAME);
+                }
+                if (ImGui::Button("Test Mono Calibration"))
+                {
+                    m_app->getAppStage<AppStage_MonoCalibration>()->setBypassCalibrationFlag(true);
+                    m_app->setAppStage(AppStage_MonoCalibration::APP_STAGE_NAME);
+                }
+            }
+            else if (trackerInfo.tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
             {
                 if (ImGui::Button("Calibrate Stereo Tracker"))
                 {

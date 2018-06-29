@@ -1,7 +1,6 @@
 //-- includes -----
 #include "TrackerManager.h"
 #include "TrackerDeviceEnumerator.h"
-#include "VirtualStereoCameraEnumerator.h"
 #include "DeviceManager.h"
 #include "HMDManager.h"
 #include "Logger.h"
@@ -23,7 +22,6 @@ const int TrackerManagerConfig::CONFIG_VERSION = 2;
 TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
 {
-    virtual_stereo_tracker_count= 0;
     //optical_tracking_timeout= 100;
     tracker_sleep_ms = 1;
     use_bgr_to_hsv_lookup_table = true;
@@ -58,8 +56,7 @@ TrackerManagerConfig::writeToJSON()
         {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
         {"default_tracker_profile.exposure", default_tracker_profile.exposure},
         {"default_tracker_profile.gain", default_tracker_profile.gain},
-        {"global_forward_degrees", global_forward_degrees},
-        {"virtual_stereo_tracker_count", virtual_stereo_tracker_count}
+        {"global_forward_degrees", global_forward_degrees}
     };
 
     writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
@@ -74,7 +71,6 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
 
     if (version == TrackerManagerConfig::CONFIG_VERSION)
     {
-        virtual_stereo_tracker_count = pt.get_or<int>("virtual_stereo_tracker_count", virtual_stereo_tracker_count);
         //optical_tracking_timeout= pt.get_or<int>("optical_tracking_timeout", optical_tracking_timeout);
         use_bgr_to_hsv_lookup_table = pt.get_or<bool>("use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table);
         tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
@@ -153,10 +149,6 @@ TrackerManager::startup()
         // Save back out the config in case there were updated defaults
         cfg.save();
 
-        // Copy the virtual stereo camera count into the Virtual Stereo Camera Enumerator's static variable.
-        // This breaks the dependency between the Tracker Manager and the enumerator.
-        VirtualStereoCameraEnumerator::virtual_stereo_camera_count= cfg.virtual_stereo_tracker_count;
-
         // The PS4 camera needs firmware uploaded first before it will show up as a connected device
         PS4CameraTracker::uploadFirmwareToAllPS4Cameras("resources/firmware.bin");
 
@@ -222,10 +214,7 @@ TrackerManager::mark_tracker_list_dirty()
 DeviceEnumerator *
 TrackerManager::allocate_device_enumerator()
 {
-    return 
-		cfg.virtual_stereo_tracker_count > 0 
-		? new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO)
-		: new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_NON_VIRTUAL);
+    return new TrackerDeviceEnumerator(TrackerDeviceEnumerator::CommunicationType_ALL);
 }
 
 void

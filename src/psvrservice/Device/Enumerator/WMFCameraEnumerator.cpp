@@ -32,17 +32,61 @@ static HRESULT ParseWMFFormatTypeAttributeByIndex(IMFAttributes *pAttr, DWORD in
 static HRESULT GetGUIDNameCopy(const GUID& guid, std::wstring &out_guidName);
 static LPCWSTR GetGUIDNameConst(const GUID& guid);
 
+// -- WMFCameraFilterSet -----
+bool WMFCameraFilterSet::addFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type)
+{
+	if (!containsFilter(vendor_id, product_id, device_type))
+	{
+		filters.push_back({vendor_id, product_id, device_type});
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool WMFCameraFilterSet::containsFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type)
+{
+	bool bContains= false;
+
+	for (const WMFCameraFilter &filter : filters)
+	{
+		if (filter.vendorId == vendor_id && filter.productId == product_id && filter.deviceType == device_type)
+		{
+			bContains= true;
+			break;
+		}
+	}
+
+	return bContains;
+}
+
+CommonSensorState::eDeviceType WMFCameraFilterSet::findCameraType(unsigned short vendor_id, unsigned short product_id)
+{
+	for (const WMFCameraFilter &filter : filters)
+	{
+		if (filter.vendorId == vendor_id && filter.productId == product_id)
+		{
+			return filter.deviceType;
+		}
+	}
+
+	return CommonSensorState::INVALID_DEVICE_TYPE;
+}
+
 // -- WMFCameraEnumerator -----
 WMFCameraEnumerator::WMFCameraEnumerator()
-    : DeviceEnumerator(CommonSensorState::WMFStereoCamera)
+    : DeviceEnumerator()
 	, m_wmf_device_list(new WMFDeviceList)
 {
-	m_deviceType= CommonSensorState::WMFStereoCamera;
+	m_deviceType= CommonSensorState::INVALID_DEVICE_TYPE;
     m_device_index= -1;
 	m_current_device_identifier= "";
 
 	//###HipsterSloth $TODO Pass this in from a global config
-	m_device_filter_set.addFilter(0x05a3, 0x9750); // ELP 1.3MP USB 2.0 Stereo Camera
+	m_device_filter_set.addFilter(0x05a3, 0x9750, CommonSensorState::WMFStereoCamera); // ELP 1.3MP USB 2.0 Stereo Camera
+	m_device_filter_set.addFilter(0x046d, 0x082d, CommonSensorState::WMFMonoCamera); // Logitech HD Pro Webcam C920 Camera
 	
 	if (m_wmf_device_list->fetchDeviceList())
 	{
@@ -98,11 +142,12 @@ bool WMFCameraEnumerator::next()
 	{
 		const WMFDeviceInfo &device= m_wmf_device_list->deviceList[m_device_index];
 
-		bFoundValid = m_device_filter_set.passesFilter(device.usbVendorId, device.usbProductId);
+		m_deviceType = m_device_filter_set.findCameraType(device.usbVendorId, device.usbProductId);
 
-		if (bFoundValid)
+		if (m_deviceType != CommonSensorState::INVALID_DEVICE_TYPE)
 		{
 			m_current_device_identifier= device.deviceSymbolicLink;
+			bFoundValid= true;
 		}
 		else
 		{ 
@@ -122,17 +167,30 @@ int WMFDeviceInfo::findBestDeviceFormatIndex(
 {
 	int result_id= INVALID_DEVICE_FORMAT_INDEX;
 
-	for (const WMFDeviceFormatInfo &info : deviceAvailableFormats)
+	for (int attempt = 0; attempt < 2; ++attempt)
 	{
-		unsigned int rounded_frame_rate= info.frame_rate_numerator / info.frame_rate_denominator;
-
-		if ((w == UNSPECIFIED_CAMERA_WIDTH || info.width == w) && 
-			(h == UNSPECIFIED_CAMERA_HEIGHT || info.height == h) && 
-			info.sub_type_name == buffer_format && 
-			(frameRate == UNSPECIFIED_CAMERA_FPS || rounded_frame_rate == frameRate))
+		for (const WMFDeviceFormatInfo &info : deviceAvailableFormats)
 		{
-			result_id= info.device_format_index;
+			unsigned int rounded_frame_rate= info.frame_rate_numerator / info.frame_rate_denominator;
+
+			if ((w == UNSPECIFIED_CAMERA_WIDTH || info.width == w) && 
+				(h == UNSPECIFIED_CAMERA_HEIGHT || info.height == h) && 
+				info.sub_type_name == buffer_format && 
+				(frameRate == UNSPECIFIED_CAMERA_FPS || rounded_frame_rate == frameRate))
+			{
+				result_id= info.device_format_index;
+				break;
+			}
+		}
+
+		if (result_id != INVALID_DEVICE_FORMAT_INDEX)
+		{
 			break;
+		}
+		else if (attempt == 0)
+		{
+			// Fallback to no FPS restriction on second pass
+			frameRate= UNSPECIFIED_CAMERA_FPS;
 		}
 	}
 

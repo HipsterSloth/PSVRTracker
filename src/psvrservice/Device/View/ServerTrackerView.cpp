@@ -16,7 +16,7 @@
 #include "ServiceRequestHandler.h"
 #include "TrackerManager.h"
 #include "PoseFilterInterface.h"
-#include "VirtualStereoTracker.h"
+#include "WMFMonoTracker.h"
 #include "WMFStereoTracker.h"
 
 #include <memory>
@@ -976,13 +976,13 @@ ITrackerInterface *ServerTrackerView::allocate_tracker_interface(const class Dev
         {
             tracker_interface = new PS4CameraTracker();
         } break;
+    case CommonSensorState::WMFMonoCamera:
+        {
+            tracker_interface = new WMFMonoTracker();
+        } break;
     case CommonSensorState::WMFStereoCamera:
         {
             tracker_interface = new WMFStereoTracker();
-        } break;
-    case CommonSensorState::VirtualStereoCamera:
-        {
-            tracker_interface = new VirtualStereoTracker();
         } break;
     default:
         break;

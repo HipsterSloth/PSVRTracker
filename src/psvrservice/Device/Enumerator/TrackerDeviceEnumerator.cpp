@@ -2,7 +2,6 @@
 #include "TrackerDeviceEnumerator.h"
 #include "TrackerUSBDeviceEnumerator.h"
 #include "WMFCameraEnumerator.h"
-#include "VirtualStereoCameraEnumerator.h"
 #include "assert.h"
 #include "string.h"
 
@@ -22,12 +21,11 @@ TrackerDeviceEnumerator::TrackerDeviceEnumerator(
 	{
 	case eAPIType::CommunicationType_USB:
 	case eAPIType::CommunicationType_WMF:
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
 		enumerators = new DeviceEnumerator *[1];
 		enumerators[0] = nullptr;
 		enumerator_count = 1;
 		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
+	case eAPIType::CommunicationType_ALL:
 		enumerators = new DeviceEnumerator *[2];
         enumerators[0] = nullptr;
 		enumerators[1] = nullptr;
@@ -62,12 +60,11 @@ TrackerDeviceEnumerator::TrackerDeviceEnumerator(
 	{
 	case eAPIType::CommunicationType_USB:
 	case eAPIType::CommunicationType_WMF:
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
 		enumerators = new DeviceEnumerator *[1];
 		enumerators[0] = nullptr;
 		enumerator_count = 1;
 		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
+	case eAPIType::CommunicationType_ALL:
 		enumerators = new DeviceEnumerator *[2];
 		enumerators[0] = nullptr;
         enumerators[1] = nullptr;
@@ -147,10 +144,7 @@ TrackerDeviceEnumerator::eAPIType TrackerDeviceEnumerator::get_api_type() const
 	case eAPIType::CommunicationType_WMF:
 		result = (enumerator_index < enumerator_count) ? TrackerDeviceEnumerator::CommunicationType_WMF : TrackerDeviceEnumerator::CommunicationType_INVALID;
 		break;
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
-		result = (enumerator_index < enumerator_count) ? TrackerDeviceEnumerator::CommunicationType_VIRTUAL_STEREO : TrackerDeviceEnumerator::CommunicationType_INVALID;
-		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
+	case eAPIType::CommunicationType_ALL:
 		if (enumerator_index < enumerator_count)
 		{
 			switch (enumerator_index)
@@ -176,34 +170,6 @@ TrackerDeviceEnumerator::eAPIType TrackerDeviceEnumerator::get_api_type() const
 	return result;
 }
 
-const VirtualStereoCameraEnumerator *TrackerDeviceEnumerator::get_virtual_stereo_camera_enumerator() const
-{
-	VirtualStereoCameraEnumerator *enumerator = nullptr;
-
-	switch (api_type)
-	{
-	case eAPIType::CommunicationType_USB:
-	case eAPIType::CommunicationType_WMF:
-		enumerator = nullptr;
-		break;
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
-		enumerator = (enumerator_index < enumerator_count) ? static_cast<VirtualStereoCameraEnumerator *>(enumerators[0]) : nullptr;
-		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
-		if (enumerator_index < enumerator_count)
-		{
-			enumerator = (enumerator_index == 0) ? static_cast<VirtualStereoCameraEnumerator *>(enumerators[0]) : nullptr;
-		}
-		else
-		{
-			enumerator = nullptr;
-		}
-		break;
-	}
-
-	return enumerator;
-}
-
 const TrackerUSBDeviceEnumerator *TrackerDeviceEnumerator::get_usb_tracker_enumerator() const
 {
 	TrackerUSBDeviceEnumerator *enumerator = nullptr;
@@ -214,10 +180,9 @@ const TrackerUSBDeviceEnumerator *TrackerDeviceEnumerator::get_usb_tracker_enume
 		enumerator = (enumerator_index < enumerator_count) ? static_cast<TrackerUSBDeviceEnumerator *>(enumerators[0]) : nullptr;
 		break;
 	case eAPIType::CommunicationType_WMF:
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
 		enumerator = nullptr;
 		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
+	case eAPIType::CommunicationType_ALL:
 		if (enumerator_index < enumerator_count)
 		{
 			enumerator = (enumerator_index == 0) ? static_cast<TrackerUSBDeviceEnumerator *>(enumerators[0]) : nullptr;
@@ -239,13 +204,12 @@ const WMFCameraEnumerator *TrackerDeviceEnumerator::get_windows_media_foundation
 	switch (api_type)
 	{
 	case eAPIType::CommunicationType_USB:
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
 		enumerator = nullptr;
 		break;
 	case eAPIType::CommunicationType_WMF:
 		enumerator = (enumerator_index < enumerator_count) ? static_cast<WMFCameraEnumerator *>(enumerators[0]) : nullptr;
 		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
+	case eAPIType::CommunicationType_ALL:
 		if (enumerator_index < enumerator_count)
 		{
 			enumerator = (enumerator_index == 1) ? static_cast<WMFCameraEnumerator *>(enumerators[1]) : nullptr;
@@ -328,14 +292,7 @@ void TrackerDeviceEnumerator::allocate_child_enumerator(int enumerator_index)
 		    enumerators[0] = new WMFCameraEnumerator;
         }
 		break;
-	case eAPIType::CommunicationType_VIRTUAL_STEREO:
-        assert(enumerator_index == 0);
-        if (enumerators[0] == nullptr)
-        {
-		    enumerators[0] = new VirtualStereoCameraEnumerator;
-        }
-		break;
-	case eAPIType::CommunicationType_NON_VIRTUAL:
+	case eAPIType::CommunicationType_ALL:
 		if (enumerator_index == 0)
         {
             if (enumerators[0] == nullptr)

@@ -3,7 +3,6 @@
 
 // -- includes -----
 #include "DeviceEnumerator.h"
-#include "USBDeviceFilter.h"
 
 #include <vector>
 #include <string>
@@ -76,6 +75,24 @@ struct WMFDeviceInfo
 		unsigned int frameRate, const wchar_t *buffer_format) const;
 };
 
+struct WMFCameraFilter
+{
+    unsigned short vendorId;
+    unsigned short productId;
+	CommonSensorState::eDeviceType deviceType;
+};
+
+class WMFCameraFilterSet
+{
+public:
+	bool addFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type);
+	bool containsFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type);
+	CommonSensorState::eDeviceType findCameraType(unsigned short vendor_id, unsigned short product_id);
+
+private:
+	std::vector<WMFCameraFilter> filters;
+};
+
 // Enumerates over valid cameras accessible via the Windows Media Foundation API
 class WMFCameraEnumerator : public DeviceEnumerator
 {
@@ -96,7 +113,7 @@ public:
 private:
 	struct WMFDeviceList *m_wmf_device_list;
 
-	USBDeviceFilterSet m_device_filter_set;
+	WMFCameraFilterSet m_device_filter_set;
 	std::string m_current_device_identifier;
     int m_device_index;
 };

@@ -6,6 +6,7 @@
 #include "AppStage_HMDSettings.h"
 #include "AppStage_HMDTrackingTest.h"
 #include "AppStage_MainMenu.h"
+#include "AppStage_MonoCalibration.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_TrackerSettings.h"
 #include "AppStage_TrackerTest.h"
@@ -31,6 +32,7 @@ extern "C" int main(int argc, char *argv[])
     app.registerAppStage<AppStage_HMDSettings>();
     app.registerAppStage<AppStage_HMDTrackingTest>();
     app.registerAppStage<AppStage_MainMenu>();
+	app.registerAppStage<AppStage_MonoCalibration>();
     app.registerAppStage<AppStage_StereoCalibration>();
     app.registerAppStage<AppStage_TrackerTest>();
     app.registerAppStage<AppStage_TrackerSettings>();

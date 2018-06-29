@@ -5,6 +5,7 @@
 #include "PSVRConfig.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
+#include "WMFConfig.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -17,28 +18,15 @@ namespace PSMoveProtocol
 };
 
 // -- definitions -----
-class WMFStereoTrackerConfig : public PSVRConfig
+class WMFStereoTrackerConfig : public WMFCommonTrackerConfig
 {
 public:
     WMFStereoTrackerConfig(const std::string &fnamebase = "WMFStereoTrackerConfig");
     
-    virtual const configuru::Config writeToJSON();
-    virtual void readFromJSON(const configuru::Config &pt);
-
-	const PSVR_HSVColorRangeTable *getColorRangeTable(const std::string &table_name) const;
-	inline PSVR_HSVColorRangeTable *getOrAddColorRangeTable(const std::string &table_name);
-
-    bool is_valid;
-    long max_poll_failure_count;
-
-	double frame_rate;
-	int last_video_format_index;
-	int video_properties[PSVRVideoProperty_COUNT];
+    virtual const configuru::Config writeToJSON() override;
+    virtual void readFromJSON(const configuru::Config &pt) override;
 
     PSVRStereoTrackerIntrinsics tracker_intrinsics;
-    PSVRPosef pose;
-	PSVR_HSVColorRangeTable SharedColorPresets;
-	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
 
     static const int CONFIG_VERSION;
 };
@@ -55,10 +43,7 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    //bool getIsReadyToPoll() const override;
-    //IDeviceInterface::ePollResult poll() override;
     void close() override;
-    //long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
     { return CommonSensorState::WMFStereoCamera; }
     CommonSensorState::eDeviceType getDeviceType() const override;

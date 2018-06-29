@@ -160,8 +160,8 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
             case CommonSensorState::PS4Camera:
                 tracker_info->tracker_type= PSVRTracker_PS4Camera;
                 break;					
-            case CommonSensorState::VirtualStereoCamera:
-                tracker_info->tracker_type= PSVRTracker_VirtualStereoCamera;
+            case CommonSensorState::WMFMonoCamera:
+                tracker_info->tracker_type= PSVRTracker_GenericMonoCamera;
                 break;					
             case CommonSensorState::WMFStereoCamera:
                 tracker_info->tracker_type= PSVRTracker_GenericStereoCamera;

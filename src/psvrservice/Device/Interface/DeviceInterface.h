@@ -27,7 +27,7 @@ struct CommonSensorState
     {       
         PS3EYE = TrackingCamera + 0x00,
         PS4Camera = TrackingCamera + 0x01,
-        VirtualStereoCamera = TrackingCamera + 0x02,
+        WMFMonoCamera = TrackingCamera + 0x02,
 		WMFStereoCamera = TrackingCamera + 0x03,
         SUPPORTED_CAMERA_TYPE_COUNT = TrackingCamera + 0x04,
         
@@ -64,8 +64,8 @@ struct CommonSensorState
         case PS4Camera:
             result = "PS4Camera";
             break;
-        case VirtualStereoCamera:
-            result = "VirtualStereoCamera";
+        case WMFMonoCamera:
+            result = "WMFMonoCamera";
             break;
         case WMFStereoCamera:
             result = "WMFStereoCamera";

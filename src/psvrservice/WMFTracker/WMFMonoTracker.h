@@ -1,10 +1,11 @@
-#ifndef VIRTUAL_STEREO_TRACKER_H
-#define VIRTUAL_STEREO_TRACKER_H
+#ifndef WMF_MONO_TRACKER_H
+#define WMF_MONO_TRACKER_H
 
 // -- includes -----
 #include "PSVRConfig.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
+#include "WMFConfig.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -17,39 +18,23 @@ namespace PSMoveProtocol
 };
 
 // -- definitions -----
-class VirtualStereoTrackerConfig : public PSVRConfig
+class WMFMonoTrackerConfig : public WMFCommonTrackerConfig
 {
 public:
-    VirtualStereoTrackerConfig(const std::string &fnamebase = "VirtualStereoTrackerConfig");
+    WMFMonoTrackerConfig(const std::string &fnamebase = "WMFMonoTrackerConfig");
     
-    virtual const configuru::Config writeToJSON();
-    virtual void readFromJSON(const configuru::Config &pt);
+    virtual const configuru::Config writeToJSON() override;
+    virtual void readFromJSON(const configuru::Config &pt) override;
 
-	const PSVR_HSVColorRangeTable *getColorRangeTable(const std::string &table_name) const;
-	inline PSVR_HSVColorRangeTable *getOrAddColorRangeTable(const std::string &table_name);
-    
-    bool is_valid;
-    long max_poll_failure_count;
-
-	double frame_rate;
-    double exposure;
-	double gain;
-
-    std::string left_camera_usb_path;
-    std::string right_camera_usb_path;
-
-    PSVRStereoTrackerIntrinsics tracker_intrinsics;
-    PSVRPosef pose;
-	PSVR_HSVColorRangeTable SharedColorPresets;
-	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
+    PSVRMonoTrackerIntrinsics tracker_intrinsics;
 
     static const int CONFIG_VERSION;
 };
 
-class VirtualStereoTracker : public ITrackerInterface {
+class WMFMonoTracker : public ITrackerInterface {
 public:
-    VirtualStereoTracker();
-    virtual ~VirtualStereoTracker();
+    WMFMonoTracker();
+    virtual ~WMFMonoTracker();
         
     // Stereo Tracker
     bool open(); // Opens the first virtual stereo tracker
@@ -58,20 +43,17 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    //bool getIsReadyToPoll() const override;
-    //IDeviceInterface::ePollResult poll() override;
     void close() override;
-    //long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
-    { return CommonSensorState::VirtualStereoCamera; }
+    { return CommonSensorState::WMFMonoCamera; }
     CommonSensorState::eDeviceType getDeviceType() const override;
     
     // -- ITrackerInterface
     ITrackerInterface::eDriverType getDriverType() const override;
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
-    bool getIsStereoCamera() const override { return true; }
-	bool getIsVideoMirrored() const override;
+    bool getIsStereoCamera() const override { return false; }
+	bool getIsVideoMirrored() const override { return true; }
     void loadSettings() override;
     void saveSettings() override;
 	void setFrameWidth(double value, bool bUpdateConfig) override;
@@ -95,17 +77,15 @@ public:
 	void setTrackerListener(ITrackerListener *listener) override;
 
     // -- Getters
-    inline const VirtualStereoTrackerConfig &getConfig() const
-    { return cfg; }
+    inline const WMFMonoTrackerConfig &getConfig() const
+    { return m_cfg; }
 
 private:
-    VirtualStereoTrackerConfig cfg;
-    std::string device_identifier;
+    WMFMonoTrackerConfig m_cfg;
+    std::string m_device_identifier;
 
-    class ITrackerInterface *LeftTracker;
-    class ITrackerInterface *RightTracker;
-    class VirtualStereoCaptureData *CaptureData;
-    ITrackerInterface::eDriverType DriverType;    
+	class WMFVideoDevice *m_videoDevice;
+    ITrackerInterface::eDriverType m_DriverType;    
 	ITrackerListener *m_listener;
 };
-#endif // PS3EYE_TRACKER_H
+#endif // WMF_MONO_TRACKER_H

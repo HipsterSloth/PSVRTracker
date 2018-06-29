@@ -44,7 +44,7 @@ typedef enum
     PSVRTracker_None= -1,
     PSVRTracker_PS3Eye,
 	PSVRTracker_PS4Camera,
-    PSVRTracker_VirtualStereoCamera,
+    PSVRTracker_GenericMonoCamera,
 	PSVRTracker_GenericStereoCamera
 } PSVRTrackerType;
 
