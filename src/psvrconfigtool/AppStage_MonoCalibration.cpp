@@ -56,6 +56,11 @@ static const char *k_video_display_mode_names[] = {
 #define DEFAULT_SQUARE_LEN_MM 22
 #define DESIRED_CAPTURE_BOARD_COUNT 12
 
+#define CIRCLE_PATTERN_W 4
+#define CIRCLE_PATTERN_H 11
+#define CIRCLE_COUNT (CIRCLE_PATTERN_W*CIRCLE_PATTERN_H)
+#define DEFAULT_CIRCLE_DIAMETER_MM 1.5
+
 #define BOARD_MOVED_PIXEL_DIST 5
 #define BOARD_MOVED_ERROR_SUM BOARD_MOVED_PIXEL_DIST*CORNER_COUNT
 
@@ -260,22 +265,73 @@ public:
         return bAppendNewChessBoard;
     }
 
-    void popLastChessBoard()
-    {
-        if (capturedBoardCount > 0)
+    bool findAndAppendNewCircleGrid(bool appWantsAppend)
+    {        
+        bool bAppendNewChessBoard= false;
+
+        if (capturedBoardCount < DESIRED_CAPTURE_BOARD_COUNT)
         {
-            assert(quadList.size() > 0);
-            assert(quadList.size() % 4 == 0);
-            quadList.pop_back();
-            quadList.pop_back();
-            quadList.pop_back();
-            quadList.pop_back();
+            // Clear out the previous images points
+            currentImagePoints.clear();
 
-            assert(imagePointsList.size() > 0);
-            imagePointsList.pop_back();
+            // Find chessboard corners:
+            if (cv::findCirclesGrid(
+                    *gsSourceBuffer, 
+                    cv::Size(CIRCLE_PATTERN_W, CIRCLE_PATTERN_H), 
+                    currentImagePoints, // output corners
+                    cv::CALIB_CB_ASYMMETRIC_GRID))
+            {
+                // Append the new chessboard corner pixels into the image_points matrix
+                // Append the corresponding 3d chessboard corners into the object_points matrix
+                if (currentImagePoints.size() == CIRCLE_COUNT) 
+                {
+                    bCurrentImagePointsValid= false;
 
-            capturedBoardCount--;
+                    if (lastValidImagePoints.size() > 0)
+                    {
+                        float error_sum= 0.f;
+
+                        for (int corner_index= 0; corner_index < CIRCLE_COUNT; ++corner_index)
+                        {
+                            float squared_error= static_cast<float>(cv::norm(currentImagePoints[corner_index] - lastValidImagePoints[corner_index]));
+
+                            error_sum+= squared_error;
+                        }
+
+                        bCurrentImagePointsValid= error_sum >= BOARD_NEW_LOCATION_ERROR_SUM;
+                    }
+                    else
+                    {
+                        // We don't have previous capture.
+                        bCurrentImagePointsValid= true;
+                    }
+
+
+                    // If it's a valid new location, append it to the board list
+                    if (bCurrentImagePointsValid && appWantsAppend)
+                    {
+                        // Keep track of the corners of all of the chessboards we sample
+                        quadList.push_back(currentImagePoints[0]);
+                        quadList.push_back(currentImagePoints[CIRCLE_PATTERN_W - 1]);
+                        quadList.push_back(currentImagePoints[CIRCLE_COUNT-1]);
+                        quadList.push_back(currentImagePoints[CIRCLE_COUNT-CIRCLE_PATTERN_W]);                        
+
+                        // Append the new images points and object points
+                        imagePointsList.push_back(currentImagePoints);
+
+                        // Remember the last valid captured points
+                        lastValidImagePoints= currentImagePoints;
+
+                        // Keep track of how many boards have been captured so far
+                        capturedBoardCount++;
+
+                        bAppendNewChessBoard= true;
+                    }
+                }
+            }
         }
+
+        return bAppendNewChessBoard;
     }
 
     static bool areGridLinesStraight(const std::vector<cv::Point2f> &corners)
@@ -319,7 +375,9 @@ public:
     {
         cv::initUndistortRectifyMap(
             intrinsic_matrix, distortion_coeffs, 
-            rectification_rotation, rectification_projection, 
+            cv::noArray(), // unneeded rectification transformation computed by stereoRectify()
+                               // newCameraMatrix - can be computed by getOptimalNewCameraMatrix(), but
+            intrinsic_matrix, // "In case of a monocular camera, newCameraMatrix is usually equal to cameraMatrix"
             cv::Size(frameWidth, frameHeight),
             CV_32FC1, // Distortion map type
             *distortionMapX, *distortionMapY);
@@ -449,15 +507,7 @@ public:
         ImGuiIO io_state = ImGui::GetIO();
         const bool bWantsAppend= io_state.KeysDown[32];
 
-        bool bCanAppend= m_opencv_section_state->findAndAppendNewChessBoard(bWantsAppend);
-
-        if (bWantsAppend)
-        {
-            if (bCanAppend)
-            {
-                m_opencv_section_state->popLastChessBoard();
-            }
-        }
+        m_opencv_section_state->findAndAppendNewChessBoard(bWantsAppend);
     }
 
     bool hasSampledAllChessBoards() const
@@ -614,8 +664,8 @@ public:
         {
             drawOpenCVChessBoard(
                 frameWidth, frameHeight, 
-                reinterpret_cast<float *>(m_opencv_section_state->lastValidImagePoints.data()), // cv::point2f is just two floats 
-                static_cast<int>(m_opencv_section_state->lastValidImagePoints.size()),
+                reinterpret_cast<float *>(m_opencv_section_state->currentImagePoints.data()), // cv::point2f is just two floats 
+                static_cast<int>(m_opencv_section_state->currentImagePoints.size()),
                 true);
         }
 
@@ -918,7 +968,7 @@ void AppStage_MonoCalibration::renderUI()
                 {
                     request_exit();
                 }
-                if (m_opencv_mono_state->areCurrentImagePointsValid())
+                else if (m_opencv_mono_state->areCurrentImagePointsValid())
                 {
                     ImGui::Text("Press spacebar to capture");
                 }

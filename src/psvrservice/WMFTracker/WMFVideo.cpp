@@ -3,28 +3,14 @@
 #include "DeviceInterface.h"
 #include "Logger.h"
 #include "Utility.h"
-//#include "ServerTrackerView.h"
 #include "TrackerDeviceEnumerator.h"
 #include "WMFCameraEnumerator.h"
 #include "TrackerManager.h"
 #include "WorkerThread.h"
 
-//#include <Mfidl.h>
-//#include <Mfapi.h>
-//#include <Mferror.h>
-//#include <Strmif.h>
-//#include <Shlwapi.h>
-
-//#include <opencv2/opencv.hpp>
-//#include <opencv2/videoio.hpp>
-
 #ifdef _MSC_VER
     #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
 #endif
-
-// -- constants -----
-// -- private definitions -----
-// -- public methods
 
 // -- WMF Video Device -----
 WMFVideoDevice::WMFVideoDevice(const int device_index, const WMFDeviceInfo &device_info) 
@@ -159,7 +145,8 @@ bool WMFVideoDevice::open(
 						int currentValue= getVideoProperty(prop_type);
 						int desiredValue= cfg.video_properties[prop_index];
 
-						if (desiredValue != currentValue)
+						if (desiredValue != currentValue ||
+							prop_type == PSVRVideoProperty_Focus) // always set focus to disable auto-focus
 						{
 							// Use the desired value if it is in-range
 							if (desiredValue >= constraint.min_value &&
