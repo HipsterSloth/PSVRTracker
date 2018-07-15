@@ -18,6 +18,14 @@ typedef enum
     PSVRLogSeverityLevel_fatal
 } PSVRLogSeverityLevel;
 
+/// The list of possible sub sections to extract from a video frame
+typedef enum
+{
+    PSVRVideoFrameSection_Left                 = 0, ///< The left frame from a stereo camera
+    PSVRVideoFrameSection_Right                = 1, ///< The right frame from a stereo camera
+    PSVRVideoFrameSection_Primary              = 0  ///< The only frame from a stereo camera
+} PSVRVideoFrameSection;
+
 // See TrackerManager.h in PSVRSERVICE
 #define PSVRSERVICE_MAX_TRACKER_COUNT  8
 

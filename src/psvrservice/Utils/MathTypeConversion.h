@@ -48,6 +48,10 @@ PSVRMatrix4d cv_mat44d_to_PSVR_matrix4x4(const cv::Matx44d &in);
 PSVRMatrix34d cv_mat34d_to_PSVR_matrix3x4(const cv::Matx34d &in);
 PSVRVector3d cv_vec3d_to_PSVR_vector3d(const cv::Vec3d &in);
 
+// OpenCV types to Eigen tyes
+Eigen::Quaterniond cv_rodrigues_vector_to_eigen_quatd(const cv::Mat &in);
+Eigen::Vector3d cv_vector3d_to_eigen_vector3d(const cv::Mat &vec);
+
 // PSVRTypes to Eigen types
 Eigen::Vector3f PSVR_vector3i_to_eigen_vector3(const PSVRVector3i &v);
 Eigen::Vector3f PSVR_vector3f_to_eigen_vector3(const PSVRVector3f &p);
@@ -66,5 +70,9 @@ glm::vec3 eigen_vector3f_to_glm_vec3(const Eigen::Vector3f &v);
 // Eigen types to PSVR types
 PSVRVector3f eigen_vector3f_to_PSVR_vector3f(const Eigen::Vector3f &v);
 PSVRQuatf eigen_quaternionf_to_PSVR_quatf(const Eigen::Quaternionf &q);
+
+// Eigen types to OpenCV types
+cv::Mat eigen_quatd_to_cv_rodrigues_vector(const Eigen::Quaterniond &in);
+cv::Mat eigen_vector3d_to_cv_vector3d(const Eigen::Vector3d &in);
 
 #endif // MATH_TYPE_CONVERSION_H

@@ -61,6 +61,7 @@
 float safe_divide_with_default(float numerator, float denomenator, float default_result);
 float safe_sqrt_with_default(float square, float default_result);
 float clampf(float x, float lo, float hi);
+double clampd(double x, double lo, double hi);
 float clampf01(float x);
 float lerpf(float a, float b, float u);
 float lerp_clampf(float a, float b, float u);

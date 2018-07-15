@@ -15,6 +15,7 @@
 #include "MathTypeConversion.h"
 #include "ServiceRequestHandler.h"
 #include "TrackerManager.h"
+#include "TrackerMath.h"
 #include "PoseFilterInterface.h"
 #include "WMFMonoTracker.h"
 #include "WMFStereoTracker.h"
@@ -634,19 +635,6 @@ public:
 };
 
 // -- Utility Methods -----
-static glm::quat computeGLMCameraTransformQuaternion(const ITrackerInterface *tracker_device);
-static glm::mat4 computeGLMCameraTransformMatrix(const ITrackerInterface *tracker_device);
-static void computeOpenCVCameraExtrinsicMatrix(const ITrackerInterface *tracker_device,
-                                                      cv::Matx34f &extrinsicOut);
-cv::Mat cvDistCoeffs = cv::Mat(4, 1, cv::DataType<float>::type, 0.f);
-static void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
-                                               PSVRVideoFrameSection section,
-                                               cv::Matx33f &intrinsicOut,
-                                               cv::Matx<float, 5, 1> &distortionOut);
-static bool computeOpenCVCameraRectification(const ITrackerInterface *tracker_device,
-                                               PSVRVideoFrameSection section,
-                                               cv::Matx33d &rotationOut,
-                                               cv::Matx34d &projectionOut);
 static cv::Rect2i computeTrackerROIForPoseProjection(
     const bool disabled_roi,
     const ServerTrackerView *tracker,
@@ -665,18 +653,6 @@ static bool computeBestFitQuadForContour(
     cv::Point2f &top_left,
     cv::Point2f &bottom_left,
     cv::Point2f &bottom_right);
-static void commonDeviceOrientationToOpenCVRodrigues(
-    const PSVRQuatf &orientation,
-    cv::Mat &rvec);
-static void openCVRodriguesToAngleAxis(
-    const cv::Mat &rvec,
-    float &axis_x, float &axis_y, float &axis_z, float &radians);
-static void angleAxisVectorToEulerAngles(
-    const float axis_x, const float axis_y, const float axis_z, const float radians,
-    float &yaw, float &pitch, float &roll);
-static void angleAxisVectorToCommonDeviceOrientation(
-    const float axis_x, const float axis_y, const float axis_z, const float radians,
-    PSVRQuatf &orientation);
 
 //-- public implementation -----
 ServerTrackerView::ServerTrackerView(const int device_id)
@@ -1213,6 +1189,30 @@ bool ServerTrackerView::computeProjectionForHMD(
     return bSuccess;
 }
 
+cv::Mat *ServerTrackerView::getDebugDrawingBuffer(PSVRVideoFrameSection section) const
+{
+	cv::Mat *shmemBuffer= nullptr;
+
+    if (m_device->getIsStereoCamera())
+    {		
+        if ((section == PSVRVideoFrameSection_Left || section == PSVRVideoFrameSection_Right) &&
+			m_opencv_buffer_state[section] != nullptr)
+        {
+            shmemBuffer= m_opencv_buffer_state[section]->bgrShmemBuffer;
+        }
+    }
+    else
+    {
+        if (section == PSVRVideoFrameSection_Primary &&
+			m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
+        {
+            shmemBuffer= m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->bgrShmemBuffer;
+        }
+    }
+
+	return shmemBuffer;
+}
+
 void
 ServerTrackerView::drawPoseProjection(
 	const PSVRTrackingProjection *projection) const
@@ -1642,135 +1642,6 @@ ServerTrackerView::projectTrackerRelativePosition(
 
 
 // -- Tracker Utility Methods -----
-static glm::quat computeGLMCameraTransformQuaternion(const ITrackerInterface *tracker_device)
-{
-
-    const PSVRPosef pose = tracker_device->getTrackerPose();
-    const PSVRQuatf &quat = pose.Orientation;
-
-    const glm::quat glm_quat(quat.w, quat.x, quat.y, quat.z);
-
-    return glm_quat;
-}
-
-static glm::mat4 computeGLMCameraTransformMatrix(const ITrackerInterface *tracker_device)
-{
-
-    const PSVRPosef pose = tracker_device->getTrackerPose();
-    const PSVRQuatf &quat = pose.Orientation;
-    const PSVRVector3f &pos = pose.Position;
-
-    const glm::quat glm_quat(quat.w, quat.x, quat.y, quat.z);
-    const glm::vec3 glm_pos(pos.x, pos.y, pos.z);
-    const glm::mat4 glm_camera_xform = glm_mat4_from_pose(glm_quat, glm_pos);
-
-    return glm_camera_xform;
-}
-
-static void computeOpenCVCameraExtrinsicMatrix(const ITrackerInterface *tracker_device,
-                                               cv::Matx34f &out)
-{
-    // Extrinsic matrix is the inverse of the camera pose matrix
-    const glm::mat4 glm_camera_xform = computeGLMCameraTransformMatrix(tracker_device);
-    const glm::mat4 glm_mat = glm::inverse(glm_camera_xform);
-
-    out(0, 0) = glm_mat[0][0]; out(0, 1) = glm_mat[1][0]; out(0, 2) = glm_mat[2][0]; out(0, 3) = glm_mat[3][0];
-    out(1, 0) = glm_mat[0][1]; out(1, 1) = glm_mat[1][1]; out(1, 2) = glm_mat[2][1]; out(1, 3) = glm_mat[3][1];
-    out(2, 0) = glm_mat[0][2]; out(2, 1) = glm_mat[1][2]; out(2, 2) = glm_mat[2][2]; out(2, 3) = glm_mat[3][2];
-}
-
-static void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
-                                               PSVRVideoFrameSection section,
-                                               cv::Matx33f &intrinsicOut,
-                                               cv::Matx<float, 5, 1> &distortionOut)
-{
-    PSVRTrackerIntrinsics tracker_intrinsics;
-    tracker_device->getCameraIntrinsics(tracker_intrinsics);
-
-    PSVRMatrix3d *camera_matrix= nullptr;
-    PSVRDistortionCoefficients *distortion_coefficients= nullptr;
-
-    if (tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
-    {
-        if (section == PSVRVideoFrameSection_Left)
-        {
-            camera_matrix= &tracker_intrinsics.intrinsics.stereo.left_camera_matrix;
-            distortion_coefficients = &tracker_intrinsics.intrinsics.stereo.left_distortion_coefficients;
-        }
-        else if (section == PSVRVideoFrameSection_Right)
-        {
-            camera_matrix= &tracker_intrinsics.intrinsics.stereo.right_camera_matrix;
-            distortion_coefficients = &tracker_intrinsics.intrinsics.stereo.right_distortion_coefficients;
-        }
-    }
-    else if (tracker_intrinsics.intrinsics_type == PSVR_MONO_TRACKER_INTRINSICS)
-    {
-        camera_matrix = &tracker_intrinsics.intrinsics.mono.camera_matrix;
-        distortion_coefficients = &tracker_intrinsics.intrinsics.mono.distortion_coefficients;
-    }
-
-    if (camera_matrix != nullptr && distortion_coefficients != nullptr)
-    {
-        double *m= (double *)camera_matrix->m;
-   
-        intrinsicOut(0, 0)= (float)m[0]; intrinsicOut(0, 1)=  (float)m[1]; intrinsicOut(0, 2)= (float)m[2];
-        intrinsicOut(1, 0)= (float)m[3]; intrinsicOut(1, 1)= (float)m[4]; intrinsicOut(1, 2)= (float)m[5]; 
-        intrinsicOut(2, 0)= (float)m[6]; intrinsicOut(2, 1)= (float)m[7];  intrinsicOut(2, 2)= (float)m[8];
-
-        distortionOut(0, 0)= (float)distortion_coefficients->k1;
-        distortionOut(1, 0)= (float)distortion_coefficients->k2;
-        distortionOut(2, 0)= (float)distortion_coefficients->p1;
-        distortionOut(3, 0)= (float)distortion_coefficients->p2;
-        distortionOut(4, 0)= (float)distortion_coefficients->k3;
-    }
-}
-
-static bool computeOpenCVCameraRectification(const ITrackerInterface *tracker_device,
-                                               PSVRVideoFrameSection section,
-                                               cv::Matx33d &rotationOut,
-                                               cv::Matx34d &projectionOut)
-{
-    PSVRTrackerIntrinsics tracker_intrinsics;
-    tracker_device->getCameraIntrinsics(tracker_intrinsics);
-
-    PSVRMatrix3d *rectification_rotation= nullptr;
-    PSVRMatrix34d *rectification_projection= nullptr;
-
-    if (tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
-    {
-        if (section == PSVRVideoFrameSection_Left)
-        {
-            rectification_rotation= &tracker_intrinsics.intrinsics.stereo.left_rectification_rotation;
-            rectification_projection= &tracker_intrinsics.intrinsics.stereo.left_rectification_projection;
-        }
-        else if (section == PSVRVideoFrameSection_Right)
-        {
-            rectification_rotation= &tracker_intrinsics.intrinsics.stereo.right_rectification_rotation;
-            rectification_projection= &tracker_intrinsics.intrinsics.stereo.right_rectification_projection;
-        }
-    }
-
-    if (rectification_rotation != nullptr && rectification_projection != nullptr)
-    {
-        double *r= (double *)rectification_rotation->m;
-        double *p= (double *)rectification_projection->m;
-   
-        rotationOut(0, 0)= (float)r[0]; rotationOut(0, 1)= (float)r[1]; rotationOut(0, 2)= (float)r[2];
-        rotationOut(1, 0)= (float)r[3]; rotationOut(1, 1)= (float)r[4]; rotationOut(1, 2)= (float)r[5]; 
-        rotationOut(2, 0)= (float)r[6]; rotationOut(2, 1)= (float)r[7]; rotationOut(2, 2)= (float)r[8];
-
-        projectionOut(0, 0)= (float)p[0]; projectionOut(0, 1)= (float)p[1]; projectionOut(0, 2)= (float)p[2]; projectionOut(0, 3)= (float)p[3];
-        projectionOut(1, 0)= (float)p[4]; projectionOut(1, 1)= (float)p[5]; projectionOut(1, 2)= (float)p[6]; projectionOut(1, 3)= (float)p[7]; 
-        projectionOut(2, 0)= (float)p[8]; projectionOut(2, 1)= (float)p[9]; projectionOut(2, 2)= (float)p[10]; projectionOut(2, 3)= (float)p[11];
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
 static bool computeTrackerRelativeLightBarProjection(
     const PSVRTrackingShape *tracking_shape,
     const PSVRVideoFrameSection section,
@@ -2079,110 +1950,4 @@ cv::Point2f computeSafeCenterOfMassForContour(const t_opencv_contour_type &conto
     }
 
     return massCenter;
-}
-
-// http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToAngle/index.htm
-static void commonDeviceOrientationToOpenCVRodrigues(
-    const PSVRQuatf &orientation,
-    cv::Mat &rvec)
-{
-    double qw= clampf(orientation.w, -1.0, 1.0);
-    double angle = 2.0 * acos(qw);
-    double axis_normalizer = sqrt(1.0 - qw*qw);
-
-    if (axis_normalizer > k_real_epsilon) 
-    {
-        rvec.at<double>(0) = angle * (orientation.x / axis_normalizer);
-        rvec.at<double>(1) = angle * (orientation.y / axis_normalizer);
-        rvec.at<double>(2) = angle * (orientation.z / axis_normalizer);
-    }
-    else
-    {
-        // Angle is either 0 or 360,
-        // which is a rotation no-op so we are free to pick any axis we want
-        rvec.at<double>(0) = angle; 
-        rvec.at<double>(1) = 0.0;
-        rvec.at<double>(2) = 0.0;
-    }
-}
-
-static void openCVRodriguesToAngleAxis(
-    const cv::Mat &rvec,
-    float &axis_x, float &axis_y, float &axis_z, float &radians)
-{
-    const float r_x = static_cast<float>(rvec.at<double>(0));
-    const float r_y = static_cast<float>(rvec.at<double>(1));
-    const float r_z = static_cast<float>(rvec.at<double>(2));
-    
-    radians = sqrtf(r_x*r_x + r_y*r_y + r_z*r_z);
-
-    axis_x= safe_divide_with_default(r_x, radians, 1.f);
-    axis_y= safe_divide_with_default(r_y, radians, 0.f);
-    axis_z= safe_divide_with_default(r_z, radians, 0.f);
-}
-
-// http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToEuler/index.htm
-// NOTE: This code has the X and Z axis flipped from the code in the link
-// because I consider rotation about the X-axis pitch and the Z-axis roll
-// whereas the original code had the opposite.
-// Also they refer to yaw as "heading", pitch as "attitude", and roll ""
-static void angleAxisVectorToEulerAngles(
-    const float axis_x, const float axis_y, const float axis_z, const float radians,
-    float &yaw, float &pitch, float &roll)
-{
-    float s= sinf(radians);
-    float c= cosf(radians);
-    float t= 1.f-c;
-
-    if ((axis_x*axis_y*t + axis_z*s) > 0.998) 
-    {
-        // north pole singularity detected
-        yaw = 2*atan2f(axis_z*sinf(radians/2), cosf(radians/2));
-        pitch = k_real_half_pi;
-        roll = 0;
-    }
-    else if ((axis_x*axis_y*t + axis_z*s) < -0.998) 
-    { 
-        // south pole singularity detected
-        yaw = -2*atan2(axis_z*sinf(radians/2), cosf(radians/2));
-        pitch = -k_real_half_pi;
-        roll = 0;
-    }
-    else
-    {
-        yaw = atan2f(axis_y*s - axis_x*axis_z*t, 1.f - (axis_y*axis_y + axis_z*axis_z)*t);
-        pitch = asinf(axis_z*axis_y*t + axis_x*s) ;
-        roll = atan2f(axis_z*s - axis_x*axis_y*t , 1.f - (axis_x*axis_x + axis_z*axis_z)*t);
-    }
-}
-
-static void angleAxisVectorToCommonDeviceOrientation(
-    const float axis_x, const float axis_y, const float axis_z, const float radians,
-    PSVRQuatf &orientation)
-{
-    if (!is_nearly_zero(radians))
-    {
-        const float sin_theta_over_two = sinf(radians * 0.5f);
-        const float w = cosf(radians * 0.5f);
-        const float x = axis_x * sin_theta_over_two;
-        const float y = axis_y * sin_theta_over_two;
-        const float z = axis_z * sin_theta_over_two;
-        const float length = sqrtf(w*w + x*x + y*y + z*z);
-
-        if (length > k_normal_epsilon)
-        {
-            orientation.w = w / length;
-            orientation.x = x / length;
-            orientation.y = y / length;
-            orientation.z = z / length;
-        }
-        else
-        {
-            orientation= *k_PSVR_quaternion_identity;
-        }
-    }
-    else
-    {
-        orientation= *k_PSVR_quaternion_identity;
-    }
 }

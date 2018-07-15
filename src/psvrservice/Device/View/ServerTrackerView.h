@@ -6,12 +6,19 @@
 #include "PSVRServiceInterface.h"
 #include <vector>
 
+// -- constants -----
+
 // -- pre-declarations -----
 namespace PSVRProtocol
 {
     class Response_ResultTrackerSettings;
     class TrackingColorPreset;
 };
+
+namespace cv
+{
+	class Mat;
+}
 
 // -- declarations -----
 class ServerTrackerView : public ServerDeviceView, public ITrackerListener
@@ -33,6 +40,7 @@ public:
     void stopSharedMemoryVideoStream();
 
     IDeviceInterface* getDevice() const override {return m_device;}
+	ITrackerInterface* getTrackerDevice() const { return static_cast<ITrackerInterface *>(getDevice()); }
 
     // Returns what type of tracker this tracker view represents
     CommonSensorState::eDeviceType getTrackerDeviceType() const;
@@ -77,6 +85,7 @@ public:
 		const PSVRTrackingShape *tracking_shape,
 		PSVRTrackingProjection *out_projection);
 
+	cv::Mat *getDebugDrawingBuffer(PSVRVideoFrameSection section) const;
 	void drawPoseProjection(const PSVRTrackingProjection *projection) const;
     
     std::vector<PSVRVector2f> projectTrackerRelativePositions(
@@ -134,6 +143,7 @@ private:
 	int m_lastVideoFrameIndexPolled;
     class OpenCVBufferState *m_opencv_buffer_state[MAX_PROJECTION_COUNT];
     ITrackerInterface *m_device;
+
 };
 
 #endif // SERVER_TRACKER_VIEW_H

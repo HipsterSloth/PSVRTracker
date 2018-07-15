@@ -18,6 +18,7 @@
 
 //-- Tracker Manager Config -----
 const int TrackerManagerConfig::CONFIG_VERSION = 2;
+PSMTrackerDebugFlags TrackerManagerConfig::debug_flags= PSMTrackerDebugFlags_none;
 
 TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
@@ -47,7 +48,6 @@ TrackerManagerConfig::writeToJSON()
 {
     configuru::Config pt{
         {"version", TrackerManagerConfig::CONFIG_VERSION},
-        //{"optical_tracking_timeout", optical_tracking_timeout},
         {"use_bgr_to_hsv_lookup_table", use_bgr_to_hsv_lookup_table},
         {"tracker_sleep_ms", tracker_sleep_ms},
         {"min_valid_projection_area", min_valid_projection_area},	
@@ -56,7 +56,8 @@ TrackerManagerConfig::writeToJSON()
         {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
         {"default_tracker_profile.exposure", default_tracker_profile.exposure},
         {"default_tracker_profile.gain", default_tracker_profile.gain},
-        {"global_forward_degrees", global_forward_degrees}
+        {"global_forward_degrees", global_forward_degrees},
+		{"debug_show_tracking_model", (TrackerManagerConfig::debug_flags & PSMTrackerDebugFlags_trackingModel) > 0}
     };
 
     writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
@@ -82,6 +83,13 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
         default_tracker_profile.gain = pt.get_or<float>("default_tracker_profile.gain", 32);
 
         global_forward_degrees= pt.get_or<float>("global_forward_degrees", global_forward_degrees);
+
+		unsigned int debug_flags= PSMTrackerDebugFlags_none;
+		if (pt.get_or<bool>("debug_show_tracking_model", false))
+		{
+			debug_flags|= PSMTrackerDebugFlags_trackingModel;
+		}
+		TrackerManagerConfig::debug_flags= (PSMTrackerDebugFlags)debug_flags;
 
         readColorPropertyPresetTable(pt, &default_tracker_profile.color_preset_table);
     }

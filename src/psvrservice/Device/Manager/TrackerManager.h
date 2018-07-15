@@ -45,6 +45,10 @@ public:
     virtual const configuru::Config writeToJSON();
     virtual void readFromJSON(const configuru::Config &pt);
 
+	static PSMTrackerDebugFlags debug_flags;
+	static bool are_debug_flags_enabled(PSMTrackerDebugFlags mask) 
+	{ return (debug_flags & mask) > 0; }
+
     long version;
     //int optical_tracking_timeout;
 	int tracker_sleep_ms;
@@ -111,7 +115,7 @@ protected:
 	int getListUpdatedResponseType() override;
 
 private:
-    std::deque<PSVRTrackingColorType> m_available_color_ids;
+	std::deque<PSVRTrackingColorType> m_available_color_ids;
     TrackerManagerConfig cfg;
     bool m_tracker_list_dirty;
 };

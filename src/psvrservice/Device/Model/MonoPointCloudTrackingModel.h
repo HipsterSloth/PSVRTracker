@@ -1,15 +1,15 @@
-#ifndef CLOUD_TRACKING_MODEL_INTERFACE_H
-#define CLOUD_TRACKING_MODEL_INTERFACE_H
+#ifndef MONO_POINT_CLOUD_TRACKING_MODEL_INTERFACE_H
+#define MONO_POINT_CLOUD_TRACKING_MODEL_INTERFACE_H
 
 // -- include -----
 #include "ShapeTrackingModelInterface.h"
 
 // -- public interface -----
-class PointCloudTrackingModel : public IShapeTrackingModel
+class MonoPointCloudTrackingModel : public IShapeTrackingModel
 {
 public:
-	PointCloudTrackingModel();
-	virtual ~PointCloudTrackingModel();
+	MonoPointCloudTrackingModel();
+	virtual ~MonoPointCloudTrackingModel();
 
     bool init(PSVRTrackingShape *tracking_shape) override;
 	bool applyShapeProjectionFromTracker(
@@ -22,9 +22,7 @@ public:
 	bool getPointCloudProjectionShapeCorrelation(PSVRTrackingProjection &projection) const;
 
 private:
-	class IShapeTrackingModel *m_currentModel;
-    class MonoPointCloudTrackingModel *m_monoModel;
-	class StereoPointCloudTrackingModel *m_stereoModel;
+    struct MonoPointCloudTrackingModelState *m_state;
 };
 
-#endif // POINT_CLOUD_TRACKING_MODEL_INTERFACE_H
+#endif // MONO_POINT_CLOUD_TRACKING_MODEL_INTERFACE_H

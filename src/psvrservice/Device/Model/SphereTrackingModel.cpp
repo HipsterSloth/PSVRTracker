@@ -42,6 +42,7 @@ bool SphereTrackingModel::init(PSVRTrackingShape *tracking_shape)
 }
 
 bool SphereTrackingModel::applyShapeProjectionFromTracker(
+	const std::chrono::time_point<std::chrono::high_resolution_clock> &now,
     const class ServerTrackerView *tracker_view,
     const PSVRTrackingProjection &projection)
 {

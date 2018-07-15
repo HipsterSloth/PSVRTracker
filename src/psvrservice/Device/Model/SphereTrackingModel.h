@@ -13,6 +13,7 @@ public:
 
     bool init(PSVRTrackingShape *tracking_shape) override;
 	bool applyShapeProjectionFromTracker(
+		const std::chrono::time_point<std::chrono::high_resolution_clock> &now,
         const class ServerTrackerView *tracker_view, 
         const PSVRTrackingProjection &projection) override;
     bool getShapeOrientation(PSVRQuatf &out_orientation) const override;

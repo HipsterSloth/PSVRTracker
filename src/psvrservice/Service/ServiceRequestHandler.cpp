@@ -556,6 +556,20 @@ PSVRResult ServiceRequestHandler::reload_tracker_settings(
     return result;
 }
 
+PSVRResult ServiceRequestHandler::get_tracker_debug_flags(PSMTrackerDebugFlags *out_flags) const
+{
+	*out_flags= TrackerManagerConfig::debug_flags;
+
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::set_tracker_debug_flags(PSMTrackerDebugFlags flags)
+{
+	TrackerManagerConfig::debug_flags= flags;
+
+	return PSVRResult_Success;
+}
+
 // -- hmd requests -----
 ServerHMDView *ServiceRequestHandler::get_hmd_view_or_null(PSVRHmdID hmd_id)
 {

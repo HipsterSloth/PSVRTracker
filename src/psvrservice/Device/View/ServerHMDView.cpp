@@ -333,6 +333,7 @@ void ServerHMDView::notifyTrackerDataReceived(ServerTrackerView* tracker)
             // Apply the projection to the tracking model 
             // to compute a tracker relative pose
             if (shape_tracking_model->applyShapeProjectionFromTracker(
+					now,
                     tracker,
                     newTrackerProjection) == true)
             {

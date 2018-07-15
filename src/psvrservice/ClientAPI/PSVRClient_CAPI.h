@@ -48,14 +48,6 @@ typedef enum
 	PSVRTracker_GenericStereoCamera
 } PSVRTrackerType;
 
-/// The list of possible sub sections to extract from a video frame
-typedef enum
-{
-    PSVRVideoFrameSection_Left                 = 0, ///< The left frame from a stereo camera
-    PSVRVideoFrameSection_Right                = 1, ///< The right frame from a stereo camera
-    PSVRVideoFrameSection_Primary              = 0  ///< The only frame from a stereo camera
-} PSVRVideoFrameSection;
-
 /// The list of possible HMD types tracked by PSVRService
 typedef enum
 {
@@ -82,6 +74,13 @@ typedef enum
     PSMStreamFlags_includeRawTrackerData = 0x10,		///< Add raw optical tracking projection info
 	PSMStreamFlags_disableROI = 0x20,					///< Disable Region-of-Interest tracking optimization
 } PSMDeviceDataStreamFlags;
+
+/// Tracking Debug flags
+typedef enum
+{
+    PSMTrackerDebugFlags_none = 0x00,						///< Turn off all
+    PSMTrackerDebugFlags_trackingModel = 0x01,				///< Show tracking model debugging
+} PSMTrackerDebugFlags;
 
 // Tracker State
 //--------------
@@ -645,6 +644,18 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerVideoFrameBuffer(PSVRTrackerID t
 	\return PSVRResult_Success if the tracker state is valid
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerFrustum(PSVRTrackerID tracker_id, PSVRFrustum *out_frustum);
+
+/** \brief Get the global debug flags for the tracker system
+	\param[out] debug_flags Bitmask of currently set debug flags
+	\return PSVRResult_Success if the debug flags could be fetched
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerDebugFlags(PSMTrackerDebugFlags *out_debug_flags);
+
+/** \brief Set the global debug flags for the tracker system
+	\param  debug_flags Bitmask of debug flags to get
+	\return PSVRResult_Success if the debug flags could be set
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerDebugFlags(PSMTrackerDebugFlags debug_flags);
 
 // HMD Pool
 /** \brief Fetches the \ref PSVRHeadMountedDisplay data for the given HMD

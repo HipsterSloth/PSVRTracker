@@ -1,6 +1,8 @@
 #include "MathTypeConversion.h"
 #include "MathGLM.h"
 
+#include "opencv2/core/eigen.hpp"
+
 //-- methods -----
 // PSVR types to PSVR Types
 PSVRQuatf PSVR_matrix3f_to_PSVR_quatf(const PSVRMatrix3f &m)
@@ -246,6 +248,23 @@ cv_vec3d_to_PSVR_vector3d(const cv::Vec3d &in)
     return {in(0), in(1), in(2)};
 }
 
+// OpenCV types to Eigen types
+Eigen::Quaterniond cv_rodrigues_vector_to_eigen_quatd(const cv::Mat &in)
+{
+	cv::Mat R;
+	cv::Rodrigues(in, R);
+
+    Eigen::Matrix3d mat;
+    cv::cv2eigen(R, mat);
+
+    return Eigen::Quaterniond(mat);
+}
+
+Eigen::Vector3d cv_vector3d_to_eigen_vector3d(const cv::Mat &in)
+{
+	return Eigen::Vector3d(in.at<double>(0), in.at<double>(1), in.at<double>(2));
+}
+
 // GLM Types to Eigen types
 Eigen::Matrix3f glm_mat3_to_eigen_matrix3f(const glm::mat3 &m)
 {
@@ -372,4 +391,28 @@ PSVRVector3f eigen_vector3f_to_PSVR_vector3f(const Eigen::Vector3f &v)
 PSVRQuatf eigen_quaternionf_to_PSVR_quatf(const Eigen::Quaternionf &q)
 {
     return {q.w(), q.x(), q.y(), q.z()};
+}
+
+// Eigen types to OpenCV types
+cv::Mat eigen_quatd_to_cv_rodrigues_vector(const Eigen::Quaterniond &in)
+{
+	Eigen::Matrix3d mat= in.matrix();
+
+	cv::Mat R;
+	cv::eigen2cv(mat, R);
+
+	cv::Mat rvec;
+	cv::Rodrigues(R, rvec);
+
+	return rvec;
+}
+
+cv::Mat eigen_vector3d_to_cv_vector3d(const Eigen::Vector3d &in)
+{
+	cv::Mat tvec(3, 1, cv::DataType<double>::type);
+	tvec.at<double>(0)= in.x();
+	tvec.at<double>(1)= in.y();
+	tvec.at<double>(2)= in.z();
+
+	return tvec;
 }

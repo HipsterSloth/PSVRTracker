@@ -17,6 +17,11 @@ float clampf(float x, float lo, float hi)
 	return fminf(fmaxf(x, lo), hi);
 }
 
+double clampd(double x, double lo, double hi)
+{
+	return fmin(fmax(x, lo), hi);
+}
+
 float clampf01(float x)
 {
 	return clampf(x, 0.f, 1.f);

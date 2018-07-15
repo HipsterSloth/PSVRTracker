@@ -14,6 +14,7 @@ public:
 
     virtual bool init(PSVRTrackingShape *TrackingShape) = 0;
 	virtual bool applyShapeProjectionFromTracker(
+		const std::chrono::time_point<std::chrono::high_resolution_clock> &now,
         const class ServerTrackerView *tracker_view, 
         const PSVRTrackingProjection &projection) = 0;
     virtual bool getShapeOrientation(PSVRQuatf &out_orientation) const = 0;

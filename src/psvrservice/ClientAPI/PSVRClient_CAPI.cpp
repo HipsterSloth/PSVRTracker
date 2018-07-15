@@ -435,6 +435,31 @@ PSVRResult PSVR_GetTrackerFrustum(PSVRTrackerID tracker_id, PSVRFrustum *out_fru
     return result;
 }
 
+PSVRResult PSVR_GetTrackerDebugFlags(PSMTrackerDebugFlags *out_debug_flags)
+{
+    PSVRResult result= PSVRResult_Error;
+	assert(out_debug_flags != nullptr);
+
+    if (g_psvr_service != nullptr)
+    {
+		result= g_psvr_service->getRequestHandler()->get_tracker_debug_flags(out_debug_flags);
+	}
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerDebugFlags(PSMTrackerDebugFlags debug_flags)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr)
+    {
+		result= g_psvr_service->getRequestHandler()->set_tracker_debug_flags(debug_flags);
+	}
+
+    return result;
+}
+
 /// HMD Pool
 PSVRHeadMountedDisplay *PSVR_GetHmd(PSVRHmdID hmd_id)
 {

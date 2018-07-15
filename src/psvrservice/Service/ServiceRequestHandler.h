@@ -162,6 +162,8 @@ public:
     PSVRResult set_tracker_intrinsics(const PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *tracker_intrinsics);
     PSVRResult get_tracking_space_settings(PSVRTrackingSpace *out_tracking_space);
     PSVRResult reload_tracker_settings(const PSVRTrackerID tracker_id);
+	PSVRResult get_tracker_debug_flags(PSMTrackerDebugFlags *out_flags) const;
+	PSVRResult set_tracker_debug_flags(PSMTrackerDebugFlags flags);
 	
     // -- hmd requests -----
     ServerHMDView *get_hmd_view_or_null(PSVRHmdID hmd_id);
