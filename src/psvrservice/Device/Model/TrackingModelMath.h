@@ -22,12 +22,12 @@ bool compute_all_possible_tri_index_permutations(
 
 bool compute_all_visible_tri_index_combinations(
     const std::vector<Eigen::Vector3f> &points,
-    const Eigen::Vector3f &center,
+    const std::vector<Eigen::Vector3f> &normals,
     std::vector<t_tri_index_tuple> &out_triangle_indices);
 
 bool compute_all_visible_tri_index_permutations(
     const std::vector<Eigen::Vector3f> &points,
-    const Eigen::Vector3f &center,
+    const std::vector<Eigen::Vector3f> &normals,
 	std::vector<t_tri_index_tuple> &out_tri_index_permutations);
 
 bool compute_all_possible_triangle_transforms_for_point_cloud(
@@ -37,7 +37,7 @@ bool compute_all_possible_triangle_transforms_for_point_cloud(
 
 bool compute_all_visible_triangle_transforms_for_point_cloud(
     const std::vector<Eigen::Vector3f> &points,
-    const Eigen::Vector3f &center,
+    const std::vector<Eigen::Vector3f> &normals,
     std::vector<t_tri_index_tuple> &out_triangle_indices,
     std::vector<Eigen::Affine3f> &out_triangle_basis_list);
 

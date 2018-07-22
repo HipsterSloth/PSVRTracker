@@ -188,7 +188,6 @@ typedef struct
     PSVRTrackingProjectionData projections[MAX_PROJECTION_COUNT];
     PSVRTrackingProjectionCount projection_count;
     PSVRProjectionShapeType shape_type;
-	bool is_video_mirrored;
 } PSVRTrackingProjection;
 
 typedef enum 
@@ -214,6 +213,7 @@ typedef struct
         } lightbar;
 		struct {
 			PSVRVector3f points[MAX_POINT_CLOUD_POINT_COUNT];
+			PSVRVector3f normals[MAX_POINT_CLOUD_POINT_COUNT];
 			int point_count;
 		} pointcloud;
     } shape;

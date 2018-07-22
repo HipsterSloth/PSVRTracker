@@ -715,6 +715,17 @@ MorpheusHMD::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
     outTrackingShape.shape.pointcloud.points[7] = {5.65f, -1.07f, 27.53f}; // 7
     outTrackingShape.shape.pointcloud.points[8] = {-5.65f, -1.07f, 27.53f}; // 8
 	outTrackingShape.shape.pointcloud.point_count = 9;
+
+	//###HipsterSloth $HACK Cheezy way to approximate normals on PSVR headset LEDs
+	PSVRVector3f center= {0.f, 0.f, 12.f}; 
+    for (int index = 0; index < 9; ++index)
+    {
+		PSVRVector3f &point= outTrackingShape.shape.pointcloud.points[index];
+		PSVRVector3f normal= PSVR_Vector3fSubtract(&point, &center);
+
+		outTrackingShape.shape.pointcloud.normals[index]=
+			PSVR_Vector3fNormalizeWithDefault(&normal, k_PSVR_float_vector3_zero);
+	}
 }
 
 bool 

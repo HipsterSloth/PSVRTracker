@@ -37,6 +37,7 @@ struct StereoPointCloudTrackingModelState
 
     Eigen::Vector3dMatrix icpModelVertices;
     std::vector<Eigen::Vector3f> modelVertices;
+	std::vector<Eigen::Vector3f> modelNormals;
     std::vector<Eigen::Affine3f> modelTriangleBasisList;
     std::vector<t_tri_index_tuple> modelTriangleIndices;
 
@@ -102,15 +103,18 @@ bool StereoPointCloudTrackingModel::init(PSVRTrackingShape *tracking_shape)
         m_state->modelToSourceTransform = Eigen::Affine3d::Identity();
 
         m_state->modelVertices.resize(model_point_count);
+		m_state->modelNormals.resize(model_point_count);
         for (int source_index = 0; source_index < model_point_count; ++source_index)
         {
             const PSVRVector3f &point= tracking_shape->shape.pointcloud.points[source_index];
+			const PSVRVector3f &normal= tracking_shape->shape.pointcloud.normals[source_index];
 
             m_state->modelVertices[source_index]= Eigen::Vector3f(point.x, point.y, point.z);
+			m_state->modelNormals[source_index]= Eigen::Vector3f(normal.x, normal.y, normal.z);
         }
         compute_all_visible_triangle_transforms_for_point_cloud(
             m_state->modelVertices,
-            Eigen::Vector3f(0.f, 0.f, 12.f), //###HipsterSloth $HACK specific to PSVR headset
+            m_state->modelNormals,
             m_state->modelTriangleIndices, 
             m_state->modelTriangleBasisList);
 

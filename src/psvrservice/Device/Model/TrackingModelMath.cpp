@@ -68,7 +68,7 @@ bool compute_all_possible_triangle_transforms_for_point_cloud(
 
 bool compute_all_visible_tri_index_combinations(
     const std::vector<Eigen::Vector3f> &points,
-    const Eigen::Vector3f &center,
+    const std::vector<Eigen::Vector3f> &normals,
     std::vector<t_tri_index_tuple> &out_triangle_indices)
 {
     const int point_count= static_cast<int>(points.size());
@@ -81,17 +81,17 @@ bool compute_all_visible_tri_index_combinations(
     for (int p0_index = 0; p0_index < point_count; ++p0_index)
     {
         const Eigen::Vector3f &p0= points[p0_index];
-        const Eigen::Vector3f n0= p0 - center;
+        const Eigen::Vector3f n0= normals[p0_index];
 
         for (int p1_index = p0_index + 1; p1_index < point_count; ++p1_index)
         {
             const Eigen::Vector3f &p1= points[p1_index];
-            const Eigen::Vector3f n1= p1 - center;
+            const Eigen::Vector3f n1= normals[p1_index];
 
             for (int p2_index = p1_index + 1; p2_index < point_count; ++p2_index)
             {
                 const Eigen::Vector3f &p2= points[p2_index];
-                const Eigen::Vector3f n2= p2 - center;
+                const Eigen::Vector3f n2= normals[p2_index];
 
                 if (n0.dot(n1) >= 0 && n0.dot(n2) >= 0)
                 {
@@ -106,11 +106,11 @@ bool compute_all_visible_tri_index_combinations(
 
 bool compute_all_visible_tri_index_permutations(
     const std::vector<Eigen::Vector3f> &points,
-    const Eigen::Vector3f &center,
+    const std::vector<Eigen::Vector3f> &normals,
 	std::vector<t_tri_index_tuple> &out_triangle_indices)
 {
 	std::vector<t_tri_index_tuple> triangle_combinations;
-	if (compute_all_visible_tri_index_combinations(points, center, triangle_combinations))
+	if (compute_all_visible_tri_index_combinations(points, normals, triangle_combinations))
 	{
 		for (const t_tri_index_tuple &combo : triangle_combinations)
 		{
@@ -130,13 +130,13 @@ bool compute_all_visible_tri_index_permutations(
 
 bool compute_all_visible_triangle_transforms_for_point_cloud(
     const std::vector<Eigen::Vector3f> &points,
-    const Eigen::Vector3f &center,
+    const std::vector<Eigen::Vector3f> &normals,
     std::vector<t_tri_index_tuple> &out_triangle_indices,
     std::vector<Eigen::Affine3f> &out_triangle_basis_list)
 {
     out_triangle_basis_list.clear();
 
-	if (compute_all_visible_tri_index_combinations(points, center, out_triangle_indices))
+	if (compute_all_visible_tri_index_combinations(points, normals, out_triangle_indices))
 	{
 		compute_triangle_transforms_for_triangles(out_triangle_indices, points, out_triangle_basis_list);
 
