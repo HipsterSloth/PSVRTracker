@@ -50,24 +50,39 @@ static const char *k_video_display_mode_names[] = {
     "Grayscale"
 };
 
-#define PATTERN_W 9 // Internal corners
-#define PATTERN_H 7
-#define CORNER_COUNT (PATTERN_W*PATTERN_H)
-#define DEFAULT_SQUARE_LEN_MM 22
-#define DESIRED_CAPTURE_BOARD_COUNT 12
+enum eCalibrationPatternType
+{
+    mode_chessboard,
+    mode_circlegrid,
 
-#define CIRCLE_PATTERN_W 4
-#define CIRCLE_PATTERN_H 11
-#define CIRCLE_COUNT (CIRCLE_PATTERN_W*CIRCLE_PATTERN_H)
+    MAX_CALIBRATION_PATTERN_TYPES
+};
+
+static const char *k_calibration_pattern_names[] = {
+    "Chessboard",
+    "Circle Grid",
+};
+
+#define CHESSBOARD_PATTERN_W 9 // Internal corners
+#define CHESSBOARD_PATTERN_H 7
+#define CHESSBOARD_CORNER_COUNT (CHESSBOARD_PATTERN_W*CHESSBOARD_PATTERN_H)
+#define DEFAULT_SQUARE_LEN_MM 22
+
+#define CIRCLEGRID_PATTERN_W 4
+#define CIRCLEGRID_PATTERN_H 11
+#define CIRCLE_COUNT (CIRCLEGRID_PATTERN_W*CIRCLEGRID_PATTERN_H)
 #define DEFAULT_CIRCLE_DIAMETER_MM 1.5
+#define DEFAULT_CIRCLE_SPACING_MM  2.0
 
 #define BOARD_MOVED_PIXEL_DIST 5
-#define BOARD_MOVED_ERROR_SUM BOARD_MOVED_PIXEL_DIST*CORNER_COUNT
+#define BOARD_MOVED_ERROR_SUM BOARD_MOVED_PIXEL_DIST*CHESSBOARD_CORNER_COUNT
 
 #define BOARD_NEW_LOCATION_PIXEL_DIST 100 
-#define BOARD_NEW_LOCATION_ERROR_SUM BOARD_NEW_LOCATION_PIXEL_DIST*CORNER_COUNT
+#define BOARD_NEW_LOCATION_ERROR_SUM BOARD_NEW_LOCATION_PIXEL_DIST*CHESSBOARD_CORNER_COUNT
 
 #define STRAIGHT_LINE_TOLERANCE 10 // error tolerance in pixels
+
+#define DESIRED_CAPTURE_BOARD_COUNT 12
 
 //-- typedefs -----
 namespace cv
@@ -90,7 +105,7 @@ public:
         , bgrUndistortBuffer(nullptr)
         , bgrGsUndistortBuffer(nullptr)
         // Chess board computed state
-        , capturedBoardCount(0)
+        , capturedPatternCount(0)
         , lastValidImagePoints(0)
         , currentImagePoints(0)
         , bCurrentImagePointsValid(false)
@@ -133,7 +148,7 @@ public:
 
     void resetCaptureState()
     {
-        capturedBoardCount= 0;
+        capturedPatternCount= 0;
         bCurrentImagePointsValid= false;
         currentImagePoints.clear();
         lastValidImagePoints.clear();
@@ -189,7 +204,7 @@ public:
     {        
         bool bAppendNewChessBoard= false;
 
-        if (capturedBoardCount < DESIRED_CAPTURE_BOARD_COUNT)
+        if (capturedPatternCount < DESIRED_CAPTURE_BOARD_COUNT)
         {
             // Clear out the previous images points
             currentImagePoints.clear();
@@ -197,7 +212,7 @@ public:
             // Find chessboard corners:
             if (cv::findChessboardCorners(
                     *gsSourceBuffer, 
-                    cv::Size(PATTERN_W, PATTERN_H), 
+                    cv::Size(CHESSBOARD_PATTERN_W, CHESSBOARD_PATTERN_H), 
                     currentImagePoints, // output corners
                     cv::CALIB_CB_ADAPTIVE_THRESH 
                     + cv::CALIB_CB_FILTER_QUADS 
@@ -214,7 +229,7 @@ public:
 
                 // Append the new chessboard corner pixels into the image_points matrix
                 // Append the corresponding 3d chessboard corners into the object_points matrix
-                if (currentImagePoints.size() == CORNER_COUNT) 
+                if (currentImagePoints.size() == CHESSBOARD_CORNER_COUNT) 
                 {
                     bCurrentImagePointsValid= false;
 
@@ -222,7 +237,7 @@ public:
                     {
                         float error_sum= 0.f;
 
-                        for (int corner_index= 0; corner_index < CORNER_COUNT; ++corner_index)
+                        for (int corner_index= 0; corner_index < CHESSBOARD_CORNER_COUNT; ++corner_index)
                         {
                             float squared_error= static_cast<float>(cv::norm(currentImagePoints[corner_index] - lastValidImagePoints[corner_index]));
 
@@ -243,9 +258,9 @@ public:
                     {
                         // Keep track of the corners of all of the chessboards we sample
                         quadList.push_back(currentImagePoints[0]);
-                        quadList.push_back(currentImagePoints[PATTERN_W - 1]);
-                        quadList.push_back(currentImagePoints[CORNER_COUNT-1]);
-                        quadList.push_back(currentImagePoints[CORNER_COUNT-PATTERN_W]);                        
+                        quadList.push_back(currentImagePoints[CHESSBOARD_PATTERN_W - 1]);
+                        quadList.push_back(currentImagePoints[CHESSBOARD_CORNER_COUNT-1]);
+                        quadList.push_back(currentImagePoints[CHESSBOARD_CORNER_COUNT-CHESSBOARD_PATTERN_W]);                        
 
                         // Append the new images points and object points
                         imagePointsList.push_back(currentImagePoints);
@@ -254,7 +269,7 @@ public:
                         lastValidImagePoints= currentImagePoints;
 
                         // Keep track of how many boards have been captured so far
-                        capturedBoardCount++;
+                        capturedPatternCount++;
 
                         bAppendNewChessBoard= true;
                     }
@@ -269,16 +284,16 @@ public:
     {        
         bool bAppendNewChessBoard= false;
 
-        if (capturedBoardCount < DESIRED_CAPTURE_BOARD_COUNT)
+        if (capturedPatternCount < DESIRED_CAPTURE_BOARD_COUNT)
         {
             // Clear out the previous images points
             currentImagePoints.clear();
 
-            // Find chessboard corners:
+            // Find circle grid centers:
             if (cv::findCirclesGrid(
                     *gsSourceBuffer, 
-                    cv::Size(CIRCLE_PATTERN_W, CIRCLE_PATTERN_H), 
-                    currentImagePoints, // output corners
+                    cv::Size(CIRCLEGRID_PATTERN_W, CIRCLEGRID_PATTERN_H), 
+                    currentImagePoints, // output centers
                     cv::CALIB_CB_ASYMMETRIC_GRID))
             {
                 // Append the new chessboard corner pixels into the image_points matrix
@@ -310,11 +325,11 @@ public:
                     // If it's a valid new location, append it to the board list
                     if (bCurrentImagePointsValid && appWantsAppend)
                     {
-                        // Keep track of the corners of all of the chessboards we sample
+                        // Keep track of the corners of all of the circle grids we sample
                         quadList.push_back(currentImagePoints[0]);
-                        quadList.push_back(currentImagePoints[CIRCLE_PATTERN_W - 1]);
+                        quadList.push_back(currentImagePoints[CIRCLEGRID_PATTERN_W - 1]);
                         quadList.push_back(currentImagePoints[CIRCLE_COUNT-1]);
-                        quadList.push_back(currentImagePoints[CIRCLE_COUNT-CIRCLE_PATTERN_W]);                        
+                        quadList.push_back(currentImagePoints[CIRCLE_COUNT-CIRCLEGRID_PATTERN_W]);                        
 
                         // Append the new images points and object points
                         imagePointsList.push_back(currentImagePoints);
@@ -323,7 +338,7 @@ public:
                         lastValidImagePoints= currentImagePoints;
 
                         // Keep track of how many boards have been captured so far
-                        capturedBoardCount++;
+                        capturedPatternCount++;
 
                         bAppendNewChessBoard= true;
                     }
@@ -332,43 +347,6 @@ public:
         }
 
         return bAppendNewChessBoard;
-    }
-
-    static bool areGridLinesStraight(const std::vector<cv::Point2f> &corners)
-    {
-        assert(corners.size() == CORNER_COUNT);
-        bool bAllLinesStraight= true;
-
-        for (int line_index= 0; bAllLinesStraight && line_index < PATTERN_H; ++line_index)
-        {
-            int start_index= line_index*PATTERN_W;
-            int end_index= start_index + PATTERN_W - 1;
-
-            cv::Point2f line_start= corners[start_index];
-            cv::Point2f line_end= corners[end_index];
-
-            for (int point_index= start_index + 1; bAllLinesStraight && point_index < end_index; ++point_index)
-            {
-                cv::Point2f point= corners[point_index];
-
-                if (distanceToLine(line_start, line_end, point) > STRAIGHT_LINE_TOLERANCE)
-                {
-                    bAllLinesStraight= false;
-                }
-            }
-        }
-
-        return bAllLinesStraight;
-    }
-
-    static float distanceToLine(cv::Point2f line_start, cv::Point2f line_end, cv::Point2f point)
-    {
-        const auto start_to_end= line_end - line_start;
-        const auto start_to_point= point - line_start;
-
-        float area = static_cast<float>(start_to_point.cross(start_to_end));
-        float line_length= static_cast<float>(cv::norm(start_to_end));
-        return fabsf(safe_divide_with_default(area, line_length, 0.f));
     }
 
     void rebuildDistortionMap()
@@ -395,7 +373,7 @@ public:
     cv::Mat *bgrUndistortBuffer;
 
     // Chess board computed state
-    int capturedBoardCount;
+    int capturedPatternCount;
     std::vector<cv::Point2f> lastValidImagePoints;
     std::vector<cv::Point2f> currentImagePoints;
     bool bCurrentImagePointsValid;
@@ -418,9 +396,13 @@ class OpenCVMonoState
 public:
     OpenCVMonoState(const PSVRClientTrackerInfo &_trackerInfo)
         : m_videoDisplayMode(eVideoDisplayMode::mode_bgr)
+		, calibrationPatternType(eCalibrationPatternType::mode_circlegrid)
         , trackerInfo(_trackerInfo)
         , frameWidth(_trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_width)
         , frameHeight(_trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_height)
+		, squareLengthMM(DEFAULT_SQUARE_LEN_MM)
+		, circleSpacingMM(DEFAULT_CIRCLE_SPACING_MM)
+		, circleDiameterMM(DEFAULT_CIRCLE_DIAMETER_MM)
         , reprojectionError(0.0)
         , valid_new_calibration(false)
         , async_compute_task(nullptr)
@@ -502,18 +484,26 @@ public:
 		}
     }
 
-    void findNewChessBoards()
+    void findNewCalibrationPattern()
     {
         ImGuiIO io_state = ImGui::GetIO();
         const bool bWantsAppend= io_state.KeysDown[32];
 
-        m_opencv_section_state->findAndAppendNewChessBoard(bWantsAppend);
+		switch (calibrationPatternType)
+		{
+		case eCalibrationPatternType::mode_chessboard:
+			m_opencv_section_state->findAndAppendNewChessBoard(bWantsAppend);
+			break;
+		case eCalibrationPatternType::mode_circlegrid:
+			m_opencv_section_state->findAndAppendNewCircleGrid(bWantsAppend);
+			break;
+		}
     }
 
-    bool hasSampledAllChessBoards() const
+    bool hasSampledAllCalibrationPatterns() const
     {
         return
-            m_opencv_section_state->capturedBoardCount >= DESIRED_CAPTURE_BOARD_COUNT;
+            m_opencv_section_state->capturedPatternCount >= DESIRED_CAPTURE_BOARD_COUNT;
     }
 
     bool areCurrentImagePointsValid() const
@@ -525,7 +515,7 @@ public:
     float computeCalibrationProgress() const 
     {
         const float samplePercentage= 
-            static_cast<float>(m_opencv_section_state->capturedBoardCount) / static_cast<float>(DESIRED_CAPTURE_BOARD_COUNT);
+            static_cast<float>(m_opencv_section_state->capturedPatternCount) / static_cast<float>(DESIRED_CAPTURE_BOARD_COUNT);
 
         return samplePercentage;
     }
@@ -546,17 +536,47 @@ public:
         m_videoDisplayMode= mode_bgr;
     }
 
-    inline void calcBoardCornerPositions(const float square_length_mm, std::vector<cv::Point3f>& corners)
+    inline void calcChessBoardCornerPositions(const float square_length_mm, std::vector<cv::Point3f>& corners)
     {
         corners.clear();
         
-        for( int i = 0; i < PATTERN_H; ++i )
+        for( int i = 0; i < CHESSBOARD_PATTERN_H; ++i )
         {
-            for( int j = 0; j < PATTERN_W; ++j )
+            for( int j = 0; j < CHESSBOARD_PATTERN_W; ++j )
             {
-                corners.push_back(cv::Point3f(float(j*square_length_mm), float(i*square_length_mm), 0.f));
+                corners.push_back(cv::Point3f(float(j)*square_length_mm, float(i)*square_length_mm, 0.f));
             }
         }
+    }
+
+    inline void calcCircleGridCenterPositions(
+		const float grid_spacing_mm, 
+		const float diameter_mm, 
+		std::vector<cv::Point3f>& centers)
+    {
+		const int col_count= 2*CIRCLEGRID_PATTERN_W;
+		const int row_count= CIRCLEGRID_PATTERN_H;
+		const float radius_mm= diameter_mm / 2.f;
+        
+		centers.clear();        
+        for( int row = 0; row < row_count; ++row )
+        {
+            for( int col = 0; col < col_count; ++col )
+            {
+				const bool bRowIsEven= (row % 2) == 0;
+				const bool bColIsEven= (col % 2) == 0;
+
+				if ((bRowIsEven && !bColIsEven) || (!bRowIsEven && bColIsEven))
+				{
+					centers.push_back(
+						cv::Point3f(
+							float(col)*grid_spacing_mm + radius_mm, 
+							float(row)*grid_spacing_mm + radius_mm, 
+							0.f));
+				}
+            }
+        }
+		assert(centers.size() == CIRCLE_COUNT);
     }
 
     inline PSVRDistortionCoefficients cv_vec5_to_PSVR_distortion(const cv::Matx51d &cv_distortion_coeffs)
@@ -571,14 +591,13 @@ public:
         return distortion_coeffs;
     }
 
-    void computeCameraCalibration(
-        const float square_length_mm)
+    void computeCameraCalibration()
     {
         assert(async_compute_task == nullptr);
 
         async_task_completed= false;
-        async_compute_task = new std::thread([this, square_length_mm] { 
-            this->computeCameraCalibrationTask(square_length_mm); 
+        async_compute_task = new std::thread([this] { 
+            this->computeCameraCalibrationTask(); 
         });
     }
 
@@ -601,8 +620,7 @@ public:
         return bFetchSuccess;
     }
 
-    void computeCameraCalibrationTask(
-        const float square_length_mm)
+    void computeCameraCalibrationTask()
     {
         // Copy over the pre-existing tracker intrinsics
         async_task_result= trackerInfo.tracker_intrinsics.intrinsics.mono;
@@ -610,7 +628,18 @@ public:
         // Only need to calculate objectPointsList once,
         // then resize for each set of image points.
         std::vector<std::vector<cv::Point3f> > objectPointsList(1);
-        calcBoardCornerPositions(square_length_mm, objectPointsList[0]);
+
+		switch (calibrationPatternType)
+		{
+		case mode_chessboard:
+	        calcChessBoardCornerPositions(squareLengthMM, objectPointsList[0]);
+			break;
+		case mode_circlegrid:
+			calcCircleGridCenterPositions(circleSpacingMM, circleDiameterMM, objectPointsList[0]);
+			break;
+		default:
+			break;
+		}
         objectPointsList.resize(m_opencv_section_state->imagePointsList.size(), objectPointsList[0]);
             
         // Compute the camera intrinsic matrix and distortion parameters
@@ -662,11 +691,11 @@ public:
         // Draw the most recently capture chessboard
         if (m_opencv_section_state->currentImagePoints.size() > 0)
         {
-            drawOpenCVChessBoard(
-                frameWidth, frameHeight, 
-                reinterpret_cast<float *>(m_opencv_section_state->currentImagePoints.data()), // cv::point2f is just two floats 
-                static_cast<int>(m_opencv_section_state->currentImagePoints.size()),
-                true);
+			drawOpenCVChessBoard(
+				frameWidth, frameHeight, 
+				reinterpret_cast<float *>(m_opencv_section_state->currentImagePoints.data()), // cv::point2f is just two floats 
+				static_cast<int>(m_opencv_section_state->currentImagePoints.size()),
+				true);
         }
 
         // Draw the outlines of all of the chess boards 
@@ -682,9 +711,13 @@ public:
 
     // Menu state
     eVideoDisplayMode m_videoDisplayMode;
+	eCalibrationPatternType calibrationPatternType;
     const PSVRClientTrackerInfo &trackerInfo;
     float frameWidth;
     float frameHeight;
+	float squareLengthMM;
+	float circleSpacingMM;
+	float circleDiameterMM;
 
     // Calibration State
     double reprojectionError;
@@ -704,7 +737,6 @@ public:
 AppStage_MonoCalibration::AppStage_MonoCalibration(App *app)
     : AppStage(app)
     , m_menuState(AppStage_MonoCalibration::inactive)
-	, m_square_length_mm(DEFAULT_SQUARE_LEN_MM)
     , m_trackerExposure(0)
     , m_trackerGain(0)
     , m_bStreamIsActive(false)
@@ -727,8 +759,10 @@ void AppStage_MonoCalibration::enter()
 	m_tracker_view = PSVR_GetTracker(trackerInfo->tracker_id);
 
     m_opencv_mono_state = new OpenCVMonoState(*trackerInfo);
-
-	m_square_length_mm = DEFAULT_SQUARE_LEN_MM;
+	m_opencv_mono_state->calibrationPatternType= eCalibrationPatternType::mode_circlegrid;
+	m_opencv_mono_state->squareLengthMM = DEFAULT_SQUARE_LEN_MM;
+	m_opencv_mono_state->circleSpacingMM = DEFAULT_CIRCLE_SPACING_MM;
+	m_opencv_mono_state->circleDiameterMM = DEFAULT_CIRCLE_DIAMETER_MM;
 
 	assert(!m_bStreamIsActive);
 	request_tracker_start_stream();
@@ -768,12 +802,12 @@ void AppStage_MonoCalibration::update()
         if (m_menuState == AppStage_MonoCalibration::capture)
         {
             // Update the chess board capture state
-            m_opencv_mono_state->findNewChessBoards();
+            m_opencv_mono_state->findNewCalibrationPattern();
 
-            if (m_opencv_mono_state->hasSampledAllChessBoards())
+            if (m_opencv_mono_state->hasSampledAllCalibrationPatterns())
             {
                 // Kick off the async task (very expensive)
-                m_opencv_mono_state->computeCameraCalibration(m_square_length_mm);
+                m_opencv_mono_state->computeCameraCalibration();
                 m_menuState= AppStage_MonoCalibration::processingCalibration;
             }
         }
@@ -912,18 +946,52 @@ void AppStage_MonoCalibration::renderUI()
 
 			ImGui::Begin("Enter Calibration Settings", nullptr, window_flags);
 
-			ImGui::PushItemWidth(100.f);
-			if (ImGui::InputFloat("Square Length (mm)", &m_square_length_mm, 0.5f, 1.f, 1))
+			ImGui::PushItemWidth(100.f);		
+			switch (m_opencv_mono_state->calibrationPatternType)
 			{
-				if (m_square_length_mm < 1.f)
+			case eCalibrationPatternType::mode_chessboard:
 				{
-					m_square_length_mm = 1.f;
-				}
+					if (ImGui::InputFloat("Square Length (mm)", &m_opencv_mono_state->squareLengthMM, 0.5f, 1.f, 1))
+					{
+						if (m_opencv_mono_state->squareLengthMM < 1.f)
+						{
+							m_opencv_mono_state->squareLengthMM = 1.f;
+						}
 
-				if (m_square_length_mm > 100.f)
+						if (m_opencv_mono_state->squareLengthMM > 100.f)
+						{
+							m_opencv_mono_state->squareLengthMM = 100.f;
+						}
+					}
+				} break;
+			case eCalibrationPatternType::mode_circlegrid:
 				{
-					m_square_length_mm = 100.f;
-				}
+					if (ImGui::InputFloat("Circle Spacing (mm)", &m_opencv_mono_state->circleSpacingMM, 0.1f, 1.f, 1))
+					{
+						if (m_opencv_mono_state->circleSpacingMM < 1.f)
+						{
+							m_opencv_mono_state->circleSpacingMM = 1.f;
+						}
+
+						if (m_opencv_mono_state->circleSpacingMM > 100.f)
+						{
+							m_opencv_mono_state->circleSpacingMM = 100.f;
+						}
+					}
+
+					if (ImGui::InputFloat("Circle Diameter (mm)", &m_opencv_mono_state->circleDiameterMM, 0.1f, 1.f, 1))
+					{
+						if (m_opencv_mono_state->circleDiameterMM < 1.f)
+						{
+							m_opencv_mono_state->circleDiameterMM = 1.f;
+						}
+
+						if (m_opencv_mono_state->circleDiameterMM > m_opencv_mono_state->circleSpacingMM)
+						{
+							m_opencv_mono_state->circleDiameterMM = m_opencv_mono_state->circleSpacingMM;
+						}
+					}
+				} break;
 			}
 			ImGui::PopItemWidth();
 
