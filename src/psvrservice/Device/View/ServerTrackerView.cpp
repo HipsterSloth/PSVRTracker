@@ -285,20 +285,36 @@ public:
         }
     }
 
-    void writeVideoFrame(const unsigned char *video_buffer)
+    void writeVideoFrame(const unsigned char *video_buffer, bool bIsFlipped)
     {
         const cv::Mat videoBufferMat(frameHeight, frameWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
 
-        videoBufferMat.copyTo(*bgrBuffer);
-        videoBufferMat.copyTo(*bgrShmemBuffer);
+		if (bIsFlipped)
+		{
+			cv::flip(videoBufferMat, *bgrBuffer, +1);
+		}
+		else
+		{
+	        videoBufferMat.copyTo(*bgrBuffer);
+		}
+
+        bgrBuffer->copyTo(*bgrShmemBuffer);
     }
 
-    void writeStereoVideoFrameSection(const unsigned char *video_buffer, const cv::Rect &buffer_bounds)
+    void writeStereoVideoFrameSection(const unsigned char *video_buffer, const cv::Rect &buffer_bounds, bool bIsFlipped)
     {
         const cv::Mat videoBufferMat(frameHeight, 2*frameWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
 
-        videoBufferMat(buffer_bounds).copyTo(*bgrBuffer);
-        videoBufferMat(buffer_bounds).copyTo(*bgrShmemBuffer);
+		if (bIsFlipped)
+		{
+			cv::flip(videoBufferMat(buffer_bounds), *bgrBuffer, +1);
+		}
+		else
+		{
+	        videoBufferMat(buffer_bounds).copyTo(*bgrBuffer);
+		}
+
+        bgrBuffer->copyTo(*bgrShmemBuffer);
     }
     
     void updateHsvBuffer()
@@ -708,12 +724,6 @@ ServerTrackerView::getIsStereoCamera() const
     return m_device->getIsStereoCamera();
 }
 
-bool 
-ServerTrackerView::getIsVideoMirrored() const
-{
-    return m_device->getIsVideoMirrored();
-}
-
 std::string
 ServerTrackerView::getUSBDevicePath() const
 {
@@ -781,6 +791,8 @@ void ServerTrackerView::stopSharedMemoryVideoStream()
 
 void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_frame_buffer)
 {
+	const bool is_flipped= m_device->getIsVideoMirrored();
+
 	if (m_device == nullptr)
 	{
 		return;
@@ -788,22 +800,28 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
 
 	// Fetch the latest video buffer frame from the device
     if (m_device->getIsStereoCamera())
-    {		
-		int section_width= (int)m_device->getFrameWidth();
-		int section_height= (int)m_device->getFrameHeight();
+    {
+		const int section_width= (int)m_device->getFrameWidth();
+		const int section_height= (int)m_device->getFrameHeight();
 		const cv::Rect left_bounds(0, 0, section_width, section_height);
 		const cv::Rect right_bounds(section_width, 0, section_width, section_height);
 
         // Cache the left raw video frame
         if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr)
         {
-            m_opencv_buffer_state[PSVRVideoFrameSection_Left]->writeStereoVideoFrameSection(raw_video_frame_buffer, left_bounds);
+            m_opencv_buffer_state[PSVRVideoFrameSection_Left]->writeStereoVideoFrameSection(
+				raw_video_frame_buffer, 
+				is_flipped ? right_bounds : left_bounds, 
+				is_flipped);
         }
 
         // Cache the right raw video frame
         if (m_opencv_buffer_state[PSVRVideoFrameSection_Right] != nullptr)
         {
-            m_opencv_buffer_state[PSVRVideoFrameSection_Right]->writeStereoVideoFrameSection(raw_video_frame_buffer, right_bounds);
+            m_opencv_buffer_state[PSVRVideoFrameSection_Right]->writeStereoVideoFrameSection(
+				raw_video_frame_buffer,
+				is_flipped ? left_bounds : right_bounds, 
+				is_flipped);
         }
     }
     else
@@ -811,7 +829,8 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
         // Cache the raw video frame
         if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
         {
-            m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->writeVideoFrame(raw_video_frame_buffer);
+            m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->writeVideoFrame(
+				raw_video_frame_buffer, is_flipped);
         }
     }
 
@@ -1183,9 +1202,6 @@ bool ServerTrackerView::computeProjectionForHMD(
                 out_projection);
     }
 
-	// Flag if this projection came from a tracker with a mirrored video frame
-	out_projection->is_video_mirrored= getIsVideoMirrored();
-
     return bSuccess;
 }
 
@@ -1509,9 +1525,8 @@ PSVRVector3f
 ServerTrackerView::computeWorldPosition(
     const PSVRVector3f *tracker_relative_position) const
 {
-	const bool bIsMirroredAlongX= getIsVideoMirrored();
     const glm::vec4 rel_pos(
-		bIsMirroredAlongX ? -tracker_relative_position->x : tracker_relative_position->x, 
+		tracker_relative_position->x, 
 		tracker_relative_position->y, 
 		tracker_relative_position->z, 
 		1.f);
@@ -1532,13 +1547,11 @@ ServerTrackerView::computeWorldOrientation(
     const float global_forward_yaw_radians = cfg.global_forward_degrees*k_degrees_to_radians;
     const glm::quat global_forward_quat= glm::quat(glm::vec3(0.f, global_forward_yaw_radians, 0.f));
 
-	// https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation
-	const bool bIsMirroredAlongX= getIsVideoMirrored();
     const glm::quat rel_orientation(
         tracker_relative_orientation->w,
         tracker_relative_orientation->x,
-        bIsMirroredAlongX ? -tracker_relative_orientation->y : tracker_relative_orientation->y,
-        bIsMirroredAlongX ? -tracker_relative_orientation->z : tracker_relative_orientation->z);  
+        tracker_relative_orientation->y,
+        tracker_relative_orientation->z);
 
     const glm::quat camera_quat= computeGLMCameraTransformQuaternion(m_device);
     const glm::quat world_quat = global_forward_quat * camera_quat * rel_orientation;
@@ -1560,8 +1573,7 @@ ServerTrackerView::computeTrackerPosition(
     const glm::mat4 invCameraTransform= glm::inverse(computeGLMCameraTransformMatrix(m_device));
     const glm::vec4 rel_pos = invCameraTransform * world_pos;    
 
-	const bool bIsMirroredAlongX= getIsVideoMirrored();
-    const PSVRVector3f result= {bIsMirroredAlongX ? -rel_pos.x : rel_pos.x, rel_pos.y, rel_pos.z};
+    const PSVRVector3f result= {rel_pos.x, rel_pos.y, rel_pos.z};
 
     return result;
 }
@@ -1579,13 +1591,11 @@ ServerTrackerView::computeTrackerOrientation(
     // combined_rotation = second_rotation * first_rotation;
     const glm::quat rel_quat = camera_inv_quat * world_orientation;
     
-	// https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation
-	const bool bIsMirroredAlongX= getIsVideoMirrored();
     PSVRQuatf result;
     result.w= rel_quat.w;
     result.x= rel_quat.x;
-    result.y= bIsMirroredAlongX ? -rel_quat.y : rel_quat.y;
-    result.z= bIsMirroredAlongX ? -rel_quat.z : rel_quat.z;
+    result.y= rel_quat.y;
+    result.z= rel_quat.z;
 
     return result;
 }

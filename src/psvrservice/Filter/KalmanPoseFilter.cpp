@@ -543,7 +543,6 @@ public:
     {
         m_last_world_orientation_ptr = last_world_orientation;
 		m_last_tracking_projection_area_px_sqr = -1.f;
-		m_bIsVideoMirrored= false;
 		updateMeasurementCovariance(constants, 0.f);
 
         assert(constants.shape.shape_type == PSVRTrackingShape_PointCloud);
@@ -557,13 +556,6 @@ public:
 				static_cast<double>(p.y * k_centimeters_to_meters),
 				static_cast<double>(p.z * k_centimeters_to_meters));
     }
-
-	// Parameter needed by the h() function
-	// This gets called before h() is called
-	inline void setVideoMirrorFlag(bool is_video_mirrored)
-	{
-		m_bIsVideoMirrored= is_video_mirrored;
-	}
 
 	void updateMeasurementCovariance(
 		const PoseFilterConstants &constants,
@@ -623,11 +615,9 @@ public:
         local_to_world.linear()= local_to_world_orientation.toRotationMatrix();
         local_to_world.translation()= x.get_position_meters();
 
-		// If the projection we are trying to predict came from a mirrored video source,
-		// then we need to mirror the source model position about the x-axis as well
 		const Eigen::Vector3d led_model_vertex=
 			Eigen::Vector3d(
-				m_bIsVideoMirrored ? -m_LED_model_vertex.x() : m_LED_model_vertex.x(),
+				m_LED_model_vertex.x(),
 				m_LED_model_vertex.y(),
 				m_LED_model_vertex.z());
         const Eigen::Vector3d predicted_led_position= local_to_world * led_model_vertex;
@@ -1322,7 +1312,6 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 					// Update parameters on the LED model before applying the measurement
 					PoseLEDMeasurementModel *led_model = filter->led_measurement_models[model_led_index];
 					led_model->updateMeasurementCovariance(m_constants, led_screen_area);
-					led_model->setVideoMirrorFlag(packet.optical_tracking_projection.is_video_mirrored);
 
 					PoseLEDMeasurementVectord led_measurement = PoseLEDMeasurementVectord::Zero();
 					led_measurement.set_LED_position_meters(
