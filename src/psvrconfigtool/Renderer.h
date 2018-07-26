@@ -122,6 +122,7 @@ void drawEllipsoid(
     const glm::mat3 &basis, const glm::vec3 &center, const glm::vec3 &extents,
     const int subdiv= 64);
 void drawLineStrip(const glm::mat4 &transform, const glm::vec3 &color, const float *points, const int point_count);
+void drawLineList3d(const glm::mat4 &transform, const glm::vec3 &color, const float *points, const int point_count);
 void drawLineList2d(
     const float trackerWidth, const float trackerHeight, 
     const glm::vec3 &color, 

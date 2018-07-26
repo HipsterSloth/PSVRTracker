@@ -88,6 +88,18 @@ void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
     }
 }
 
+void extractCameraIntrinsicMatrixParameters(const cv::Matx33f &intrinsic_matrix,
+											float &out_focal_length_x,
+											float &out_focal_length_y,
+											float &out_principal_point_x,
+											float &out_principal_point_y)
+{
+	out_focal_length_x= intrinsic_matrix(0, 0);
+	out_focal_length_y= intrinsic_matrix(1, 1);
+	out_principal_point_x= intrinsic_matrix(0, 2);
+	out_principal_point_y= intrinsic_matrix(1, 2);
+}
+
 bool computeOpenCVCameraRectification(const ITrackerInterface *tracker_device,
                                         PSVRVideoFrameSection section,
                                         cv::Matx33d &rotationOut,

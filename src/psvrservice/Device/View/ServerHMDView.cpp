@@ -1,5 +1,6 @@
 //-- includes -----
 #include "DeviceManager.h"
+#include "AtomicPrimitives.h"
 #include "ServerHMDView.h"
 #include "MathTypeConversion.h"
 #include "MathAlignment.h"
@@ -65,6 +66,7 @@ ServerHMDView::ServerHMDView(const int device_id)
     , m_device(nullptr)
     , m_shape_tracking_models(nullptr)
     , m_optical_pose_estimations(nullptr)
+	, m_sharedFilteredPose(nullptr)
 	, m_currentlyTrackingBitmask({0})
 	, m_lastIMUSensorPacket(nullptr)
 	, m_lastOpticalSensorPacket(nullptr)
@@ -98,6 +100,7 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
 			m_lastIMUSensorPacket = new PoseSensorPacket;
 			m_lastIMUSensorPacket->clear();
 
+			m_sharedFilteredPose= new AtomicObject<ShapeTimestampedPose>;
             m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
             m_optical_pose_estimations = new HMDOpticalPoseEstimation[TrackerManager::k_max_devices];
 			m_lastOpticalSensorPacket = new PoseSensorPacket[TrackerManager::k_max_devices];
@@ -123,6 +126,7 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
 
 			m_lastIMUSensorPacket= nullptr;
 
+			m_sharedFilteredPose= new AtomicObject<ShapeTimestampedPose>;
             m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
             m_optical_pose_estimations = new HMDOpticalPoseEstimation[TrackerManager::k_max_devices];
 			m_lastOpticalSensorPacket = new PoseSensorPacket[TrackerManager::k_max_devices];
@@ -155,6 +159,12 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
 
 void ServerHMDView::free_device_interface()
 {
+	if (m_sharedFilteredPose)
+	{
+		delete m_sharedFilteredPose;
+		m_sharedFilteredPose= nullptr;
+	}
+
     if (m_optical_pose_estimations != nullptr)
     {
         delete[] m_optical_pose_estimations;
@@ -329,12 +339,16 @@ void ServerHMDView::notifyTrackerDataReceived(ServerTrackerView* tracker)
                 &trackingShape,
                 &newTrackerProjection))
         {
+			// Get the last filtered pose from the main thread
+			ShapeTimestampedPose filteredPose;
+			m_sharedFilteredPose->fetchValue(filteredPose);
 
             // Apply the projection to the tracking model 
             // to compute a tracker relative pose
             if (shape_tracking_model->applyShapeProjectionFromTracker(
 					now,
                     tracker,
+					&filteredPose,
                     newTrackerProjection) == true)
             {
 				// Extract the optical position from the tracking model
@@ -490,7 +504,6 @@ ServerHMDView::notifySensorDataReceived(const CommonSensorState *sensor_state)
 
     // Consider this HMD state sequence num processed
     m_lastPollSeqNumProcessed = sensor_state->PollSequenceNumber;
-
 }
 
 // Update Pose Filter using update packets from the tracker and IMU threads
@@ -515,7 +528,7 @@ void ServerHMDView::updatePoseFilter()
 		std::sort(
 			timeSortedPackets.begin(), timeSortedPackets.end(), 
 			[](const PoseSensorPacket & a, const PoseSensorPacket & b) -> bool
-			{ 
+			{
 				return a.timestamp < b.timestamp; 
 			});
 
@@ -590,6 +603,22 @@ void ServerHMDView::updatePoseFilter()
 
 		// Flag the state as unpublished, which will trigger an update to the client
 		markStateAsUnpublished();
+	}
+
+	// Publish the filtered state to the shared filtered pose.
+	// This lets the optical pose processing threads use the the most recent filter out
+	// as a guess for the next optical tracking estimate.
+	if (m_bHasUnpublishedState)
+	{
+		if (m_pose_filter->getIsOrientationStateValid())
+		{
+			ShapeTimestampedPose filtered_pose;
+			filtered_pose.timestamp= std::chrono::high_resolution_clock::now();
+			filtered_pose.pose_cm= getFilteredPose();
+			filtered_pose.bIsValid= true;
+
+			m_sharedFilteredPose->storeValue(filtered_pose);
+		}
 	}
 
 	// Copy off the last IMU packet

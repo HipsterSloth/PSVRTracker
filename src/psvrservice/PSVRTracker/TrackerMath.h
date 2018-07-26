@@ -25,6 +25,11 @@ void computeOpenCVCameraIntrinsicMatrix(const class ITrackerInterface *tracker_d
                                         PSVRVideoFrameSection section,
                                         cv::Matx33f &intrinsicOut,
                                         cv::Matx<float, 5, 1> &distortionOut);
+void extractCameraIntrinsicMatrixParameters(const cv::Matx33f &intrinsic_matrix,
+											float &out_focal_length_x,
+											float &out_focal_length_y,
+											float &out_principal_point_x,
+											float &out_principal_point_y);
 bool computeOpenCVCameraRectification(const class ITrackerInterface *tracker_device,
                                         PSVRVideoFrameSection section,
                                         cv::Matx33d &rotationOut,

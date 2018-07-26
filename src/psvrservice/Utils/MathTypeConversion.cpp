@@ -249,20 +249,41 @@ cv_vec3d_to_PSVR_vector3d(const cv::Vec3d &in)
 }
 
 // OpenCV types to Eigen types
-Eigen::Quaterniond cv_rodrigues_vector_to_eigen_quatd(const cv::Mat &in)
+Eigen::Matrix3d cv_mat3_to_eigen_mat3d(const cv::Mat &in)
 {
-	cv::Mat R;
-	cv::Rodrigues(in, R);
-
     Eigen::Matrix3d mat;
-    cv::cv2eigen(R, mat);
+    cv::cv2eigen(in, mat);
 
-    return Eigen::Quaterniond(mat);
+    return mat;
 }
 
 Eigen::Vector3d cv_vector3d_to_eigen_vector3d(const cv::Mat &in)
 {
 	return Eigen::Vector3d(in.at<double>(0), in.at<double>(1), in.at<double>(2));
+}
+
+Eigen::Affine3d cv_rvec_tvec_to_eigen_affine3d(
+	const cv::Mat &in_rvec,
+	const cv::Mat &in_tvec)
+{
+	cv::Mat rvec= in_rvec;
+	cv::Mat tvec= in_tvec;
+
+	// OpenCV's camera coordinate system has +Y pointing down
+	// Our tracking model assumes +Y is pointing up
+	rvec.at<double>(0)= -rvec.at<double>(0);
+	rvec.at<double>(2)= -rvec.at<double>(2);
+
+	tvec.at<double>(1)= -tvec.at<double>(1);
+
+	cv::Mat R;
+	cv::Rodrigues(rvec, R);
+
+	Eigen::Affine3d transform;
+	transform.linear().noalias() = cv_mat3_to_eigen_mat3d(R);
+	transform.translation().noalias() = cv_vector3d_to_eigen_vector3d(tvec);
+
+	return transform;
 }
 
 // GLM Types to Eigen types
@@ -394,17 +415,12 @@ PSVRQuatf eigen_quaternionf_to_PSVR_quatf(const Eigen::Quaternionf &q)
 }
 
 // Eigen types to OpenCV types
-cv::Mat eigen_quatd_to_cv_rodrigues_vector(const Eigen::Quaterniond &in)
+cv::Mat eigen_mat3d_to_cv_mat3d(const Eigen::Matrix3d &in)
 {
-	Eigen::Matrix3d mat= in.matrix();
+    cv::Mat mat;
+    cv::eigen2cv(in, mat);
 
-	cv::Mat R;
-	cv::eigen2cv(mat, R);
-
-	cv::Mat rvec;
-	cv::Rodrigues(R, rvec);
-
-	return rvec;
+    return mat;
 }
 
 cv::Mat eigen_vector3d_to_cv_vector3d(const Eigen::Vector3d &in)
@@ -415,4 +431,22 @@ cv::Mat eigen_vector3d_to_cv_vector3d(const Eigen::Vector3d &in)
 	tvec.at<double>(2)= in.z();
 
 	return tvec;
+}
+
+void eigen_affine3d_to_cv_rvec_tvec(
+	const Eigen::Affine3d &transform,
+	cv::Mat &rvec,
+	cv::Mat &tvec)
+{
+	const cv::Mat R= eigen_mat3d_to_cv_mat3d(transform.linear());
+	cv::Rodrigues(R, rvec);
+
+	tvec= eigen_vector3d_to_cv_vector3d(transform.translation());
+
+	// OpenCV's camera coordinate system has +Y pointing down
+	// Our tracking model assumes +Y is pointing up
+	rvec.at<double>(0)= -rvec.at<double>(0);
+	rvec.at<double>(2)= -rvec.at<double>(2);
+
+	tvec.at<double>(1)= -tvec.at<double>(1);
 }

@@ -69,11 +69,6 @@ namespace Eigen
 };
 
 //-- interface -----
-Eigen::Quaternionf
-eigen_quaternion_from_forward_up(
-	const Eigen::Vector3f &forward,
-	const Eigen::Vector3f &up);
-
 // Creates a quaternion that rotates clockwise about the axis for a positive angle
 // when appied with PSVR_vector_clockwise_rotate()
 Eigen::Quaternionf

@@ -4,9 +4,11 @@
 //-- includes -----
 #include "ServerDeviceView.h"
 #include "PSVRServiceInterface.h"
+
 #include <cstring>
 #include <mutex>
 #include <atomic>
+
 #include "readerwriterqueue.h" // lockfree queue
 
 // -- pre-declarations -----
@@ -14,6 +16,11 @@ class TrackerManager;
 
 struct PoseSensorPacket;
 using t_hmd_pose_sensor_queue= moodycamel::ReaderWriterQueue<PoseSensorPacket, 1024>;
+
+template<typename t_object_type>
+class AtomicObject;
+
+struct ShapeTimestampedPose;
 
 // -- declarations -----
 struct HMDOpticalPoseEstimation
@@ -178,6 +185,7 @@ private:
 	// Filter State (Shared)
 	t_hmd_pose_sensor_queue m_PoseSensorIMUPacketQueue;
 	t_hmd_pose_sensor_queue m_PoseSensorOpticalPacketQueue;
+	AtomicObject<ShapeTimestampedPose> *m_sharedFilteredPose;
 	std::atomic_ulong m_currentlyTrackingBitmask;
 
 	// Filter State (Main Thread)

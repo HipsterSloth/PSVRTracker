@@ -1110,6 +1110,25 @@ void drawLineStrip(const glm::mat4 &transform, const glm::vec3 &color, const flo
     glPopMatrix();
 }
 
+void drawLineList3d(const glm::mat4 &transform, const glm::vec3 &color, const float *points, const int point_count)
+{
+    assert(Renderer::getIsRenderingStage());
+	assert(point_count % 2 == 0);
+
+    glColor3fv(glm::value_ptr(color));
+    glPushMatrix();
+        glMultMatrixf(glm::value_ptr(transform));
+
+        glBegin(GL_LINES);
+        for (int sampleIndex= 0; sampleIndex < point_count; sampleIndex+=2)
+        {
+			glVertex3fv(&points[sampleIndex*3]);
+            glVertex3fv(&points[(sampleIndex+1)*3]);
+        }
+        glEnd();
+    glPopMatrix();
+}
+
 void drawLineList2d(
     const float trackerWidth, const float trackerHeight, 
     const glm::vec3 &color, 

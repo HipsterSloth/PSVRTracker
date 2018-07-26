@@ -88,7 +88,8 @@ eigen_vector3f_is_valid(const Eigen::Vector3f &v)
 bool
 eigen_quaternion_is_valid(const Eigen::Quaternionf &q)
 {
-	return is_valid_float(q.x()) && is_valid_float(q.y()) && is_valid_float(q.z()) && is_valid_float(q.w());
+	return is_valid_float(q.x()) && is_valid_float(q.y()) && is_valid_float(q.z()) && is_valid_float(q.w()) &&
+			is_nearly_equal(q.squaredNorm(), 1.f, k_normal_epsilon);
 }
 
 Eigen::Vector3f

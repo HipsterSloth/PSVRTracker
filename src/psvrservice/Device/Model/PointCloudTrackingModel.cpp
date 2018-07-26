@@ -26,6 +26,7 @@ bool PointCloudTrackingModel::init(PSVRTrackingShape *tracking_shape)
 bool PointCloudTrackingModel::applyShapeProjectionFromTracker(
 	const std::chrono::time_point<std::chrono::high_resolution_clock> &now,
     const class ServerTrackerView *tracker_view,
+	const ShapeTimestampedPose *last_filtered_pose,
     const PSVRTrackingProjection &projection)
 {
     bool bSuccess= false;
@@ -33,12 +34,12 @@ bool PointCloudTrackingModel::applyShapeProjectionFromTracker(
 	if (projection.projection_count == MONO_PROJECTION_COUNT)
 	{
 		m_currentModel= m_monoModel;
-		bSuccess= m_monoModel->applyShapeProjectionFromTracker(now, tracker_view, projection);
+		bSuccess= m_monoModel->applyShapeProjectionFromTracker(now, tracker_view, last_filtered_pose, projection);
 	}
 	else if (projection.projection_count == STEREO_PROJECTION_COUNT)
 	{
 		m_currentModel= m_stereoModel;
-		bSuccess= m_stereoModel->applyShapeProjectionFromTracker(now, tracker_view, projection);
+		bSuccess= m_stereoModel->applyShapeProjectionFromTracker(now, tracker_view, last_filtered_pose, projection);
 	}
 
     return bSuccess;

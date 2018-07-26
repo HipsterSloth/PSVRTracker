@@ -98,6 +98,104 @@ void AppStage_HMDTrackingTest::update()
     }
 }
 
+void compute_opencv_camera_intrinsic_matrix(PSVRTrackerID tracker_id,
+	                                    PSVRVideoFrameSection section,
+                                        cv::Matx33f &intrinsicOut,
+                                        cv::Matx<float, 5, 1> &distortionOut)
+{
+	PSVRTrackerIntrinsics tracker_intrinsics;
+	PSVR_GetTrackerIntrinsics(tracker_id, &tracker_intrinsics);
+
+    PSVRMatrix3d *camera_matrix= nullptr;
+    PSVRDistortionCoefficients *distortion_coefficients= nullptr;
+
+    if (tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+    {
+        if (section == PSVRVideoFrameSection_Left)
+        {
+            camera_matrix= &tracker_intrinsics.intrinsics.stereo.left_camera_matrix;
+            distortion_coefficients = &tracker_intrinsics.intrinsics.stereo.left_distortion_coefficients;
+        }
+        else if (section == PSVRVideoFrameSection_Right)
+        {
+            camera_matrix= &tracker_intrinsics.intrinsics.stereo.right_camera_matrix;
+            distortion_coefficients = &tracker_intrinsics.intrinsics.stereo.right_distortion_coefficients;
+        }
+    }
+    else if (tracker_intrinsics.intrinsics_type == PSVR_MONO_TRACKER_INTRINSICS)
+    {
+        camera_matrix = &tracker_intrinsics.intrinsics.mono.camera_matrix;
+        distortion_coefficients = &tracker_intrinsics.intrinsics.mono.distortion_coefficients;
+    }
+
+    if (camera_matrix != nullptr && distortion_coefficients != nullptr)
+    {
+        double *m= (double *)camera_matrix->m;
+   
+        intrinsicOut(0, 0)= (float)m[0]; intrinsicOut(0, 1)=  (float)m[1]; intrinsicOut(0, 2)= (float)m[2];
+        intrinsicOut(1, 0)= (float)m[3]; intrinsicOut(1, 1)= (float)m[4]; intrinsicOut(1, 2)= (float)m[5]; 
+        intrinsicOut(2, 0)= (float)m[6]; intrinsicOut(2, 1)= (float)m[7];  intrinsicOut(2, 2)= (float)m[8];
+
+        distortionOut(0, 0)= (float)distortion_coefficients->k1;
+        distortionOut(1, 0)= (float)distortion_coefficients->k2;
+        distortionOut(2, 0)= (float)distortion_coefficients->p1;
+        distortionOut(3, 0)= (float)distortion_coefficients->p2;
+        distortionOut(4, 0)= (float)distortion_coefficients->k3;
+    }
+}
+
+static void draw_image_point_camera_lines(
+	PSVRTrackerID tracker_id,
+	const PSVRTrackingProjection &projection)
+{
+	cv::Matx33f intrinsic_matrix;
+	cv::Matx<float, 5, 1> dist_coeffs;
+	compute_opencv_camera_intrinsic_matrix(tracker_id, PSVRVideoFrameSection_Primary, intrinsic_matrix, dist_coeffs);
+
+	// Extract the focal lengths and principal point from the intrinsic matrix
+	float fx= intrinsic_matrix(0, 0);
+	float fy= intrinsic_matrix(1, 1);
+	float cx= intrinsic_matrix(0, 2);
+	float cy= intrinsic_matrix(1, 2);
+
+	// Convert the PSVRVector2f points in the projection into a cv::Point2f list
+	std::vector<cv::Point2f> cv_image_points;
+	const int image_point_count= projection.projections[0].shape.pointcloud.point_count;
+	for (int image_point_index = 0; image_point_index < image_point_count; ++image_point_index)
+	{
+		const PSVRVector2f &image_point= projection.projections[0].shape.pointcloud.points[image_point_index];
+
+		cv_image_points.push_back({image_point.x, image_point.y});
+	}
+
+	// Reverse the effects of the camera lens distortion
+    std::vector<cv::Point2f> undistorted_image_points;
+	undistorted_image_points.resize(image_point_count);
+    cv::undistortPoints(
+		cv_image_points, undistorted_image_points, 
+		intrinsic_matrix, dist_coeffs);
+
+	// Compute a normalized ray for each projection point
+	// See: http://answers.opencv.org/question/4862/how-can-i-do-back-projection/
+	std::vector<glm::vec3> out_image_point_rays;
+	std::for_each(cv_image_points.begin(), cv_image_points.end(),
+		[&out_image_point_rays, fx, fy, cx, cy](const cv::Point2f& image_point) {
+			// NOTE!!!
+			// Y-Axis is flipped since OpenCV has +Y pointing down
+			// and our tracking model assumes that +Y is pointing up
+			const float end_z= 100.f;
+			const glm::vec3 ray_end((image_point.x - cx)*end_z/fx, (cy - image_point.y)*end_z/fy, end_z);
+
+			out_image_point_rays.push_back(glm::vec3(0.f, 0.f, 0.f));
+			out_image_point_rays.push_back(ray_end);
+		});
+
+	drawLineList3d(
+		glm::mat4(1), glm::vec3(1.f, 0.f, 0.f), 
+		(float *)out_image_point_rays.data(), 
+		(int)out_image_point_rays.size());
+}
+
 void AppStage_HMDTrackingTest::render()
 {
     switch (m_menuState)
@@ -165,9 +263,9 @@ void AppStage_HMDTrackingTest::render()
 				if (PSVR_GetHmdRawTrackerData(hmdView->HmdID, &rawTrackerData) == PSVRResult_Success)
 				{
 					drawTrackingShape(&rawTrackerData.WorldRelativeShape, glm::vec3(1.f, 1.f, 0.f));
+					draw_image_point_camera_lines(rawTrackerData.TrackerID, rawTrackerData.TrackingProjection);
 				}
             }
-
         } break;
     case eMenuState::showTrackerVideo:
         {

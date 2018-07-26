@@ -137,6 +137,7 @@ bool StereoPointCloudTrackingModel::init(PSVRTrackingShape *tracking_shape)
 bool StereoPointCloudTrackingModel::applyShapeProjectionFromTracker(
 	const std::chrono::time_point<std::chrono::high_resolution_clock> &now,
     const class ServerTrackerView *tracker_view,
+	const ShapeTimestampedPose *last_filtered_pose,
     const PSVRTrackingProjection &projection)
 {
     assert(projection.projection_count == STEREO_PROJECTION_COUNT);
