@@ -71,8 +71,8 @@ static const char *k_calibration_pattern_names[] = {
 #define CIRCLEGRID_PATTERN_W 4
 #define CIRCLEGRID_PATTERN_H 11
 #define CIRCLE_COUNT (CIRCLEGRID_PATTERN_W*CIRCLEGRID_PATTERN_H)
-#define DEFAULT_CIRCLE_DIAMETER_MM 1.5
-#define DEFAULT_CIRCLE_SPACING_MM  2.0
+#define DEFAULT_CIRCLE_DIAMETER_MM 15
+#define DEFAULT_CIRCLE_SPACING_MM  20
 
 #define BOARD_MOVED_PIXEL_DIST 5
 #define BOARD_MOVED_ERROR_SUM BOARD_MOVED_PIXEL_DIST*CHESSBOARD_CORNER_COUNT
@@ -282,7 +282,7 @@ public:
 
     bool findAndAppendNewCircleGrid(bool appWantsAppend)
     {        
-        bool bAppendNewChessBoard= false;
+        bool bAppendNewCircleGrid= false;
 
         if (capturedPatternCount < DESIRED_CAPTURE_BOARD_COUNT)
         {
@@ -340,13 +340,13 @@ public:
                         // Keep track of how many boards have been captured so far
                         capturedPatternCount++;
 
-                        bAppendNewChessBoard= true;
+                        bAppendNewCircleGrid= true;
                     }
                 }
             }
         }
 
-        return bAppendNewChessBoard;
+        return bAppendNewCircleGrid;
     }
 
     void rebuildDistortionMap()
@@ -928,12 +928,40 @@ void AppStage_MonoCalibration::renderUI()
 
 			if (ImGui::Button("Continue"))
 			{
-				m_menuState = eMenuState::enterBoardSettings;
+				m_menuState = eMenuState::selectBoardType;
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel"))
 			{
 				request_exit();
+			}
+
+			ImGui::End();
+		} break;
+	case eMenuState::selectBoardType:
+		{
+			const float k_wide_panel_width = 450.f;
+			ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_wide_panel_width / 2.f, 20.f));
+			ImGui::SetNextWindowSize(ImVec2(k_wide_panel_width, 130));
+
+			ImGui::Begin("Select Calibration Type", nullptr, window_flags);
+
+			ImGui::TextWrapped(
+				"Chessboard: Simpler to measure with ruler, less accurate\n" \
+				"Circle grid: Harder to measure with ruler, more accurate");
+
+			ImGui::Spacing();
+
+			if (ImGui::Button("Chessboard"))
+			{
+				m_opencv_mono_state->calibrationPatternType= eCalibrationPatternType::mode_chessboard;
+				m_menuState = eMenuState::enterBoardSettings;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Circle Grid"))
+			{
+				m_opencv_mono_state->calibrationPatternType= eCalibrationPatternType::mode_circlegrid;
+				m_menuState = eMenuState::enterBoardSettings;
 			}
 
 			ImGui::End();
@@ -1001,8 +1029,15 @@ void AppStage_MonoCalibration::renderUI()
 			{
 				// Crank up the exposure and gain so that we can see the chessboard
 				// These overrides will get rolled back once tracker gets closed
-				request_tracker_set_temp_exposure(128);
-				request_tracker_set_temp_gain(128);
+				const int exposure_value= 
+					(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].min_value +
+					m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].max_value) / 2;
+				const int gain_value= 
+					(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].min_value +
+					m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].max_value) / 2;
+
+				request_tracker_set_temp_exposure(exposure_value);
+				request_tracker_set_temp_gain(gain_value);
 
 				m_menuState = eMenuState::capture;
 			}
@@ -1196,8 +1231,15 @@ void AppStage_MonoCalibration::handle_tracker_start_stream_response()
         {
 			// Crank up the exposure and gain so that we can see the chessboard
 			// These overrides will get rolled back once tracker gets closed
-			request_tracker_set_temp_exposure(128);
-			request_tracker_set_temp_gain(128);
+			const int exposure_value= 
+				(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].min_value +
+				m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].max_value) / 2;
+			const int gain_value= 
+				(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].min_value +
+				m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].max_value) / 2;
+
+			request_tracker_set_temp_exposure(exposure_value);
+			request_tracker_set_temp_gain(gain_value);
 
             m_menuState = AppStage_MonoCalibration::testCalibration;
         }
@@ -1209,7 +1251,7 @@ void AppStage_MonoCalibration::handle_tracker_start_stream_response()
 		else
 		{
 			// Start capturing chess boards
-			m_menuState = AppStage_MonoCalibration::enterBoardSettings;
+			m_menuState = AppStage_MonoCalibration::selectBoardType;
 		}
     }
     else

@@ -52,17 +52,36 @@ static const char *k_video_display_mode_names[] = {
     "Disparity"
 };
 
-#define PATTERN_W 9 // Internal corners
-#define PATTERN_H 7
-#define CORNER_COUNT (PATTERN_W*PATTERN_H)
+enum eCalibrationPatternType
+{
+    mode_chessboard,
+    mode_circlegrid,
+
+    MAX_CALIBRATION_PATTERN_TYPES
+};
+
+static const char *k_calibration_pattern_names[] = {
+    "Chessboard",
+    "Circle Grid",
+};
+
+#define CHESSBOARD_PATTERN_W 9 // Internal corners
+#define CHESSBOARD_PATTERN_H 7
+#define CHESSBOARD_CORNER_COUNT (CHESSBOARD_PATTERN_W*CHESSBOARD_PATTERN_H)
 #define DEFAULT_SQUARE_LEN_MM 22
 #define DESIRED_CAPTURE_BOARD_COUNT 12
 
+#define CIRCLEGRID_PATTERN_W 4
+#define CIRCLEGRID_PATTERN_H 11
+#define CIRCLE_COUNT (CIRCLEGRID_PATTERN_W*CIRCLEGRID_PATTERN_H)
+#define DEFAULT_CIRCLE_DIAMETER_MM 15
+#define DEFAULT_CIRCLE_SPACING_MM  20
+
 #define BOARD_MOVED_PIXEL_DIST 5
-#define BOARD_MOVED_ERROR_SUM BOARD_MOVED_PIXEL_DIST*CORNER_COUNT
+#define BOARD_MOVED_ERROR_SUM BOARD_MOVED_PIXEL_DIST*CHESSBOARD_CORNER_COUNT
 
 #define BOARD_NEW_LOCATION_PIXEL_DIST 100 
-#define BOARD_NEW_LOCATION_ERROR_SUM BOARD_NEW_LOCATION_PIXEL_DIST*CORNER_COUNT
+#define BOARD_NEW_LOCATION_ERROR_SUM BOARD_NEW_LOCATION_PIXEL_DIST*CHESSBOARD_CORNER_COUNT
 
 #define STRAIGHT_LINE_TOLERANCE 10 // error tolerance in pixels
 
@@ -92,7 +111,7 @@ public:
         , bgrUndistortBuffer(nullptr)
         , bgrGsUndistortBuffer(nullptr)
         // Chess board computed state
-        , capturedBoardCount(0)
+        , capturedPatternCount(0)
         , lastValidImagePoints(0)
         , currentImagePoints(0)
         , bCurrentImagePointsValid(false)
@@ -137,7 +156,7 @@ public:
 
     void resetCaptureState()
     {
-        capturedBoardCount= 0;
+        capturedPatternCount= 0;
         bCurrentImagePointsValid= false;
         currentImagePoints.clear();
         lastValidImagePoints.clear();
@@ -211,7 +230,7 @@ public:
     {        
         bool bAppendNewChessBoard= false;
 
-        if (capturedBoardCount < DESIRED_CAPTURE_BOARD_COUNT)
+        if (capturedPatternCount < DESIRED_CAPTURE_BOARD_COUNT)
         {
             // Clear out the previous images points
             currentImagePoints.clear();
@@ -219,7 +238,7 @@ public:
             // Find chessboard corners:
             if (cv::findChessboardCorners(
                     *gsSourceBuffer, 
-                    cv::Size(PATTERN_W, PATTERN_H), 
+                    cv::Size(CHESSBOARD_PATTERN_W, CHESSBOARD_PATTERN_H), 
                     currentImagePoints, // output corners
                     cv::CALIB_CB_ADAPTIVE_THRESH 
                     + cv::CALIB_CB_FILTER_QUADS 
@@ -236,7 +255,7 @@ public:
 
                 // Append the new chessboard corner pixels into the image_points matrix
                 // Append the corresponding 3d chessboard corners into the object_points matrix
-                if (currentImagePoints.size() == CORNER_COUNT) 
+                if (currentImagePoints.size() == CHESSBOARD_CORNER_COUNT) 
                 {
                     bCurrentImagePointsValid= false;
 
@@ -244,7 +263,7 @@ public:
                     {
                         float error_sum= 0.f;
 
-                        for (int corner_index= 0; corner_index < CORNER_COUNT; ++corner_index)
+                        for (int corner_index= 0; corner_index < CHESSBOARD_CORNER_COUNT; ++corner_index)
                         {
                             float squared_error= static_cast<float>(cv::norm(currentImagePoints[corner_index] - lastValidImagePoints[corner_index]));
 
@@ -265,9 +284,9 @@ public:
                     {
                         // Keep track of the corners of all of the chessboards we sample
                         quadList.push_back(currentImagePoints[0]);
-                        quadList.push_back(currentImagePoints[PATTERN_W - 1]);
-                        quadList.push_back(currentImagePoints[CORNER_COUNT-1]);
-                        quadList.push_back(currentImagePoints[CORNER_COUNT-PATTERN_W]);                        
+                        quadList.push_back(currentImagePoints[CHESSBOARD_PATTERN_W - 1]);
+                        quadList.push_back(currentImagePoints[CHESSBOARD_CORNER_COUNT-1]);
+                        quadList.push_back(currentImagePoints[CHESSBOARD_CORNER_COUNT-CHESSBOARD_PATTERN_W]);                        
 
                         // Append the new images points and object points
                         imagePointsList.push_back(currentImagePoints);
@@ -276,7 +295,7 @@ public:
                         lastValidImagePoints= currentImagePoints;
 
                         // Keep track of how many boards have been captured so far
-                        capturedBoardCount++;
+                        capturedPatternCount++;
 
                         bAppendNewChessBoard= true;
                     }
@@ -287,9 +306,78 @@ public:
         return bAppendNewChessBoard;
     }
 
-    void popLastChessBoard()
+    bool findAndAppendNewCircleGrid(bool appWantsAppend)
+    {        
+        bool bAppendNewCircleGrid= false;
+
+        if (capturedPatternCount < DESIRED_CAPTURE_BOARD_COUNT)
+        {
+            // Clear out the previous images points
+            currentImagePoints.clear();
+
+            // Find circle grid centers:
+            if (cv::findCirclesGrid(
+                    *gsSourceBuffer, 
+                    cv::Size(CIRCLEGRID_PATTERN_W, CIRCLEGRID_PATTERN_H), 
+                    currentImagePoints, // output centers
+                    cv::CALIB_CB_ASYMMETRIC_GRID))
+            {
+                // Append the new chessboard corner pixels into the image_points matrix
+                // Append the corresponding 3d chessboard corners into the object_points matrix
+                if (currentImagePoints.size() == CIRCLE_COUNT) 
+                {
+                    bCurrentImagePointsValid= false;
+
+                    if (lastValidImagePoints.size() > 0)
+                    {
+                        float error_sum= 0.f;
+
+                        for (int corner_index= 0; corner_index < CIRCLE_COUNT; ++corner_index)
+                        {
+                            float squared_error= static_cast<float>(cv::norm(currentImagePoints[corner_index] - lastValidImagePoints[corner_index]));
+
+                            error_sum+= squared_error;
+                        }
+
+                        bCurrentImagePointsValid= error_sum >= BOARD_NEW_LOCATION_ERROR_SUM;
+                    }
+                    else
+                    {
+                        // We don't have previous capture.
+                        bCurrentImagePointsValid= true;
+                    }
+
+
+                    // If it's a valid new location, append it to the board list
+                    if (bCurrentImagePointsValid && appWantsAppend)
+                    {
+                        // Keep track of the corners of all of the circle grids we sample
+                        quadList.push_back(currentImagePoints[0]);
+                        quadList.push_back(currentImagePoints[CIRCLEGRID_PATTERN_W - 1]);
+                        quadList.push_back(currentImagePoints[CIRCLE_COUNT-1]);
+                        quadList.push_back(currentImagePoints[CIRCLE_COUNT-CIRCLEGRID_PATTERN_W]);                        
+
+                        // Append the new images points and object points
+                        imagePointsList.push_back(currentImagePoints);
+
+                        // Remember the last valid captured points
+                        lastValidImagePoints= currentImagePoints;
+
+                        // Keep track of how many boards have been captured so far
+                        capturedPatternCount++;
+
+                        bAppendNewCircleGrid= true;
+                    }
+                }
+            }
+        }
+
+        return bAppendNewCircleGrid;
+    }
+
+    void popLastPattern()
     {
-        if (capturedBoardCount > 0)
+        if (capturedPatternCount > 0)
         {
             assert(quadList.size() > 0);
             assert(quadList.size() % 4 == 0);
@@ -301,19 +389,19 @@ public:
             assert(imagePointsList.size() > 0);
             imagePointsList.pop_back();
 
-            capturedBoardCount--;
+            capturedPatternCount--;
         }
     }
 
     static bool areGridLinesStraight(const std::vector<cv::Point2f> &corners)
     {
-        assert(corners.size() == CORNER_COUNT);
+        assert(corners.size() == CHESSBOARD_CORNER_COUNT);
         bool bAllLinesStraight= true;
 
-        for (int line_index= 0; bAllLinesStraight && line_index < PATTERN_H; ++line_index)
+        for (int line_index= 0; bAllLinesStraight && line_index < CHESSBOARD_PATTERN_H; ++line_index)
         {
-            int start_index= line_index*PATTERN_W;
-            int end_index= start_index + PATTERN_W - 1;
+            int start_index= line_index*CHESSBOARD_PATTERN_W;
+            int end_index= start_index + CHESSBOARD_PATTERN_W - 1;
 
             cv::Point2f line_start= corners[start_index];
             cv::Point2f line_end= corners[end_index];
@@ -365,7 +453,7 @@ public:
     cv::Mat *bgrUndistortBuffer;
 
     // Chess board computed state
-    int capturedBoardCount;
+    int capturedPatternCount;
     std::vector<cv::Point2f> lastValidImagePoints;
     std::vector<cv::Point2f> currentImagePoints;
     bool bCurrentImagePointsValid;
@@ -388,9 +476,13 @@ class OpenCVStereoState
 public:
     OpenCVStereoState(const PSVRClientTrackerInfo &_trackerInfo)
         : m_videoDisplayMode(eVideoDisplayMode::mode_bgr)
+		, calibrationPatternType(eCalibrationPatternType::mode_circlegrid)
         , trackerInfo(_trackerInfo)
         , frameWidth(_trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_width)
         , frameHeight(_trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_height)
+		, squareLengthMM(DEFAULT_SQUARE_LEN_MM)
+		, circleSpacingMM(DEFAULT_CIRCLE_SPACING_MM)
+		, circleDiameterMM(DEFAULT_CIRCLE_DIAMETER_MM)
         , reprojectionError(0.0)
         , rotation_between_cameras()
         , translation_between_cameras()
@@ -562,32 +654,43 @@ public:
 		}
     }
 
-    void findNewChessBoards()
+    void findNewCalibrationPattern()
     {
         ImGuiIO io_state = ImGui::GetIO();
         const bool bWantsAppend= io_state.KeysDown[32];
 
-        bool bLeftAppend= m_opencv_section_state[PSVRVideoFrameSection_Left]->findAndAppendNewChessBoard(bWantsAppend);
-        bool bRightAppend= m_opencv_section_state[PSVRVideoFrameSection_Right]->findAndAppendNewChessBoard(bWantsAppend);
+		bool bLeftAppend= false;
+		bool bRightAppend= false;
+		switch (calibrationPatternType)
+		{
+		case eCalibrationPatternType::mode_chessboard:
+			bLeftAppend= m_opencv_section_state[PSVRVideoFrameSection_Left]->findAndAppendNewChessBoard(bWantsAppend);
+			bRightAppend= m_opencv_section_state[PSVRVideoFrameSection_Right]->findAndAppendNewChessBoard(bWantsAppend);
+			break;
+		case eCalibrationPatternType::mode_circlegrid:
+			bLeftAppend= m_opencv_section_state[PSVRVideoFrameSection_Left]->findAndAppendNewCircleGrid(bWantsAppend);
+			bRightAppend= m_opencv_section_state[PSVRVideoFrameSection_Right]->findAndAppendNewCircleGrid(bWantsAppend);
+			break;
+		}
 
         if (bWantsAppend)
         {
             if (bLeftAppend && !bRightAppend)
             {
-                m_opencv_section_state[PSVRVideoFrameSection_Left]->popLastChessBoard();
+                m_opencv_section_state[PSVRVideoFrameSection_Left]->popLastPattern();
             }
             if (!bLeftAppend && bRightAppend)
             {
-                m_opencv_section_state[PSVRVideoFrameSection_Right]->popLastChessBoard();
+                m_opencv_section_state[PSVRVideoFrameSection_Right]->popLastPattern();
             }
         }
     }
 
-    bool hasSampledAllChessBoards() const
+    bool hasSampledAllCalibrationPatterns() const
     {
         return
-            m_opencv_section_state[PSVRVideoFrameSection_Left]->capturedBoardCount >= DESIRED_CAPTURE_BOARD_COUNT &&
-            m_opencv_section_state[PSVRVideoFrameSection_Right]->capturedBoardCount >= DESIRED_CAPTURE_BOARD_COUNT;
+            m_opencv_section_state[PSVRVideoFrameSection_Left]->capturedPatternCount >= DESIRED_CAPTURE_BOARD_COUNT &&
+            m_opencv_section_state[PSVRVideoFrameSection_Right]->capturedPatternCount >= DESIRED_CAPTURE_BOARD_COUNT;
     }
 
     bool areCurrentImagePointsValid() const
@@ -600,9 +703,9 @@ public:
     float computeCalibrationProgress() const 
     {
         const float leftSamplePercentage= 
-            static_cast<float>(m_opencv_section_state[PSVRVideoFrameSection_Left]->capturedBoardCount) / static_cast<float>(DESIRED_CAPTURE_BOARD_COUNT);
+            static_cast<float>(m_opencv_section_state[PSVRVideoFrameSection_Left]->capturedPatternCount) / static_cast<float>(DESIRED_CAPTURE_BOARD_COUNT);
         const float rightSamplePercentage= 
-            static_cast<float>(m_opencv_section_state[PSVRVideoFrameSection_Right]->capturedBoardCount) / static_cast<float>(DESIRED_CAPTURE_BOARD_COUNT);
+            static_cast<float>(m_opencv_section_state[PSVRVideoFrameSection_Right]->capturedPatternCount) / static_cast<float>(DESIRED_CAPTURE_BOARD_COUNT);
 
         return std::min(leftSamplePercentage, rightSamplePercentage);
     }
@@ -633,17 +736,47 @@ public:
         m_videoDisplayMode= mode_bgr;
     }
 
-    inline void calcBoardCornerPositions(const float square_length_mm, std::vector<cv::Point3f>& corners)
+    inline void calcChessBoardCornerPositions(const float square_length_mm, std::vector<cv::Point3f>& corners)
     {
         corners.clear();
         
-        for( int i = 0; i < PATTERN_H; ++i )
+        for( int i = 0; i < CHESSBOARD_PATTERN_H; ++i )
         {
-            for( int j = 0; j < PATTERN_W; ++j )
+            for( int j = 0; j < CHESSBOARD_PATTERN_W; ++j )
             {
                 corners.push_back(cv::Point3f(float(j*square_length_mm), float(i*square_length_mm), 0.f));
             }
         }
+    }
+
+    inline void calcCircleGridCenterPositions(
+		const float grid_spacing_mm, 
+		const float diameter_mm, 
+		std::vector<cv::Point3f>& centers)
+    {
+		const int col_count= 2*CIRCLEGRID_PATTERN_W;
+		const int row_count= CIRCLEGRID_PATTERN_H;
+		const float radius_mm= diameter_mm / 2.f;
+        
+		centers.clear();        
+        for( int row = 0; row < row_count; ++row )
+        {
+            for( int col = 0; col < col_count; ++col )
+            {
+				const bool bRowIsEven= (row % 2) == 0;
+				const bool bColIsEven= (col % 2) == 0;
+
+				if ((bRowIsEven && !bColIsEven) || (!bRowIsEven && bColIsEven))
+				{
+					centers.push_back(
+						cv::Point3f(
+							float(col)*grid_spacing_mm + radius_mm, 
+							float(row)*grid_spacing_mm + radius_mm, 
+							0.f));
+				}
+            }
+        }
+		assert(centers.size() == CIRCLE_COUNT);
     }
 
     inline PSVRDistortionCoefficients cv_vec5_to_PSVR_distortion(const cv::Matx51d &cv_distortion_coeffs)
@@ -658,14 +791,13 @@ public:
         return distortion_coeffs;
     }
 
-    void computeCameraCalibration(
-        const float square_length_mm)
+    void computeCameraCalibration()
     {
         assert(async_compute_task == nullptr);
 
         async_task_completed= false;
-        async_compute_task = new std::thread([this, square_length_mm] { 
-            this->computeCameraCalibrationTask(square_length_mm); 
+        async_compute_task = new std::thread([this] { 
+            this->computeCameraCalibrationTask(); 
         });
     }
 
@@ -688,8 +820,7 @@ public:
         return bFetchSuccess;
     }
 
-    void computeCameraCalibrationTask(
-        const float square_length_mm)
+    void computeCameraCalibrationTask()
     {
         // Copy over the pre-existing tracker intrinsics
         async_task_result= trackerInfo.tracker_intrinsics.intrinsics.stereo;
@@ -697,7 +828,17 @@ public:
         // Only need to calculate objectPointsList once,
         // then resize for each set of image points.
         std::vector<std::vector<cv::Point3f> > objectPointsList(1);
-        calcBoardCornerPositions(square_length_mm, objectPointsList[0]);
+		switch (calibrationPatternType)
+		{
+		case mode_chessboard:
+	        calcChessBoardCornerPositions(squareLengthMM, objectPointsList[0]);
+			break;
+		case mode_circlegrid:
+			calcCircleGridCenterPositions(circleSpacingMM, circleDiameterMM, objectPointsList[0]);
+			break;
+		default:
+			break;
+		}
         objectPointsList.resize(m_opencv_section_state[PSVRVideoFrameSection_Left]->imagePointsList.size(), objectPointsList[0]);
             
         // Compute the stereo camera calibration using epipolar geometry
@@ -796,10 +937,12 @@ public:
             cv::computeCorrespondEpilines(undistortedLeftImagePoints, 1, fundamental_matrix, leftLines);
             cv::computeCorrespondEpilines(undistortedRightImagePoints, 2, fundamental_matrix, rightLines);
 
-            assert(undistortedLeftImagePoints.size() == CORNER_COUNT);
-            assert(undistortedRightImagePoints.size() == CORNER_COUNT);
+            assert(undistortedLeftImagePoints.size() == undistortedRightImagePoints.size());
+			assert(leftLines.size() == rightLines.size());
+			assert(undistortedLeftImagePoints.size() == leftLines.size());
 
-            for (int corner_index = 0; corner_index < CORNER_COUNT; ++corner_index)
+			const int point_count= (int)undistortedLeftImagePoints.size();
+            for (int corner_index = 0; corner_index < point_count; ++corner_index)
             {
                 const cv::Point2f &leftImagePoint= undistortedLeftImagePoints[corner_index];
                 const cv::Point2f &rightImagePoint= undistortedRightImagePoints[corner_index];
@@ -912,9 +1055,13 @@ public:
 
     // Menu state
     eVideoDisplayMode m_videoDisplayMode;
+	eCalibrationPatternType calibrationPatternType;
     const PSVRClientTrackerInfo &trackerInfo;
     float frameWidth;
     float frameHeight;
+	float squareLengthMM;
+	float circleSpacingMM;
+	float circleDiameterMM;
 
     // Calibration State
     double reprojectionError;
@@ -943,9 +1090,8 @@ public:
 AppStage_StereoCalibration::AppStage_StereoCalibration(App *app)
     : AppStage(app)
     , m_menuState(AppStage_StereoCalibration::inactive)
-	, m_square_length_mm(DEFAULT_SQUARE_LEN_MM)
-    , m_trackerExposure(0.0)
-    , m_trackerGain(0.0)
+    , m_trackerExposure(0)
+    , m_trackerGain(0)
     , m_bStreamIsActive(false)
     , m_tracker_view(nullptr)
 { 
@@ -966,8 +1112,9 @@ void AppStage_StereoCalibration::enter()
 	m_tracker_view = PSVR_GetTracker(trackerInfo->tracker_id);
 
     m_opencv_stereo_state = new OpenCVStereoState(*trackerInfo);
-
-	m_square_length_mm = DEFAULT_SQUARE_LEN_MM;
+	m_opencv_stereo_state->squareLengthMM = DEFAULT_SQUARE_LEN_MM;
+	m_opencv_stereo_state->circleSpacingMM = DEFAULT_CIRCLE_SPACING_MM;
+	m_opencv_stereo_state->circleDiameterMM = DEFAULT_CIRCLE_DIAMETER_MM;
 
 	assert(!m_bStreamIsActive);
 	request_tracker_start_stream();
@@ -1009,12 +1156,12 @@ void AppStage_StereoCalibration::update()
         if (m_menuState == AppStage_StereoCalibration::capture)
         {
             // Update the chess board capture state
-            m_opencv_stereo_state->findNewChessBoards();
+            m_opencv_stereo_state->findNewCalibrationPattern();
 
-            if (m_opencv_stereo_state->hasSampledAllChessBoards())
+            if (m_opencv_stereo_state->hasSampledAllCalibrationPatterns())
             {
                 // Kick off the async task (very expensive)
-                m_opencv_stereo_state->computeCameraCalibration(m_square_length_mm);
+                m_opencv_stereo_state->computeCameraCalibration();
                 m_menuState= AppStage_StereoCalibration::processingCalibration;
             }
         }
@@ -1135,12 +1282,40 @@ void AppStage_StereoCalibration::renderUI()
 
 			if (ImGui::Button("Continue"))
 			{
-				m_menuState = eMenuState::enterBoardSettings;
+				m_menuState = eMenuState::selectBoardType;
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel"))
 			{
 				request_exit();
+			}
+
+			ImGui::End();
+		} break;
+	case eMenuState::selectBoardType:
+		{
+			const float k_wide_panel_width = 450.f;
+			ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_wide_panel_width / 2.f, 20.f));
+			ImGui::SetNextWindowSize(ImVec2(k_wide_panel_width, 130));
+
+			ImGui::Begin("Select Calibration Type", nullptr, window_flags);
+
+			ImGui::TextWrapped(
+				"Chessboard: Simpler to measure with ruler, less accurate\n" \
+				"Circle grid: Harder to measure with ruler, more accurate");
+
+			ImGui::Spacing();
+
+			if (ImGui::Button("Chessboard"))
+			{
+				m_opencv_stereo_state->calibrationPatternType= eCalibrationPatternType::mode_chessboard;
+				m_menuState = eMenuState::enterBoardSettings;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Circle Grid"))
+			{
+				m_opencv_stereo_state->calibrationPatternType= eCalibrationPatternType::mode_circlegrid;
+				m_menuState = eMenuState::enterBoardSettings;
 			}
 
 			ImGui::End();
@@ -1153,18 +1328,52 @@ void AppStage_StereoCalibration::renderUI()
 
 			ImGui::Begin("Enter Calibration Settings", nullptr, window_flags);
 
-			ImGui::PushItemWidth(100.f);
-			if (ImGui::InputFloat("Square Length (mm)", &m_square_length_mm, 0.5f, 1.f, 1))
+			ImGui::PushItemWidth(100.f);		
+			switch (m_opencv_stereo_state->calibrationPatternType)
 			{
-				if (m_square_length_mm < 1.f)
+			case eCalibrationPatternType::mode_chessboard:
 				{
-					m_square_length_mm = 1.f;
-				}
+					if (ImGui::InputFloat("Square Length (mm)", &m_opencv_stereo_state->squareLengthMM, 0.5f, 1.f, 1))
+					{
+						if (m_opencv_stereo_state->squareLengthMM < 1.f)
+						{
+							m_opencv_stereo_state->squareLengthMM = 1.f;
+						}
 
-				if (m_square_length_mm > 100.f)
+						if (m_opencv_stereo_state->squareLengthMM > 100.f)
+						{
+							m_opencv_stereo_state->squareLengthMM = 100.f;
+						}
+					}
+				} break;
+			case eCalibrationPatternType::mode_circlegrid:
 				{
-					m_square_length_mm = 100.f;
-				}
+					if (ImGui::InputFloat("Circle Spacing (mm)", &m_opencv_stereo_state->circleSpacingMM, 0.1f, 1.f, 1))
+					{
+						if (m_opencv_stereo_state->circleSpacingMM < 1.f)
+						{
+							m_opencv_stereo_state->circleSpacingMM = 1.f;
+						}
+
+						if (m_opencv_stereo_state->circleSpacingMM > 100.f)
+						{
+							m_opencv_stereo_state->circleSpacingMM = 100.f;
+						}
+					}
+
+					if (ImGui::InputFloat("Circle Diameter (mm)", &m_opencv_stereo_state->circleDiameterMM, 0.1f, 1.f, 1))
+					{
+						if (m_opencv_stereo_state->circleDiameterMM < 1.f)
+						{
+							m_opencv_stereo_state->circleDiameterMM = 1.f;
+						}
+
+						if (m_opencv_stereo_state->circleDiameterMM > m_opencv_stereo_state->circleSpacingMM)
+						{
+							m_opencv_stereo_state->circleDiameterMM = m_opencv_stereo_state->circleSpacingMM;
+						}
+					}
+				} break;
 			}
 			ImGui::PopItemWidth();
 
@@ -1174,8 +1383,15 @@ void AppStage_StereoCalibration::renderUI()
 			{
 				// Crank up the exposure and gain so that we can see the chessboard
 				// These overrides will get rolled back once tracker gets closed
-				request_tracker_set_temp_exposure(128.f);
-				request_tracker_set_temp_gain(128.f);
+				const int exposure_value= 
+					(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].min_value +
+					m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].max_value) / 2;
+				const int gain_value= 
+					(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].min_value +
+					m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].max_value) / 2;
+
+				request_tracker_set_temp_exposure(exposure_value);
+				request_tracker_set_temp_gain(gain_value);
 
 				m_menuState = eMenuState::capture;
 			}
@@ -1369,8 +1585,15 @@ void AppStage_StereoCalibration::handle_tracker_start_stream_response()
         {
 			// Crank up the exposure and gain so that we can see the chessboard
 			// These overrides will get rolled back once tracker gets closed
-			request_tracker_set_temp_exposure(128.f);
-			request_tracker_set_temp_gain(128.f);
+			const int exposure_value= 
+				(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].min_value +
+				m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Exposure].max_value) / 2;
+			const int gain_value= 
+				(m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].min_value +
+				m_tracker_view->tracker_info.video_property_constraints[PSVRVideoProperty_Gain].max_value) / 2;
+
+			request_tracker_set_temp_exposure(exposure_value);
+			request_tracker_set_temp_gain(gain_value);
 
             m_menuState = AppStage_StereoCalibration::testCalibration;
         }
@@ -1382,7 +1605,7 @@ void AppStage_StereoCalibration::handle_tracker_start_stream_response()
 		else
 		{
 			// Start capturing chess boards
-			m_menuState = AppStage_StereoCalibration::enterBoardSettings;
+			m_menuState = AppStage_StereoCalibration::selectBoardType;
 		}
     }
     else

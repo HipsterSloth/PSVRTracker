@@ -46,6 +46,7 @@ private:
     {
         inactive,
 		showWarning,
+		selectBoardType,
 		enterBoardSettings,
         capture,
         processingCalibration,

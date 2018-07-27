@@ -46,6 +46,7 @@ private:
     {
         inactive,
 		showWarning,
+		selectBoardType,
 		enterBoardSettings,
         capture,
         processingCalibration,
@@ -61,9 +62,6 @@ private:
 
     // Menu state
     eMenuState m_menuState;
-
-	// Board Settings
-	float m_square_length_mm;
 
     // Tracker Settings state
     int m_trackerExposure;
