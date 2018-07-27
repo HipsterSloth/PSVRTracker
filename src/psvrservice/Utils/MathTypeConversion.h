@@ -75,6 +75,7 @@ PSVRQuatf eigen_quaternionf_to_PSVR_quatf(const Eigen::Quaternionf &q);
 // Eigen types to OpenCV types
 cv::Mat eigen_mat3d_to_cv_mat3d(const Eigen::Matrix3d &in);
 cv::Mat eigen_vector3d_to_cv_vector3d(const Eigen::Vector3d &in);
+cv::Point3f eigen_opengl_vector3f_to_cv_point3f(const Eigen::Vector3f &in);
 void eigen_affine3d_to_cv_rvec_tvec(const Eigen::Affine3d &transform, cv::Mat &rvec, cv::Mat &tvec);
 
 #endif // MATH_TYPE_CONVERSION_H

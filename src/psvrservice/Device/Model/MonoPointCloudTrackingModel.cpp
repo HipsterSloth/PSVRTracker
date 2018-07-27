@@ -424,16 +424,6 @@ static void compute_image_point_camera_rays(
 		});
 }
 
-static cv::Point3f eigen_opengl_vector3f_to_cv_point3f(const Eigen::Vector3f &in)
-{
-	cv::Mat tvec(3, 1, cv::DataType<double>::type);
-	tvec.at<double>(0)= -in.x();
-	tvec.at<double>(1)= -in.y();
-	tvec.at<double>(2)= in.z();
-
-	return tvec;
-}
-
 static bool compute_transform_using_best_fit_correspondence(
 	const ServerTrackerView *tracker_view,
 	const PSVRTrackingProjection &projection,

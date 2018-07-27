@@ -433,6 +433,16 @@ cv::Mat eigen_vector3d_to_cv_vector3d(const Eigen::Vector3d &in)
 	return tvec;
 }
 
+cv::Point3f eigen_opengl_vector3f_to_cv_point3f(const Eigen::Vector3f &in)
+{
+	cv::Mat tvec(3, 1, cv::DataType<double>::type);
+	tvec.at<double>(0)= -in.x();
+	tvec.at<double>(1)= -in.y();
+	tvec.at<double>(2)= in.z();
+
+	return tvec;
+}
+
 void eigen_affine3d_to_cv_rvec_tvec(
 	const Eigen::Affine3d &transform,
 	cv::Mat &rvec,
