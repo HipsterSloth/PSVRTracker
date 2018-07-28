@@ -4,9 +4,6 @@
 [submodule "thirdparty/hidapi"]
 	path = thirdparty/hidapi
 	url = https://github.com/signal11/hidapi.git
-[submodule "thirdparty/PS4-Eye-Driver"]
-	path = thirdparty/PS4-Eye-Driver
-	url = https://github.com/HipsterSloth/PS4-Eye-Driver.git
 [submodule "thirdparty/imgui"]
 	path = thirdparty/imgui
 	url = https://github.com/ocornut/imgui.git
