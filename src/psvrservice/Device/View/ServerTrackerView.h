@@ -63,14 +63,13 @@ public:
     void loadSettings();
     void saveSettings();
 
+	bool getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const;
+	const struct TrackerModeConfig *getTrackerMode() const;
+	bool setTrackerMode(const std::string &new_mode);
+
 	double getFrameWidth() const;
-	void setFrameWidth(double value, bool bUpdateConfig);
-
 	double getFrameHeight() const;
-	void setFrameHeight(double value, bool bUpdateConfig);
-
 	double getFrameRate() const;
-	void setFrameRate(double value, bool bUpdateConfig);
 
 	bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const;
 

@@ -10,12 +10,12 @@
 #include "OrientationFilter.h"
 #include "PositionFilter.h"
 #include "PS3EyeTracker.h"
-#include "PS4CameraTracker.h"
 #include "ServerDeviceView.h"
 #include "ServerTrackerView.h"
 #include "ServerHMDView.h"
 #include "ServiceVersion.h"
 #include "TrackerManager.h"
+#include "TrackerCapabilitiesConfig.h"
 #include "Utility.h"
 #include "VirtualHMD.h"
 
@@ -157,9 +157,6 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
             case CommonSensorState::PS3EYE:
                 tracker_info->tracker_type= PSVRTracker_PS3Eye;
                 break;
-            case CommonSensorState::PS4Camera:
-                tracker_info->tracker_type= PSVRTracker_PS4Camera;
-                break;					
             case CommonSensorState::WMFMonoCamera:
                 tracker_info->tracker_type= PSVRTracker_GenericMonoCamera;
                 break;					
@@ -191,6 +188,22 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
 				tracker_view->getVideoPropertyConstraint(
 					(PSVRVideoPropertyType)prop_index, 
 					tracker_info->video_property_constraints[prop_index]);
+			}
+
+			// Get the list of available tracker modes
+			std::vector<std::string> mode_names;
+			if (tracker_view->getAvailableTrackerModes(mode_names))
+			{
+				tracker_info->mode_count= 0;
+				for (const std::string &mode_name : mode_names)
+				{
+					strncpy(tracker_info->mode_list[tracker_info->mode_count], mode_name.c_str(), MAX_PSVR_TRACKER_MODE_NAME_LENGTH);
+					++tracker_info->mode_count;
+				}
+			}
+			else
+			{
+				tracker_info->mode_count= 0;
 			}
 
             // Get the intrinsic camera lens properties
@@ -315,11 +328,7 @@ PSVRResult ServiceRequestHandler::get_tracker_settings(PSVRTrackerID tracker_id,
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_tracker_frame_width(
-	const PSVRTrackerID tracker_id, 
-	const float desired_frame_width, 
-	const bool bSaveSetting,
-	float *out_result_frame_width)
+PSVRResult ServiceRequestHandler::get_tracker_mode(const PSVRTrackerID tracker_id, std::string &out_mode)
 {
 	PSVRResult result= PSVRResult_Error;
 
@@ -328,22 +337,7 @@ PSVRResult ServiceRequestHandler::set_tracker_frame_width(
         ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
         if (tracker_view->getIsOpen())
         {
-            // Set the desired frame width on the tracker
-            tracker_view->setFrameWidth(desired_frame_width, bSaveSetting);
-
-            // Only save the setting if requested
-            if (bSaveSetting)
-            {
-                tracker_view->saveSettings();
-            }
-            else
-            {
-                m_peristentRequestState->active_tracker_stream_info[tracker_id].has_temp_settings_override = true;
-            }
-
-            // Return back the actual frame width that got set
-            *out_result_frame_width= static_cast<float>(tracker_view->getFrameWidth());
-
+            out_mode= tracker_view->getTrackerMode()->modeName;
             result= PSVRResult_Success;
         }
     }
@@ -351,72 +345,19 @@ PSVRResult ServiceRequestHandler::set_tracker_frame_width(
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_tracker_frame_height(
-	const PSVRTrackerID tracker_id, 
-	const float desired_frame_height, 
-	const bool bSaveSetting,
-	float *out_result_frame_height)
+PSVRResult ServiceRequestHandler::set_tracker_mode(const PSVRTrackerID tracker_id, const std::string &new_mode)
 {
 	PSVRResult result= PSVRResult_Error;
-		
-    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+
+	if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
     {
         ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
         if (tracker_view->getIsOpen())
         {
-            // Set the desired frame height on the tracker
-            tracker_view->setFrameHeight(desired_frame_height, bSaveSetting);
-
-            // Only save the setting if requested
-            if (bSaveSetting)
-            {
-                tracker_view->saveSettings();
-            }
-            else
-            {
-                m_peristentRequestState->active_tracker_stream_info[tracker_id].has_temp_settings_override = true;
-            }
-
-            // Return back the actual frame height that got set
-            *out_result_frame_height= static_cast<float>(tracker_view->getFrameHeight());
-
-            result= PSVRResult_Success;
-        }
-    }
-		
-	return result;
-}
-
-PSVRResult ServiceRequestHandler::set_tracker_frame_rate(
-	const PSVRTrackerID tracker_id, 
-	const float desired_frame_rate, 
-	const bool bSaveSetting,
-	float *out_result_frame_rate)
-{
-	PSVRResult result= PSVRResult_Error;
-		
-    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
-    {
-        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
-        if (tracker_view->getIsOpen())
-        {
-            // Set the desired frame rate on the tracker
-            tracker_view->setFrameRate(desired_frame_rate, bSaveSetting);
-
-            // Only save the setting if requested
-            if (bSaveSetting)
-            {
-                tracker_view->saveSettings();
-            }
-            else
-            {
-                m_peristentRequestState->active_tracker_stream_info[tracker_id].has_temp_settings_override = true;
-            }
-
-            // Return back the actual frame rate that got set
-            *out_result_frame_rate= static_cast<float>(tracker_view->getFrameRate());
-
-            result= PSVRResult_Success;
+			if (tracker_view->setTrackerMode(new_mode))
+			{
+	            result= PSVRResult_Success;
+			}
         }
     }
 		

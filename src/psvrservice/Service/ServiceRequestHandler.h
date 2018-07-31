@@ -142,15 +142,8 @@ public:
     PSVRResult get_tracker_settings(
 		PSVRTrackerID tracker_id, PSVRHmdID hmd_id, 
 		PSVRClientTrackerSettings *out_settings);
-    PSVRResult set_tracker_frame_width(
-		const PSVRTrackerID tracker_id, const float desired_frame_width, const bool bSaveSetting,
-		float *out_result_frame_width);
-    PSVRResult set_tracker_frame_height(
-		const PSVRTrackerID tracker_id, const float desired_frame_height, const bool bSaveSetting,
-		float *out_result_frame_height);
-    PSVRResult set_tracker_frame_rate(
-		const PSVRTrackerID tracker_id, const float desired_frame_rate, const bool bSaveSetting,
-		float *out_result_frame_rate);
+	PSVRResult get_tracker_mode(const PSVRTrackerID tracker_id, std::string &out_mode);
+    PSVRResult set_tracker_mode(const PSVRTrackerID tracker_id, const std::string &new_mode);
     PSVRResult set_tracker_video_property(
 		const PSVRTrackerID tracker_id, const PSVRVideoPropertyType property_type, int desired_value, bool save_setting, 
 		int *out_value);

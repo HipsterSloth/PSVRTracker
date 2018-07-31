@@ -136,7 +136,7 @@ AppStage_ColorCalibration::AppStage_ColorCalibration(App *app)
     , m_menuState(AppStage_ColorCalibration::inactive)
     , m_video_buffer_state(nullptr)
     , m_videoDisplayMode(AppStage_ColorCalibration::eVideoDisplayMode::mode_bgr)
-    , m_trackerFrameRate(0)
+	, m_trackerModeIndex(0)
     , m_bShowWindows(true)
     , m_bShowAlignment(false)
     , m_bShowAlignmentColor(false)
@@ -158,6 +158,22 @@ void AppStage_ColorCalibration::enter()
 
     tracker_count = trackerSettings->get_tracker_count();
     tracker_index = trackerSettings->get_tracker_Index();
+
+	// Get the current tracker mode
+	char current_mode_name[MAX_PSVR_TRACKER_MODE_NAME_LENGTH];
+	PSVR_GetTrackerMode(trackerInfo->tracker_id, current_mode_name, sizeof(current_mode_name));
+
+	// Extract the list of available tracker modes
+	// and determine what the current mode index is
+	m_trackerModeIndex= -1;
+	for (int mode_index = 0; mode_index < trackerInfo->mode_count; ++mode_index)
+	{
+		if (strncmp(current_mode_name, trackerInfo->mode_list[mode_index], MAX_PSVR_TRACKER_MODE_NAME_LENGTH) == 0)
+		{
+			m_trackerModeIndex= mode_index;
+			break;
+		}
+	}
 
     // Use the tracker selected from the tracker settings menu
     assert(m_trackerView == nullptr);
@@ -333,6 +349,9 @@ void AppStage_ColorCalibration::renderUI()
         ImGuiWindowFlags_NoCollapse;
     int auto_calib_sleep = 150;
 
+    const AppStage_TrackerSettings *trackerSettings = m_app->getAppStage<AppStage_TrackerSettings>();
+    const PSVRClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTrackerInfo();
+
     switch (m_menuState)
     {
     case eMenuState::manualConfig:
@@ -373,32 +392,30 @@ void AppStage_ColorCalibration::renderUI()
                 ImGui::SameLine();
                 ImGui::Text("Video [F]ilter Mode: %s", k_video_display_mode_names[m_videoDisplayMode]);
 
-                int frame_rate_positive_change = 10;
-                int frame_rate_negative_change = -10;
-                
-                double val = m_trackerFrameRate;
-                if (val == 2) { frame_rate_positive_change = 1; frame_rate_negative_change = 0; }
-                else if (val == 3) { frame_rate_positive_change = 2; frame_rate_negative_change = -1; }
-                else if (val == 5) { frame_rate_positive_change = 3; frame_rate_negative_change = -0; }
-                else if (val == 8) { frame_rate_positive_change = 2; frame_rate_negative_change = -3; }
-                else if (val == 10) { frame_rate_positive_change = 5; frame_rate_negative_change = -2; }
-                else if (val == 15) { frame_rate_positive_change = 5; frame_rate_negative_change = -5; }
-                else if (val == 20) { frame_rate_positive_change = 5; frame_rate_negative_change = -5; }
-                else if (val == 25) { frame_rate_positive_change = 5; frame_rate_negative_change = -5; }
-                else if (val == 30) { frame_rate_negative_change = -5; }
-                else if (val == 60) { frame_rate_positive_change = 0; }
+				if (trackerInfo->mode_count > 0)
+				{
+					if (ImGui::Button("-##TrackerMode"))
+					{
+						int new_mode_index = (m_trackerModeIndex + 1) % trackerInfo->mode_count;
 
-                if (ImGui::Button("-##FrameRate"))
-                {
-                    request_tracker_set_frame_rate(m_trackerFrameRate + frame_rate_negative_change);
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("+##FrameRate"))
-                {
-                    request_tracker_set_frame_rate(m_trackerFrameRate + frame_rate_positive_change);
-                }
-                ImGui::SameLine();
-                ImGui::Text("Frame Rate: %.0f", m_trackerFrameRate);
+						if (request_tracker_set_mode(trackerInfo->mode_list[new_mode_index]))
+						{
+							m_trackerModeIndex= (int)new_mode_index;
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("+##TrackerMode"))
+					{
+						size_t new_mode_index= (m_trackerModeIndex + trackerInfo->mode_count - 1) % trackerInfo->mode_count;
+
+						if (request_tracker_set_mode(trackerInfo->mode_list[new_mode_index]))
+						{
+							m_trackerModeIndex= (int)new_mode_index;
+						}
+					}
+				}
+				ImGui::SameLine();
+                ImGui::Text("Tracker Mode: %s", trackerInfo->mode_list[m_trackerModeIndex]);
 
 				if (canDecVideoProperty(PSVRVideoProperty_Exposure))
 				{
@@ -811,14 +828,9 @@ void AppStage_ColorCalibration::release_video_buffers()
     m_video_buffer_state = nullptr;
 }
 
-void AppStage_ColorCalibration::request_tracker_set_frame_rate(double value)
+bool AppStage_ColorCalibration::request_tracker_set_mode(const char *new_mode)
 {
-    float actual_frame_rate;
-    if (PSVR_SetTrackerFrameRate(
-            m_trackerView->tracker_info.tracker_id, (float)value, true, &actual_frame_rate) == PSVRResult_Success)
-    {
-        m_trackerFrameRate = (double)actual_frame_rate;
-    }
+    return PSVR_SetTrackerMode(m_trackerView->tracker_info.tracker_id, new_mode) == PSVRResult_Success;
 }
 
 void AppStage_ColorCalibration::request_tracker_set_video_property(PSVRVideoPropertyType prop_type, int value)
@@ -855,7 +867,6 @@ void AppStage_ColorCalibration::request_tracker_get_settings()
     PSVRClientTrackerSettings settings;
     if (PSVR_GetTrackerSettings(m_trackerView->tracker_info.tracker_id, m_overrideHmdId, &settings) == PSVRResult_Success)
     {
-        m_trackerFrameRate = settings.frame_rate;
 		memcpy(m_videoProperties, settings.video_properties, sizeof(m_videoProperties));
         m_colorPresetTable = settings.color_range_table;
     }

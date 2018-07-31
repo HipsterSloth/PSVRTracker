@@ -3,6 +3,7 @@
 
 #include "stdlib.h" // size_t
 #include <string>
+#include <vector>
 
 //-- macros -----
 #ifndef ARRAY_SIZE
@@ -43,7 +44,8 @@ namespace Utility
 	}
 
     unsigned char int32_to_int8_verify(int value);
-    bool convert_wcs_to_mbs(const wchar_t *wc_string, char *out_mb_serial, const size_t mb_buffer_size);
+    bool convert_wcs_to_mbs(const wchar_t *wc_string, char *out_mb_string, const size_t mb_buffer_size);
+	bool convert_mbs_to_wcs(const char *mb_string, wchar_t *out_wc_string, const size_t wc_buffer_size);
 
     /// Formats a string into the given target buffer
     /// \param buffer The target buffer to write in to
@@ -58,11 +60,20 @@ namespace Utility
     /// Sleeps the current thread for the given number of milliseconds
     void sleep_ms(int milliseconds);	
 
+	/// Get the current working directory
+	std::string get_current_directory();
+
+	/// Get the location of resource files 
+	std::string get_resource_directory();
+
     /// Get the "home" location where config files can be stored
     std::string get_home_directory();
 
     /// Attempts to create a directory at the given path. Returns 0 on success
     bool create_directory(const std::string &path);
+
+	/// Attempts to build a list of all of the files in a directory
+	bool fetch_filenames_in_directory(std::string path, std::vector<std::string> &out_filenames);
 
     /// Returns true if a file exists
     bool file_exists(const std::string& filename);

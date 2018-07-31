@@ -367,14 +367,31 @@ PSVRResult PSVR_GetTrackerVideoFrameSectionCount(PSVRTrackerID tracker_id, int *
     return result;
 }
 
-PSVRResult PSVR_SetTrackerFrameRate(PSVRTrackerID tracker_id, float desired_frame_rate, bool save_setting, float *out_frame_rate)
+PSVRResult PSVR_GetTrackerMode(PSVRTrackerID tracker_id, char *out_mode, size_t max_mode_name_size)
 {
     PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        result= g_psvr_service->getRequestHandler()->set_tracker_frame_rate(
-            tracker_id, desired_frame_rate, save_setting, out_frame_rate);
+		std::string mode_name;
+
+		if (g_psvr_service->getRequestHandler()->get_tracker_mode(tracker_id, mode_name) == PSVRResult_Success)
+		{
+			strncpy(out_mode, mode_name.c_str(), max_mode_name_size);
+			result= PSVRResult_Success;
+		}
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerMode(PSVRTrackerID tracker_id, const char *new_mode)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        result= g_psvr_service->getRequestHandler()->set_tracker_mode(tracker_id, std::string(new_mode));
     }
 
     return result;

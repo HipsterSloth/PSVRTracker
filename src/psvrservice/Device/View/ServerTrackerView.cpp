@@ -9,12 +9,12 @@
 #include "MathGLM.h"
 #include "MathAlignment.h"
 #include "PS3EyeTracker.h"
-#include "PS4CameraTracker.h"
 #include "Utility.h"
 #include "Logger.h"
 #include "MathTypeConversion.h"
 #include "ServiceRequestHandler.h"
 #include "TrackerManager.h"
+#include "TrackerCapabilitiesConfig.h"
 #include "TrackerMath.h"
 #include "PoseFilterInterface.h"
 #include "WMFMonoTracker.h"
@@ -224,6 +224,10 @@ public:
         , gsUpperBuffer(nullptr)
         , maskedBuffer(nullptr)
     {
+		const TrackerModeConfig *mode= device->getTrackerMode();
+
+		srcBufferWidth= mode->bufferPixelWidth;
+		srcBufferHeight= mode->bufferPixelHeight;
         device->getVideoFrameDimensions(&frameWidth, &frameHeight, nullptr);
 
         bgrBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
@@ -287,7 +291,7 @@ public:
 
     void writeVideoFrame(const unsigned char *video_buffer, bool bIsFlipped)
     {
-        const cv::Mat videoBufferMat(frameHeight, frameWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
+        const cv::Mat videoBufferMat(srcBufferHeight, srcBufferWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
 
 		if (bIsFlipped)
 		{
@@ -303,7 +307,7 @@ public:
 
     void writeStereoVideoFrameSection(const unsigned char *video_buffer, const cv::Rect &buffer_bounds, bool bIsFlipped)
     {
-        const cv::Mat videoBufferMat(frameHeight, 2*frameWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
+        const cv::Mat videoBufferMat(srcBufferHeight, srcBufferWidth, CV_8UC3, const_cast<unsigned char *>(video_buffer));
 
 		if (bIsFlipped)
 		{
@@ -634,6 +638,8 @@ public:
 
     PSVRVideoFrameSection section;
 
+	int srcBufferWidth;
+	int srcBufferHeight;
     int frameWidth;
     int frameHeight;
 
@@ -791,7 +797,8 @@ void ServerTrackerView::stopSharedMemoryVideoStream()
 
 void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_frame_buffer)
 {
-	const bool is_flipped= m_device->getIsVideoMirrored();
+	const bool is_frame_flipped= m_device->getIsFrameMirrored();
+	const bool is_buffer_flipped= m_device->getIsBufferMirrored();
 
 	if (m_device == nullptr)
 	{
@@ -801,18 +808,34 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
 	// Fetch the latest video buffer frame from the device
     if (m_device->getIsStereoCamera())
     {
-		const int section_width= (int)m_device->getFrameWidth();
-		const int section_height= (int)m_device->getFrameHeight();
-		const cv::Rect left_bounds(0, 0, section_width, section_height);
-		const cv::Rect right_bounds(section_width, 0, section_width, section_height);
+		const TrackerModeConfig *mode_config= m_device->getTrackerMode();
+		const int section_width= (int)mode_config->intrinsics.intrinsics.stereo.pixel_width;
+		const int section_height= (int)mode_config->intrinsics.intrinsics.stereo.pixel_height;
+
+		cv::Rect left_bounds;
+		cv::Rect right_bounds;
+
+		if (mode_config->frameSections.size() >= 2)
+		{
+			const TrackerFrameSectionInfo &left_section= mode_config->frameSections[0];
+			const TrackerFrameSectionInfo &right_section= mode_config->frameSections[1];
+
+			left_bounds= cv::Rect(left_section.x, left_section.y, section_width, section_height);
+			right_bounds= cv::Rect(right_section.x, right_section.y, section_width, section_height);
+		}
+		else
+		{
+			left_bounds= cv::Rect(0, 0, section_width, section_height);
+			right_bounds= cv::Rect(section_width, 0, section_width, section_height);
+		}
 
         // Cache the left raw video frame
         if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr)
         {
             m_opencv_buffer_state[PSVRVideoFrameSection_Left]->writeStereoVideoFrameSection(
 				raw_video_frame_buffer, 
-				is_flipped ? right_bounds : left_bounds, 
-				is_flipped);
+				is_buffer_flipped ? right_bounds : left_bounds, 
+				is_frame_flipped);
         }
 
         // Cache the right raw video frame
@@ -820,8 +843,8 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
         {
             m_opencv_buffer_state[PSVRVideoFrameSection_Right]->writeStereoVideoFrameSection(
 				raw_video_frame_buffer,
-				is_flipped ? left_bounds : right_bounds, 
-				is_flipped);
+				is_buffer_flipped ? left_bounds : right_bounds, 
+				is_frame_flipped);
         }
     }
     else
@@ -830,7 +853,7 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
         if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
         {
             m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->writeVideoFrame(
-				raw_video_frame_buffer, is_flipped);
+				raw_video_frame_buffer, is_frame_flipped);
         }
     }
 
@@ -967,10 +990,6 @@ ITrackerInterface *ServerTrackerView::allocate_tracker_interface(const class Dev
         {
             tracker_interface = new PS3EyeTracker();
         } break;
-    case CommonSensorState::PS4Camera:
-        {
-            tracker_interface = new PS4CameraTracker();
-        } break;
     case CommonSensorState::WMFMonoCamera:
         {
             tracker_interface = new WMFMonoTracker();
@@ -1030,21 +1049,33 @@ void ServerTrackerView::saveSettings()
     m_device->saveSettings();
 }
 
+bool ServerTrackerView::getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const
+{
+	return m_device->getAvailableTrackerModes(out_mode_names);
+}
+
+const TrackerModeConfig *ServerTrackerView::getTrackerMode() const
+{
+	return m_device->getTrackerMode();
+}
+
+bool ServerTrackerView::setTrackerMode(const std::string &new_mode)
+{
+	if (m_device->setTrackerMode(new_mode))
+	{
+	    // Resize the shared memory and opencv buffers
+		reallocate_shared_memory();
+		reallocate_opencv_buffer_state();
+
+		return true;
+	}
+
+	return false;
+}
+
 double ServerTrackerView::getFrameWidth() const
 {
     return m_device->getFrameWidth();
-}
-
-void ServerTrackerView::setFrameWidth(double value, bool bUpdateConfig)
-{
-    if (value == m_device->getFrameWidth()) return;
-
-    // change frame width
-    m_device->setFrameWidth(value, bUpdateConfig);
-
-    // Resize the shared memory and opencv buffers
-    reallocate_shared_memory();
-    reallocate_opencv_buffer_state();
 }
 
 double ServerTrackerView::getFrameHeight() const
@@ -1052,27 +1083,9 @@ double ServerTrackerView::getFrameHeight() const
     return m_device->getFrameHeight();
 }
 
-void ServerTrackerView::setFrameHeight(double value, bool bUpdateConfig)
-{
-    if (value == m_device->getFrameHeight()) return;
-
-    // change frame height
-    m_device->setFrameHeight(value, bUpdateConfig);
-
-    // Resize the shared memory and opencv buffers
-    reallocate_shared_memory();
-    reallocate_opencv_buffer_state();
-
-}
-
 double ServerTrackerView::getFrameRate() const
 {
     return m_device->getFrameRate();
-}
-
-void ServerTrackerView::setFrameRate(double value, bool bUpdateConfig)
-{
-    m_device->setFrameRate(value, bUpdateConfig);
 }
 
 bool ServerTrackerView::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const

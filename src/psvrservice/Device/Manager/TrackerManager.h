@@ -4,37 +4,18 @@
 //-- includes -----
 #include <memory>
 #include <deque>
+#include <vector>
+
 #include "DeviceTypeManager.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
 #include "PSVRConfig.h"
 
 //-- typedefs -----
-
 class ServerTrackerView;
 typedef std::shared_ptr<ServerTrackerView> ServerTrackerViewPtr;
 
 //-- definitions -----
-struct TrackerProfile
-{
-	float frame_width;
-	//float frame_height;
-	float frame_rate;
-	float exposure;
-    float gain;
-    PSVR_HSVColorRangeTable color_preset_table;
-
-    inline void clear()
-    {
-		frame_width = 0.f;
-		// frame_height = 0.f;
-		frame_rate = 0.f;
-		exposure = 0.f;
-        gain = 0;
-		memset(&color_preset_table, 0, sizeof(PSVR_HSVColorRangeTable));
-    }
-};
-
 class TrackerManagerConfig : public PSVRConfig
 {
 public:
@@ -50,12 +31,10 @@ public:
 	{ return (debug_flags & mask) > 0; }
 
     long version;
-    //int optical_tracking_timeout;
 	int tracker_sleep_ms;
 	bool use_bgr_to_hsv_lookup_table;
 	float min_valid_projection_area;
 	bool disable_roi;
-    TrackerProfile default_tracker_profile;
 	float global_forward_degrees;
 
 	PSVRVector3f get_global_forward_axis() const;
@@ -84,17 +63,6 @@ public:
 
     ServerTrackerViewPtr getTrackerViewPtr(int device_id) const;
 
-    inline void saveDefaultTrackerProfile(const TrackerProfile *profile)
-    {
-        cfg.default_tracker_profile = *profile;
-        cfg.save();
-    }
-
-    inline const TrackerProfile *getDefaultTrackerProfile() const
-    {
-        return &cfg.default_tracker_profile; 
-    }
-
     inline const TrackerManagerConfig& getConfig() const
     {
         return cfg;
@@ -115,6 +83,7 @@ protected:
 	int getListUpdatedResponseType() override;
 
 private:
+	class TrackerCapabilitiesSet *m_supportedTrackers;
 	std::deque<PSVRTrackingColorType> m_available_color_ids;
     TrackerManagerConfig cfg;
     bool m_tracker_list_dirty;

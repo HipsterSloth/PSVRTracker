@@ -31,7 +31,7 @@ public:
     
     bool is_valid;
     long max_poll_failure_count;
-	double frame_rate;
+	std::string current_mode;
     int exposure;
 	int gain;
 
@@ -57,10 +57,7 @@ public:
     bool matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const override;
     bool open(const DeviceEnumerator *enumerator) override;
     bool getIsOpen() const override;
-    //bool getIsReadyToPoll() const override;
-    //IDeviceInterface::ePollResult poll() override;
     void close() override;
-    //long getMaxPollFailureCount() const override;
     static CommonSensorState::eDeviceType getDeviceTypeStatic()
     { return CommonSensorState::PS3EYE; }
     CommonSensorState::eDeviceType getDeviceType() const override;
@@ -70,14 +67,15 @@ public:
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
     bool getIsStereoCamera() const override { return false; }
-	bool getIsVideoMirrored() const override { return false; }
+	bool getIsFrameMirrored() const override { return false; }
+	bool getIsBufferMirrored() const override { return false; }
     void loadSettings() override;
     void saveSettings() override;
-	void setFrameWidth(double value, bool bUpdateConfig) override;
+	bool getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const override;
+	const struct TrackerModeConfig *getTrackerMode() const override;
+	bool setTrackerMode(const std::string modeName) override;
 	double getFrameWidth() const override;
-	void setFrameHeight(double value, bool bUpdateConfig) override;
 	double getFrameHeight() const override;
-	void setFrameRate(double value, bool bUpdateConfig) override;
 	double getFrameRate() const override;
 	bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const override;
     void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting) override;
@@ -98,6 +96,8 @@ public:
     { return cfg; }
 
 private:
+	const class TrackerCapabilitiesConfig *m_capabilities;
+	const struct TrackerModeConfig *m_currentMode;
     PS3EyeTrackerConfig cfg;
     std::string USBDevicePath;
     class PSEyeVideoCapture *VideoCapture;

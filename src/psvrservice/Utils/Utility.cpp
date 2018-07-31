@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+
 #include <locale>
 #include <iostream>
 #include <sstream>
@@ -25,7 +26,10 @@
     #include <sys/types.h>
     #include <sys/stat.h>
 
+	#include <dirent.h>
 	#include <time.h>
+	#include <unistd.h>
+
 	#if defined __MACH__ && defined __APPLE__
 		#include <mach/mach.h>
 		#include <mach/mach_time.h>
@@ -42,7 +46,7 @@ namespace Utility
         return static_cast<unsigned char>(value);
     }
 
-    bool convert_wcs_to_mbs(const wchar_t *wc_string, char *out_mb_serial, const size_t mb_buffer_size)
+    bool convert_wcs_to_mbs(const wchar_t *wc_string, char *out_mb_string, const size_t mb_buffer_size)
     {
         bool success= false;
 
@@ -55,7 +59,7 @@ namespace Utility
 
             success= wcsrtombs_s(
                 &countConverted,
-                out_mb_serial,
+                out_mb_string,
                 mb_buffer_size,
                 &wcsIndirectString,
                 _TRUNCATE,
@@ -63,7 +67,7 @@ namespace Utility
 #else
             success=
                 wcstombs(
-                    out_mb_serial, 
+                    out_mb_string, 
                     wc_string, 
                     mb_buffer_size) != static_cast<size_t>(-1);
 #endif
@@ -71,6 +75,26 @@ namespace Utility
 
         return success;
     }
+
+	bool convert_mbs_to_wcs(const char *mb_string, wchar_t *out_wc_string, const size_t wc_buffer_size)
+	{
+        bool success= false;
+
+        if (mb_string != nullptr)
+        {
+			const char *mbsIndirectString = mb_string;
+			mbstate_t mbstate;
+
+            success=
+				mbsrtowcs(
+					out_wc_string, 
+					&mbsIndirectString, 
+					wc_buffer_size, 
+					&mbstate) != static_cast<size_t>(-1);
+        }
+
+        return success;
+	}
 
     int format_string(char *buffer, size_t buffer_size, const char *format, ...)
     {
@@ -132,6 +156,25 @@ namespace Utility
 #endif
     }
 
+	std::string get_current_directory()
+	{
+		char buff[FILENAME_MAX];
+
+#if defined WIN32 || defined _WIN32 || defined WINCE
+		_getcwd(buff, FILENAME_MAX);
+#else
+		getcwd(buff, FILENAME_MAX);
+#endif
+
+		std::string current_working_dir(buff);
+		return current_working_dir;
+	}
+
+	std::string get_resource_directory()
+	{
+		return get_current_directory() + std::string("\\resources");
+	}
+
     std::string get_home_directory()
     {
         std::string home_dir;
@@ -180,11 +223,51 @@ namespace Utility
         return bSuccess;
     }
 
+	bool fetch_filenames_in_directory(std::string path, std::vector<std::string> &out_filenames)
+	{
+		bool bSuccess= false;
+
+#if defined WIN32 || defined _WIN32 || defined WINCE
+		WIN32_FIND_DATA FindFileData;
+		HANDLE hFind;
+
+		hFind = FindFirstFileA(path.c_str(), &FindFileData);
+		if (hFind != INVALID_HANDLE_VALUE) 
+		{
+			out_filenames.push_back(std::string(FindFileData.cFileName));
+
+			while (FindNextFileA(hFind, &FindFileData))
+			{
+				out_filenames.push_back(std::string(FindFileData.cFileName));
+			}
+
+			FindClose(hFind);
+
+			bSuccess= true;
+		} 
+#else 
+		DIR *dir;
+		dirent *ent;
+
+		if ((dir = opendir(path.c_str())) != nullptr) 
+		{
+			/* print all the files and directories within directory */
+			while ((ent = readdir(dir)) != nullptr) 
+			{
+				out_filenames.push_back(std::string(ent->d_name));
+			}
+
+			closedir(dir);
+			bSuccess= true;
+		} 
+#endif
+		return bSuccess;
+	}
+
     bool file_exists(const std::string& filename) 
     {
         std::ifstream file(filename.c_str());
 
         return (bool)file;
     }
-
 };

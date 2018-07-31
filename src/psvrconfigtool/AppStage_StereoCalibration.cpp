@@ -1425,7 +1425,7 @@ void AppStage_StereoCalibration::renderUI()
                 {
                     request_exit();
                 }
-                if (m_opencv_stereo_state->areCurrentImagePointsValid())
+                if (m_opencv_stereo_state != nullptr && m_opencv_stereo_state->areCurrentImagePointsValid())
                 {
                     ImGui::Text("Press spacebar to capture");
                 }
@@ -1597,15 +1597,10 @@ void AppStage_StereoCalibration::handle_tracker_start_stream_response()
 
             m_menuState = AppStage_StereoCalibration::testCalibration;
         }
-		else if (m_tracker_view->tracker_info.tracker_type == PSVRTrackerType::PSVRTracker_PS4Camera)
-		{
-    		// Warn the user if they are about to change the distortion calibration settings for the PS4Camera
-			m_menuState = AppStage_StereoCalibration::showWarning;
-		}
 		else
 		{
-			// Start capturing chess boards
-			m_menuState = AppStage_StereoCalibration::selectBoardType;
+    		// Warn the user if they are about to change the distortion calibration settings for the camera
+			m_menuState = AppStage_StereoCalibration::showWarning;
 		}
     }
     else

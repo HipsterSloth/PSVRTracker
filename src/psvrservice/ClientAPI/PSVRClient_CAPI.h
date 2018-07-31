@@ -43,7 +43,6 @@ typedef enum
 {
     PSVRTracker_None= -1,
     PSVRTracker_PS3Eye,
-	PSVRTracker_PS4Camera,
     PSVRTracker_GenericMonoCamera,
 	PSVRTracker_GenericStereoCamera
 } PSVRTrackerType;
@@ -207,6 +206,9 @@ typedef struct
 	bool is_supported;
 } PSVRVideoPropertyConstraint;
 
+#define MAX_PSVR_TRACKER_MODE_NAME_LENGTH		64
+#define MAX_PSVR_TRACKER_MODE_COUNT				32
+
 /// Static properties about a tracker
 typedef struct
 {
@@ -217,6 +219,10 @@ typedef struct
     PSVRTrackerType tracker_type;
     PSVRTrackerDriver tracker_driver;
     char device_path[128];
+
+	// List of possible modes the tracker can be set to
+	char mode_list[MAX_PSVR_TRACKER_MODE_COUNT][MAX_PSVR_TRACKER_MODE_NAME_LENGTH];
+	int mode_count;
 
 	// Constraints for each video property of the device (gain, exposure, etc)
 	PSVRVideoPropertyConstraint video_property_constraints[PSVRVideoProperty_COUNT];
@@ -606,11 +612,16 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_CloseTrackerVideoStream(PSVRTrackerID trac
 
 /** \brief Set the frame rate of the target tracker
 	\param tracker_id The id of the tracker
-    \param desired_frame_rate The desired frame rate of the tracker
-    \param save_setting If true the desired frame rate is saved to the tracker config
-    \param[out] out_frame_rate The actual resulting frame rate of the tracker
+    \param[out] out_mode The name of the current mode
+	\param max_mode_name_size The size of the out_mode string
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerFrameRate(PSVRTrackerID tracker_id, float desired_frame_rate, bool save_setting, float *out_frame_rate);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerMode(PSVRTrackerID tracker_id, char *out_mode, size_t max_mode_name_size);
+
+/** \brief Set the frame rate of the target tracker
+	\param tracker_id The id of the tracker
+    \param new_mode The desired mode to use for the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerMode(PSVRTrackerID tracker_id, const char *new_mode);
 
 /** \brief Set the video property of the target tracker
 	\param tracker_id The id of the tracker

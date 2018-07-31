@@ -4,17 +4,26 @@
 #include "DeviceManager.h"
 #include "HMDManager.h"
 #include "Logger.h"
-#include "PS4CameraTracker.h"
 #include "ServerHMDView.h"
 #include "ServerTrackerView.h"
 #include "ServerDeviceView.h"
+#include "TrackerCapabilitiesConfig.h"
 #include "MathUtility.h"
+#include "TrackerUSBDeviceEnumerator.h"
+#include "WMFCameraEnumerator.h"
+#include "USBDeviceManager.h"
+#include "Utility.h"
+
+#include <fstream>
 
 #ifdef _MSC_VER
     #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
 #endif
 
 //-- constants -----
+
+//-- prototypes --
+static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path);
 
 //-- Tracker Manager Config -----
 const int TrackerManagerConfig::CONFIG_VERSION = 2;
@@ -28,19 +37,7 @@ TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     use_bgr_to_hsv_lookup_table = true;
     min_valid_projection_area= 16;
     disable_roi = false;
-    default_tracker_profile.frame_width = 640;
-    default_tracker_profile.frame_rate = 40;
-    default_tracker_profile.exposure = 32;
-    default_tracker_profile.gain = 32;
-    strncpy(
-        default_tracker_profile.color_preset_table.table_name, 
-        "default_tracker_profile", 
-        sizeof(default_tracker_profile.color_preset_table.table_name));
     global_forward_degrees = 0.f;
-    for (int preset_index = 0; preset_index < PSVRTrackingColorType_MaxColorTypes; ++preset_index)
-    {
-        default_tracker_profile.color_preset_table.color_presets[preset_index] = k_default_color_presets[preset_index];
-    }
 };
 
 const configuru::Config
@@ -52,15 +49,9 @@ TrackerManagerConfig::writeToJSON()
         {"tracker_sleep_ms", tracker_sleep_ms},
         {"min_valid_projection_area", min_valid_projection_area},	
         {"disable_roi", disable_roi},
-        {"default_tracker_profile.frame_width", default_tracker_profile.frame_width},
-        {"default_tracker_profile.frame_rate", default_tracker_profile.frame_rate},
-        {"default_tracker_profile.exposure", default_tracker_profile.exposure},
-        {"default_tracker_profile.gain", default_tracker_profile.gain},
         {"global_forward_degrees", global_forward_degrees},
 		{"debug_show_tracking_model", (TrackerManagerConfig::debug_flags & PSMTrackerDebugFlags_trackingModel) > 0}
     };
-
-    writeColorPropertyPresetTable(&default_tracker_profile.color_preset_table, pt);
 
     return pt;
 }
@@ -77,11 +68,6 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
         tracker_sleep_ms = pt.get_or<int>("tracker_sleep_ms", tracker_sleep_ms);
         min_valid_projection_area = pt.get_or<float>("min_valid_projection_area", min_valid_projection_area);	
         disable_roi = pt.get_or<bool>("disable_roi", disable_roi);
-        default_tracker_profile.frame_width = pt.get_or<float>("default_tracker_profile.frame_width", 640);
-        default_tracker_profile.frame_rate = pt.get_or<float>("default_tracker_profile.frame_rate", 40);
-        default_tracker_profile.exposure = pt.get_or<float>("default_tracker_profile.exposure", 32);
-        default_tracker_profile.gain = pt.get_or<float>("default_tracker_profile.gain", 32);
-
         global_forward_degrees= pt.get_or<float>("global_forward_degrees", global_forward_degrees);
 
 		unsigned int debug_flags= PSMTrackerDebugFlags_none;
@@ -90,8 +76,6 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
 			debug_flags|= PSMTrackerDebugFlags_trackingModel;
 		}
 		TrackerManagerConfig::debug_flags= (PSMTrackerDebugFlags)debug_flags;
-
-        readColorPropertyPresetTable(pt, &default_tracker_profile.color_preset_table);
     }
     else
     {
@@ -140,8 +124,12 @@ TrackerManagerConfig::get_global_down_axis() const
 //-- Tracker Manager -----
 TrackerManager::TrackerManager()
     : DeviceTypeManager(10000, 13)
+	, m_supportedTrackers(new TrackerCapabilitiesSet)
     , m_tracker_list_dirty(false)
 {
+	// Share the supported tracker list with the tracker enumerators
+	TrackerUSBDeviceEnumerator::s_supportedTrackers= m_supportedTrackers;
+	WMFCameraEnumerator::s_supportedTrackers= m_supportedTrackers;
 }
 
 bool 
@@ -157,8 +145,12 @@ TrackerManager::startup()
         // Save back out the config in case there were updated defaults
         cfg.save();
 
+		// Fetch the config files for all the trackers we support
+		m_supportedTrackers->reloadSupportedTrackerCapabilities();
+
         // The PS4 camera needs firmware uploaded first before it will show up as a connected device
-        PS4CameraTracker::uploadFirmwareToAllPS4Cameras("resources/firmware.bin");
+        uploadFirmwareToAllPS4Cameras(
+			Utility::get_resource_directory()+std::string("\\firmware\\ps4camera_firmware.bin"));
 
         // Refresh the tracker list
         mark_tracker_list_dirty();
@@ -361,4 +353,101 @@ TrackerManager::freeTrackingColorID(PSVRTrackingColorType color_id)
 {
     assert(std::find(m_available_color_ids.begin(), m_available_color_ids.end(), color_id) == m_available_color_ids.end());
     m_available_color_ids.push_back(color_id);
+}
+
+#define FIRMWARE_UPLOAD_CHUNK_SIZE      512
+#define FIRMWARE_UPLOAD_DEVICE_PID      0x0580
+#define FIRMWARE_UPLOAD_DEVICE_VID      0x05a9
+
+static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
+{
+    USBDeviceEnumerator* enumerator= usb_device_enumerator_allocate();
+
+    while (enumerator != nullptr && usb_device_enumerator_is_valid(enumerator))
+    {
+        USBDeviceFilter filter;
+        if (usb_device_enumerator_get_filter(enumerator, filter) &&
+            filter.product_id == FIRMWARE_UPLOAD_DEVICE_PID &&
+            filter.vendor_id == FIRMWARE_UPLOAD_DEVICE_VID)
+        {
+            t_usb_device_handle dev_handle= 
+                usb_device_open(
+                    enumerator, 
+                    0, // interface
+                    1, // configuration
+                    true); // reset device
+
+            if (dev_handle != k_invalid_usb_device_handle)
+            {
+                PSVR_LOG_INFO("PS4CameraTracker::uploadFirmware") << "Uploading firmware to ov580 camera...";
+
+                uint8_t chunk[FIRMWARE_UPLOAD_CHUNK_SIZE];
+                std::ifstream firmware(firmware_path.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
+        
+                if (firmware.is_open()) 
+                {
+                    uint32_t length = (uint32_t)firmware.tellg();
+                    firmware.seekg(0, std::ios::beg);
+
+                    uint16_t index = 0x14;
+                    uint16_t value = 0;
+
+                    for (uint32_t pos = 0; pos < length; pos += FIRMWARE_UPLOAD_CHUNK_SIZE)
+                    {
+                        uint16_t size = (FIRMWARE_UPLOAD_CHUNK_SIZE > (length - pos)) ? (length - pos) : FIRMWARE_UPLOAD_CHUNK_SIZE;
+
+                        firmware.read((char*)chunk, size);
+
+                        USBTransferRequest request;
+                        request.payload.control_transfer.usb_device_handle= dev_handle;
+                        request.payload.control_transfer.bmRequestType= 0x40;
+                        request.payload.control_transfer.bRequest= 0x0;
+                        request.payload.control_transfer.wValue= value;
+                        request.payload.control_transfer.wIndex= index;
+                        request.payload.control_transfer.wLength= size;
+                        request.payload.control_transfer.timeout= 1000;
+                        assert(size <= sizeof(request.payload.control_transfer.data)); 
+                        memcpy(request.payload.control_transfer.data, chunk, size);
+                        request.request_type= _USBRequestType_ControlTransfer;
+                        usb_device_submit_transfer_request_blocking(request);
+
+                        if (((uint32_t)value + size) > 0xFFFF)
+                        {
+                            index += 1;
+                        }
+
+                        value += size;
+                    }
+                    firmware.close();
+
+                    USBTransferRequest request;
+                    request.payload.control_transfer.usb_device_handle= dev_handle;
+                    request.payload.control_transfer.bmRequestType= 0x40;
+                    request.payload.control_transfer.bRequest= 0x0;
+                    request.payload.control_transfer.wValue= 0x2200;
+                    request.payload.control_transfer.wIndex= 0x8018;
+                    request.payload.control_transfer.wLength= 1;
+                    request.payload.control_transfer.timeout= 1000;
+                    request.payload.control_transfer.data[0]= 0x5b;
+                    request.request_type= _USBRequestType_ControlTransfer;
+                    usb_device_submit_transfer_request_blocking(request);
+            
+                    PSVR_LOG_INFO("PS4CameraTracker::uploadFirmware") << "Firmware uploaded...";
+                }
+                else 
+                {
+                    PSVR_LOG_INFO("PS4CameraTracker::uploadFirmware") << "Unable to open firmware.bin!";
+                }
+
+                usb_device_close(dev_handle);
+            }
+        }
+
+        usb_device_enumerator_next(enumerator);
+    }
+
+    if (enumerator != nullptr)
+    {
+        usb_device_enumerator_free(enumerator);
+    }
 }

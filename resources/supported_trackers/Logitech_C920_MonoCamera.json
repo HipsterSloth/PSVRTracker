@@ -1,0 +1,28 @@
+{
+	"version":                   1,
+	"friendly_name":             "Logitech HD Pro Webcam C920 Camera",
+	"usb_product_id":            2093,
+	"usb_vendor_id":             1133,
+	"supported_modes":[
+		{
+			"mode_name":                 "640x480(60FPS)",
+			"is_frame_mirrored":         true,
+			"is_buffer_mirrored":        false,
+			"frame_rate":                60.0,
+			"frame_width":               640,
+			"frame_height":              480,
+			"buffer_format":             "MJPG",
+			"intrinsics_type":           "mono",
+			"hfov":                      60.0,
+			"vfov":                      45.0,
+			"zNear":                     10.0,
+			"zFar":                      200.0,
+			"camera_matrix":             [ 500.0331020961153, 0.0, 320.0, 0.0, 500.0331020961153, 240.0, 0.0, 0.0, 1.0 ],
+			"distortion_cofficients.k1": 0.0,
+			"distortion_cofficients.k2": 0.0,
+			"distortion_cofficients.k3": 0.0,
+			"distortion_cofficients.p1": 0.0,
+			"distortion_cofficients.p2": 0.0
+		}
+	]
+}

@@ -169,13 +169,6 @@ set(PSEYE_SRC)
 set(PSEYE_INCLUDE_DIRS)
 set(PSEYE_LIBRARIES)
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR (${CMAKE_SYSTEM_NAME} MATCHES "Windows"))    
-	#PS4EYEDriver
-    list(APPEND PSEYE_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/include)
-    list(APPEND PSEYE_SRC
-        ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/include/ps4eye.h
-		${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/include/ps4eye_regs.h
-        ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/driver/src/ps4eye.cpp)
-	
     #PS3EYEDriver
     list(APPEND PSEYE_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/PS3EYEDriver/src)
     list(APPEND PSEYE_SRC

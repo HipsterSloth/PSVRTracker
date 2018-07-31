@@ -140,7 +140,7 @@ bool WMFVideoDevice::open(
 				if (constraint.is_supported)
 				{
 					// Use the properties from the config if we used this video mode previously
-					if (desiredFormatIndex == cfg.last_video_format_index)
+					if (desiredFormatIndex == cfg.wmf_video_format_index)
 					{
 						int currentValue= getVideoProperty(prop_type);
 						int desiredValue= cfg.video_properties[prop_index];
@@ -184,7 +184,7 @@ bool WMFVideoDevice::open(
 			}
 
 			// Remember which video format index that was last successfully opened
-			cfg.last_video_format_index= desiredFormatIndex;
+			cfg.wmf_video_format_index= desiredFormatIndex;
 		}
 
 		if (SUCCEEDED(hr))

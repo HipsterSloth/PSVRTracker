@@ -13,8 +13,6 @@
 #define UNSPECIFIED_CAMERA_WIDTH			0xFFFFFFFF
 #define UNSPECIFIED_CAMERA_HEIGHT			0xFFFFFFFF
 #define UNSPECIFIED_CAMERA_FPS				0xFFFFFFFF
-#define CAMERA_BUFFER_FORMAT_MJPG			L"MFVideoFormat_MJPG"
-#define CAMERA_BUFFER_FORMAT_NV12			L"MFVideoFormat_NV12"
 
 // -- definitions -----
 struct WMFDeviceFormatInfo
@@ -72,32 +70,16 @@ struct WMFDeviceInfo
 
 	int findBestDeviceFormatIndex(
 		unsigned int width, unsigned int height,
-		unsigned int frameRate, const wchar_t *buffer_format) const;
-};
-
-struct WMFCameraFilter
-{
-    unsigned short vendorId;
-    unsigned short productId;
-	CommonSensorState::eDeviceType deviceType;
-};
-
-class WMFCameraFilterSet
-{
-public:
-	bool addFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type);
-	bool containsFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type);
-	CommonSensorState::eDeviceType findCameraType(unsigned short vendor_id, unsigned short product_id);
-
-private:
-	std::vector<WMFCameraFilter> filters;
+		unsigned int frameRate, const char *buffer_format) const;
 };
 
 // Enumerates over valid cameras accessible via the Windows Media Foundation API
 class WMFCameraEnumerator : public DeviceEnumerator
 {
 public:
-    WMFCameraEnumerator();
+	static class TrackerCapabilitiesSet *s_supportedTrackers;	
+	
+	WMFCameraEnumerator();
 	virtual ~WMFCameraEnumerator();
 
     bool is_valid() const override;
@@ -109,11 +91,11 @@ public:
 	const char *get_unique_identifier() const;
     inline int get_device_index() const { return m_device_index; }
 	const WMFDeviceInfo *get_device_info() const;
+	const class TrackerCapabilitiesConfig *getTrackerCapabilities() const;
 
 private:
 	struct WMFDeviceList *m_wmf_device_list;
 
-	WMFCameraFilterSet m_device_filter_set;
 	std::string m_current_device_identifier;
     int m_device_index;
 };

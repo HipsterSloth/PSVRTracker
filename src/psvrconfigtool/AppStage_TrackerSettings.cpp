@@ -60,11 +60,6 @@ void AppStage_TrackerSettings::render()
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
                     drawPS3EyeModel(scale3);
                 } break;
-            case PSVRTracker_PS4Camera:
-                {
-                    glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
-                    drawPS4CameraModel(scale3);
-                } break;
             case PSVRTracker_GenericMonoCamera:
                 {
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(3.f, 3.f, 3.f));
@@ -192,10 +187,6 @@ void AppStage_TrackerSettings::renderUI()
             case PSVRTracker_PS3Eye:
                 {
                     ImGui::BulletText("Camera Type: PS3 Eye");
-                } break;
-            case PSVRTracker_PS4Camera:
-                {
-                    ImGui::BulletText("Camera Type: PS4 Camera");
                 } break;
             case PSVRTracker_GenericMonoCamera:
                 {

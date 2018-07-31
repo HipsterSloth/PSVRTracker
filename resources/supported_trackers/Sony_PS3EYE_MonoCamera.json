@@ -1,0 +1,28 @@
+{
+	"version":                   1,
+	"friendly_name":             "Sony PS3EYE Camera",
+	"usb_product_id":            8192,
+	"usb_vendor_id":             5141,
+	"supported_modes":[
+		{
+			"mode_name":                 "640x480(60FPS)",
+			"is_frame_mirrored":         false,
+			"is_buffer_mirrored":        false,
+			"frame_rate":                60.0,
+			"frame_width":               640,
+			"frame_height":              480,
+			"buffer_format":             "BEYER",
+			"intrinsics_type":           "mono",
+			"hfov":                      60.0,
+			"vfov":                      45.0,
+			"zNear":                     10.0,
+			"zFar":                      200.0,
+			"camera_matrix":             [ 554.2563, 0.0, 320.0, 0.0, 554.2563, 240.0, 0.0, 0.0, 1.0 ],
+			"distortion_cofficients.k1": -0.10771770030260086,
+			"distortion_cofficients.k2": 0.1213262677192688,
+			"distortion_cofficients.k3": 0.04875476285815239,
+			"distortion_cofficients.p1": 0.00091733073350042105,
+			"distortion_cofficients.p2": 0.00010589254816295579
+		}
+	]
+}

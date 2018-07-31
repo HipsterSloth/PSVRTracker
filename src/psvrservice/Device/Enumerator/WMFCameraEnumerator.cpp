@@ -4,6 +4,7 @@
 
 // -- includes -----
 #include "WMFCameraEnumerator.h"
+#include "TrackerCapabilitiesConfig.h"
 #include "Logger.h"
 #include "Utility.h"
 #include "assert.h"
@@ -17,6 +18,10 @@
 #include <Shlwapi.h>
 #include <opencv2/videoio/videoio.hpp>
 
+// -- Statics --
+TrackerCapabilitiesSet *WMFCameraEnumerator::s_supportedTrackers = nullptr;
+
+// -- Structures --
 struct WMFDeviceList
 {
 	std::vector<WMFDeviceInfo> deviceList;
@@ -32,49 +37,6 @@ static HRESULT ParseWMFFormatTypeAttributeByIndex(IMFAttributes *pAttr, DWORD in
 static HRESULT GetGUIDNameCopy(const GUID& guid, std::wstring &out_guidName);
 static LPCWSTR GetGUIDNameConst(const GUID& guid);
 
-// -- WMFCameraFilterSet -----
-bool WMFCameraFilterSet::addFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type)
-{
-	if (!containsFilter(vendor_id, product_id, device_type))
-	{
-		filters.push_back({vendor_id, product_id, device_type});
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-bool WMFCameraFilterSet::containsFilter(unsigned short vendor_id, unsigned short product_id, CommonSensorState::eDeviceType device_type)
-{
-	bool bContains= false;
-
-	for (const WMFCameraFilter &filter : filters)
-	{
-		if (filter.vendorId == vendor_id && filter.productId == product_id && filter.deviceType == device_type)
-		{
-			bContains= true;
-			break;
-		}
-	}
-
-	return bContains;
-}
-
-CommonSensorState::eDeviceType WMFCameraFilterSet::findCameraType(unsigned short vendor_id, unsigned short product_id)
-{
-	for (const WMFCameraFilter &filter : filters)
-	{
-		if (filter.vendorId == vendor_id && filter.productId == product_id)
-		{
-			return filter.deviceType;
-		}
-	}
-
-	return CommonSensorState::INVALID_DEVICE_TYPE;
-}
-
 // -- WMFCameraEnumerator -----
 WMFCameraEnumerator::WMFCameraEnumerator()
     : DeviceEnumerator()
@@ -84,10 +46,6 @@ WMFCameraEnumerator::WMFCameraEnumerator()
     m_device_index= -1;
 	m_current_device_identifier= "";
 
-	//###HipsterSloth $TODO Pass this in from a global config
-	m_device_filter_set.addFilter(0x05a3, 0x9750, CommonSensorState::WMFStereoCamera); // ELP 1.3MP USB 2.0 Stereo Camera
-	m_device_filter_set.addFilter(0x046d, 0x082d, CommonSensorState::WMFMonoCamera); // Logitech HD Pro Webcam C920 Camera
-	
 	if (m_wmf_device_list->fetchDeviceList())
 	{
 		next();
@@ -128,6 +86,11 @@ const WMFDeviceInfo *WMFCameraEnumerator::get_device_info() const
 	return is_valid() ? &m_wmf_device_list->deviceList[m_device_index] : nullptr;
 }
 
+const TrackerCapabilitiesConfig *WMFCameraEnumerator::getTrackerCapabilities() const
+{
+	return is_valid() ? s_supportedTrackers->getTrackerCapabilities(get_vendor_id(), get_product_id()) : nullptr;
+}
+
 bool WMFCameraEnumerator::is_valid() const
 {
 	return m_device_index < (int)m_wmf_device_list->deviceList.size();
@@ -142,7 +105,7 @@ bool WMFCameraEnumerator::next()
 	{
 		const WMFDeviceInfo &device= m_wmf_device_list->deviceList[m_device_index];
 
-		m_deviceType = m_device_filter_set.findCameraType(device.usbVendorId, device.usbProductId);
+		m_deviceType = s_supportedTrackers->findTrackerType(device.usbVendorId, device.usbProductId);
 
 		if (m_deviceType != CommonSensorState::INVALID_DEVICE_TYPE)
 		{
@@ -163,10 +126,15 @@ int WMFDeviceInfo::findBestDeviceFormatIndex(
 	unsigned int w,
 	unsigned int h,
 	unsigned int frameRate,
-	const wchar_t *buffer_format) const
+	const char *buffer_format) const
 {
-	int result_id= INVALID_DEVICE_FORMAT_INDEX;
+	wchar_t wcs_buffer_format[256];
+	if (!Utility::convert_mbs_to_wcs(buffer_format, wcs_buffer_format, sizeof(wcs_buffer_format)))
+	{
+		return INVALID_DEVICE_FORMAT_INDEX;
+	}
 
+	int result_id= INVALID_DEVICE_FORMAT_INDEX;
 	for (int attempt = 0; attempt < 2; ++attempt)
 	{
 		for (const WMFDeviceFormatInfo &info : deviceAvailableFormats)
@@ -175,7 +143,7 @@ int WMFDeviceInfo::findBestDeviceFormatIndex(
 
 			if ((w == UNSPECIFIED_CAMERA_WIDTH || info.width == w) && 
 				(h == UNSPECIFIED_CAMERA_HEIGHT || info.height == h) && 
-				info.sub_type_name == buffer_format && 
+				info.sub_type_name == wcs_buffer_format && 
 				(frameRate == UNSPECIFIED_CAMERA_FPS || rounded_frame_rate == frameRate))
 			{
 				result_id= info.device_format_index;

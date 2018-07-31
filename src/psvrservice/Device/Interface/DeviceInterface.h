@@ -4,6 +4,8 @@
 // -- includes -----
 #include <string>
 #include <tuple>
+#include <vector>
+
 #include "PSVRClient_CAPI.h"
 
 // -- pre-declarations ----
@@ -26,10 +28,9 @@ struct CommonSensorState
     enum eDeviceType
     {       
         PS3EYE = TrackingCamera + 0x00,
-        PS4Camera = TrackingCamera + 0x01,
-        WMFMonoCamera = TrackingCamera + 0x02,
-		WMFStereoCamera = TrackingCamera + 0x03,
-        SUPPORTED_CAMERA_TYPE_COUNT = TrackingCamera + 0x04,
+        WMFMonoCamera = TrackingCamera + 0x01,
+		WMFStereoCamera = TrackingCamera + 0x02,
+        SUPPORTED_CAMERA_TYPE_COUNT = TrackingCamera + 0x03,
         
         Morpheus = HeadMountedDisplay + 0x00,
         VirtualHMD = HeadMountedDisplay + 0x01,
@@ -60,9 +61,6 @@ struct CommonSensorState
         {
         case PS3EYE:
             result = "PSEYE";
-            break;
-        case PS4Camera:
-            result = "PS4Camera";
             break;
         case WMFMonoCamera:
             result = "WMFMonoCamera";
@@ -141,9 +139,10 @@ public:
     // Returns true if this device is a stereo camera
     virtual bool getIsStereoCamera() const = 0;
 
-    // Returns true if the image coming from the camera is mirrored backwards
-	// Trackers that mirror the image for us don't need to flip tracking projections
-    virtual bool getIsVideoMirrored() const = 0;
+    // Returns true if the frame coming from the camera is mirrored backwards
+    virtual bool getIsFrameMirrored() const = 0;
+    // Returns true if the left and right frames coming from the camera are swapped
+	virtual bool getIsBufferMirrored() const = 0;
 
     static const char *getDriverTypeString(eDriverType device_type)
     {
@@ -173,13 +172,12 @@ public:
     virtual void loadSettings() = 0;
     virtual void saveSettings() = 0;
 
-	virtual void setFrameWidth(double value, bool bUpdateConfig) = 0;
+	virtual bool getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const = 0;
+	virtual const struct TrackerModeConfig *getTrackerMode() const = 0;
+	virtual bool setTrackerMode(const std::string modeName) = 0;
+
 	virtual double getFrameWidth() const = 0;
-
-	virtual void setFrameHeight(double value, bool bUpdateConfig) = 0;
 	virtual double getFrameHeight() const = 0;
-
-	virtual void setFrameRate(double value, bool bUpdateConfig) = 0;
 	virtual double getFrameRate() const = 0;
 
 	virtual bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const = 0;

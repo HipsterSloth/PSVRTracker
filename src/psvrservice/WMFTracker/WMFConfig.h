@@ -20,8 +20,8 @@ public:
     bool is_valid;
     long max_poll_failure_count;
 
-	double frame_rate;
-	int last_video_format_index;
+	std::string current_mode;
+	int wmf_video_format_index;
 	int video_properties[PSVRVideoProperty_COUNT];
 
     PSVRPosef pose;

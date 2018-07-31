@@ -229,7 +229,7 @@ set_target_properties(PSVRService PROPERTIES C_VISIBILITY_PRESET hidden)
 # Post build dependencies (resources)
 add_custom_command(TARGET PSVRService POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${ROOT_DIR}/thirdparty/PS4-Eye-Driver/opencv_test/resources"
+        "${ROOT_DIR}/resources"
         $<TARGET_FILE_DIR:PSVRService>/resources)        
 		
 # Install
@@ -246,13 +246,13 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         LIBRARY DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/lib
         ARCHIVE DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/lib
 		PUBLIC_HEADER DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/include)  
-    install(DIRECTORY ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/opencv_test/resources/ 
+    install(DIRECTORY ${ROOT_DIR}/resources/ 
             CONFIGURATIONS Debug
             DESTINATION ${PSVR_DEBUG_INSTALL_PATH}/bin/resources
-            FILES_MATCHING PATTERN "*.bin")		
-    install(DIRECTORY ${ROOT_DIR}/thirdparty/PS4-Eye-Driver/opencv_test/resources/ 
+            FILES_MATCHING PATTERN "*.bin" PATTERN "*.pdf" PATTERN "*.json")
+    install(DIRECTORY ${ROOT_DIR}/resources/ 
             CONFIGURATIONS Release
             DESTINATION ${PSVR_RELEASE_INSTALL_PATH}/bin/resources
-            FILES_MATCHING PATTERN "*.bin")
+            FILES_MATCHING PATTERN "*.bin" PATTERN "*.pdf" PATTERN "*.json")
 ELSE() #Linux/Darwin
 ENDIF()

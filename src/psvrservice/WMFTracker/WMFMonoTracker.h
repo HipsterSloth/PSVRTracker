@@ -53,14 +53,15 @@ public:
     std::string getUSBDevicePath() const override;
     bool getVideoFrameDimensions(int *out_width, int *out_height, int *out_stride) const override;
     bool getIsStereoCamera() const override { return false; }
-	bool getIsVideoMirrored() const override { return true; }
+	bool getIsFrameMirrored() const override;
+	bool getIsBufferMirrored() const override;
     void loadSettings() override;
     void saveSettings() override;
-	void setFrameWidth(double value, bool bUpdateConfig) override;
+	bool getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const override;
+	const struct TrackerModeConfig * getTrackerMode() const override;
+	bool setTrackerMode(const std::string modeName) override;
 	double getFrameWidth() const override;
-	void setFrameHeight(double value, bool bUpdateConfig) override;
 	double getFrameHeight() const override;
-	void setFrameRate(double value, bool bUpdateConfig) override;
 	double getFrameRate() const override;
 	bool getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const override;
     void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting) override;
@@ -81,6 +82,9 @@ public:
     { return m_cfg; }
 
 private:
+	const class TrackerCapabilitiesConfig *m_capabilities;
+	const struct TrackerModeConfig *m_currentMode;
+
     WMFMonoTrackerConfig m_cfg;
     std::string m_device_identifier;
 

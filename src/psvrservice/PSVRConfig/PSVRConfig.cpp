@@ -56,23 +56,132 @@ PSVRConfig::getConfigPath()
 void
 PSVRConfig::save()
 {
-    configuru::dump_file(getConfigPath(), writeToJSON(), configuru::JSON);
+    save(getConfigPath());
+}
+
+void 
+PSVRConfig::save(const std::string &path)
+{
+	configuru::dump_file(path, writeToJSON(), configuru::JSON);
 }
 
 bool
 PSVRConfig::load()
 {
-    bool bLoadedOk = false;
-    std::string configPath = getConfigPath();
+    return load(getConfigPath());
+}
 
-    if (Utility::file_exists( configPath ) )
+bool 
+PSVRConfig::load(const std::string &path)
+{
+    bool bLoadedOk = false;
+
+    if (Utility::file_exists( path ) )
     {
-        configuru::Config cfg = configuru::parse_file(configPath, configuru::JSON);
+        configuru::Config cfg = configuru::parse_file(path, configuru::JSON);
         readFromJSON(cfg);
         bLoadedOk = true;
     }
 
     return bLoadedOk;
+}
+
+
+void PSVRConfig::writeMonoTrackerIntrinsics(
+    configuru::Config &pt,
+    const PSVRMonoTrackerIntrinsics &tracker_intrinsics)
+{
+    pt["frame_width"]= tracker_intrinsics.pixel_width;
+    pt["frame_height"]= tracker_intrinsics.pixel_height;
+    pt["hfov"]= tracker_intrinsics.hfov;
+    pt["vfov"]= tracker_intrinsics.vfov;
+    pt["zNear"]= tracker_intrinsics.znear;
+    pt["zFar"]= tracker_intrinsics.zfar;
+
+    writeMatrix3d(pt, "camera_matrix", tracker_intrinsics.camera_matrix);
+    writeDistortionCoefficients(pt, "distortion_cofficients", &tracker_intrinsics.distortion_coefficients);
+}
+
+void PSVRConfig::readMonoTrackerIntrinsics(
+	const configuru::Config &pt,
+	PSVRMonoTrackerIntrinsics &tracker_intrinsics)
+{
+
+	tracker_intrinsics.pixel_width = pt.get_or<float>("frame_width", 640.f);
+	tracker_intrinsics.pixel_height = pt.get_or<float>("frame_height", 480.f);
+    tracker_intrinsics.hfov = pt.get_or<float>("hfov", 60.f);
+    tracker_intrinsics.vfov = pt.get_or<float>("vfov", 45.f);
+    tracker_intrinsics.znear = pt.get_or<float>("zNear", 10.f);
+    tracker_intrinsics.zfar = pt.get_or<float>("zFar", 200.f);
+
+    readMatrix3d(pt, "camera_matrix", tracker_intrinsics.camera_matrix);
+    readDistortionCoefficients(pt, "distortion_cofficients", 
+        &tracker_intrinsics.distortion_coefficients, 
+        &tracker_intrinsics.distortion_coefficients);
+}
+
+void PSVRConfig::writeStereoTrackerIntrinsics(
+    configuru::Config &pt,
+    const PSVRStereoTrackerIntrinsics &tracker_intrinsics)
+{
+    pt["frame_width"]= tracker_intrinsics.pixel_width;
+    pt["frame_height"]= tracker_intrinsics.pixel_height;
+    pt["hfov"]= tracker_intrinsics.hfov;
+    pt["vfov"]= tracker_intrinsics.vfov;
+    pt["zNear"]= tracker_intrinsics.znear;
+    pt["zFar"]= tracker_intrinsics.zfar;
+
+    writeMatrix3d(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
+    writeMatrix3d(pt, "right_camera_matrix", tracker_intrinsics.right_camera_matrix);
+
+    writeDistortionCoefficients(pt, "left_distortion_cofficients", &tracker_intrinsics.left_distortion_coefficients);
+    writeDistortionCoefficients(pt, "right_distortion_cofficients", &tracker_intrinsics.right_distortion_coefficients);
+
+    writeMatrix3d(pt, "left_rectification_rotation", tracker_intrinsics.left_rectification_rotation);
+    writeMatrix3d(pt, "right_rectification_rotation", tracker_intrinsics.right_rectification_rotation);
+
+    writeMatrix34d(pt, "left_rectification_projection", tracker_intrinsics.left_rectification_projection);
+    writeMatrix34d(pt, "right_rectification_projection", tracker_intrinsics.right_rectification_projection);
+
+    writeMatrix3d(pt, "rotation_between_cameras", tracker_intrinsics.rotation_between_cameras);
+    writeVector3d(pt, "translation_between_cameras", tracker_intrinsics.translation_between_cameras);
+    writeMatrix3d(pt, "essential_matrix", tracker_intrinsics.essential_matrix);
+    writeMatrix3d(pt, "fundamental_matrix", tracker_intrinsics.fundamental_matrix);
+    writeMatrix4d(pt, "reprojection_matrix", tracker_intrinsics.reprojection_matrix);
+}
+
+void PSVRConfig::readStereoTrackerIntrinsics(
+	const configuru::Config &pt,
+	PSVRStereoTrackerIntrinsics &tracker_intrinsics)
+{
+	tracker_intrinsics.pixel_width = pt.get_or<float>("frame_width", 640.f);
+	tracker_intrinsics.pixel_height = pt.get_or<float>("frame_height", 480.f);
+    tracker_intrinsics.hfov = pt.get_or<float>("hfov", 60.f);
+    tracker_intrinsics.vfov = pt.get_or<float>("vfov", 45.f);
+    tracker_intrinsics.znear = pt.get_or<float>("zNear", 10.f);
+    tracker_intrinsics.zfar = pt.get_or<float>("zFar", 200.f);
+
+    readMatrix3d(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
+    readMatrix3d(pt, "right_camera_matrix", tracker_intrinsics.right_camera_matrix);
+
+    readDistortionCoefficients(pt, "left_distortion_cofficients", 
+        &tracker_intrinsics.left_distortion_coefficients, 
+        &tracker_intrinsics.left_distortion_coefficients);
+    readDistortionCoefficients(pt, "right_distortion_cofficients", 
+        &tracker_intrinsics.right_distortion_coefficients, 
+        &tracker_intrinsics.right_distortion_coefficients);
+
+    readMatrix3d(pt, "left_rectification_rotation", tracker_intrinsics.left_rectification_rotation);
+    readMatrix3d(pt, "right_rectification_rotation", tracker_intrinsics.right_rectification_rotation);
+
+    readMatrix34d(pt, "left_rectification_projection", tracker_intrinsics.left_rectification_projection);
+    readMatrix34d(pt, "right_rectification_projection", tracker_intrinsics.right_rectification_projection);
+
+    readMatrix3d(pt, "rotation_between_cameras", tracker_intrinsics.rotation_between_cameras);
+    readVector3d(pt, "translation_between_cameras", tracker_intrinsics.translation_between_cameras);
+    readMatrix3d(pt, "essential_matrix", tracker_intrinsics.essential_matrix);
+    readMatrix3d(pt, "fundamental_matrix", tracker_intrinsics.fundamental_matrix);
+    readMatrix4d(pt, "reprojection_matrix", tracker_intrinsics.reprojection_matrix);
 }
 
 void PSVRConfig::writeDistortionCoefficients(

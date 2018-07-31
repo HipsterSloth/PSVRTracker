@@ -5,9 +5,6 @@
 #include "AppStage.h"
 #include "PSVRClient_CAPI.h"
 
-#include <vector>
-#include <string>
-
 //-- definitions -----
 class AppStage_ColorCalibration : public AppStage
 {
@@ -58,7 +55,7 @@ protected:
 
 	void request_start_hmd_stream();
     void request_tracker_start_stream();
-	void request_tracker_set_frame_rate(double value);
+	bool request_tracker_set_mode(const char *new_mode);
     void request_tracker_set_video_property(PSVRVideoPropertyType prop_type, int value);
     void request_tracker_set_color_filter(const PSVRTrackingColorType color_type, const PSVR_HSVColorRange &color_filter);
     void request_tracker_get_settings();
@@ -90,7 +87,7 @@ private:
     eVideoDisplayMode m_videoDisplayMode;
 
     // Tracker Settings state
-	double m_trackerFrameRate;
+	int m_trackerModeIndex;
 	int m_videoProperties[PSVRVideoProperty_COUNT];
     PSVR_HSVColorRangeTable m_colorPresetTable;
 	int tracker_count;

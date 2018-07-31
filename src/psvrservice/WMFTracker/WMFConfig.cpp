@@ -1,5 +1,6 @@
 // -- includes -----
 #include "WMFConfig.h"
+#include "TrackerCapabilitiesConfig.h"
 #include "PSVRClient_CAPI.h"
 
 // -- constants -----
@@ -11,8 +12,8 @@ WMFCommonTrackerConfig::WMFCommonTrackerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
-	, frame_rate(60)
-	, last_video_format_index(-1)
+	, current_mode("")
+	, wmf_video_format_index(-1)
 {
     pose= *k_PSVR_pose_identity;
 
@@ -31,8 +32,8 @@ WMFCommonTrackerConfig::writeToJSON()
     configuru::Config pt{
         {"is_valid", is_valid},
         {"max_poll_failure_count", max_poll_failure_count},
-        {"frame_rate", frame_rate},
-		{"last_video_format_index", last_video_format_index},
+		{"current_mode", current_mode},
+		{"wmf_video_format_index", wmf_video_format_index},
         {"brightness", video_properties[PSVRVideoProperty_Brightness]},
 		{"contrast", video_properties[PSVRVideoProperty_Contrast]},
 		{"hue", video_properties[PSVRVideoProperty_Hue]},
@@ -72,8 +73,8 @@ WMFCommonTrackerConfig::readFromJSON(const configuru::Config &pt)
 {
     is_valid = pt.get_or<bool>("is_valid", false);
     max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
-	frame_rate = pt.get_or<double>("frame_rate", 60);
-	last_video_format_index= pt.get_or<int>("last_video_format_index", last_video_format_index);
+	current_mode= pt.get_or<std::string>("current_mode_index", current_mode);
+	wmf_video_format_index= pt.get_or<int>("wmf_video_format_index", wmf_video_format_index);
 
     video_properties[PSVRVideoProperty_Brightness]= (int)pt.get_or<float>("brightness", (float)video_properties[PSVRVideoProperty_Brightness]);
 	video_properties[PSVRVideoProperty_Contrast]= (int)pt.get_or<float>("contrast", (float)video_properties[PSVRVideoProperty_Contrast]);

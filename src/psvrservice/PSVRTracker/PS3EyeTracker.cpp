@@ -5,6 +5,8 @@
 #include "PSEyeVideoCapture.h"
 #include "TrackerDeviceEnumerator.h"
 #include "TrackerManager.h"
+#include "TrackerCapabilitiesConfig.h"
+#include "TrackerUSBDeviceEnumerator.h"
 #include "opencv2/opencv.hpp"
 
 #ifdef _MSC_VER
@@ -40,7 +42,7 @@ PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
     , is_valid(false)
     , max_poll_failure_count(100)
-	, frame_rate(60)
+	, current_mode("640x480(60FPS)")
     , exposure(32)
     , gain(32)
     , fovSetting(BlueDot)
@@ -73,15 +75,13 @@ PS3EyeTrackerConfig::writeToJSON()
         {"version", PS3EyeTrackerConfig::CONFIG_VERSION},
         {"lens_calibration_version", PS3EyeTrackerConfig::LENS_CALIBRATION_VERSION},
         {"max_poll_failure_count", max_poll_failure_count},
-        {"frame_rate", frame_rate},
+        {"current_mode", current_mode},
         {"exposure", exposure},
         {"gain", gain},
         {"hfov", trackerIntrinsics.hfov},
         {"vfov", trackerIntrinsics.vfov},
         {"zNear", trackerIntrinsics.znear},
         {"zFar", trackerIntrinsics.zfar},
-        {"frame_width", trackerIntrinsics.pixel_width},
-        {"frame_height", trackerIntrinsics.pixel_height},
         {"fovSetting", static_cast<int>(fovSetting)},
         {"pose.orientation.w", pose.Orientation.w},
         {"pose.orientation.x", pose.Orientation.x},
@@ -113,7 +113,7 @@ PS3EyeTrackerConfig::readFromJSON(const configuru::Config &pt)
     {
         is_valid = pt.get_or<bool>("is_valid", false);
         max_poll_failure_count = pt.get_or<long>("max_poll_failure_count", 100);
-		frame_rate = pt.get_or<double>("frame_rate", 40);
+		current_mode= pt.get_or<std::string>("current_mode", current_mode);
         exposure = (int)pt.get_or<float>("exposure", 32);
 		gain = (int)pt.get_or<float>("gain", 32);
 
@@ -334,6 +334,8 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
     
     if (bSuccess)
     {
+		const TrackerUSBDeviceEnumerator *tracker_usb_enumerator = tracker_enumerator->get_usb_tracker_enumerator();
+
         std::string identifier = VideoCapture->getUniqueIndentifier();
         std::string config_name = "PS3EyeTrackerConfig_";
         config_name.append(identifier);
@@ -342,6 +344,17 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
 
 		// Load the ps3eye config
         cfg.load();
+
+		// If no mode is specified, then default to the first mode
+		if (cfg.current_mode == "")
+		{
+			cfg.current_mode= m_capabilities->supportedModes[0].modeName;
+		}
+
+		// Apply the mode settings (frame width, height, fps, ...)
+		m_capabilities= tracker_usb_enumerator->getTrackerCapabilities();
+		setTrackerMode(cfg.current_mode);
+
 		// Save the config back out again in case defaults changed
 		cfg.save();
 
@@ -455,11 +468,6 @@ void PS3EyeTracker::loadSettings()
 
     cfg.load();
 
-	if (currentFrameWidth != cfg.trackerIntrinsics.pixel_width)
-	{
-		VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, cfg.trackerIntrinsics.pixel_width);
-	}
-
     if (currentExposure != cfg.exposure)
     {
         VideoCapture->set(cv::CAP_PROP_EXPOSURE, cfg.exposure);
@@ -470,10 +478,7 @@ void PS3EyeTracker::loadSettings()
         VideoCapture->set(cv::CAP_PROP_GAIN, (double)cfg.gain);
     }
 
-	if (currentFrameRate != cfg.frame_rate)
-	{
-		VideoCapture->set(cv::CAP_PROP_FPS, (double)cfg.frame_rate);
-	}
+	setTrackerMode(cfg.current_mode);
 }
 
 void PS3EyeTracker::saveSettings()
@@ -481,17 +486,54 @@ void PS3EyeTracker::saveSettings()
     cfg.save();
 }
 
-void PS3EyeTracker::setFrameWidth(double value, bool bUpdateConfig)
+bool PS3EyeTracker::getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const
 {
-    if (getFrameWidth() != value)
-    {
-	    VideoCapture->set(cv::CAP_PROP_FRAME_WIDTH, value);
+	if (m_capabilities)
+	{
+		m_capabilities->getAvailableTrackerModes(out_mode_names);
+		return true;
+	}
 
-	    if (bUpdateConfig)
-	    {
-		    cfg.trackerIntrinsics.pixel_width = static_cast<float>(value);
-	    }
-    }
+	return false;
+}
+
+const TrackerModeConfig *PS3EyeTracker::getTrackerMode() const
+{
+	return m_currentMode;
+}
+
+bool PS3EyeTracker::setTrackerMode(const std::string mode_name)
+{
+	const TrackerModeConfig *new_mode= m_capabilities->findCameraMode(mode_name);
+
+	if (new_mode != nullptr && new_mode != m_currentMode)
+	{		
+		if (new_mode->intrinsics.intrinsics.mono.pixel_width != getFrameWidth())
+		{
+			VideoCapture->set(
+				cv::CAP_PROP_FRAME_WIDTH,
+				(double)new_mode->intrinsics.intrinsics.mono.pixel_width);
+		}
+
+		if (new_mode->intrinsics.intrinsics.mono.pixel_height != getFrameHeight())
+		{
+			VideoCapture->set(
+				cv::CAP_PROP_FRAME_HEIGHT,
+				(double)new_mode->intrinsics.intrinsics.mono.pixel_height);
+		}
+
+		if (new_mode->frameRate != getFrameRate())
+		{
+			VideoCapture->set(cv::CAP_PROP_FPS, (double)new_mode->frameRate);
+		}
+
+		cfg.trackerIntrinsics= new_mode->intrinsics.intrinsics.mono;
+		m_currentMode= new_mode;
+
+		return true;
+	}
+
+	return false;
 }
 
 double PS3EyeTracker::getFrameWidth() const
@@ -499,35 +541,9 @@ double PS3EyeTracker::getFrameWidth() const
 	return VideoCapture->get(cv::CAP_PROP_FRAME_WIDTH);
 }
 
-void PS3EyeTracker::setFrameHeight(double value, bool bUpdateConfig)
-{
-    if (getFrameHeight() != value)
-    {
-	    VideoCapture->set(cv::CAP_PROP_FRAME_HEIGHT, value);
-
-	    if (bUpdateConfig)
-	    {
-		    cfg.trackerIntrinsics.pixel_height = static_cast<float>(value);
-	    }
-    }
-}
-
 double PS3EyeTracker::getFrameHeight() const
 {
 	return VideoCapture->get(cv::CAP_PROP_FRAME_HEIGHT);
-}
-
-void PS3EyeTracker::setFrameRate(double value, bool bUpdateConfig)
-{
-    if (getFrameRate() != value)
-    {
-	    VideoCapture->set(cv::CAP_PROP_FPS, value);
-
-	    if (bUpdateConfig)
-	    {
-		    cfg.frame_rate = value;
-	    }
-    }
 }
 
 double PS3EyeTracker::getFrameRate() const

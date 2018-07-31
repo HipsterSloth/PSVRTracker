@@ -632,7 +632,6 @@ public:
     const Eigen::Quaterniond *m_last_world_orientation_ptr;
     double m_time_step;
 	float m_last_tracking_projection_area_px_sqr;
-	bool m_bIsVideoMirrored;
 };
 
 template<typename T>

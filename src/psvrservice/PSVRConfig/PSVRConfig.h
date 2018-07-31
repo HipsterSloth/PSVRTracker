@@ -32,13 +32,29 @@ class PSVRConfig {
 public:
     PSVRConfig(const std::string &fnamebase = std::string("PSVRConfig"));
     void save();
+	void save(const std::string &path);
     bool load();
+	bool load(const std::string &path);
     
     std::string ConfigFileBase;
 
     virtual const configuru::Config writeToJSON() = 0;  // Implement by each device class' own Config
     virtual void readFromJSON(const configuru::Config &pt) = 0;  // Implement by each device class' own Config
     
+	static void writeMonoTrackerIntrinsics(
+		configuru::Config &pt,
+		const PSVRMonoTrackerIntrinsics &tracker_intrinsics);
+	static void readMonoTrackerIntrinsics(
+		const configuru::Config &pt,
+		PSVRMonoTrackerIntrinsics &tracker_intrinsics);
+
+	static void writeStereoTrackerIntrinsics(
+		configuru::Config &pt,
+		const PSVRStereoTrackerIntrinsics &tracker_intrinsics);
+	static void readStereoTrackerIntrinsics(
+		const configuru::Config &pt,
+		PSVRStereoTrackerIntrinsics &tracker_intrinsics);
+
     static void writeDistortionCoefficients(
         configuru::Config &pt,
         const char *coefficients_name,

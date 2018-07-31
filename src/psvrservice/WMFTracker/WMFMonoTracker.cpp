@@ -5,6 +5,7 @@
 #include "PSEyeVideoCapture.h"
 #include "ServerTrackerView.h"
 #include "TrackerDeviceEnumerator.h"
+#include "TrackerCapabilitiesConfig.h"
 #include "WMFCameraEnumerator.h"
 #include "TrackerManager.h"
 #include "WorkerThread.h"
@@ -51,16 +52,8 @@ WMFMonoTrackerConfig::writeToJSON()
     pt["is_valid"]= is_valid;
     pt["version"]= WMFMonoTrackerConfig::CONFIG_VERSION;
     pt["max_poll_failure_count"]= max_poll_failure_count;
-    pt["frame_width"]= tracker_intrinsics.pixel_width;
-    pt["frame_height"]= tracker_intrinsics.pixel_height;
-    pt["hfov"]= tracker_intrinsics.hfov;
-    pt["vfov"]= tracker_intrinsics.vfov;
-    pt["zNear"]= tracker_intrinsics.znear;
-    pt["zFar"]= tracker_intrinsics.zfar;
 
-    writeMatrix3d(pt, "camera_matrix", tracker_intrinsics.camera_matrix);
-
-    writeDistortionCoefficients(pt, "distortion_cofficients", &tracker_intrinsics.distortion_coefficients);
+	writeMonoTrackerIntrinsics(pt, tracker_intrinsics);
 
     return pt;
 }
@@ -73,18 +66,7 @@ WMFMonoTrackerConfig::readFromJSON(const configuru::Config &pt)
     {
 		WMFCommonTrackerConfig::readFromJSON(pt);
 
-		tracker_intrinsics.pixel_width = pt.get_or<float>("frame_width", 640.f);
-		tracker_intrinsics.pixel_height = pt.get_or<float>("frame_height", 480.f);
-        tracker_intrinsics.hfov = pt.get_or<float>("hfov", 60.f);
-        tracker_intrinsics.vfov = pt.get_or<float>("vfov", 45.f);
-        tracker_intrinsics.znear = pt.get_or<float>("zNear", 10.f);
-        tracker_intrinsics.zfar = pt.get_or<float>("zFar", 200.f);
-
-        readMatrix3d(pt, "camera_matrix", tracker_intrinsics.camera_matrix);
-
-        readDistortionCoefficients(pt, "distortion_cofficients", 
-            &tracker_intrinsics.distortion_coefficients, 
-            &tracker_intrinsics.distortion_coefficients);
+		readMonoTrackerIntrinsics(pt, tracker_intrinsics);
     }
     else
     {
@@ -178,22 +160,41 @@ bool WMFMonoTracker::open(const DeviceEnumerator *enumerator)
         m_cfg = WMFMonoTrackerConfig(config_name);
         m_cfg.load();
 
-		int desiredFormatIndex= 
-			wmf_enumerator->get_device_info()->findBestDeviceFormatIndex(
-				(unsigned int)m_cfg.tracker_intrinsics.pixel_width,
-				(unsigned int)m_cfg.tracker_intrinsics.pixel_height,
-				(unsigned int)m_cfg.frame_rate,
-				CAMERA_BUFFER_FORMAT_MJPG);
+		// Fetch the camera capabilities
+		m_capabilities= wmf_enumerator->getTrackerCapabilities();
 
-		if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
+		// If no mode is specified, then default to the first mode
+		if (m_cfg.current_mode == "")
 		{
-			m_videoDevice = 
-				new WMFVideoDevice(
-					wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
+			m_cfg.current_mode= m_capabilities->supportedModes[0].modeName;
+		}
 
-			if (m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener))
+		// Find the camera mode by name
+		m_currentMode= m_capabilities->findCameraMode(m_cfg.current_mode);
+		if (m_currentMode != nullptr)
+		{
+			// Copy the tracker intrinsics over from the capabilities
+			m_cfg.tracker_intrinsics= m_currentMode->intrinsics.intrinsics.mono;
+
+			// Attempt to find a compatible WMF video format
+			std::string mfvideoformat= std::string("MFVideoFormat_")+m_currentMode->bufferFormat;
+			int desiredFormatIndex= 
+				wmf_enumerator->get_device_info()->findBestDeviceFormatIndex(
+					(unsigned int)m_currentMode->bufferPixelWidth,
+					(unsigned int)m_currentMode->bufferPixelHeight,
+					(unsigned int)m_currentMode->frameRate,
+					mfvideoformat.c_str());
+
+			if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
 			{
-				bSuccess = true;
+				m_videoDevice = 
+					new WMFVideoDevice(
+						wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
+
+				if (m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener))
+				{
+					bSuccess = true;
+				}
 			}
 		}
 
@@ -248,7 +249,7 @@ bool WMFMonoTracker::getVideoFrameDimensions(
 
     if (out_width != nullptr)
     {
-        int width = m_videoDevice->getCurrentDeviceFormat()->width;
+        int width = (int)m_currentMode->intrinsics.intrinsics.mono.pixel_width;
 
         if (out_stride != nullptr)
         {
@@ -261,12 +262,22 @@ bool WMFMonoTracker::getVideoFrameDimensions(
 
     if (out_height != nullptr)
     {
-        int height = m_videoDevice->getCurrentDeviceFormat()->height;
+        int height = (int)m_currentMode->intrinsics.intrinsics.mono.pixel_height;
 
         *out_height = height;
     }
 
     return bSuccess;
+}
+
+bool WMFMonoTracker::getIsFrameMirrored() const
+{ 
+	return m_currentMode->isFrameMirrored; 
+}
+
+bool WMFMonoTracker::getIsBufferMirrored() const
+{ 
+	return false; // Only ever true for stereo video feeds
 }
 
 void WMFMonoTracker::loadSettings()
@@ -307,26 +318,50 @@ void WMFMonoTracker::saveSettings()
     m_cfg.save();
 }
 
-void WMFMonoTracker::setFrameWidth(double value, bool bUpdateConfig)
+bool WMFMonoTracker::getAvailableTrackerModes(std::vector<std::string> &out_mode_names) const
 {
-	const WMFDeviceFormatInfo *deviceInfo= m_videoDevice->getCurrentDeviceFormat();
-	int desiredFormatIndex= m_videoDevice->m_deviceInfo.findBestDeviceFormatIndex(
-		(unsigned int)value,
-		UNSPECIFIED_CAMERA_HEIGHT, 
-		(unsigned int)getFrameRate(),
-		CAMERA_BUFFER_FORMAT_MJPG);
-
-	if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
+	if (m_capabilities)
 	{
-		m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
+		m_capabilities->getAvailableTrackerModes(out_mode_names);
+		return true;
 	}
 
-	if (bUpdateConfig)
-	{
-		m_cfg.tracker_intrinsics.pixel_width = static_cast<float>(value);
+	return false;
+}
+
+const TrackerModeConfig *WMFMonoTracker::getTrackerMode() const
+{
+	return m_currentMode;
+}
+
+bool WMFMonoTracker::setTrackerMode(const std::string mode_name)
+{
+	const TrackerModeConfig *new_mode= m_capabilities->findCameraMode(mode_name);
+
+	if (new_mode != nullptr && new_mode != m_currentMode)
+	{		
+		const WMFDeviceFormatInfo *deviceInfo= m_videoDevice->getCurrentDeviceFormat();
+		std::string mfvideoformat= std::string("MFVideoFormat_")+new_mode->bufferFormat;
+		int desiredFormatIndex= m_videoDevice->m_deviceInfo.findBestDeviceFormatIndex(
+			(unsigned int)new_mode->bufferPixelWidth,
+			(unsigned int)new_mode->bufferPixelHeight,
+			(unsigned int)new_mode->frameRate,
+			mfvideoformat.c_str());
+
+		m_cfg.tracker_intrinsics= new_mode->intrinsics.intrinsics.mono;
+		m_currentMode= new_mode;
+
+		if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
+		{
+			m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
+		}
+
+		m_cfg.save();
+
+		return true;
 	}
 
-	m_cfg.save();
+	return false;
 }
 
 double WMFMonoTracker::getFrameWidth() const
@@ -334,56 +369,9 @@ double WMFMonoTracker::getFrameWidth() const
 	return (double)m_videoDevice->getCurrentDeviceFormat()->width / 2.0;
 }
 
-void WMFMonoTracker::setFrameHeight(double value, bool bUpdateConfig)
-{
-	const WMFDeviceFormatInfo *deviceInfo= m_videoDevice->getCurrentDeviceFormat();
-	int desiredFormatIndex= m_videoDevice->m_deviceInfo.findBestDeviceFormatIndex(
-		UNSPECIFIED_CAMERA_WIDTH, 
-		(unsigned int)value,
-		(unsigned int)getFrameRate(),
-		CAMERA_BUFFER_FORMAT_MJPG);
-
-	if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
-	{
-		m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
-	}
-
-	if (bUpdateConfig)
-	{
-		m_cfg.tracker_intrinsics.pixel_height = static_cast<float>(value);
-	}
-
-	m_cfg.save();
-}
-
 double WMFMonoTracker::getFrameHeight() const
 {
 	return (double)m_videoDevice->getCurrentDeviceFormat()->height;
-}
-
-void WMFMonoTracker::setFrameRate(double value, bool bUpdateConfig)
-{
-    if (getFrameRate() != value)
-    {
-		const WMFDeviceFormatInfo *deviceInfo= m_videoDevice->getCurrentDeviceFormat();
-		int desiredFormatIndex= m_videoDevice->m_deviceInfo.findBestDeviceFormatIndex(
-			deviceInfo->width, 
-			deviceInfo->height,
-			(unsigned int)value,
-			CAMERA_BUFFER_FORMAT_MJPG);
-
-		if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
-		{
-			m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener);
-		}
-
-	    if (bUpdateConfig)
-	    {
-		    m_cfg.frame_rate = value;
-	    }
-
-		m_cfg.save();
-    }
 }
 
 double WMFMonoTracker::getFrameRate() const
