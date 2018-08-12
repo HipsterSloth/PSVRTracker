@@ -2,7 +2,8 @@
 #define PS3EYE_TRACKER_H
 
 // -- includes -----
-#include "PSVRConfig.h"
+#include "PS3EyeConfig.h"
+#include "CommonTrackerConfig.h"
 #include "DeviceEnumerator.h"
 #include "DeviceInterface.h"
 #include <string>
@@ -10,41 +11,6 @@
 #include <deque>
 
 // -- definitions -----
-class PS3EyeTrackerConfig : public PSVRConfig
-{
-public:
-    enum eFOVSetting
-    {
-        RedDot, // 56 degree FOV
-        BlueDot, // 75 degree FOV
-        
-        MAX_FOV_SETTINGS
-    };
-
-    PS3EyeTrackerConfig(const std::string &fnamebase = "PS3EyeTrackerConfig");
-    
-    virtual const configuru::Config writeToJSON();
-    virtual void readFromJSON(const configuru::Config &pt);
-
-	const PSVR_HSVColorRangeTable *getColorRangeTable(const std::string &table_name) const;
-	inline PSVR_HSVColorRangeTable *getOrAddColorRangeTable(const std::string &table_name);
-    
-    bool is_valid;
-    long max_poll_failure_count;
-	std::string current_mode;
-    int exposure;
-	int gain;
-
-    eFOVSetting fovSetting;    
-    PSVRMonoTrackerIntrinsics trackerIntrinsics;
-    PSVRPosef pose;
-	PSVR_HSVColorRangeTable SharedColorPresets;
-	std::vector<PSVR_HSVColorRangeTable> DeviceColorPresets;
-
-    static const int CONFIG_VERSION;
-	static const int LENS_CALIBRATION_VERSION;
-};
-
 class PS3EyeTracker : public ITrackerInterface {
 public:
     PS3EyeTracker();
@@ -93,16 +59,17 @@ public:
 
     // -- Getters
     inline const PS3EyeTrackerConfig &getConfig() const
-    { return cfg; }
+    { return m_cfg; }
 
 private:
 	const class TrackerCapabilitiesConfig *m_capabilities;
 	const struct TrackerModeConfig *m_currentMode;
-    PS3EyeTrackerConfig cfg;
-    std::string USBDevicePath;
-    class PSEyeVideoCapture *VideoCapture;
-    class PSEyeCaptureData *CaptureData;
-    ITrackerInterface::eDriverType DriverType;    
+
+    PS3EyeTrackerConfig m_cfg;
+    std::string m_deviceIdentifier;
+
+    class PS3EyeVideoDevice *m_videoDevice;
+    ITrackerInterface::eDriverType m_DriverType;    
 	ITrackerListener *m_listener;
 };
 #endif // PS3EYE_TRACKER_H

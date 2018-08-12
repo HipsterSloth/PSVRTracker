@@ -27,7 +27,6 @@ LibUSBBulkTransferBundle::LibUSBBulkTransferBundle(
     , m_device_handle(static_cast<const LibUSBDeviceState *>(state)->device_handle)
     , m_active_transfer_count(0)
     , m_is_canceled(false)
-    , bulk_transfer_requests(nullptr)
     , transfer_buffer(nullptr)
 {
 	
@@ -61,28 +60,15 @@ bool LibUSBBulkTransferBundle::initialize()
         }
     }
 
-    // Allocate the libusb transfer request array
-    if (bSuccess)
-    {
-        size_t xfer_array_byte_size = m_request.in_flight_transfer_packet_count * sizeof(libusb_transfer *);
-        bulk_transfer_requests = (libusb_transfer **)malloc(xfer_array_byte_size);
-
-        if (bulk_transfer_requests != nullptr)
-        {
-            memset(bulk_transfer_requests, 0, xfer_array_byte_size);
-        }
-        else
-        {
-            bSuccess = false;
-        }
-    }
-
     // Allocate the transfer buffer
     if (bSuccess)
     {
+        bulk_transfer_requests.resize(m_request.in_flight_transfer_packet_count);
+		std::fill(bulk_transfer_requests.begin(), bulk_transfer_requests.end(), nullptr);
+
         // Allocate the transfer buffer that the requests write data into
         size_t xfer_buffer_size = m_request.in_flight_transfer_packet_count * m_request.transfer_packet_size;
-        transfer_buffer = (uint8_t *)malloc(xfer_buffer_size);
+        transfer_buffer = new uint8_t[xfer_buffer_size];
 
         if (transfer_buffer != nullptr)
         {
@@ -139,15 +125,11 @@ void LibUSBBulkTransferBundle::dispose()
 
     if (transfer_buffer != nullptr)
     {
-        free(transfer_buffer);
+        delete[] transfer_buffer;
         transfer_buffer = nullptr;
     }
 
-    if (bulk_transfer_requests != nullptr)
-    {
-        free(bulk_transfer_requests);
-        bulk_transfer_requests = nullptr;
-    }
+	bulk_transfer_requests.clear();
 }
 
 bool LibUSBBulkTransferBundle::startTransfers()
@@ -223,8 +205,6 @@ static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_
 
 void LibUSBBulkTransferBundle::cancelTransfers()
 {
-    assert(bulk_transfer_requests != nullptr);
-
     if (!m_is_canceled)
     {
         for (int transfer_index = 0;

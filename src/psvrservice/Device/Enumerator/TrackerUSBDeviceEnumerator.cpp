@@ -30,7 +30,7 @@ struct TrackerFilter
 // NOTE: This list must match the tracker order in CommonSensorState::eDeviceType
 TrackerFilter k_supported_tracker_infos[MAX_CAMERA_TYPE_INDEX] = {
     {{ 0x1415, 0x2000 }, true, true}, // PS3Eye
-    {{ 0x0000, 0x0000 }, false, false}, // Virtual Stereo Camera
+    {{ 0x0000, 0x0000 }, false, false}, // WMF Mono Camera
 	{{ 0x0000, 0x0000 }, false, false} // WMF Stereo Camera
 };
 

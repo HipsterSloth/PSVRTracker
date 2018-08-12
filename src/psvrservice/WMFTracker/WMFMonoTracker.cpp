@@ -11,9 +11,6 @@
 #include "WorkerThread.h"
 #include "WMFVideo.h"
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/videoio.hpp>
-
 #ifdef _MSC_VER
     #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
 #endif
@@ -80,7 +77,7 @@ WMFMonoTrackerConfig::readFromJSON(const configuru::Config &pt)
 WMFMonoTracker::WMFMonoTracker()
     : m_cfg()
 	, m_videoDevice(nullptr)
-    , m_DriverType(WMFMonoTracker::Generic_Webcam)
+    , m_DriverType(WMFMonoTracker::WindowsMediaFramework)
 {
 }
 
@@ -366,20 +363,17 @@ bool WMFMonoTracker::setTrackerMode(const std::string mode_name)
 
 double WMFMonoTracker::getFrameWidth() const
 {
-	return (double)m_videoDevice->getCurrentDeviceFormat()->width / 2.0;
+	return (double)m_currentMode->intrinsics.intrinsics.mono.pixel_width;
 }
 
 double WMFMonoTracker::getFrameHeight() const
 {
-	return (double)m_videoDevice->getCurrentDeviceFormat()->height;
+	return (double)m_currentMode->intrinsics.intrinsics.mono.pixel_height;
 }
 
 double WMFMonoTracker::getFrameRate() const
 {
-	const WMFDeviceFormatInfo *deviceFormat= m_videoDevice->getCurrentDeviceFormat();
-	double frameRate= (double)deviceFormat->frame_rate_numerator / (double)deviceFormat->frame_rate_denominator;
-
-	return frameRate;
+	return (double)m_currentMode->frameRate;
 }
 
 bool WMFMonoTracker::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const

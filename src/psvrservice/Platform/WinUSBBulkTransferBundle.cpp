@@ -9,20 +9,46 @@
 #include <memory>
 #include <cstring>
 
+#define ANSI
+#define WIN32_LEAN_AND_MEAN
+
+#include <windows.h>  // Required for data types
+#include <winuser.h>
+#include <Dbt.h>
+#include <guiddef.h>
+#include <cfgmgr32.h>   // for MAX_DEVICE_ID_LEN and CM_Get_Device_ID
+#include <setupapi.h> // Device setup APIs
+#include <Devpkey.h>
+#include <strsafe.h>
+#include <winusb.h>
+#include <usb100.h>
+
+#pragma comment(lib, "WinUsb.lib")
+
+#ifdef _MSC_VER
+#pragma warning(disable:4996) // disable warnings about strncpy
+#endif
+
+static void transfer_callback_function(
+	struct WinUSBAsyncBulkTransfer *bulk_transfer,
+	eWinusbBulkTransferStatus status,
+	unsigned char *transfer_buffer,
+	size_t transferred_length,
+	void *user_data);
+
 //-- implementation -----
 WinUSBBulkTransferBundle::WinUSBBulkTransferBundle(
 	const USBDeviceState *state,
 	const USBRequestPayload_BulkTransferBundle *request)
     : IUSBBulkTransferBundle(state, request)
 	, m_request(*request)
-    //, m_device(static_cast<const LibUSBDeviceState *>(state)->device)
-    //, m_device_handle(static_cast<const LibUSBDeviceState *>(state)->device_handle)
+    , m_deviceHandle(static_cast<const WinUSBDeviceState *>(state)->device_handle)
+    , m_bulkInPipe(static_cast<const WinUSBDeviceState *>(state)->bulk_in_pipe)
+	, m_bulkInPipePacketSize(static_cast<const WinUSBDeviceState *>(state)->bulk_in_pipe_packet_size)
     , m_active_transfer_count(0)
     , m_is_canceled(false)
-    //, bulk_transfer_requests(nullptr)
     , transfer_buffer(nullptr)
 {
-	
 }
 
 WinUSBBulkTransferBundle::~WinUSBBulkTransferBundle()
@@ -40,42 +66,23 @@ bool WinUSBBulkTransferBundle::initialize()
     bool bSuccess = (m_active_transfer_count == 0);
     uint8_t bulk_endpoint = 0;
 
-#if 0
-    // Find the bulk transfer endpoint          
-    if (bSuccess)
+    // Turn on raw I/O, because without it the transfers will not be efficient
+    UCHAR raw_io = 1;
+    BOOL success = WinUsb_SetPipePolicy(m_deviceHandle, m_bulkInPipe, RAW_IO, sizeof(raw_io), &raw_io);
+    if (!success)
     {
-        if (find_bulk_transfer_endpoint(m_device, bulk_endpoint))
-        {
-            libusb_clear_halt(m_device_handle, bulk_endpoint);
-        }
-        else
-        {
-            bSuccess = false;
-        }
+        PSVR_MT_LOG_INFO("inUSBBulkTransferBundle::initialize()") << "Failed to enable raw I/O for bulk_in pipe.";
+		return false;
     }
-
-    // Allocate the libusb transfer request array
-    if (bSuccess)
-    {
-        size_t xfer_array_byte_size = m_request.in_flight_transfer_packet_count * sizeof(libusb_transfer *);
-        bulk_transfer_requests = (libusb_transfer **)malloc(xfer_array_byte_size);
-
-        if (bulk_transfer_requests != nullptr)
-        {
-            memset(bulk_transfer_requests, 0, xfer_array_byte_size);
-        }
-        else
-        {
-            bSuccess = false;
-        }
-    }
-
     // Allocate the transfer buffer
     if (bSuccess)
     {
+        bulk_transfer_requests.resize(m_request.in_flight_transfer_packet_count);
+		std::fill(bulk_transfer_requests.begin(), bulk_transfer_requests.end(), nullptr);
+
         // Allocate the transfer buffer that the requests write data into
         size_t xfer_buffer_size = m_request.in_flight_transfer_packet_count * m_request.transfer_packet_size;
-        transfer_buffer = (uint8_t *)malloc(xfer_buffer_size);
+        transfer_buffer = new uint8_t[xfer_buffer_size];
 
         if (transfer_buffer != nullptr)
         {
@@ -90,21 +97,22 @@ bool WinUSBBulkTransferBundle::initialize()
     // Allocate and initialize the transfers
     if (bSuccess)
     {
+		WinUSBApi *winusb_api= WinUSBApi::getInterface();
+
         for (int transfer_index = 0; transfer_index < m_request.in_flight_transfer_packet_count; ++transfer_index)
         {
-            bulk_transfer_requests[transfer_index] = libusb_alloc_transfer(0);
+            bulk_transfer_requests[transfer_index] = winusb_api->winusbAllocateAsyncBulkTransfer();
 
             if (bulk_transfer_requests[transfer_index] != nullptr)
             {
-                libusb_fill_bulk_transfer(
-                    bulk_transfer_requests[transfer_index],
-                    m_device_handle,
-                    bulk_endpoint,
-                    transfer_buffer + transfer_index*m_request.transfer_packet_size,
-                    m_request.transfer_packet_size,
-                    transfer_callback_function,
-                    reinterpret_cast<void*>(this),
-                    0);
+				winusb_api->winusbSetupAsyncBulkTransfer(
+					m_deviceHandle, 
+					m_bulkInPipe, 
+					transfer_buffer + transfer_index*m_request.transfer_packet_size,
+					m_request.transfer_packet_size, 
+					transfer_callback_function, 
+					reinterpret_cast<void*>(this),
+					bulk_transfer_requests[transfer_index]);
             }
             else
             {
@@ -112,7 +120,6 @@ bool WinUSBBulkTransferBundle::initialize()
             }
         }
     }
-#endif
 
     return bSuccess;
 }
@@ -121,44 +128,37 @@ void WinUSBBulkTransferBundle::dispose()
 {
     assert(m_active_transfer_count == 0);
 
-#if 0
     for (int transfer_index = 0;
         transfer_index < m_request.in_flight_transfer_packet_count;
         ++transfer_index)
     {
         if (bulk_transfer_requests[transfer_index] != nullptr)
         {
-            libusb_free_transfer(bulk_transfer_requests[transfer_index]);
+            WinUSBApi::getInterface()->winusbFreeAsyncBulkTransfer(bulk_transfer_requests[transfer_index]);
         }
     }
 
     if (transfer_buffer != nullptr)
     {
-        free(transfer_buffer);
+        delete[] transfer_buffer;
         transfer_buffer = nullptr;
     }
 
-    if (bulk_transfer_requests != nullptr)
-    {
-        free(bulk_transfer_requests);
-        bulk_transfer_requests = nullptr;
-    }
-#endif
+	bulk_transfer_requests.clear();
 }
 
 bool WinUSBBulkTransferBundle::startTransfers()
 {
     bool bSuccess = (m_active_transfer_count == 0 && !m_is_canceled);
 
-#if 0
     // Start the transfers
     if (bSuccess)
     {
         for (int transfer_index = 0; transfer_index < m_request.in_flight_transfer_packet_count; ++transfer_index)
         {
-            libusb_transfer *bulk_transfer = bulk_transfer_requests[transfer_index];
+			struct WinUSBAsyncBulkTransfer *bulk_transfer = bulk_transfer_requests[transfer_index];
 
-            if (libusb_submit_transfer(bulk_transfer) == 0)
+            if (WinUSBApi::getInterface()->winusbSubmitAsyncBulkTransfer(bulk_transfer) == 0)
             {
                 ++m_active_transfer_count;
             }
@@ -169,7 +169,6 @@ bool WinUSBBulkTransferBundle::startTransfers()
             }
         }
     }
-#endif
 
     return bSuccess;
 }
@@ -180,34 +179,36 @@ void WinUSBBulkTransferBundle::notifyActiveTransfersDecremented()
     --m_active_transfer_count;
 }
 
-#if 0
-static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_transfer)
+static void transfer_callback_function(
+	struct WinUSBAsyncBulkTransfer *bulk_transfer,
+	eWinusbBulkTransferStatus status,
+	unsigned char *transfer_buffer,
+	size_t transferred_length,
+	void *user_data)
 {
-    WinUSBBulkTransferBundle *bundle = reinterpret_cast<WinUSBBulkTransferBundle*>(bulk_transfer->user_data);
+    WinUSBBulkTransferBundle *bundle = reinterpret_cast<WinUSBBulkTransferBundle*>(user_data);
     const auto &request = bundle->getTransferRequest();
-    enum libusb_transfer_status status = bulk_transfer->status;
 
-    if (status == LIBUSB_TRANSFER_COMPLETED)
+    if (status == WINUSB_TRANSFER_COMPLETED)
     {
-
         // NOTE: This callback is getting executed on the worker thread!
         // It should not:
         // 1) Do any expensive work
         // 2) Call any blocking functions
         // 3) Access data on the main thread, unless it can do so in an atomic way
         request.on_data_callback(
-            bulk_transfer->buffer,
-            bulk_transfer->actual_length,
+            transfer_buffer,
+            (int)transferred_length,
             request.transfer_callback_userdata);
     }
 
     // See if the request wants to resubmitted the moment it completes.
     // If the transfer was canceled, this overrides the auto-resubmit.
     bool bRestartedTransfer = false;
-    if (status != LIBUSB_TRANSFER_CANCELLED && request.bAutoResubmit)
+    if (status != WINUSB_TRANSFER_CANCELLED && request.bAutoResubmit)
     {
         // Start the transfer over with the same properties
-        if (libusb_submit_transfer(bulk_transfer) == 0)
+        if (WinUSBApi::getInterface()->winusbSubmitAsyncBulkTransfer(bulk_transfer))
         {
             bRestartedTransfer = true;
         }
@@ -219,7 +220,6 @@ static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_
         bundle->notifyActiveTransfersDecremented();
     }
 }
-#endif
 
 void WinUSBBulkTransferBundle::cancelTransfers()
 {
@@ -227,17 +227,15 @@ void WinUSBBulkTransferBundle::cancelTransfers()
 
     if (!m_is_canceled)
     {
-#if 0
         for (int transfer_index = 0;
             transfer_index < m_request.in_flight_transfer_packet_count;
             ++transfer_index)
         {
-            libusb_transfer* bulk_transfer = bulk_transfer_requests[transfer_index];
+            struct WinUSBAsyncBulkTransfer *bulk_transfer = bulk_transfer_requests[transfer_index];
 
             assert(bulk_transfer != nullptr);
-            libusb_cancel_transfer(bulk_transfer);
+            WinUSBApi::getInterface()->winusbCancelAsyncBulkTransfer(bulk_transfer);
         }
-#endif
 
         m_is_canceled = true;
     }

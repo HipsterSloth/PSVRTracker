@@ -59,7 +59,8 @@ typedef enum
 typedef enum
 {
     PSVRDriver_LIBUSB,
-    PSVRDriver_GENERIC_WEBCAM
+	PSVRDriver_WINUSB,
+    PSVRDriver_WINDOWSMEDIAFRAMEWORK
 } PSVRTrackerDriver;
 
 /// Tracked device data stream options
@@ -183,6 +184,9 @@ typedef enum
 	PSVRVideoProperty_Sharpness,
 	PSVRVideoProperty_Gamma,
 	PSVRVideoProperty_WhiteBalance,
+	PSVRVideoProperty_RedBalance,
+	PSVRVideoProperty_GreenBalance,
+	PSVRVideoProperty_BlueBalance,
 	PSVRVideoProperty_Gain,
 	PSVRVideoProperty_Pan,
 	PSVRVideoProperty_Tilt,

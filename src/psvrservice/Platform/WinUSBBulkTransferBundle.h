@@ -33,9 +33,13 @@ protected:
 
 private:
     USBRequestPayload_BulkTransferBundle m_request;
+    void* m_deviceHandle;
+    unsigned char m_bulkInPipe;
+	unsigned short m_bulkInPipePacketSize;
 
     int m_active_transfer_count;
     bool m_is_canceled;
+    std::vector<struct WinUSBAsyncBulkTransfer*> bulk_transfer_requests;
     unsigned char* transfer_buffer;
 };
 

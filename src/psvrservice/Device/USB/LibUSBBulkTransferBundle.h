@@ -5,6 +5,8 @@
 #include "USBApiInterface.h"
 #include "USBDeviceRequest.h"
 
+#include <vector>
+
 //-- definitions -----
 /// Internal class used to manage a set of libusb bulk transfer packets.
 class LibUSBBulkTransferBundle : public IUSBBulkTransferBundle
@@ -43,7 +45,7 @@ private:
 
     int m_active_transfer_count;
     bool m_is_canceled;
-    struct libusb_transfer** bulk_transfer_requests;
+    std::vector<struct libusb_transfer*> bulk_transfer_requests;
     unsigned char* transfer_buffer;
 };
 

@@ -11,9 +11,6 @@
 #include "WorkerThread.h"
 #include "WMFVideo.h"
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/videoio.hpp>
-
 #ifdef _MSC_VER
     #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strncpy
 #endif
@@ -113,7 +110,7 @@ WMFStereoTrackerConfig::readFromJSON(const configuru::Config &pt)
 WMFStereoTracker::WMFStereoTracker()
     : m_cfg()
 	, m_videoDevice(nullptr)
-    , m_DriverType(WMFStereoTracker::Generic_Webcam)
+    , m_DriverType(WMFStereoTracker::WindowsMediaFramework)
 {
 }
 
@@ -399,25 +396,21 @@ bool WMFStereoTracker::setTrackerMode(const std::string mode_name)
 
 double WMFStereoTracker::getFrameWidth() const
 {
-	return (double)m_videoDevice->getCurrentDeviceFormat()->width / 2.0;
+	return (double)m_currentMode->intrinsics.intrinsics.stereo.pixel_width;
 }
 
 double WMFStereoTracker::getFrameHeight() const
 {
-	return (double)m_videoDevice->getCurrentDeviceFormat()->height;
+	return (double)m_currentMode->intrinsics.intrinsics.stereo.pixel_height;
 }
 
 double WMFStereoTracker::getFrameRate() const
 {
-	const WMFDeviceFormatInfo *deviceFormat= m_videoDevice->getCurrentDeviceFormat();
-	double frameRate= (double)deviceFormat->frame_rate_numerator / (double)deviceFormat->frame_rate_denominator;
-
-	return frameRate;
+	return (double)m_currentMode->frameRate;
 }
 
 bool WMFStereoTracker::getVideoPropertyConstraint(const PSVRVideoPropertyType property_type, PSVRVideoPropertyConstraint &outConstraint) const
 {
-	
 	return m_videoDevice->getVideoPropertyConstraint(property_type, outConstraint);
 }
 

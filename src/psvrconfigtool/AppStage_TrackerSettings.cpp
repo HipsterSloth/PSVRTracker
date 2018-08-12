@@ -204,11 +204,15 @@ void AppStage_TrackerSettings::renderUI()
             {
             case PSVRDriver_LIBUSB:
                 {
-                    ImGui::BulletText("Controller Type: LIBUSB");
+                    ImGui::BulletText("USB Driver Type: LIBUSB");
                 } break;
-            case PSVRDriver_GENERIC_WEBCAM:
+            case PSVRDriver_WINUSB:
                 {
-                    ImGui::BulletText("Controller Type: Generic Webcam");
+                    ImGui::BulletText("USB Driver Type: WINUSB");
+                } break;
+            case PSVRDriver_WINDOWSMEDIAFRAMEWORK:
+                {
+                    ImGui::BulletText("USB Driver Type: WMF");
                 } break;
             default:
                 assert(0 && "Unreachable");

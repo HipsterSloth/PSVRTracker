@@ -172,8 +172,11 @@ PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_
             case ITrackerInterface::Libusb:
                 tracker_info->tracker_driver= PSVRDriver_LIBUSB;
                 break;
-            case ITrackerInterface::Generic_Webcam:
-                tracker_info->tracker_driver= PSVRDriver_GENERIC_WEBCAM;
+            case ITrackerInterface::Winusb:
+                tracker_info->tracker_driver= PSVRDriver_WINUSB;
+                break;
+            case ITrackerInterface::WindowsMediaFramework:
+                tracker_info->tracker_driver= PSVRDriver_WINDOWSMEDIAFRAMEWORK;
                 break;
             default:
                 assert(0 && "Unhandled tracker type");

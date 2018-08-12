@@ -6,16 +6,6 @@
 #include "USBDeviceRequest.h"
 #include <functional>
 
-//-- constants -----
-enum eUSBApiType
-{
-	_USBApiType_INVALID= -1,
-
-	_USBApiType_NullUSB,
-	_USBApiType_LibUSB,
-	_USBApiType_WinUSB,
-};
-
 //-- definitions -----
 class USBManagerConfig : public PSVRConfig
 {
@@ -48,6 +38,17 @@ public:
     {
         return m_implementation_ptr;
     }
+
+	static IUSBApi *getUSBApiInterface();
+
+	template <class t_usb_api>
+	static t_usb_api *getTypedUSBApiInterface()
+	{
+		IUSBApi *api= getUSBApiInterface();
+		assert(api->getRuntimeUSBApiType() == t_usb_api::getStaticUSBApiType());
+
+		return static_cast<t_usb_api *>(api);
+	}
 
     // -- System ----
     bool startup(); /**< Initialize the libusb thread. */

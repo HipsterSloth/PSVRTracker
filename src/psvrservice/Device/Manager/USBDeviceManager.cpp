@@ -938,6 +938,11 @@ USBDeviceManager::~USBDeviceManager()
     }
 }
 
+IUSBApi *USBDeviceManager::getUSBApiInterface()
+{
+	return USBDeviceManager::getInstance()->m_implementation_ptr->getUSBApi();
+}
+
 bool USBDeviceManager::startup()
 {
     m_instance = this;
@@ -958,32 +963,32 @@ void USBDeviceManager::shutdown()
 // -- Device Enumeration ----
 USBDeviceEnumerator* usb_device_enumerator_allocate()
 {
-	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_create();
+	return USBDeviceManager::getUSBApiInterface()->device_enumerator_create();
 }
 
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator)
 {
-	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_is_valid(enumerator);
+	return USBDeviceManager::getUSBApiInterface()->device_enumerator_is_valid(enumerator);
 }
 
 bool usb_device_enumerator_get_filter(struct USBDeviceEnumerator* enumerator, USBDeviceFilter &outDeviceInfo)
 {
-	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_get_filter(enumerator, &outDeviceInfo);
+	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_filter(enumerator, &outDeviceInfo);
 }
 
 void usb_device_enumerator_next(struct USBDeviceEnumerator* enumerator)
 {
-	USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_next(enumerator);
+	USBDeviceManager::getUSBApiInterface()->device_enumerator_next(enumerator);
 }
 
 void usb_device_enumerator_free(struct USBDeviceEnumerator* enumerator)
 {
-	USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_dispose(enumerator);
+	USBDeviceManager::getUSBApiInterface()->device_enumerator_dispose(enumerator);
 }
 
 bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize)
 {
-	return USBDeviceManager::getInstance()->getImplementation()->getUSBApi()->device_enumerator_get_path(enumerator, outBuffer, bufferSize);
+	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_path(enumerator, outBuffer, bufferSize);
 }
 
 // -- Device Actions ----

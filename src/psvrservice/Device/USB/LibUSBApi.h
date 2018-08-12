@@ -25,6 +25,9 @@ public:
 	LibUSBApi();
 	virtual ~LibUSBApi();
 
+	eUSBApiType getRuntimeUSBApiType() const override { return _USBApiType_LibUSB; }
+	static eUSBApiType getStaticUSBApiType() { return _USBApiType_LibUSB; }
+
 	bool startup() override;
 	void poll() override;
 	void shutdown() override;

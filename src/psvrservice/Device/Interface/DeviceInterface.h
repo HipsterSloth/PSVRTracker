@@ -120,9 +120,8 @@ public:
     enum eDriverType
     {
         Libusb,
-        CL,
-        CLMulti,
-        Generic_Webcam,
+		Winusb,
+        WindowsMediaFramework,
 
         SUPPORTED_DRIVER_TYPE_COUNT,
     };
@@ -153,14 +152,11 @@ public:
         case Libusb:
             result = "Libusb";
             break;
-        case CL:
-            result = "CL";
+        case Winusb:
+            result = "Winusb";
             break;
-        case CLMulti:
-            result = "CLMulti";
-            break;
-        case Generic_Webcam:
-            result = "Generic_Webcam";
+        case WindowsMediaFramework:
+            result = "Windows Media Framework";
             break;
         default:
             result = "UNKNOWN";

@@ -22,6 +22,8 @@
 
 #pragma comment(lib, "WinUsb.lib")
 
+#include <functional>
+
 #ifdef _MSC_VER
 #pragma warning(disable:4996) // disable warnings about strncpy
 #endif
@@ -190,6 +192,19 @@ struct WinUSBDeviceInfo
 					return IsEqualGUID(guid, g) == TRUE;
 				}) != DeviceInterfaceGUIDs.end();
 	}
+};
+
+struct WinUSBAsyncBulkTransfer
+{
+	void* device_handle;
+	unsigned char bulk_endpoint;
+    unsigned char *buffer;
+    ULONG buffer_size;
+    OVERLAPPED overlapped;
+    ULONG transferred_bytes;
+	t_winusb_bulk_transfer_callback callback;
+	void *user_data;
+	eWinusbBulkTransferStatus transfer_status;
 };
 
 struct WinUSBDeviceEnumerator : USBDeviceEnumerator
@@ -424,6 +439,11 @@ WinUSBApi::WinUSBApi() : IUSBApi()
 {
 }
 
+WinUSBApi *WinUSBApi::getInterface()
+{
+	return USBDeviceManager::getTypedUSBApiInterface<WinUSBApi>();
+}
+
 bool WinUSBApi::startup()
 {
 	return true;
@@ -431,6 +451,15 @@ bool WinUSBApi::startup()
 
 void WinUSBApi::poll()
 {
+	// Poll the state of all pending async bulk transfers.
+	// Remove any transfer that has completed.
+	for (auto iter= m_pendingAsyncBulkTransfers.begin(); iter != m_pendingAsyncBulkTransfers.end(); ++iter)
+	{
+		if (winusbPollAsyncBulkTransfer(*iter) != WINUSB_TRANSFER_PENDING)
+		{
+			m_pendingAsyncBulkTransfers.erase(iter);
+		}
+	}
 }
 
 void WinUSBApi::shutdown()
@@ -618,6 +647,7 @@ USBDeviceState *WinUSBApi::open_usb_device(
                                     {
                                     case UsbdPipeTypeBulk:
                                         winusb_device_state->bulk_in_pipe = pipeInfo.PipeId;
+										winusb_device_state->bulk_in_pipe_packet_size = pipeInfo.MaximumPacketSize;
                                         break;
                                     case UsbdPipeTypeInterrupt:
                                         winusb_device_state->interrupt_in_pipe = pipeInfo.PipeId;
@@ -1063,6 +1093,197 @@ bool WinUSBApi::get_usb_device_port_path(USBDeviceState* device_state, char *out
 	}
 
 	return bSuccess;
+}
+
+WinUSBAsyncBulkTransfer *WinUSBApi::winusbAllocateAsyncBulkTransfer()
+{
+	WinUSBAsyncBulkTransfer *transfer= new WinUSBAsyncBulkTransfer;
+	
+	memset(transfer, 0, sizeof(WinUSBAsyncBulkTransfer));
+	transfer->overlapped.hEvent= INVALID_HANDLE_VALUE;
+
+	return transfer;
+}
+
+bool WinUSBApi::winusbSetupAsyncBulkTransfer(
+	void *device_handle,
+	const unsigned char bulk_endpoint,
+	unsigned char *transfer_buffer,
+	const size_t transfer_buffer_size,
+	t_winusb_bulk_transfer_callback transfer_callback_function,
+	void *user_data,
+	WinUSBAsyncBulkTransfer *transfer)
+{
+	bool bSuccess= true;
+
+	memset(transfer, 0, sizeof(WinUSBAsyncBulkTransfer));
+	transfer->device_handle= device_handle;
+	transfer->bulk_endpoint= bulk_endpoint;
+	transfer->buffer= transfer_buffer;
+	transfer->buffer_size= (ULONG)transfer_buffer_size;
+	transfer->callback= transfer_callback_function;
+	transfer->user_data= user_data;
+	transfer->transfer_status= eWinusbBulkTransferStatus::WINUSB_TRANSFER_PENDING;
+
+	transfer->overlapped.hEvent = CreateEvent(NULL, false, false, NULL);
+    if (transfer->overlapped.hEvent == nullptr)
+    {
+		PSVR_MT_LOG_ERROR("WinUSBApi::close_usb_device") << "Failed to create event for async bulk transfer.";
+		bSuccess= false;
+    }
+
+	return bSuccess;
+}
+
+void WinUSBApi::winusbFreeAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
+{
+	if (transfer != nullptr)
+	{
+		if (transfer->transfer_status == WINUSB_TRANSFER_PENDING)
+		{
+			// Unfortunately, this transfer is still pending, so we cannot free it.
+			// The kernel needs to be able to write to this transfer's memory when it completes.
+			// Instead we prefer to just leak the WinUSBAsyncBulkTransfer object.
+			return;
+		}
+
+		if (transfer->overlapped.hEvent != INVALID_HANDLE_VALUE)
+		{
+			CloseHandle(transfer->overlapped.hEvent);
+		}
+
+		delete transfer;
+	}
+}
+
+bool WinUSBApi::winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
+{
+    bool bSuccess = WinUsb_ReadPipe(
+        transfer->device_handle,
+        transfer->bulk_endpoint,
+        transfer->buffer,
+        transfer->buffer_size,
+        &transfer->transferred_bytes,
+        &transfer->overlapped) == TRUE;
+
+	if (bSuccess)
+	{
+		transfer->transfer_status= WINUSB_TRANSFER_COMPLETED;
+	}
+	else
+	{
+		DWORD error_code= GetLastError();
+
+		switch (error_code)
+		{
+		case ERROR_IO_INCOMPLETE:
+			{
+				// This is the expected common case
+				transfer->transfer_status= WINUSB_TRANSFER_PENDING;
+				bSuccess= true;
+			}
+			break;
+		default:
+			{
+				std::string error_string= GetLastErrorAsString();
+
+				PSVR_MT_LOG_ERROR("WinUSBApi::winusbSubmitAsyncBulkTransfer") << "Failed to start async bulk transfer: " << error_string;
+				transfer->transfer_status= WINUSB_TRANSFER_ERROR;
+			}
+			break;
+		}
+	}
+
+	if (transfer->transfer_status != WINUSB_TRANSFER_PENDING)
+	{
+		if (transfer->callback)
+		{
+			transfer->callback(
+				transfer, 
+				transfer->transfer_status, 
+				transfer->buffer, 
+				transfer->transferred_bytes, 
+				transfer->user_data);
+		}
+	}
+
+	return bSuccess;
+}
+
+bool WinUSBApi::winusbCancelAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
+{
+	bool bSuccess= false;
+
+    if (transfer != nullptr)
+    {
+		bSuccess = WinUsb_AbortPipe(transfer->device_handle, transfer->bulk_endpoint) == TRUE;
+
+		if (!bSuccess)
+		{
+			std::string error_string= GetLastErrorAsString();
+
+			PSVR_MT_LOG_ERROR("WinUSBApi::winusbCancelAsyncBulkTransfer") << "Failed to create abort async pipe: " << error_string;
+		}
+    }
+
+    return bSuccess;
+}
+
+eWinusbBulkTransferStatus WinUSBApi::winusbPollAsyncBulkTransfer(WinUSBAsyncBulkTransfer *transfer)
+{
+    assert(transfer != NULL);
+
+    if (transfer->transfer_status != WINUSB_TRANSFER_PENDING)
+    {
+	    DWORD transferred_bytes = 0;
+		BOOL success = 
+			WinUsb_GetOverlappedResult(
+				transfer->device_handle, 
+				&transfer->overlapped, 
+				&transferred_bytes, 
+				false);
+
+		if (success)
+		{
+			transfer->transfer_status= WINUSB_TRANSFER_COMPLETED;
+		}
+		else
+		{
+			DWORD error_code= GetLastError();
+
+			switch (error_code)
+			{
+			case ERROR_IO_INCOMPLETE:
+				{
+					transfer->transfer_status= WINUSB_TRANSFER_PENDING;
+				}
+				break;
+			default:
+				{
+					std::string error_string= GetLastErrorAsString();
+
+					PSVR_MT_LOG_ERROR("WinUSBApi::winusbPollAsyncBulkTransfer") << "Failure polling async transfer status: " << error_string;
+					transfer->transfer_status= WINUSB_TRANSFER_ERROR;
+				}
+				break;
+			}
+		}
+
+		if (transfer->transfer_status != WINUSB_TRANSFER_PENDING)
+		{
+			if (transfer->callback)
+			{
+				transfer->callback(
+					transfer, 
+					transfer->transfer_status, 
+					transfer->buffer, 
+					transferred_bytes, 
+					transfer->user_data);
+			}
+		}
+	}
+
+	return transfer->transfer_status;
 }
 
 static std::string GetLastErrorAsString()

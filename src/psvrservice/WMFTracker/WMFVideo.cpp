@@ -402,6 +402,12 @@ bool WMFVideoDevice::getVideoPropertyConstraint(const PSVRVideoPropertyType prop
 	case PSVRVideoProperty_WhiteBalance:
 		bSuccess= getProcAmpRange(VideoProcAmp_WhiteBalance, outConstraint);
 		break;
+	case PSVRVideoProperty_RedBalance:
+	case PSVRVideoProperty_GreenBalance:
+	case PSVRVideoProperty_BlueBalance:
+		memset(&outConstraint, 0, sizeof(PSVRVideoPropertyConstraint));
+		bSuccess= true;
+		break;
 	case PSVRVideoProperty_Gain:
 		bSuccess= getProcAmpRange(VideoProcAmp_Gain, outConstraint);
 		break;
@@ -456,6 +462,11 @@ void WMFVideoDevice::setVideoProperty(const PSVRVideoPropertyType property_type,
 	case PSVRVideoProperty_WhiteBalance:
 		setProcAmpProperty(VideoProcAmp_WhiteBalance, desired_value, false);
 		break;
+	case PSVRVideoProperty_RedBalance:
+	case PSVRVideoProperty_GreenBalance:
+	case PSVRVideoProperty_BlueBalance:
+		// not supported
+		break;
 	case PSVRVideoProperty_Gain:
 		setProcAmpProperty(VideoProcAmp_Gain, desired_value, false);
 		break;
@@ -509,6 +520,11 @@ int WMFVideoDevice::getVideoProperty(const PSVRVideoPropertyType property_type) 
 		break;
 	case PSVRVideoProperty_WhiteBalance:
 		value= getProcAmpProperty(VideoProcAmp_WhiteBalance);
+		break;
+	case PSVRVideoProperty_RedBalance:
+	case PSVRVideoProperty_GreenBalance:
+	case PSVRVideoProperty_BlueBalance:
+		// not supported
 		break;
 	case PSVRVideoProperty_Gain:
 		value= getProcAmpProperty(VideoProcAmp_Gain);

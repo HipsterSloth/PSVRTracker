@@ -25,6 +25,16 @@ enum eUSBResultCode
 	_USBResultCode_InvalidAPI
 };
 
+enum eUSBApiType
+{
+	_USBApiType_INVALID= -1,
+
+	_USBApiType_NullUSB,
+	_USBApiType_LibUSB,
+	_USBApiType_WinUSB,
+};
+
+
 //-- typedefs -----
 typedef int t_usb_device_handle;
 const t_usb_device_handle k_invalid_usb_device_handle = -1;
@@ -59,6 +69,8 @@ class IUSBApi
 public:
 	IUSBApi() {}
 	virtual ~IUSBApi() {}
+
+	virtual eUSBApiType getRuntimeUSBApiType() const = 0;
 
 	virtual bool startup() = 0;
 	virtual void poll() = 0;
