@@ -200,7 +200,7 @@ private:
 
     // usb stuff
     t_usb_device_handle m_usb_device_handle;
-    class PS3EyeVideoPacketProcessor *m_video_packet_processor;
+    class PS3EyeUSBPacketProcessor *m_video_packet_processor;
 };
 
 #endif
