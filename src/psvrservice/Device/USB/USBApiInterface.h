@@ -79,6 +79,7 @@ public:
 	virtual USBDeviceEnumerator* device_enumerator_create() = 0;
 	virtual bool device_enumerator_get_filter(const USBDeviceEnumerator* enumerator, struct USBDeviceFilter *outDeviceInfo) const = 0;
 	virtual bool device_enumerator_get_path(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const = 0;
+	virtual bool device_enumerator_get_unique_identifier(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const = 0;
 	virtual bool device_enumerator_is_valid(USBDeviceEnumerator* enumerator) = 0;
 	virtual void device_enumerator_next(USBDeviceEnumerator* enumerator) = 0;
 	virtual void device_enumerator_dispose(USBDeviceEnumerator* enumerator) = 0;

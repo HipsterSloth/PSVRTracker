@@ -31,11 +31,17 @@ void WorkerThread::stopThread()
         if (!m_exitSignaled)
         {
             PSVR_LOG_INFO("WorkerThread::stop") << "Stopping worker thread: " << m_threadName;
-            m_exitSignaled = true;
+			// Set the atomic exit flag
+            m_exitSignaled.store(true);
+
+			// Give the thread a chance to set any state in response to the exit flag getting set
+			onThreadHaltBegin();
+
+			// Block until the worker thread exists
             m_workerThread.join();
 
             PSVR_LOG_INFO("WorkerThread::stop") << "Worker thread stopped: " << m_threadName;
-			onThreadStopped();
+			onThreadHaltComplete();
         }
         else
         {

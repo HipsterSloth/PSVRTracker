@@ -51,6 +51,11 @@ bool NullUSBApi::device_enumerator_get_path(const USBDeviceEnumerator* enumerato
 	return false;
 }
 
+bool NullUSBApi::device_enumerator_get_unique_identifier(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const
+{
+	return false;
+}
+
 void NullUSBApi::device_enumerator_next(USBDeviceEnumerator* enumerator)
 {
 }

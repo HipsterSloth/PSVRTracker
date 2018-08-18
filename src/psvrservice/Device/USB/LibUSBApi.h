@@ -35,6 +35,7 @@ public:
 	USBDeviceEnumerator* device_enumerator_create() override;
 	bool device_enumerator_get_filter(const USBDeviceEnumerator* enumerator, struct USBDeviceFilter *outDeviceInfo) const override;
 	bool device_enumerator_get_path(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const override;
+	bool device_enumerator_get_unique_identifier(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const override;
 	bool device_enumerator_is_valid(USBDeviceEnumerator* enumerator) override;
 	void device_enumerator_next(USBDeviceEnumerator* enumerator) override;
 	void device_enumerator_dispose(USBDeviceEnumerator* enumerator) override;

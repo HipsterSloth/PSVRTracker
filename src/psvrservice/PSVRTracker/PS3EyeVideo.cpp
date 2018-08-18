@@ -60,9 +60,7 @@
 
 #include <algorithm>
 #include <atomic>
-#include <condition_variable>
 #include <iomanip>
-#include <mutex>
 #include <string>
 
 
@@ -346,10 +344,11 @@ class PS3EyeFrameProcessorThread : public WorkerThread
 public:
 	PS3EyeFrameProcessorThread(const PS3EyeVideoModeInfo &video_mode, ITrackerListener *trackerListener)
 		: WorkerThread(std::string("PS3EyeVideoFrameProcessor"))
-		, m_maxCompressedFrameCount(2)
-		, m_compressedFrameWriteIndex(0)
-		, m_compressedFrameReadIndex(0)
-		, m_compressedFrameCount(0)
+		, m_maxCompressedFrameCount(3)
+		, m_compressedFrameWriteIndex({0})
+		, m_compressedFrameReadIndex({0})
+		, m_frameWidth(video_mode.width)
+		, m_frameHeight(video_mode.height)
 		, m_compressedFramesBuffer(nullptr)
 		, m_uncompressedFrameBuffer(nullptr)
 		, m_compressedFrameSizeBytes(video_mode.width*video_mode.height) // Bayer Buffer = 1 byte per pixel
@@ -392,31 +391,14 @@ public:
 
 	uint8_t* enqueueCompressedFrame()
 	{
-		uint8_t* new_frame = NULL;
-
-		std::lock_guard<std::mutex> lock(mutex);
-
-		// Unlike traditional producer/consumer, we don't block the producer if the buffer is full (ie. the consumer is not reading data fast enough).
-		// Instead, if the buffer is full, we simply return the current frame pointer, causing the producer to overwrite the previous frame.
-		// This allows performance to degrade gracefully: if the consumer is not fast enough (< Camera FPS), it will miss frames, but if it is fast enough (>= Camera FPS), it will see everything.
-		//
-		// Note that because the the producer is writing directly to the ring buffer, we can only ever be a maximum of num_frames-1 ahead of the consumer, 
-		// otherwise the producer could overwrite the frame the consumer is currently reading (in case of a slow consumer)
-		if (m_compressedFrameCount >= m_maxCompressedFrameCount - 1)
-		{
-			return m_compressedFramesBuffer + m_compressedFrameWriteIndex*m_compressedFrameSizeBytes;
-		}
+		uint8_t* new_frame = nullptr;
 
 		// Note: we don't need to copy any data to the buffer since the USB packets are directly written to the frame buffer.
 		// We just need to update head and available count to signal to the consumer that a new frame is available
 		m_compressedFrameWriteIndex = (m_compressedFrameWriteIndex + 1) % m_maxCompressedFrameCount;
-		m_compressedFrameCount++;
 
 		// Determine the next frame pointer that the producer should write to
 		new_frame = m_compressedFramesBuffer + m_compressedFrameWriteIndex*m_compressedFrameSizeBytes;
-
-		// Signal consumer that data became available
-		empty_condition.notify_one();
 
 		return new_frame;
 	}
@@ -425,31 +407,35 @@ protected:
 	// Called in a loop by the parent WorkerThread class
 	virtual bool doWork() override
 	{
-		// Blocks until the next frame is available
-		dequeAndDecompressNextFrame();
+		bool bKeepGoing= false;
 
-		// Send the uncompressed frame off to the tracker for processing
-		m_trackerListener->notifyVideoFrameReceived(m_uncompressedFrameBuffer);
+		if (!m_exitSignaled)
+		{
+			// Send the uncompressed frame off to the tracker for processing
+			if (m_compressedFrameReadIndex != m_compressedFrameWriteIndex)
+			{
+				// Get the current frame buffer
+				uint8_t* source = m_compressedFramesBuffer + m_compressedFrameReadIndex*m_compressedFrameSizeBytes;
 
-		return true;
-	}
+				// Convert the bayer encoded frame to BGR
+				debayer(m_frameWidth, m_frameHeight, source, m_uncompressedFrameBuffer, true);
 
-	void dequeAndDecompressNextFrame()
-	{
-		std::unique_lock<std::mutex> lock(mutex);
+				// Notify the client
+				m_trackerListener->notifyVideoFrameReceived(m_uncompressedFrameBuffer);
 
-		// If there is no data in the buffer, wait until data becomes available
-		empty_condition.wait(lock, [this] () { return m_compressedFrameCount != 0; });
+				// Advance to the next read buffer slot
+				m_compressedFrameReadIndex= (m_compressedFrameWriteIndex + 1) % m_maxCompressedFrameCount;
+			}
+			else
+			{
+				// Wait for the USB thread to post more data
+				Utility::sleep_ms(1);
+			}
 
-		// Copy from internal buffer
-		uint8_t* source = m_compressedFramesBuffer + m_compressedFrameReadIndex*m_compressedFrameSizeBytes;
+			bKeepGoing= true;
+		}
 
-		// Convert the bayer encoded frame to RBG
-		debayer(m_frameWidth, m_frameHeight, source, m_uncompressedFrameBuffer, false);
-
-		// Update tail and available count
-		m_compressedFrameReadIndex = (m_compressedFrameReadIndex + 1) % m_maxCompressedFrameCount;
-		m_compressedFrameCount--;
+		return bKeepGoing;
 	}
 
 	void debayer(int frame_width, int frame_height, const uint8_t* inBayer, uint8_t* outBuffer, bool inBGR)
@@ -558,11 +544,8 @@ protected:
 protected:
 	// Queue State
 	uint32_t m_maxCompressedFrameCount;
-	uint32_t m_compressedFrameWriteIndex;
-	uint32_t m_compressedFrameReadIndex;
-	uint32_t m_compressedFrameCount;
-	std::mutex mutex;
-	std::condition_variable empty_condition;
+	std::atomic_uint32_t m_compressedFrameWriteIndex;
+	std::atomic_uint32_t m_compressedFrameReadIndex;
 
 	// Buffer State
 	int m_frameWidth;
@@ -604,7 +587,7 @@ public:
 		// The usbBulkTransferCallback_workerThread() callback will be executed on this thread.
 		USBTransferRequest request;
 		memset(&request, 0, sizeof(USBTransferRequest));
-		request.request_type= eUSBTransferRequestType::_USBRequestType_BulkTransfer;
+		request.request_type= eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle;
 		request.payload.start_bulk_transfer_bundle.usb_device_handle= usb_device_handle;
 		request.payload.start_bulk_transfer_bundle.bAutoResubmit= true;
 		request.payload.start_bulk_transfer_bundle.in_flight_transfer_packet_count= NUM_TRANSFERS;
@@ -613,7 +596,7 @@ public:
 		request.payload.start_bulk_transfer_bundle.transfer_callback_userdata= this;
 
 		USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
-		log_usb_result_code("v", result.payload.bulk_transfer_bundle.result_code); 
+		log_usb_result_code("startUSBBulkTransfer", result.payload.bulk_transfer_bundle.result_code); 
 		if (result.result_type == eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle)
 		{
 			// Start decompressing the incoming video frames
@@ -634,7 +617,7 @@ public:
 
 		// This will block until the processing USB packet processing thread exits
 		USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
-		assert(result.result_type == eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle);
+		assert(result.result_type == eUSBTransferResultType::_USBResultType_BulkTransferBundle);
 		log_usb_result_code("stopUSBBulkTransfer", result.payload.bulk_transfer_bundle.result_code);
 
 		// Block until the frame processor halts itself

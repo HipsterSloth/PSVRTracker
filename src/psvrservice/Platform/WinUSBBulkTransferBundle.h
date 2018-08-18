@@ -34,6 +34,7 @@ protected:
 private:
     USBRequestPayload_BulkTransferBundle m_request;
     void* m_deviceHandle;
+	void* m_interfaceHandle;
     unsigned char m_bulkInPipe;
 	unsigned short m_bulkInPipePacketSize;
 

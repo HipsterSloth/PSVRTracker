@@ -43,6 +43,7 @@ WinUSBBulkTransferBundle::WinUSBBulkTransferBundle(
     : IUSBBulkTransferBundle(state, request)
 	, m_request(*request)
     , m_deviceHandle(static_cast<const WinUSBDeviceState *>(state)->device_handle)
+	, m_interfaceHandle(static_cast<const WinUSBDeviceState *>(state)->interface_handle)
     , m_bulkInPipe(static_cast<const WinUSBDeviceState *>(state)->bulk_in_pipe)
 	, m_bulkInPipePacketSize(static_cast<const WinUSBDeviceState *>(state)->bulk_in_pipe_packet_size)
     , m_active_transfer_count(0)
@@ -68,7 +69,7 @@ bool WinUSBBulkTransferBundle::initialize()
 
     // Turn on raw I/O, because without it the transfers will not be efficient
     UCHAR raw_io = 1;
-    BOOL success = WinUsb_SetPipePolicy(m_deviceHandle, m_bulkInPipe, RAW_IO, sizeof(raw_io), &raw_io);
+    BOOL success = WinUsb_SetPipePolicy(m_interfaceHandle, m_bulkInPipe, RAW_IO, sizeof(raw_io), &raw_io);
     if (!success)
     {
         PSVR_MT_LOG_INFO("inUSBBulkTransferBundle::initialize()") << "Failed to enable raw I/O for bulk_in pipe.";
@@ -107,6 +108,7 @@ bool WinUSBBulkTransferBundle::initialize()
             {
 				winusb_api->winusbSetupAsyncBulkTransfer(
 					m_deviceHandle, 
+					m_interfaceHandle,
 					m_bulkInPipe, 
 					transfer_buffer + transfer_index*m_request.transfer_packet_size,
 					m_request.transfer_packet_size, 
@@ -158,7 +160,7 @@ bool WinUSBBulkTransferBundle::startTransfers()
         {
 			struct WinUSBAsyncBulkTransfer *bulk_transfer = bulk_transfer_requests[transfer_index];
 
-            if (WinUSBApi::getInterface()->winusbSubmitAsyncBulkTransfer(bulk_transfer) == 0)
+            if (WinUSBApi::getInterface()->winusbSubmitAsyncBulkTransfer(bulk_transfer))
             {
                 ++m_active_transfer_count;
             }

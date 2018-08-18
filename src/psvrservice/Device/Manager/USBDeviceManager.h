@@ -74,6 +74,8 @@ bool usb_device_enumerator_get_filter(struct USBDeviceEnumerator* enumerator, US
 void usb_device_enumerator_next(struct USBDeviceEnumerator* enumerator);
 void usb_device_enumerator_free(struct USBDeviceEnumerator* enumerator);
 bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize);
+bool usb_device_enumerator_get_unique_identifier(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize);
+eUSBApiType usb_device_enumerator_get_driver_type(struct USBDeviceEnumerator* enumerator);
 
 // -- Device Actions ----
 t_usb_device_handle usb_device_open(

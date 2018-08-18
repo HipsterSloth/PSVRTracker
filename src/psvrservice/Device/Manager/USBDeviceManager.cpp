@@ -77,6 +77,7 @@ public:
         : m_api_type(_USBApiType_INVALID)
 		, m_usb_api(nullptr)
         , m_exit_signaled({ false })
+		, m_active_bulk_transfers(0)
         , m_active_control_transfers(0)
 		, m_active_interrupt_transfers(0)
 		, m_transfers_enabled(false)
@@ -93,7 +94,7 @@ public:
     // -- System ----
     bool startup(USBManagerConfig &cfg)
     {
-        bool bSuccess= true;
+        bool bSuccess= false;
 
 		m_transfers_enabled= cfg.enable_usb_transfers;
 
@@ -144,9 +145,11 @@ public:
 				break;
 			}
 
-			if (m_usb_api->startup())
+			if (m_usb_api != nullptr && m_usb_api->startup())
 			{
 				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Initialized USB API";
+				startWorkerThread();
+				bSuccess= true;
 			}
 			else
 			{
@@ -156,6 +159,7 @@ public:
 		else
 		{
 			PSVR_LOG_WARNING("USBAsyncRequestManager::startup") << "USB API aready initialized";
+			bSuccess= true;
 		}
 
         return bSuccess;
@@ -172,25 +176,7 @@ public:
 
 		if (m_transfers_enabled)
 		{
-			if (!m_thread_started)
-			{
-				// If the thread isn't running, process the request as well as the results
-				while(processRequests())
-				{
-					processResults();
-				}
-
-				// If there are bulk transfers now active, start up the worker thread to manage them
-				if (m_active_bulk_transfer_bundles.size() > 0)
-				{
-					startWorkerThread();
-				}
-			}
-			else
-			{
-				// If the thread is running, only process the results since the thread is handling the requests
-				processResults();
-			}
+			processResults();
 		}
     }
 
@@ -447,18 +433,16 @@ protected:
 
         if (m_active_bulk_transfer_bundles.size() > 0 || 
             m_canceled_bulk_transfer_bundles.size() > 0 ||
+			m_active_bulk_transfers > 0 ||
             m_active_control_transfers > 0 ||
 			m_active_interrupt_transfers > 0)
         {
-            int poll_count = 0;
-
-            // If we have a transfer pending, 
-            // keep polling until we get the result back
-            while (poll_count == 0 || m_active_control_transfers > 0 || m_active_interrupt_transfers > 0)
+            // If we have a blocking transfer pending keep polling until we get the result back.
+			// Otherwise just poll once.
+            do
             {
 				m_usb_api->poll();
-                ++poll_count;
-            }
+            } while (m_active_bulk_transfers > 0 || m_active_control_transfers > 0 || m_active_interrupt_transfers > 0);
 
             // Cleanup any requests that no longer have any pending cancellations
             cleanupCanceledRequests(false);
@@ -521,27 +505,25 @@ protected:
         while (!m_exit_signaled)
         {
             processRequests();
-
-            // Shut the thread down if we aren't managing any bulk transfers
-            if (m_active_bulk_transfer_bundles.size() == 0 &&
-                m_canceled_bulk_transfer_bundles.size() == 0)
-            {
-                m_exit_signaled= true;
-            }
         }
     }
 
     void cleanupCanceledRequests(bool bForceCleanup)
     {
-        for (auto it = m_canceled_bulk_transfer_bundles.begin(); it != m_canceled_bulk_transfer_bundles.end(); ++it)
+		auto it = m_canceled_bulk_transfer_bundles.begin();
+        while (it != m_canceled_bulk_transfer_bundles.end())
         {
             IUSBBulkTransferBundle *bundle = *it;
 
             if (bundle->getActiveTransferCount() == 0 || bForceCleanup)
             {
-                m_canceled_bulk_transfer_bundles.erase(it);
+                it= m_canceled_bulk_transfer_bundles.erase(it);
                 delete bundle;
             }
+			else
+			{
+				++it;
+			}
         }
     }
 
@@ -989,6 +971,16 @@ void usb_device_enumerator_free(struct USBDeviceEnumerator* enumerator)
 bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize)
 {
 	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_path(enumerator, outBuffer, bufferSize);
+}
+
+bool usb_device_enumerator_get_unique_identifier(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize)
+{
+	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_unique_identifier(enumerator, outBuffer, bufferSize);
+}
+
+eUSBApiType usb_device_enumerator_get_driver_type(struct USBDeviceEnumerator* enumerator)
+{
+	return USBDeviceManager::getUSBApiInterface()->getRuntimeUSBApiType();
 }
 
 // -- Device Actions ----

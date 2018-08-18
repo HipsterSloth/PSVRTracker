@@ -85,24 +85,33 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
     
     if (getIsOpen())
     {
-        PSVR_LOG_WARNING("PS3EyeTracker::open") << "WMFMonoTracker(" << cur_dev_path << ") already open. Ignoring request.";
+        PSVR_LOG_WARNING("PS3EyeTracker::open") << "PS3EyeTracker(" << cur_dev_path << ") already open. Ignoring request.";
     }
     else
     {
 		const TrackerUSBDeviceEnumerator *usb_tracker_enumerator= tracker_enumerator->get_usb_tracker_enumerator();
-		const char *unique_id= usb_tracker_enumerator->get_path();
+		const char *unique_id= usb_tracker_enumerator->get_unique_identifier();
 
-        PSVR_LOG_INFO("PS3EyeTracker::open") << "Opening WMFMonoTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
+        PSVR_LOG_INFO("PS3EyeTracker::open") << "Opening PS3EyeTracker(" << cur_dev_path << ", camera_index=" << camera_index << ")";
 
 		// Remember the path to this camera
         m_deviceIdentifier = cur_dev_path;
 
-		//###hipstersloth $TODO Get the driver type from the usb enumerator
-		//m_DriverType= usb_tracker_enumerator->get_usb_device_enumerator()->get_usb_driver_type();
+		// Get the driver type from the usb enumerator
+		switch (usb_tracker_enumerator->get_driver_type())
+		{
+		case _USBApiType_LibUSB:
+			m_DriverType= ITrackerInterface::Libusb;
+			break;
+		case _USBApiType_NullUSB:
+		case _USBApiType_WinUSB:
+			m_DriverType= ITrackerInterface::Winusb;
+			break;
+		};
 
 		// Build a config file name from the unique id
 		char config_name[256];
-        Utility::format_string(config_name, sizeof(config_name), "WMFMonoCamera_%s", unique_id);
+        Utility::format_string(config_name, sizeof(config_name), "PS3EyeTrackerConfig_%s", unique_id);
 
         // Load the config file for the tracker
         m_cfg = PS3EyeTrackerConfig(config_name);

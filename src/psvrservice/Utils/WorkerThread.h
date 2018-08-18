@@ -19,14 +19,15 @@ public:
     void stopThread();
 
 protected:
-	virtual void onThreadStarted() { };
-	virtual void onThreadStopped() { };
+	virtual void onThreadStarted() { }
+	virtual void onThreadHaltBegin() { }
+	virtual void onThreadHaltComplete() { }
 	virtual bool doWork() = 0;
 
 private:
 	void threadFunc();
 
-private:
+protected:
     // Multithreaded state
 	const std::string m_threadName;
     std::atomic_bool m_exitSignaled;

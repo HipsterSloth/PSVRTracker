@@ -36,104 +36,13 @@ static GUID WINUSB_GUID_DEVCLASS_HID = { 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb,
 static GUID WINUSB_GUID_DEVCLASS_USB_RAW = { 0xa5dcbf10, 0x6530, 0x11d2, 0x90, 0x1f, 0x00, 0xc0, 0x4f, 0xb9, 0x51, 0xed };
 static GUID WINUSB_GUID_DEVCLASS_LIBUSB = { 0xeb781aaf, 0x9c70, 0x4523, 0xa5, 0xdf, 0x64, 0x2a, 0x87, 0xec, 0xa5, 0x67 };
 
-enum libusb_endpoint_direction {
-	/** In: device-to-host */
-	LIBUSB_ENDPOINT_IN = 0x80,
-
-	/** Out: host-to-device */
-	LIBUSB_ENDPOINT_OUT = 0x00
-};
-	
-/** \ingroup libusb_misc
- * Request type bits of the
- * \ref libusb_control_setup::bmRequestType "bmRequestType" field in control
- * transfers. */
-enum libusb_request_type {
-	/** Standard */
-	LIBUSB_REQUEST_TYPE_STANDARD = (0x00 << 5),
-
-	/** Class */
-	LIBUSB_REQUEST_TYPE_CLASS = (0x01 << 5),
-
-	/** Vendor */
-	LIBUSB_REQUEST_TYPE_VENDOR = (0x02 << 5),
-
-	/** Reserved */
-	LIBUSB_REQUEST_TYPE_RESERVED = (0x03 << 5)
-};
-
-/** \ingroup libusb_misc
- * Recipient bits of the
- * \ref libusb_control_setup::bmRequestType "bmRequestType" field in control
- * transfers. Values 4 through 31 are reserved. */
-enum libusb_request_recipient {
-	/** Device */
-	LIBUSB_RECIPIENT_DEVICE = 0x00,
-
-	/** Interface */
-	LIBUSB_RECIPIENT_INTERFACE = 0x01,
-
-	/** Endpoint */
-	LIBUSB_RECIPIENT_ENDPOINT = 0x02,
-
-	/** Other */
-	LIBUSB_RECIPIENT_OTHER = 0x03,
-};
-
-/** \ingroup libusb_misc
- * Standard requests, as defined in table 9-5 of the USB 3.0 specifications */
-enum libusb_standard_request {
-	/** Request status of the specific recipient */
-	LIBUSB_REQUEST_GET_STATUS = 0x00,
-
-	/** Clear or disable a specific feature */
-	LIBUSB_REQUEST_CLEAR_FEATURE = 0x01,
-
-	/* 0x02 is reserved */
-
-	/** Set or enable a specific feature */
-	LIBUSB_REQUEST_SET_FEATURE = 0x03,
-
-	/* 0x04 is reserved */
-
-	/** Set device address for all future accesses */
-	LIBUSB_REQUEST_SET_ADDRESS = 0x05,
-
-	/** Get the specified descriptor */
-	LIBUSB_REQUEST_GET_DESCRIPTOR = 0x06,
-
-	/** Used to update existing descriptors or add new descriptors */
-	LIBUSB_REQUEST_SET_DESCRIPTOR = 0x07,
-
-	/** Get the current device configuration value */
-	LIBUSB_REQUEST_GET_CONFIGURATION = 0x08,
-
-	/** Set device configuration */
-	LIBUSB_REQUEST_SET_CONFIGURATION = 0x09,
-
-	/** Return the selected alternate setting for the specified interface */
-	LIBUSB_REQUEST_GET_INTERFACE = 0x0A,
-
-	/** Select an alternate interface for the specified interface */
-	LIBUSB_REQUEST_SET_INTERFACE = 0x0B,
-
-	/** Set then report an endpoint's synchronization frame */
-	LIBUSB_REQUEST_SYNCH_FRAME = 0x0C,
-
-	/** Sets both the U1 and U2 Exit Latency */
-	LIBUSB_REQUEST_SET_SEL = 0x30,
-
-	/** Delay from the time a host transmits a packet to the time it is
-	  * received by the device. */
-	LIBUSB_SET_ISOCH_DELAY = 0x31,
-};
-
 //-- public interface -----
 
 //-- definitions -----
 struct WinUSBDeviceInfo
 {
     std::string DevicePath;
+	std::string UniqueIdentifier;
     std::vector<GUID> DeviceInterfaceGUIDs;
     int ProductId;
     int VendorId;
@@ -141,6 +50,7 @@ struct WinUSBDeviceInfo
 
 	WinUSBDeviceInfo()
 		: DevicePath()
+		, UniqueIdentifier()
 		, DeviceInterfaceGUIDs()
 		, ProductId(-1)
 		, VendorId(-1)
@@ -151,8 +61,11 @@ struct WinUSBDeviceInfo
 	bool init(const std::string &path, const GUID &guid)
 	{
 		bool bSuccess= false;
+		char usbSerialString[4+1];
+		char usbUniqueIDString[15+1];
 
 		DevicePath= path;
+		UniqueIdentifier= "";
 		DeviceInterfaceGUIDs.push_back(guid);
 		ProductId= -1;
 		VendorId= -1;
@@ -160,25 +73,45 @@ struct WinUSBDeviceInfo
 
 		// USB Instance ID w/ Interface Index: 
 		//    "\\?\usb#vid_vvvv&pid_pppp&mi_ii#aaaaaaaaaaaaaaaa#{gggggggg-gggg-gggg-gggg-gggggggggggg}"
+		// Where:
+		//    vvvv is the USB vendor ID represented in 4 hexadecimal characters.
+		//    pppp is the USB product ID represented in 4 hexadecimal characters.
+		//    ii is the USB interface number.
+		//    aaaaaaaaaaaaaaaa is a unique, Windows-generated string based on things such as the physical USB port address and/or interface number.
+		//    gggggggg-gggg-gggg-gggg-gggggggggggg is the device interface GUID that is used to link applications to device with specific drivers loaded.
 		if (sscanf_s(
 				path.c_str(), 
-				"\\\\?\\usb#vid_%X&pid_%X&mi_%X#", 
+				"\\\\?\\usb#vid_%X&pid_%X&mi_%X#%15s#", 
 				&VendorId, 
 				&ProductId, 
-				&CompositeInterfaceIndex) == 3)
+				&CompositeInterfaceIndex,
+				usbUniqueIDString,
+				(unsigned)_countof(usbUniqueIDString)) == 4)
 		{
+			UniqueIdentifier= usbUniqueIDString;
 			bSuccess= true;
 		}
 		// USB Instance ID: 
 		//    "\\?\usb#vid_vvvv&pid_pppp#ssss#{gggggggg-gggg-gggg-gggg-gggggggggggg}"
+		//Where:
+		//    vvvv is the USB vendor ID represented in 4 hexadecimal characters.
+		//    pppp is the USB product ID represented in 4 hexadecimal characters.
+		//    ssss is the USB serial string represented in n characters.
+		//    gggggggg-gggg-gggg-gggg-gggggggggggg is the device interface GUID that is used to link applications to device with specific drivers loaded.
 		else if (sscanf_s(
 					path.c_str(),
-					"\\\\?\\usb#vid_%X&pid_%X#",
+					"\\\\?\\usb#vid_%X&pid_%X#%4s#",
 					&VendorId, 
-					&ProductId) == 2)
+					&ProductId,
+					usbSerialString,
+					(unsigned)_countof(usbSerialString)) == 3)
 		{
+			UniqueIdentifier= usbSerialString;
 			bSuccess= true;
 		}
+
+		// Replace all "&" with "_" to make the unique identifier filename friendly
+		std::replace( UniqueIdentifier.begin(), UniqueIdentifier.end(), '&', '_');
 
 		return bSuccess;
 	}
@@ -197,6 +130,7 @@ struct WinUSBDeviceInfo
 struct WinUSBAsyncBulkTransfer
 {
 	void* device_handle;
+	void* interface_handle;
 	unsigned char bulk_endpoint;
     unsigned char *buffer;
     ULONG buffer_size;
@@ -235,14 +169,7 @@ public:
 
 	inline std::string getUniqueID() const 
 	{
-		// https://www.silabs.com/community/interface/knowledge-base.entry.html/2013/11/21/windows_usb_devicep-aGxD
-		//"Windows requires that the device path be unique for every USB device and interface. 
-		//If two USB devices are plugged into the same machine with the same VID/PID/Serial string, 
-		//then the USB Device Path Format described above won’t generate a unique string for the two devices. 
-		//In this case, Windows generates a unique string similar to the format described in the 
-		//Composite USB Device Path Format section. This method is also used if the USB device iSerial index is set to 0, 
-		//indicating that the device does not have a serial string."
-		return getDevicePath();
+		return (isValid()) ? m_deviceInfoList[USBDeviceEnumerator::device_index].UniqueIdentifier : std::string();
 	}
 
     inline int getProductId() const
@@ -453,11 +380,16 @@ void WinUSBApi::poll()
 {
 	// Poll the state of all pending async bulk transfers.
 	// Remove any transfer that has completed.
-	for (auto iter= m_pendingAsyncBulkTransfers.begin(); iter != m_pendingAsyncBulkTransfers.end(); ++iter)
+	auto iter= m_pendingAsyncBulkTransfers.begin();
+	while (iter != m_pendingAsyncBulkTransfers.end())
 	{
 		if (winusbPollAsyncBulkTransfer(*iter) != WINUSB_TRANSFER_PENDING)
 		{
-			m_pendingAsyncBulkTransfers.erase(iter);
+			iter= m_pendingAsyncBulkTransfers.erase(iter);
+		}
+		else
+		{
+			++iter;
 		}
 	}
 }
@@ -515,6 +447,21 @@ bool WinUSBApi::device_enumerator_get_path(const USBDeviceEnumerator* enumerator
         std::string devicePath= winusb_enumerator->getDevicePath();
 
 		bSuccess = SUCCEEDED(StringCchCopy(outBuffer, bufferSize, devicePath.c_str()));
+	}
+
+	return bSuccess;
+}
+
+bool WinUSBApi::device_enumerator_get_unique_identifier(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const
+{
+	const WinUSBDeviceEnumerator *winusb_enumerator = static_cast<const WinUSBDeviceEnumerator *>(enumerator);
+	bool bSuccess = false;
+
+	if (winusb_enumerator != nullptr)
+	{
+        std::string deviceIdentifier= winusb_enumerator->getUniqueID();
+
+		bSuccess = SUCCEEDED(StringCchCopy(outBuffer, bufferSize, deviceIdentifier.c_str()));
 	}
 
 	return bSuccess;
@@ -788,6 +735,10 @@ eUSBResultCode WinUSBApi::submit_interrupt_transfer(
         {
             LastErrorCode= GetLastError();
         }
+		else
+		{
+			result.payload.interrupt_transfer.dataLength= bytesWritten;
+		}
                  
         #if defined(DEBUG_USB)
 		debug("USBMgr RESULT: interrupt transfer write - dev: %d, endpoint: 0x%X, length: %d -> %s\n",
@@ -811,6 +762,10 @@ eUSBResultCode WinUSBApi::submit_interrupt_transfer(
         {
             LastErrorCode= GetLastError();
         }
+		else
+		{
+			result.payload.interrupt_transfer.dataLength= bytesRead;
+		}
 
         #if defined(DEBUG_USB)
 		debug("USBMgr RESULT: interrupt transfer read - dev: %d, endpoint: 0x%X, length: %d -> 0x%X (%s)\n",
@@ -868,6 +823,11 @@ eUSBResultCode WinUSBApi::submit_control_transfer(
 	result.result_type = _USBResultType_ControlTransfer;
 	result.payload.control_transfer.usb_device_handle = request.usb_device_handle;
 
+	if (request.wLength > 0)
+	{
+		memcpy(result.payload.control_transfer.data, request.data, request.wLength);
+	}
+
     DWORD LastErrorCode= ERROR_SUCCESS;
     if (USB_ENDPOINT_DIRECTION_OUT(request.bmRequestType)) // Write
     {
@@ -889,6 +849,10 @@ eUSBResultCode WinUSBApi::submit_control_transfer(
         {
             LastErrorCode= GetLastError();
         }
+		else
+		{
+			result.payload.control_transfer.dataLength= bytesWritten;
+		}
                  
     #if defined(DEBUG_USB)
 		debug("USBMgr RESULT: control transfer write - dev: %d, reg: 0x%X, value: 0x%x -> %s\n",
@@ -912,6 +876,10 @@ eUSBResultCode WinUSBApi::submit_control_transfer(
         {
             LastErrorCode= GetLastError();
         }
+		else
+		{
+			result.payload.control_transfer.dataLength= bytesRead;
+		}
 
     #if defined(DEBUG_USB)
 		debug("USBMgr RESULT: control transfer read - dev: %d, reg: 0x%X -> 0x%X (%s)\n",
@@ -977,7 +945,11 @@ eUSBResultCode WinUSBApi::submit_bulk_transfer(
         {
             LastErrorCode= GetLastError();
         }
-                 
+		else
+		{
+			result.payload.bulk_transfer.dataLength= bytesWritten;
+		}
+
         #if defined(DEBUG_USB)
 		debug("USBMgr RESULT: bulk transfer write - dev: %d, endpoint: 0x%X, length: %d -> %s\n",
 			request.usb_device_handle,
@@ -1000,6 +972,10 @@ eUSBResultCode WinUSBApi::submit_bulk_transfer(
         {
             LastErrorCode= GetLastError();
         }
+		else
+		{
+			result.payload.bulk_transfer.dataLength= bytesRead;
+		}
 
         #if defined(DEBUG_USB)
 		debug("USBMgr RESULT: bulk transfer read - dev: %d, endpoint: 0x%X, length: %d -> 0x%X (%s)\n",
@@ -1107,6 +1083,7 @@ WinUSBAsyncBulkTransfer *WinUSBApi::winusbAllocateAsyncBulkTransfer()
 
 bool WinUSBApi::winusbSetupAsyncBulkTransfer(
 	void *device_handle,
+	void *interface_handle,
 	const unsigned char bulk_endpoint,
 	unsigned char *transfer_buffer,
 	const size_t transfer_buffer_size,
@@ -1118,6 +1095,7 @@ bool WinUSBApi::winusbSetupAsyncBulkTransfer(
 
 	memset(transfer, 0, sizeof(WinUSBAsyncBulkTransfer));
 	transfer->device_handle= device_handle;
+	transfer->interface_handle= interface_handle;
 	transfer->bulk_endpoint= bulk_endpoint;
 	transfer->buffer= transfer_buffer;
 	transfer->buffer_size= (ULONG)transfer_buffer_size;
@@ -1159,7 +1137,7 @@ void WinUSBApi::winusbFreeAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tran
 bool WinUSBApi::winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
 {
     bool bSuccess = WinUsb_ReadPipe(
-        transfer->device_handle,
+        transfer->interface_handle,
         transfer->bulk_endpoint,
         transfer->buffer,
         transfer->buffer_size,
@@ -1177,6 +1155,7 @@ bool WinUSBApi::winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tr
 		switch (error_code)
 		{
 		case ERROR_IO_INCOMPLETE:
+		case ERROR_IO_PENDING:
 			{
 				// This is the expected common case
 				transfer->transfer_status= WINUSB_TRANSFER_PENDING;
@@ -1206,6 +1185,14 @@ bool WinUSBApi::winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tr
 				transfer->user_data);
 		}
 	}
+	else
+	{
+		// Check the state of the transfer again in poll()
+		if (std::find(m_pendingAsyncBulkTransfers.begin(), m_pendingAsyncBulkTransfers.end(), transfer) == m_pendingAsyncBulkTransfers.end())
+		{
+			m_pendingAsyncBulkTransfers.push_back(transfer);
+		}
+	}
 
 	return bSuccess;
 }
@@ -1216,7 +1203,7 @@ bool WinUSBApi::winusbCancelAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tr
 
     if (transfer != nullptr)
     {
-		bSuccess = WinUsb_AbortPipe(transfer->device_handle, transfer->bulk_endpoint) == TRUE;
+		bSuccess = WinUsb_AbortPipe(transfer->interface_handle, transfer->bulk_endpoint) == TRUE;
 
 		if (!bSuccess)
 		{
@@ -1233,12 +1220,12 @@ eWinusbBulkTransferStatus WinUSBApi::winusbPollAsyncBulkTransfer(WinUSBAsyncBulk
 {
     assert(transfer != NULL);
 
-    if (transfer->transfer_status != WINUSB_TRANSFER_PENDING)
+    if (transfer->transfer_status == WINUSB_TRANSFER_PENDING)
     {
 	    DWORD transferred_bytes = 0;
 		BOOL success = 
 			WinUsb_GetOverlappedResult(
-				transfer->device_handle, 
+				transfer->interface_handle, 
 				&transfer->overlapped, 
 				&transferred_bytes, 
 				false);
@@ -1254,8 +1241,14 @@ eWinusbBulkTransferStatus WinUSBApi::winusbPollAsyncBulkTransfer(WinUSBAsyncBulk
 			switch (error_code)
 			{
 			case ERROR_IO_INCOMPLETE:
+			case ERROR_IO_PENDING:
 				{
 					transfer->transfer_status= WINUSB_TRANSFER_PENDING;
+				}
+				break;
+			case ERROR_OPERATION_ABORTED:
+				{
+					transfer->transfer_status= WINUSB_TRANSFER_CANCELLED;
 				}
 				break;
 			default:

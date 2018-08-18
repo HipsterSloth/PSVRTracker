@@ -21,6 +21,8 @@ public:
 	int get_vendor_id() const override;
 	int get_product_id() const override;
     const char *get_path() const override;
+	const char *get_unique_identifier() const;
+	inline eUSBApiType get_driver_type() const { return m_currentDriverType; }
     inline int get_camera_index() const { return m_cameraIndex; }
 	inline struct USBDeviceEnumerator* get_usb_device_enumerator() const { return m_usb_enumerator; }
 	const class TrackerCapabilitiesConfig *getTrackerCapabilities() const;
@@ -30,6 +32,8 @@ protected:
 
 private:
     char m_currentUSBPath[256];
+	char m_currentUSBIdentifier[256];
+	eUSBApiType m_currentDriverType;
 	struct USBDeviceEnumerator* m_usb_enumerator;
     int m_cameraIndex;
 };

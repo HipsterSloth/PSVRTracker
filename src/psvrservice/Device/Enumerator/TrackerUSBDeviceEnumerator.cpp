@@ -162,6 +162,19 @@ const char *TrackerUSBDeviceEnumerator::get_path() const
     return result;
 }
 
+const char *TrackerUSBDeviceEnumerator::get_unique_identifier() const
+{
+    const char *result = nullptr;
+
+    if (is_valid())
+    {
+        // Return a pointer to our member variable that has the identifier cached
+        result= m_currentUSBIdentifier;
+    }
+
+    return result;
+}
+
 const TrackerCapabilitiesConfig *TrackerUSBDeviceEnumerator::getTrackerCapabilities() const
 {
 	return is_valid() ? s_supportedTrackers->getTrackerCapabilities(get_vendor_id(), get_product_id()) : nullptr;
@@ -204,9 +217,10 @@ bool TrackerUSBDeviceEnumerator::testUSBEnumerator()
         is_tracker_supported(m_usb_enumerator, m_deviceTypeFilter, m_deviceType, needs_to_test_device_open))
 	{
 		char USBPath[256];
+		char USBIdentifier[256];
 
-		// Cache the path to the device
 		usb_device_enumerator_get_path(m_usb_enumerator, USBPath, sizeof(USBPath));
+		usb_device_enumerator_get_unique_identifier(m_usb_enumerator, USBIdentifier, sizeof(USBIdentifier));
 
 		// Test open the device
 		char errorReason[256];
@@ -215,6 +229,9 @@ bool TrackerUSBDeviceEnumerator::testUSBEnumerator()
 		{
 			// Remember the last successfully opened tracker path
 			strncpy(m_currentUSBPath, USBPath, sizeof(m_currentUSBPath));
+			strncpy(m_currentUSBIdentifier, USBIdentifier, sizeof(m_currentUSBIdentifier));
+
+			m_currentDriverType= usb_device_enumerator_get_driver_type(m_usb_enumerator);
 
 			found_valid = true;
 		}

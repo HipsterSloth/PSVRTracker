@@ -154,6 +154,20 @@ bool LibUSBApi::device_enumerator_get_path(const USBDeviceEnumerator* enumerator
 	return bSuccess;
 }
 
+bool LibUSBApi::device_enumerator_get_unique_identifier(const USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize) const
+{
+	const LibUSBDeviceEnumerator *libusb_enumerator = static_cast<const LibUSBDeviceEnumerator *>(enumerator);
+	const libusb_device *dev = libusb_enumerator->device_list[libusb_enumerator->device_index];
+	bool bSuccess = false;
+
+	if (dev != nullptr)
+	{
+		bSuccess = libusb_device_get_port_path(const_cast<libusb_device *>(dev), outBuffer, bufferSize);
+	}
+
+	return bSuccess;
+}
+
 void LibUSBApi::device_enumerator_next(USBDeviceEnumerator* enumerator)
 {
 	LibUSBDeviceEnumerator *libusb_enumerator = static_cast<LibUSBDeviceEnumerator *>(enumerator);
