@@ -164,27 +164,6 @@ IF (NOT LIBUSB_INCLUDE_DIR OR NOT LIBUSB_LIBRARIES)
 	ENDIF()
 ENDIF()
 
-# For PSEye camera
-set(PSEYE_SRC)
-set(PSEYE_INCLUDE_DIRS)
-set(PSEYE_LIBRARIES)
-IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR (${CMAKE_SYSTEM_NAME} MATCHES "Windows"))    
-    #PS3EYEDriver
-    list(APPEND PSEYE_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/PS3EYEDriver/src)
-    list(APPEND PSEYE_SRC
-        ${ROOT_DIR}/thirdparty/PS3EYEDriver/src/ps3eye.h
-        ${ROOT_DIR}/thirdparty/PS3EYEDriver/src/ps3eye.cpp)
-    add_definitions(-DHAVE_PS3EYE)
-	
-    #Requires libusb
-    list(APPEND PSEYE_INCLUDE_DIRS ${LIBUSB_INCLUDE_DIR})
-    list(APPEND PSEYE_LIBRARIES ${LIBUSB_LIBRARIES})
-	
-    IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-braced-scalar-init")
-    ENDIF()	
-ENDIF()
-
 # hidapi
 set(HIDAPI_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/hidapi/hidapi)
 set(HIDAPI_SRC)

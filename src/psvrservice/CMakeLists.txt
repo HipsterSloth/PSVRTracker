@@ -168,18 +168,13 @@ list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psvrmath/)
 list(APPEND PSVR_SERVICE_REQ_LIBS PSVRMath)
 
 # Tracker
-# Requires OpenCV, PS3EYEDriver (Mac/Win64), CLEye (Win32)
+# Requires OpenCV
 
 # OpenCV - empty on Windows
 IF(MSVC) # not necessary for OpenCV > 2.8 on other build systems
     list(APPEND PSVR_SERVICE_INCL_DIRS ${OpenCV_INCLUDE_DIRS}) 
 ENDIF()
 list(APPEND PSVR_SERVICE_REQ_LIBS ${OpenCV_LIBS})
-
-# PS Eye - This brings in LIBUSB on Windows and Mac, but not Linux
-list(APPEND PSVR_SERVICE_SRC ${PSEYE_SRC})
-list(APPEND PSVR_SERVICE_INCL_DIRS ${PSEYE_INCLUDE_DIRS})
-list(APPEND PSVR_SERVICE_REQ_LIBS ${PSEYE_LIBRARIES})
 
 #
 # PSVRService Static library
