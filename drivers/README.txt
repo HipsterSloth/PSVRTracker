@@ -14,6 +14,10 @@ For the purposes of PSVRService we use the WinUSB driver for devices we care abo
 
 We need drivers for the following USB interfaces:
 
+* PS3 Eye Video Interface 0: 
+ - Send commands to the PS3 EYE
+ - Read video frames from the PS3 EYE
+
 * PSVR USB Interface 4: 
  - Used to read sensor data from the PSVR headset
 
