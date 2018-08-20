@@ -1,6 +1,10 @@
 // -- include -----
 #include "SphereTrackingModel.h"
 #include "MathUtility.h"
+#include "MathEigen.h"
+#include "MathTypeConversion.h"
+#include "ServerTrackerView.h"
+#include "TrackingModelMath.h"
 
 //-- constants ---
 
@@ -51,16 +55,27 @@ bool SphereTrackingModel::applyShapeProjectionFromTracker(
 
     if (projection.projection_count == STEREO_PROJECTION_COUNT)
     {
-        //###HipsterSloth $TODO - Properly triangulate using stereo projection
-        m_state->spherePosition= projection.projections[0].shape.ellipse.source_position;
-        m_state->bIsSpherePositionValid= true;
+		Eigen::Vector3f left_position= 
+			PSVR_vector3f_to_eigen_vector3(
+				projection.projections[LEFT_PROJECTION_INDEX].shape.ellipse.source_position);
+		Eigen::Vector3f right_position= 
+			PSVR_vector3f_to_eigen_vector3(
+				projection.projections[RIGHT_PROJECTION_INDEX].shape.ellipse.source_position);
+
+		Eigen::Vector3f triangulated_position;
+		compute_triangulation_from_stereo_position_estimates(
+			left_position, right_position, tracker_view->getTrackerDevice(),
+			triangulated_position);
+
+		m_state->spherePosition= eigen_vector3f_to_PSVR_vector3f(triangulated_position);
+		m_state->bIsSpherePositionValid= true;
 
         bSuccess= true;
     }
     else if (projection.projection_count == MONO_PROJECTION_COUNT)
     {
         // Use the position derived from the best fit cone to sphere
-        m_state->spherePosition= projection.projections[0].shape.ellipse.source_position;
+        m_state->spherePosition= projection.projections[PRIMARY_PROJECTION_INDEX].shape.ellipse.source_position;
         m_state->bIsSpherePositionValid= true;
 
         bSuccess= true;

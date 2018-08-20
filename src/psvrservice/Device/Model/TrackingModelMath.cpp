@@ -1,5 +1,9 @@
 #include "TrackingModelMath.h"
+#include "TrackerMath.h"
+#include "DeviceInterface.h"
 #include "MathAlignment.h"
+
+#include "opencv2/opencv.hpp"
 
 bool compute_all_possible_tri_index_combinations(
 	std::size_t point_count, 
@@ -194,4 +198,65 @@ void compute_triangle_transforms_for_triangles(
         // Add the triangle basis to the list
         out_triangle_basis_list.push_back(tri_transform);
     }
+}
+
+void compute_triangulation_from_stereo_position_estimates(
+	const Eigen::Vector3f &left_position_estimate,
+	const Eigen::Vector3f &right_position_estimate,
+	const ITrackerInterface *stereo_tracker,
+	Eigen::Vector3f &out_position)
+{
+	assert(stereo_tracker->getIsStereoCamera());
+
+	// Fetch the lens properties of the left and right cameras
+	cv::Matx33f left_intrinsic_matrix, right_intrinsic_matrix;
+	cv::Matx<float, 5, 1> left_distortion_coeffs, right_distortion_coeffs;
+	cv::Matx33d left_rectification_rotation, right_rectification_rotation;
+	cv::Matx34d left_rectification_projection, right_rectification_projection; 
+	computeOpenCVCameraIntrinsicMatrix(
+		stereo_tracker,
+		PSVRVideoFrameSection_Left, 
+		left_intrinsic_matrix, left_distortion_coeffs);
+	computeOpenCVCameraIntrinsicMatrix(
+		stereo_tracker,
+		PSVRVideoFrameSection_Right, 
+		right_intrinsic_matrix, right_distortion_coeffs);
+	computeOpenCVCameraRectification(
+		stereo_tracker, PSVRVideoFrameSection_Left, 
+		left_rectification_rotation, left_rectification_projection);
+	computeOpenCVCameraRectification(
+		stereo_tracker, PSVRVideoFrameSection_Left, 
+		right_rectification_rotation, right_rectification_projection);
+
+	// Use the identity transform for tracker relative positions
+	cv::Mat rvec(3, 1, cv::DataType<double>::type, double(0));
+	cv::Mat tvec(3, 1, cv::DataType<double>::type, double(0));
+
+	// Project the left and right position estimates to the left and right camera planes
+	cv::Vec2f left_projection_estimate, right_projection_estimate;
+	cv::projectPoints(cv::_InputArray(left_position_estimate.data(), 1),
+						rvec, tvec,
+						left_intrinsic_matrix, left_distortion_coeffs,
+						left_projection_estimate);
+	cv::projectPoints(cv::_InputArray(right_position_estimate.data(), 1),
+						rvec, tvec,
+						right_intrinsic_matrix, right_distortion_coeffs,
+						right_projection_estimate);
+
+	// Triangulate the projected points
+	cv::Mat triangulated_homogenous_coord;
+	cv::triangulatePoints(
+		left_rectification_projection, right_rectification_projection, 
+		left_projection_estimate, right_projection_estimate, 
+		triangulated_homogenous_coord);
+
+	// Convert homogeneous point back to a 3d point
+	const cv::Vec4d &homogenous_coord = triangulated_homogenous_coord.col(0);
+	const double w= homogenous_coord[3];
+
+	out_position=
+		Eigen::Vector3f(
+			(float)(homogenous_coord[0] / w), 
+			(float)(homogenous_coord[1] / w), 
+			(float)(homogenous_coord[2] / w));
 }

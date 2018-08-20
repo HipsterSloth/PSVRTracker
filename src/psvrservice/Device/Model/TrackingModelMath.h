@@ -46,5 +46,11 @@ void compute_triangle_transforms_for_triangles(
     const std::vector<Eigen::Vector3f> &points,
     std::vector<Eigen::Affine3f> &out_triangle_basis_list);
 
+void compute_triangulation_from_stereo_position_estimates(
+	const Eigen::Vector3f &left_position_estimate,
+	const Eigen::Vector3f &right_position_estimate,
+	const class ITrackerInterface *stereo_tracker,
+	Eigen::Vector3f &out_position);
+
 #endif // TRACKING_MODEL_MATH_H
 
