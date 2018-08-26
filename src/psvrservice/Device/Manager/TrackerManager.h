@@ -26,8 +26,8 @@ public:
     virtual const configuru::Config writeToJSON();
     virtual void readFromJSON(const configuru::Config &pt);
 
-	static PSMTrackerDebugFlags debug_flags;
-	static bool are_debug_flags_enabled(PSMTrackerDebugFlags mask) 
+	static PSVRTrackerDebugFlags debug_flags;
+	static bool are_debug_flags_enabled(PSVRTrackerDebugFlags mask) 
 	{ return (debug_flags & mask) > 0; }
 
     long version;

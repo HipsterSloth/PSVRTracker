@@ -26,6 +26,9 @@ typedef enum
     PSVRVideoFrameSection_Primary              = 0  ///< The only frame from a stereo camera
 } PSVRVideoFrameSection;
 
+// See ControllerManager.h in PSMoveService
+#define PSVRSERVICE_MAX_CONTROLLER_COUNT  5
+
 // See TrackerManager.h in PSVRSERVICE
 #define PSVRSERVICE_MAX_TRACKER_COUNT  8
 
@@ -34,6 +37,9 @@ typedef enum
 
 // The max length of the service version string
 #define PSVRSERVICE_MAX_VERSION_STRING_LEN 32
+
+// The length of a controller serial string: "xx:xx:xx:xx:xx:xx\0"
+#define PSVRSERVICE_CONTROLLER_SERIAL_LEN  18
 
 // Defines a standard _PAUSE function
 #if __cplusplus >= 199711L  // if C++11

@@ -27,7 +27,7 @@ static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path);
 
 //-- Tracker Manager Config -----
 const int TrackerManagerConfig::CONFIG_VERSION = 2;
-PSMTrackerDebugFlags TrackerManagerConfig::debug_flags= PSMTrackerDebugFlags_none;
+PSVRTrackerDebugFlags TrackerManagerConfig::debug_flags= PSVRTrackerDebugFlags_none;
 
 TrackerManagerConfig::TrackerManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
@@ -50,7 +50,7 @@ TrackerManagerConfig::writeToJSON()
         {"min_valid_projection_area", min_valid_projection_area},	
         {"disable_roi", disable_roi},
         {"global_forward_degrees", global_forward_degrees},
-		{"debug_show_tracking_model", (TrackerManagerConfig::debug_flags & PSMTrackerDebugFlags_trackingModel) > 0}
+		{"debug_show_tracking_model", (TrackerManagerConfig::debug_flags & PSVRTrackerDebugFlags_trackingModel) > 0}
     };
 
     return pt;
@@ -70,12 +70,12 @@ TrackerManagerConfig::readFromJSON(const configuru::Config &pt)
         disable_roi = pt.get_or<bool>("disable_roi", disable_roi);
         global_forward_degrees= pt.get_or<float>("global_forward_degrees", global_forward_degrees);
 
-		unsigned int debug_flags= PSMTrackerDebugFlags_none;
+		unsigned int debug_flags= PSVRTrackerDebugFlags_none;
 		if (pt.get_or<bool>("debug_show_tracking_model", false))
 		{
-			debug_flags|= PSMTrackerDebugFlags_trackingModel;
+			debug_flags|= PSVRTrackerDebugFlags_trackingModel;
 		}
-		TrackerManagerConfig::debug_flags= (PSMTrackerDebugFlags)debug_flags;
+		TrackerManagerConfig::debug_flags= (PSVRTrackerDebugFlags)debug_flags;
     }
     else
     {

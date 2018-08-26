@@ -22,6 +22,7 @@ public:
     virtual ~PSVRClient();
 
 	// -- State Queries ----
+	bool pollHasControllerListChanged();
 	bool pollHasTrackerListChanged();
 	bool pollHasHMDListChanged();
 
@@ -33,6 +34,10 @@ public:
     void shutdown();
 
     // -- Client PSVR API Requests -----
+    bool allocate_controller_listener(PSVRControllerID controller_id);
+    void free_controller_listener(PSVRControllerID controller_id);   
+    PSVRController* get_controller_view(PSVRControllerID controller_id);
+
     bool allocate_tracker_listener(const PSVRClientTrackerInfo &trackerInfo);
     void free_tracker_listener(PSVRTrackerID tracker_id);
     PSVRTracker* get_tracker_view(PSVRTrackerID tracker_id);
@@ -59,13 +64,17 @@ protected:
 private:
     //-- Request Handling -----
     class ServiceRequestHandler *m_requestHandler;
-    
+
+    //-- Controller Views -----
+	PSVRController m_controllers[PSVRSERVICE_MAX_CONTROLLER_COUNT];
+
     //-- Tracker Views -----
 	PSVRTracker m_trackers[PSVRSERVICE_MAX_TRACKER_COUNT];
     
     //-- HMD Views -----
 	PSVRHeadMountedDisplay m_HMDs[PSVRSERVICE_MAX_HMD_COUNT];
 
+	bool m_bHasControllerListChanged;
 	bool m_bHasTrackerListChanged;
 	bool m_bHasHMDListChanged;
 

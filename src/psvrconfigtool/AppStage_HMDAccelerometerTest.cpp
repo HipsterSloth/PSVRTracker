@@ -67,8 +67,8 @@ void AppStage_HMDAccelerometerTest::enter()
 
     if (PSVR_StartHmdDataStream(
 		m_hmdView->HmdID, 
-		PSMStreamFlags_includeCalibratedSensorData | 
-        PSMStreamFlags_includeRawSensorData) == PSVRResult_Success)
+		PSVRStreamFlags_includeCalibratedSensorData | 
+        PSVRStreamFlags_includeRawSensorData) == PSVRResult_Success)
     {
         m_isHMDStreamActive = true;
         m_lastHMDSeqNum = -1;

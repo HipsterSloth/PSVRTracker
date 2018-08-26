@@ -140,6 +140,42 @@ void ServiceRequestHandler::publish_notification(const PSVREventMessage &message
     m_notificationListener->handle_notification(message);
 }
 	
+// -- controller requests -----
+PSVRResult ServiceRequestHandler::get_controller_list(PSVRControllerList *out_controller_list)
+{
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::start_controller_data_stream(PSVRControllerID controller_id, unsigned int flags)
+{
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::stop_controller_data_stream(PSVRControllerID controller_id)
+{
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::set_led_tracking_color(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color)
+{
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::reset_orientation(PSVRControllerID controller_id, const PSVRQuatf& q_pose)
+{
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_data_stream_tracker_index(PSVRControllerID controller_id, PSVRTrackerID tracker_id)
+{
+	return PSVRResult_Success;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_hand(PSVRControllerID controller_id, PSVRControllerHand controller_hand)
+{
+	return PSVRResult_Success;
+}
+
 // -- tracker requests -----
 PSVRResult ServiceRequestHandler::get_tracker_list(PSVRTrackerList *out_tracker_list)
 {
@@ -500,14 +536,14 @@ PSVRResult ServiceRequestHandler::reload_tracker_settings(
     return result;
 }
 
-PSVRResult ServiceRequestHandler::get_tracker_debug_flags(PSMTrackerDebugFlags *out_flags) const
+PSVRResult ServiceRequestHandler::get_tracker_debug_flags(PSVRTrackerDebugFlags *out_flags) const
 {
 	*out_flags= TrackerManagerConfig::debug_flags;
 
 	return PSVRResult_Success;
 }
 
-PSVRResult ServiceRequestHandler::set_tracker_debug_flags(PSMTrackerDebugFlags flags)
+PSVRResult ServiceRequestHandler::set_tracker_debug_flags(PSVRTrackerDebugFlags flags)
 {
 	TrackerManagerConfig::debug_flags= flags;
 
@@ -618,12 +654,12 @@ PSVRResult ServiceRequestHandler::start_hmd_data_stream(
 
             // Set control flags for the stream
             streamInfo.Clear();
-            streamInfo.include_position_data = (data_stream_flags & PSMStreamFlags_includePositionData) > 0;
-            streamInfo.include_physics_data = (data_stream_flags & PSMStreamFlags_includePhysicsData) > 0;
-            streamInfo.include_raw_sensor_data = (data_stream_flags & PSMStreamFlags_includeRawSensorData) > 0;
-            streamInfo.include_calibrated_sensor_data = (data_stream_flags & PSMStreamFlags_includeCalibratedSensorData) > 0;
-            streamInfo.include_raw_tracker_data = (data_stream_flags & PSMStreamFlags_includeRawTrackerData) > 0;
-            streamInfo.disable_roi = (data_stream_flags & PSMStreamFlags_disableROI) > 0;
+            streamInfo.include_position_data = (data_stream_flags & PSVRStreamFlags_includePositionData) > 0;
+            streamInfo.include_physics_data = (data_stream_flags & PSVRStreamFlags_includePhysicsData) > 0;
+            streamInfo.include_raw_sensor_data = (data_stream_flags & PSVRStreamFlags_includeRawSensorData) > 0;
+            streamInfo.include_calibrated_sensor_data = (data_stream_flags & PSVRStreamFlags_includeCalibratedSensorData) > 0;
+            streamInfo.include_raw_tracker_data = (data_stream_flags & PSVRStreamFlags_includeRawTrackerData) > 0;
+            streamInfo.disable_roi = (data_stream_flags & PSVRStreamFlags_disableROI) > 0;
 
             PSVR_LOG_INFO("ServerRequestHandler") << "Start hmd(" << hmd_id << ") stream ("
                 << "pos=" << streamInfo.include_position_data

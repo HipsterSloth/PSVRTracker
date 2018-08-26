@@ -8,9 +8,24 @@
 //-- definitions -----
 enum DeviceCategory
 {
-	DeviceCategory_TRACKER= 0,
-	DeviceCategory_HMD= 1
+	DeviceCategory_CONTROLLER= 0,
+	DeviceCategory_TRACKER= 1,
+	DeviceCategory_HMD= 2
 };
+
+struct ControllerDataPacket
+{
+    PSVRControllerID controller_id;
+    PSVRControllerType controller_type;
+    union
+    {
+        PSVRPSMove  psmove_state;
+        PSVRDualShock4 ds4_state;
+    }               controller_state;
+    bool            is_valid;
+    int             output_sequence_num;
+    bool            is_connected;
+};	
 
 struct TrackerDataPacket
 {
@@ -37,6 +52,7 @@ struct HMDDataPacket
 struct DeviceOutputDataFrame
 {
 	union{
+		ControllerDataPacket controller_data_packet;
 		TrackerDataPacket tracker_data_packet;
 		HMDDataPacket hmd_data_packet;
 	} device;

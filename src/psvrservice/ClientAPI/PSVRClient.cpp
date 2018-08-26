@@ -17,16 +17,19 @@
 typedef std::deque<PSVREventMessage> t_message_queue;
 
 // -- macros -----
+#define IS_VALID_CONTROLLER_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_CONTROLLER_COUNT)
 #define IS_VALID_TRACKER_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_TRACKER_COUNT)
 #define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_HMD_COUNT)
 
 // -- prototypes -----
+static void applyControllerDataFrame(const ControllerDataPacket& tracker_packet, PSVRController *controller);
 static void applyTrackerDataFrame(const TrackerDataPacket& tracker_packet, PSVRTracker *tracker);
 static void applyHmdDataFrame(const HMDDataPacket& hmd_packet, PSVRHeadMountedDisplay *hmd);
 
 // -- methods -----
 PSVRClient::PSVRClient()
 	: m_requestHandler(nullptr)
+	, m_bHasControllerListChanged(false)
 	, m_bHasTrackerListChanged(false)
 	, m_bHasHMDListChanged(false)
 {
@@ -37,6 +40,15 @@ PSVRClient::~PSVRClient()
 }
 
 // -- State Queries ----
+bool PSVRClient::pollHasControllerListChanged()
+{ 
+	bool bHasControllerListChanged= m_bHasControllerListChanged;
+
+	m_bHasControllerListChanged= false;
+
+	return bHasControllerListChanged; 
+}
+
 bool PSVRClient::pollHasTrackerListChanged()
 { 
 	bool bHasTrackerListChanged= m_bHasTrackerListChanged;
@@ -65,16 +77,24 @@ bool PSVRClient::startup(
     m_requestHandler= request_handler;
 
 	// Reset status flags
+	m_bHasControllerListChanged= false;
 	m_bHasTrackerListChanged= false;
 	m_bHasHMDListChanged= false;
 
 	PSVR_LOG_INFO("PSVRClient") << "Successfully initialized PSVRClient";
 
-	memset(m_trackers, 0, sizeof(PSVRTracker)*PSVRSERVICE_MAX_TRACKER_COUNT);
-	for (PSVRTrackerID tracker_id= 0; tracker_id < PSVRSERVICE_MAX_TRACKER_COUNT; ++tracker_id)    
+	memset(m_controllers, 0, sizeof(PSVRTracker)*PSVRSERVICE_MAX_CONTROLLER_COUNT);
+	for (PSVRControllerID controller_id= 0; controller_id < PSVRSERVICE_MAX_CONTROLLER_COUNT; ++controller_id)    
 	{
-		m_trackers[tracker_id].tracker_info.tracker_id= tracker_id;
-		m_trackers[tracker_id].tracker_info.tracker_type= PSVRTracker_None;
+		m_controllers[controller_id].ControllerID= controller_id;
+		m_controllers[controller_id].ControllerType= PSVRController_None;
+	}
+
+	memset(m_trackers, 0, sizeof(PSVRTracker)*PSVRSERVICE_MAX_TRACKER_COUNT);
+	for (PSVRTrackerID controller_id= 0; controller_id < PSVRSERVICE_MAX_TRACKER_COUNT; ++controller_id)    
+	{
+		m_trackers[controller_id].tracker_info.tracker_id= controller_id;
+		m_trackers[controller_id].tracker_info.tracker_type= PSVRTracker_None;
 	}
 
 	memset(m_HMDs, 0, sizeof(PSVRHeadMountedDisplay)*PSVRSERVICE_MAX_HMD_COUNT);
@@ -130,6 +150,51 @@ void PSVRClient::shutdown()
 }
 
 // -- ClientPSVRAPI Requests -----
+bool PSVRClient::allocate_controller_listener(PSVRControllerID controller_id)
+{
+    bool bSuccess= false;
+
+    if (IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= &m_controllers[controller_id];
+
+		if (controller->ListenerCount == 0)
+		{
+			memset(controller, 0, sizeof(PSVRController));
+            controller->ControllerID= controller_id;
+            controller->ControllerType = PSVRController_None;
+        }
+
+        ++controller->ListenerCount;
+        bSuccess= true;
+    }
+    
+    return bSuccess;
+}
+
+void PSVRClient::free_controller_listener(PSVRControllerID controller_id)
+{
+	if (IS_VALID_CONTROLLER_INDEX(controller_id))
+	{
+		PSVRController *controller= &m_controllers[controller_id];
+
+		assert(controller->ListenerCount > 0);
+		--controller->ListenerCount;
+
+		if (controller->ListenerCount <= 0)
+		{
+			memset(controller, 0, sizeof(PSVRController));
+			controller->ControllerID= controller_id;
+			controller->ControllerType = PSVRController_None;
+		}
+	}
+}
+
+PSVRController* PSVRClient::get_controller_view(PSVRControllerID controller_id)
+{
+	return IS_VALID_CONTROLLER_INDEX(controller_id) ? &m_controllers[controller_id] : nullptr;
+}
+
 bool PSVRClient::allocate_tracker_listener(const PSVRClientTrackerInfo &trackerInfo)
 {
     bool bSuccess= false;
@@ -339,6 +404,37 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame &data_frame)
 				applyHmdDataFrame(hmd_packet, hmd);
 			}
         } break;            
+    }
+}
+
+static void applyControllerDataFrame(
+	const ControllerDataPacket& controller_packet,
+	PSVRController *controller)
+{
+	assert(controller_packet.controller_id == controller->ControllerID);
+
+    // Compute the data frame receive window statistics if we have received enough samples
+    {
+        long long now =
+            std::chrono::duration_cast< std::chrono::milliseconds >(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        long long diff = now - controller->DataFrameLastReceivedTime;
+
+        if (diff > 0)
+        {
+            float seconds = static_cast<float>(diff) / 1000.f;
+            float fps = 1.f / seconds;
+
+            controller->DataFrameAverageFPS = (0.9f)*controller->DataFrameAverageFPS + (0.1f)*fps;
+        }
+
+        controller->DataFrameLastReceivedTime = now;
+    }
+
+    if (controller_packet.output_sequence_num > controller->OutputSequenceNum)
+    {
+        controller->OutputSequenceNum = controller_packet.output_sequence_num;
+		controller->IsConnected = controller_packet.is_connected;
     }
 }
 

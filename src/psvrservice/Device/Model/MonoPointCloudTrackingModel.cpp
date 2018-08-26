@@ -594,7 +594,7 @@ static bool compute_predicted_point_correspondences(
 				best_correspondence_dist= proj_dist_sqrd;
 			}
 
-			if (TrackerManagerConfig::are_debug_flags_enabled(PSMTrackerDebugFlags_trackingModel))
+			if (TrackerManagerConfig::are_debug_flags_enabled(PSVRTrackerDebugFlags_trackingModel))
 			{
 				cv::drawMarker(
 					*drawingBuffer, 
@@ -617,7 +617,7 @@ static bool compute_predicted_point_correspondences(
 			// Add to the list of valid proj_point -> model_point correspondences
 			out_point_correspondences.push_back(correspondence);
 
-			if (TrackerManagerConfig::are_debug_flags_enabled(PSMTrackerDebugFlags_trackingModel))
+			if (TrackerManagerConfig::are_debug_flags_enabled(PSVRTrackerDebugFlags_trackingModel))
 			{
 				char point_label[32];
 				Utility::format_string(point_label, sizeof(point_label), "%d", model_point_index);

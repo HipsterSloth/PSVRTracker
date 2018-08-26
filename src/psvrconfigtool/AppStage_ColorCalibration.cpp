@@ -778,8 +778,8 @@ void AppStage_ColorCalibration::request_start_hmd_stream()
 	// Turning on position stream data will enable the tracking lights
     if (PSVR_StartHmdDataStream(
 			m_hmdView->HmdID, 
-			PSMStreamFlags_defaultStreamOptions | 
-			PSMStreamFlags_includePositionData) == PSVRResult_Success)
+			PSVRStreamFlags_defaultStreamOptions | 
+			PSVRStreamFlags_includePositionData) == PSVRResult_Success)
     {
         m_isHmdStreamActive = true;
         setState(AppStage_ColorCalibration::waitingForStreamStartResponse);

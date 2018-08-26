@@ -21,6 +21,9 @@
 // Wrapper Types
 //--------------
 
+/// The ID of a controller in the controller pool
+typedef int PSVRControllerID;
+
 /// The ID of a tracker in the tracker pool
 typedef int PSVRTrackerID;
 
@@ -63,24 +66,78 @@ typedef enum
     PSVRDriver_WINDOWSMEDIAFRAMEWORK
 } PSVRTrackerDriver;
 
+/// Connection type for a device
+typedef enum
+{
+    PSVRConnectionType_BLUETOOTH,	///< Device connected over bluetooth
+    PSVRConnectionType_USB			///< Device connected over USB
+    
+} PSVRConnectionType;
+
+/// De-bounced state of a button
+typedef enum 
+{
+    PSVRButtonState_UP = 0x00,       ///< (00b) Not pressed
+    PSVRButtonState_PRESSED = 0x01,  ///< (01b) Down for one frame only
+    PSVRButtonState_DOWN = 0x03,     ///< (11b) Down for >1 frame
+    PSVRButtonState_RELEASED = 0x02, ///< (10b) Up for one frame only
+} PSVRButtonState;
+
+/// Battery charge state levels
+typedef enum
+{
+    PSVRBattery_0        = 0,
+    PSVRBattery_20       = 1,
+    PSVRBattery_40       = 2,
+    PSVRBattery_60       = 3,
+    PSVRBattery_80       = 4,
+    PSVRBattery_100      = 5,
+    PSVRBattery_Charging = 0xEE,
+    PSVRBattery_Charged  = 0xEF
+} PSVRBatteryState;
+
 /// Tracked device data stream options
 typedef enum
 {
-    PSMStreamFlags_defaultStreamOptions = 0x00,			///< Default minimal data stream
-    PSMStreamFlags_includePositionData = 0x01,			///< Add position data (turns on tracking)
-    PSMStreamFlags_includePhysicsData = 0x02,			///< Add IMU physics state
-    PSMStreamFlags_includeRawSensorData = 0x04,			///< Add raw IMU sensor data
-	PSMStreamFlags_includeCalibratedSensorData = 0x08,	///< Add calibrated IMU sensor state
-    PSMStreamFlags_includeRawTrackerData = 0x10,		///< Add raw optical tracking projection info
-	PSMStreamFlags_disableROI = 0x20,					///< Disable Region-of-Interest tracking optimization
-} PSMDeviceDataStreamFlags;
+    PSVRStreamFlags_defaultStreamOptions = 0x00,			///< Default minimal data stream
+    PSVRStreamFlags_includePositionData = 0x01,			///< Add position data (turns on tracking)
+    PSVRStreamFlags_includePhysicsData = 0x02,			///< Add IMU physics state
+    PSVRStreamFlags_includeRawSensorData = 0x04,			///< Add raw IMU sensor data
+	PSVRStreamFlags_includeCalibratedSensorData = 0x08,	///< Add calibrated IMU sensor state
+    PSVRStreamFlags_includeRawTrackerData = 0x10,		///< Add raw optical tracking projection info
+	PSVRStreamFlags_disableROI = 0x20,					///< Disable Region-of-Interest tracking optimization
+} PSVRDeviceDataStreamFlags;
 
 /// Tracking Debug flags
 typedef enum
 {
-    PSMTrackerDebugFlags_none = 0x00,						///< Turn off all
-    PSMTrackerDebugFlags_trackingModel = 0x01,				///< Show tracking model debugging
-} PSMTrackerDebugFlags;
+    PSVRTrackerDebugFlags_none = 0x00,						///< Turn off all
+    PSVRTrackerDebugFlags_trackingModel = 0x01,				///< Show tracking model debugging
+} PSVRTrackerDebugFlags;
+
+/// The possible rumble channels available to the controllers
+typedef enum
+{
+    PSVRControllerRumbleChannel_All,		///< Rumble across all channels
+    PSVRControllerRumbleChannel_Left,	///< Rumble on the left channel
+    PSVRControllerRumbleChannel_Right	///< Rumble on the right channel
+} PSVRControllerRumbleChannel;
+
+/// The list of possible controller types tracked by PSMoveService
+typedef enum
+{
+    PSVRController_None= -1,
+    PSVRController_Move,
+	PSVRController_DualShock4,
+} PSVRControllerType;
+
+/// Describes which hand the given device is intended for
+typedef enum 
+{
+	PSMControllerHand_Any = 0,
+	PSMControllerHand_Left = 1,
+	PSMControllerHand_Right = 2,
+} PSVRControllerHand;
 
 // Tracker State
 //--------------
@@ -269,6 +326,16 @@ typedef struct
     const void *opaque_shared_video_frame_buffer;
 } PSVRTracker;
 
+/// Tracked object physics data state
+typedef struct
+{
+    PSVRVector3f LinearVelocityCmPerSec;
+    PSVRVector3f LinearAccelerationCmPerSecSqr;
+    PSVRVector3f AngularVelocityRadPerSec;
+    PSVRVector3f AngularAccelerationRadPerSecSqr;
+    double       TimeInSeconds;
+} PSVRPhysicsData;
+
 // HMD State
 //----------
 
@@ -283,16 +350,6 @@ typedef struct
 	char position_filter[64];
 	float prediction_time;
 } PSVRClientHMDInfo;
-
-/// Tracked object physics data state
-typedef struct
-{
-    PSVRVector3f LinearVelocityCmPerSec;
-    PSVRVector3f LinearAccelerationCmPerSecSqr;
-    PSVRVector3f AngularVelocityRadPerSec;
-    PSVRVector3f AngularAccelerationRadPerSecSqr;
-    double       TimeInSeconds;
-} PSVRPhysicsData;
 
 /// Morpheus Raw IMU sensor data
 typedef struct
@@ -356,6 +413,168 @@ typedef struct
     int             ListenerCount;
 } PSVRHeadMountedDisplay;
 
+// Controller State
+//------------------
+
+/// Raw Sensor data from the PSMove IMU
+typedef struct
+{
+    PSVRVector3i Magnetometer;
+    PSVRVector3i Accelerometer;
+    PSVRVector3i Gyroscope;
+    double      TimeInSeconds;
+} PSVRPSMoveRawSensorData;
+
+/// Calibrated Sensor
+typedef struct
+{
+    PSVRVector3f Magnetometer;
+    PSVRVector3f Accelerometer;
+    PSVRVector3f Gyroscope;
+    double      TimeInSeconds;
+} PSVRPSMoveCalibratedSensorData;
+
+/// PSMove Controller State in Controller Pool Entry
+typedef struct
+{
+    bool                         bHasValidHardwareCalibration;
+    bool                         bIsTrackingEnabled;
+    bool                         bIsCurrentlyTracking;
+    bool                         bIsOrientationValid;
+    bool                         bIsPositionValid;
+    bool                         bHasUnpublishedState;
+    
+    char                         DevicePath[256];
+    char                         DeviceSerial[128];
+    char                         AssignedHostSerial[128];
+    bool                         PairedToHost;
+    PSVRConnectionType            ConnectionType;
+    
+    PSVRTrackingColorType         TrackingColorType;
+    PSVRPosef                     Pose;
+    PSVRPhysicsData               PhysicsData;
+    PSVRPSMoveRawSensorData          RawSensorData;
+    PSVRPSMoveCalibratedSensorData   CalibratedSensorData;
+    PSVRRawTrackerData            RawTrackerData;
+    
+    PSVRButtonState               TriangleButton;
+    PSVRButtonState               CircleButton;
+    PSVRButtonState               CrossButton;
+    PSVRButtonState               SquareButton;
+    PSVRButtonState               SelectButton;
+    PSVRButtonState               StartButton;
+    PSVRButtonState               PSButton;
+    PSVRButtonState               MoveButton;
+    PSVRButtonState               TriggerButton;
+    PSVRBatteryState              BatteryValue;
+    unsigned char                TriggerValue;
+    unsigned char                Rumble;
+    unsigned char                LED_r, LED_g, LED_b;
+
+    long long                    ResetPoseButtonPressTime;
+    bool                         bResetPoseRequestSent;
+    bool                         bPoseResetButtonEnabled;
+    
+} PSVRPSMove;
+
+/// DualShock4 raw IMU sensor data
+typedef struct
+{
+    PSVRVector3i Accelerometer;
+    PSVRVector3i Gyroscope;
+    double      TimeInSeconds;
+} PSVRDS4RawSensorData;
+
+/// DualShock4 calibrated IMU sensor data
+typedef struct
+{
+    PSVRVector3f Accelerometer;
+    PSVRVector3f Gyroscope;
+    double      TimeInSeconds;
+} PSVRDS4CalibratedSensorData;
+
+/// DualShock4 Controller State in Controller Pool Entry
+typedef struct
+{
+    bool                         bHasValidHardwareCalibration;
+    bool                         bIsTrackingEnabled;
+    bool                         bIsCurrentlyTracking;
+    bool                         bIsOrientationValid;
+    bool                         bIsPositionValid;
+    bool                         bHasUnpublishedState;
+    
+    char                         DevicePath[256];
+    char                         DeviceSerial[128];
+    char                         AssignedHostSerial[128];
+    bool                         PairedToHost;
+    PSVRConnectionType            ConnectionType;
+    
+    PSVRTrackingColorType         TrackingColorType;
+    PSVRPosef                     Pose;
+    PSVRPhysicsData               PhysicsData;
+    PSVRDS4RawSensorData           RawSensorData;
+    PSVRDS4CalibratedSensorData    CalibratedSensorData;
+    PSVRRawTrackerData            RawTrackerData;
+    
+    PSVRButtonState               DPadUpButton;
+    PSVRButtonState               DPadDownButton;
+    PSVRButtonState               DPadLeftButton;
+    PSVRButtonState               DPadRightButton;
+
+    PSVRButtonState               SquareButton;
+    PSVRButtonState               CrossButton;
+    PSVRButtonState               CircleButton;
+    PSVRButtonState               TriangleButton;
+
+    PSVRButtonState               L1Button;
+    PSVRButtonState               R1Button;
+    PSVRButtonState               L2Button;
+    PSVRButtonState               R2Button;
+    PSVRButtonState               L3Button;
+    PSVRButtonState               R3Button;
+
+    PSVRButtonState               ShareButton;
+    PSVRButtonState               OptionsButton;
+
+    PSVRButtonState               PSButton;
+    PSVRButtonState               TrackPadButton;
+
+    float                        LeftAnalogX;
+    float                        LeftAnalogY;
+    float                        RightAnalogX;
+    float                        RightAnalogY;
+    float                        LeftTriggerValue;
+    float                        RightTriggerValue;
+
+    unsigned char                BigRumble, SmallRumble;
+    unsigned char                LED_r, LED_g, LED_b;
+
+    long long                    ResetPoseButtonPressTime;
+    bool                         bResetPoseRequestSent;
+    bool                         bPoseResetButtonEnabled;
+    
+} PSVRDualShock4;
+
+/// Controller Pool Entry
+typedef struct
+{
+    PSVRControllerID ControllerID;
+    PSVRControllerType ControllerType;
+	PSVRControllerHand ControllerHand;
+    union
+    {
+        PSVRPSMove PSMoveState;
+		PSVRDualShock4 PSDS4State;
+    }               ControllerState;
+    bool            bValid;
+    int             OutputSequenceNum;
+    int             InputSequenceNum;
+    bool            IsConnected;
+    long long       DataFrameLastReceivedTime;
+    float           DataFrameAverageFPS;
+    int             ListenerCount;
+} PSVRController;
+
 // Service Events
 //------------------
 
@@ -380,6 +599,17 @@ typedef struct
 {
 	char version_string[PSVRSERVICE_MAX_VERSION_STRING_LEN];
 } PSVRServiceVersion;
+
+/// List of controllers attached to PSMoveService
+typedef struct
+{
+    PSVRControllerID controller_id[PSVRSERVICE_MAX_CONTROLLER_COUNT];
+    PSVRControllerType controller_type[PSVRSERVICE_MAX_CONTROLLER_COUNT];
+	PSVRControllerHand controller_hand[PSVRSERVICE_MAX_CONTROLLER_COUNT];
+	char controller_serial[PSVRSERVICE_MAX_CONTROLLER_COUNT][PSVRSERVICE_CONTROLLER_SERIAL_LEN];
+	char parent_controller_serial[PSVRSERVICE_MAX_CONTROLLER_COUNT][PSVRSERVICE_CONTROLLER_SERIAL_LEN];
+    int count;
+} PSVRControllerList;
 
 /// List of trackers connected to PSVRService
 typedef struct
@@ -454,6 +684,15 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_UpdateNoPollEvents();
  */
 PSVR_PUBLIC_FUNCTION(bool) PSVR_GetIsInitialized();
 
+/** \brief Get the controller list change flag
+	This flag is only filled in when \ref PSM_Update() is called.
+	If you instead call PSM_UpdateNoPollMessages() you'll need to process the event queue yourself to get controller
+	list change events.
+	
+	\return true if the controller list changed
+ */
+PSVR_PUBLIC_FUNCTION(bool) PSVR_HasControllerListChanged();
+
 /** \brief Get the tracker list change flag
 	This flag is only filled in when \ref PSVR_Update() is called.
 	If you instead call PSVR_UpdateNoPollMessages() you'll need to process the event queue yourself to get tracker
@@ -490,6 +729,224 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetVersionString(char *out_version_string,
 	\return PSVRResult_Success or PSVRResult_NoData if no more messages are available.
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_PollNextMessage(PSVREventMessage *out_message, size_t message_size);
+
+// Controller Pool
+/** \brief Fetches the \ref PSVRController data for the given controller
+	The client API maintains a pool of controller structs. 
+	We can fetch a given controller by \ref PSVRControllerID.
+	DO NOT DELETE the controller pointer returned by this function.
+	It is safe to copy this pointer on to other structures so long as the pointer is cleared once the client API is shutdown.
+	\param controller_id The id of the controller structure to fetch
+	\return A pointer to a \ref PSMController
+ */
+PSVR_PUBLIC_FUNCTION(PSVRController *) PSVR_GetController(PSVRControllerID controller_id);
+
+/** \brief Allocate a reference to a controller.
+	This function tells the client API to increment a reference count for a given controller.
+	This function should be called before fetching the controller data using \ref PSM_GetController.
+	When done with the controller, make sure to call \ref PSM_FreeControllerListener.
+	\param controller_id The id of the controller we want to allocate a listener for
+	\return PSMResult_Success if a valid controller id is given
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_AllocateControllerListener(PSVRControllerID controller_id);
+
+/** \brief Free a reference to a controller
+	This function tells the client API to decrement a reference count for a given controller.
+	\param controller_id The of of the controller we want to free the listener for.
+	\return PSMResult_Success if a valid controller id is given that has a non-zero ref count
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_FreeControllerListener(PSVRControllerID controller_id);
+
+// Controller Requests
+/** \brief Requests a list of the streamable controllers currently connected to PSVRService.
+	Sends a request to PSVRService to get the list of currently streamable controllers.
+	\remark Blocking - Returns after either the controller list is returned OR the timeout period is reached. 
+	\param[out] out_controller_list The controller list to write the result into.
+	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerList(PSVRControllerList *out_controller_list);
+
+/** \brief Requests start of a data stream for a given controller
+	Asks PSVRService to start stream data for the given controller with the given set of stream properties.
+	The data in the associated \ref PSVRController state will get updated automatically in calls to \ref PSVR_Update or 
+	\ref PSVR_UpdateNoPollMessages.
+	Requests to restart an already started stream will return an error.
+	\remark Blocking - Returns after either stream start response comes back OR the timeout period is reached. 
+	\param controller_id The id of the controller to start the stream for.
+	\param data_stream_flags One or more of the following steam:
+	    - PSVRStreamFlags_defaultStreamOptions = minimal controller stream info
+		- PSVRStreamFlags_includePositionData = add position to pose data (which turns on tracking lights)
+		- PSVRStreamFlags_includePhysicsData = add linear and angular velocity and acceleration
+		- PSVRStreamFlags_includeRawSensorData = add raw IMU sensor data values
+		- PSVRStreamFlags_includeCalibratedSensorData = add calibrated sensor data values
+		- PSVRStreamFlags_includeRawTrackerData = add tracker projection info for each tacker
+		- PSVRStreamFlags_disableROI = turns off RegionOfInterest optimization used to reduce CPU load when finding tracking bulb
+	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_StartControllerDataStream(PSVRControllerID controller_id, unsigned int data_stream_flags);
+
+/** \brief Requests stop of an unreliable(udp) data stream for a given controller
+	Asks PSVRService to start stream data for the given controller with the given set of stream properties.
+	The data in the associated \ref PSVRController state will get updated automatically in calls to \ref PSVR_Update or 
+	\ref PSVR_UpdateNoPollMessages.
+	Requests to restart an already started stream will return an error.
+	\remark Blocking - Returns after either stream start response comes back OR the timeout period is reached. 
+	\param controller_id The id of the controller to start the stream for.
+	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error. */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_StopControllerDataStream(PSVRControllerID controller_id);
+
+/** \brief Requests changing the tracking color type of a given controller.
+	Sends a request to PSVRService to change the tracking color of a controller.
+	If another controller already is using the color being assigned to this controller, it will be assigned an available color.
+	\remark Blocking - Returns after either the new color is set OR the timeout period is reached. 
+	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerLEDTrackingColor(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color);
+
+/** \brief Requests resetting the controllers current orientation.
+	This request is used to reset any drift that has occured in the pose filter's orientation from the controllers true
+	orientation. Resetting the controller orientation assumes that controller is currently being held in the "identity" orientation,
+	which is typically pointing down the -Z axis. 
+	This request is typically sent in reponse to a certain combonation of buttons being held (usually SELECT).
+	\remark Blocking - Returns after either the version string is returned OR the timeout period is reached. 
+	\param controller_id The ID of the whose orientation we want to reset
+	\param q_pose The pose the controller is currently being held in relative to the identity pose (like straight up).
+	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_ResetControllerOrientation(PSVRControllerID controller_id, PSVRQuatf *q_pose);
+
+/** \brief Requests setting the selected tracker index for a controller
+	This request is used to set the selected tracker index on a controller data stream
+    when the data stream has tracking projection data active. The projection data is
+    only provided for the selected tracker.
+	\remark Blocking - Returns after either the result is returned OR the timeout period is reached. 
+	\param controller_id The ID of the controller whose data stream we want to modify
+    \param tracker_id The ID of the tracker we want to assign as the active tracker
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerDataStreamTrackerIndex(PSVRControllerID controller_id, PSVRTrackerID tracker_id);
+
+/** \brief Requests setting the hand assigned to a controller
+	This request is used to set the suggested hand for a controller.
+	Hand information is used by external APIs and not by PSVRService.
+	No restrictions are made about which hands are assigned to a given controller.
+	\remark Blocking - Returns after either the result is returned OR the timeout period is reached. 
+	\param controller_id The ID of the controller whose data stream we want to modify
+    \param hand The hand to assign to a controller (Any, Left or Right)
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerHand(PSVRControllerID controller_id, PSVRControllerHand hand);
+
+// Controller State Methods
+/** \brief Get the current orientation of a controller
+	\param controller_id The id of the controller
+	\param[out] out_orientation The orientation of the controller
+	\return PSVRResult_Success if controller has a valid orientation
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerOrientation(PSVRControllerID controller_id, PSVRQuatf *out_orientation);
+
+/** \brief Get the current position of a controller
+	\param controller_id The id of the controller
+	\param[out] out_position The position of the controller
+	\return PSVRResult_Success if controller has a valid position
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPosition(PSVRControllerID controller_id, PSVRVector3f *out_position);
+
+/** \brief Get the current pose (orienation and position) of a controller
+	\param controller_id The id of the controller
+	\param[out] out_pose The pose of the controller
+	\return PSVRResult_Success if controller has a valid pose
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPose(PSVRControllerID controller_id, PSVRPosef *out_pose);
+
+/** \brief Get the current rumble fraction of a controller
+	\param controller_id The id of the controller
+	\param channel The channel to get the rumble for. The PSVRove has one channel. The DualShock4 has two.
+	\param[out] out_rumble_fraction The 0.0-1.0 fraction of rumble the controller is currently set to
+	\return PSVRResult_Success if controller has a valid rumble state.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerRumble(PSVRControllerID controller_id, PSVRControllerRumbleChannel channel, float *out_rumble_fraction);
+
+/** \brief Helper used to tell if the controller is upright on a level surface.
+	This method is used as a calibration helper when you want to get a number of controller samples. 
+	Often in this instance you want to make sure the controller is sitting upright on a table.
+	\param controller_id The id of the controller
+	\param[out] out_is_stable True if the controller is stable and upright.
+	\return PSVRResult_Success if controller can be tested for stability.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetIsControllerStable(PSVRControllerID controller_id, bool *out_is_stable);
+
+/** \brief See if the controller is currently being tracked by at least one tracking camera.
+	\param controller_id The id of the controller
+	\param[out] out_is_tracking True if the controller is currently tracking
+	\return PSVRResult_Success if controller can be tracked at all.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetIsControllerTracking(PSVRControllerID controller_id, bool *out_is_tracking);
+
+/** \brief Helper function for getting the tracking centroid for a controller on a given tracker
+	Each tracking camera sees a projection of a controllers tracking light. 
+	This method gets the pixel centroid of controller projection.
+	\param controller_id The controller id to get the tracking projection location
+	\param projection_index The index of the left or right projection (for stereo trackers) or 0 for mono trackers
+	\param tracker_id The tracker id of the tracker that has the controller projection we care about.
+	\param[out] out_tracker_id The id of the tracker this projection is for
+	\param[out] out_location The center pixel location of the controller projection on the tracker.
+	\return PSVRResult_Success if controller has a valid projection on the tracker.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPixelLocationOnTracker(PSVRControllerID controller_id, PSVRTrackingProjectionCount projection_index, PSVRTrackerID *out_tracker_id, PSVRVector2f *out_location);
+
+/** \brief Helper function for getting the tracker relative 3d position of the controller.
+	Each tracking camera can compute a estimate of the controllers 3d position relative to the tracker.
+	This method gets the 3d centroid of the tracking light in tracker relative coordinates.
+	\param controller_id The controller id to get the tracking position for.
+	\param[out] out_tracker_id The id of the tracker this projection is for
+	\param[out] out_position Tracker relative centroid position of controller in cm.
+	\return PSVRResult_Success if controller has a valid position relative to the tracker.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, PSVRTrackerID *out_tracker_id, PSVRVector3f *outPosition);
+
+/** \brief Helper function for getting the tracker relative 3d orientation of the controller.
+	Each tracking camera can compute a estimate of the controllers 3d position relative to the tracker.
+	This method gets the 3d centroid of the tracking light in tracker relative coordinates.
+	\param controller_id The controller id to get the tracking position for
+	\param[out] out_tracker_id The id of the tracker this projection is for
+	\param[out] out_orientation Tracker relative centroid orientation of controller.
+	\return PSVRResult_Success if controller has a valid optical orientation relative to the tracker (PSVRove can't, DS4 can).
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerOrientationOnTracker(PSVRControllerID controller_id, PSVRTrackerID *out_tracker_id, PSVRQuatf *outOrientation);
+
+/** \brief Helper function for getting the tracker relative projection of a controller
+	Each tracking camera can have a projection of the controller.
+	This method gets the pixel geomtry of that projection.
+	For a PSVRoveController this is an ellipse.
+	For a DualShock4 this is a quad.
+	\param controller_id The controller id to get the tracking projection for.
+	\param[out] out_tracker_id The id of the tracker this projection is for
+	\param[out] out_projection The tracking projection shape of the controller.
+	\return PSVRResult_Success if controller has a valid projection on the tracker.
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerProjectionOnTracker(PSVRControllerID controller_id, PSVRTrackerID *out_tracker_id, PSVRTrackingProjection *out_projection);
+
+/** \brief Sets a temporary RGB override for the controller's light
+	The light color override will be sent on the outbound controller UDP stream.
+	Tracking will not run when a light color override is set.
+	The override can be cleared by setting the override color to (0, 0, 0)
+	\param controller_id The controller whose light override value we want to set.
+	\param r The red color override, range [0. 255]
+	\param g The green color override, range [0. 255]
+	\param b The blue color override, range [0. 255]
+	\return PSVRResult_Success if the controller can have a light color override set
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerLEDOverrideColor(PSVRControllerID controller_id, unsigned char r, unsigned char g, unsigned char b);
+
+/** \brief Sets the controller rumble fraction
+	The controller rumble is set on the outbound UDP stream.
+	The rumble for the controller stays on this setting until you change it.
+	\param controller_id The id of the controller to set the rumble for
+	\param channel The channel for the rumble (PSVRove has one channel, DS4 has two channels)
+	\param rumble_fraction A rumble value in the range 0.0 to 1.0
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerRumble(PSVRControllerID controller_id, PSVRControllerRumbleChannel channel, float rumble_fraction);
 
 // Tracker Pool
 /** \brief Fetches the \ref PSVRTracker data for the given tracker
@@ -664,13 +1121,13 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerFrustum(PSVRTrackerID tracker_id
 	\param[out] debug_flags Bitmask of currently set debug flags
 	\return PSVRResult_Success if the debug flags could be fetched
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerDebugFlags(PSMTrackerDebugFlags *out_debug_flags);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerDebugFlags(PSVRTrackerDebugFlags *out_debug_flags);
 
 /** \brief Set the global debug flags for the tracker system
 	\param  debug_flags Bitmask of debug flags to get
 	\return PSVRResult_Success if the debug flags could be set
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerDebugFlags(PSMTrackerDebugFlags debug_flags);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerDebugFlags(PSVRTrackerDebugFlags debug_flags);
 
 // HMD Pool
 /** \brief Fetches the \ref PSVRHeadMountedDisplay data for the given HMD

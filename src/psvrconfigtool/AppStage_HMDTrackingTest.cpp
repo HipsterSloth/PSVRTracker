@@ -807,8 +807,8 @@ void AppStage_HMDTrackingTest::request_start_hmd_stream(
     ++m_pendingHmdStartCount;
 
     unsigned int flags =
-        PSMStreamFlags_includePositionData |
-        PSMStreamFlags_includeRawTrackerData;
+        PSVRStreamFlags_includePositionData |
+        PSVRStreamFlags_includeRawTrackerData;
 
     // Start off getting getting projection data from tracker 0
     PSVR_SetHmdDataStreamTrackerIndex(hmdState.hmdView->HmdID, static_cast<PSVRTrackerID>(0));

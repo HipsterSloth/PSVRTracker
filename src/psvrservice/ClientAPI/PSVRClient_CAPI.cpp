@@ -13,6 +13,7 @@
 #endif
 
 // -- macros -----
+#define IS_VALID_CONTROLLER_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_CONTROLLER_COUNT)
 #define IS_VALID_TRACKER_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_TRACKER_COUNT)
 #define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_HMD_COUNT)
 
@@ -27,6 +28,11 @@ PSVRClient *g_psvr_client= nullptr;
 bool PSVR_GetIsInitialized()
 {
 	return g_psvr_client != nullptr && g_psvr_service != nullptr;
+}
+
+bool PSVR_HasControllerListChanged()
+{
+	return g_psvr_client != nullptr && g_psvr_client->pollHasControllerListChanged();
 }
 
 bool PSVR_HasTrackerListChanged()
@@ -154,12 +160,519 @@ PSVRResult PSVR_UpdateNoPollEvents()
 
 PSVRResult PSVR_PollNextMessage(PSVREventMessage *message, size_t message_size)
 {
-    // Poll events queued up by the call to g_psm_client->update()
+    // Poll events queued up by the call to g_psvr_client->update()
     if (g_psvr_client != nullptr)
         return g_psvr_client->poll_next_message(message, message_size) ? PSVRResult_Success : PSVRResult_Error;
     else
         return PSVRResult_Error;
 }
+
+/// Controller Pool
+PSVRController *PSVR_GetController(PSVRControllerID controller_id)
+{
+    if (g_psvr_client != nullptr)
+		return g_psvr_client->get_controller_view(controller_id);
+	else
+		return nullptr;
+}
+
+PSVRResult PSVR_AllocateControllerListener(PSVRControllerID controller_id)
+{
+    if (g_psvr_client != nullptr)
+	    return g_psvr_client->allocate_controller_listener(controller_id) ? PSVRResult_Success : PSVRResult_Error;
+    else
+        return PSVRResult_Error;
+}
+
+PSVRResult PSVR_FreeControllerListener(PSVRControllerID controller_id)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		g_psvr_client->free_controller_listener(controller_id);
+
+        result= PSVRResult_Success;
+    }
+
+    return result;
+}
+
+/// Controller Requests
+PSVRResult PSVR_GetControllerList(PSVRControllerList *out_controller_list)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr)
+    {
+		result= g_psvr_service->getRequestHandler()->get_controller_list(out_controller_list);
+    }
+    
+    return result;
+}
+
+PSVRResult PSVR_StartControllerDataStream(PSVRControllerID controller_id, unsigned int data_stream_flags)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result= g_psvr_service->getRequestHandler()->start_controller_data_stream(controller_id, data_stream_flags);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_StopControllerDataStream(PSVRControllerID controller_id)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result= g_psvr_service->getRequestHandler()->stop_controller_data_stream(controller_id);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetControllerLEDTrackingColor(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_led_tracking_color(controller_id, tracking_color);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerLEDOverrideColor(PSVRControllerID controller_id, unsigned char r, unsigned char g, unsigned char b)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+                PSVRPSMove *psmove= &controller->ControllerState.PSMoveState;
+
+                if (r != psmove->LED_r || g != psmove->LED_g || b != psmove->LED_b)
+                {
+                    psmove->LED_r = r;
+                    psmove->LED_g = g;
+                    psmove->LED_b = b;
+
+                    psmove->bHasUnpublishedState = true;
+                }
+            } break;
+        case PSVRController_DualShock4:
+            {
+                PSVRDualShock4 *ds4= &controller->ControllerState.PSDS4State;
+
+                if (r != ds4->LED_r || g != ds4->LED_g || b != ds4->LED_b)
+                {
+                    ds4->LED_r = r;
+                    ds4->LED_g = g;
+                    ds4->LED_b = b;
+
+                    ds4->bHasUnpublishedState = true;
+                }
+            } break;
+        }
+
+        result= PSVRResult_Success;
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetControllerRumble(PSVRControllerID controller_id, PSVRControllerRumbleChannel channel, float *out_rumbleFraction)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        unsigned char rumbleByte= 0;
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+                rumbleByte= controller->ControllerState.PSMoveState.Rumble;
+            } break;
+        case PSVRController_DualShock4:
+            {                
+                if (channel == PSVRControllerRumbleChannel_Left)
+                {
+                    rumbleByte= controller->ControllerState.PSDS4State.BigRumble;
+                }
+                else if (channel == PSVRControllerRumbleChannel_Right)
+                {
+                    rumbleByte= controller->ControllerState.PSDS4State.SmallRumble;
+                }
+            } break;
+        }
+
+        *out_rumbleFraction= clampf01(static_cast<float>(rumbleByte / 255.f));
+        result= PSVRResult_Success;
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetControllerRumble(PSVRControllerID controller_id, PSVRControllerRumbleChannel channel, float rumbleFraction)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {		
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        const unsigned char rumbleByte= static_cast<unsigned char>(clampf01(rumbleFraction)*255.f);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+                PSVRPSMove *psmove= &controller->ControllerState.PSMoveState;
+
+                if (psmove->Rumble != rumbleByte)
+                {
+                    psmove->Rumble = rumbleByte;
+                    psmove->bHasUnpublishedState = true;
+                }
+            } break;
+        case PSVRController_DualShock4:
+            {
+                PSVRDualShock4 *ds4= &controller->ControllerState.PSDS4State;
+                
+                if ((channel == PSVRControllerRumbleChannel_All || channel == PSVRControllerRumbleChannel_Left) &&
+                    ds4->BigRumble != rumbleByte)
+                {
+                    ds4->BigRumble = rumbleByte;
+                    ds4->bHasUnpublishedState = true;
+                }
+
+                if ((channel == PSVRControllerRumbleChannel_All || channel == PSVRControllerRumbleChannel_Right) &&
+                    ds4->SmallRumble != rumbleByte)
+                {
+                    ds4->SmallRumble = rumbleByte;
+                    ds4->bHasUnpublishedState = true;
+                }
+            } break;
+        }
+
+        result= PSVRResult_Success;
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetControllerOrientation(PSVRControllerID controller_id, PSVRQuatf *out_orientation)
+{
+    PSVRResult result= PSVRResult_Error;
+	assert(out_orientation);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+				PSVRPSMove State= controller->ControllerState.PSMoveState;
+				*out_orientation = State.Pose.Orientation;
+
+				result= State.bIsOrientationValid ? PSVRResult_Success : PSVRResult_Error;
+            } break;
+        case PSVRController_DualShock4:
+            {
+				PSVRDualShock4 State= controller->ControllerState.PSDS4State;
+				*out_orientation = State.Pose.Orientation;
+
+				result= State.bIsOrientationValid ? PSVRResult_Success : PSVRResult_Error;
+            } break;
+        }
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetControllerPosition(PSVRControllerID controller_id, PSVRVector3f *out_position)
+{
+    PSVRResult result= PSVRResult_Error;
+	assert(out_position);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+				PSVRPSMove State= controller->ControllerState.PSMoveState;
+				*out_position = State.Pose.Position;
+
+				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
+            } break;
+        case PSVRController_DualShock4:
+            {
+				PSVRDualShock4 State= controller->ControllerState.PSDS4State;
+				*out_position = State.Pose.Position;
+
+				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
+            } break;
+        }
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetControllerPose(PSVRControllerID controller_id, PSVRPosef *out_pose)
+{
+    PSVRResult result= PSVRResult_Error;
+	assert(out_pose);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+				PSVRPSMove State= controller->ControllerState.PSMoveState;
+				*out_pose = State.Pose;
+
+				result= (State.bIsOrientationValid && State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
+            } break;
+        case PSVRController_DualShock4:
+            {
+				PSVRDualShock4 State= controller->ControllerState.PSDS4State;
+				*out_pose = State.Pose;
+
+				result= (State.bIsOrientationValid && State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
+            } break;
+        }
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetIsControllerStable(PSVRControllerID controller_id, bool *out_is_stable)
+{
+    PSVRResult result= PSVRResult_Error;
+	assert(out_is_stable);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+				const float k_cosine_10_degrees = 0.984808f;
+
+				// Get the direction the gravity vector should be pointing 
+				// while the controller is in cradle pose.
+				const PSVRVector3f acceleration_direction = controller->ControllerState.PSMoveState.CalibratedSensorData.Accelerometer;
+				float acceleration_magnitude;
+				PSVR_Vector3fNormalizeWithDefaultGetLength(&acceleration_direction, k_PSVR_float_vector3_zero, &acceleration_magnitude);
+
+				*out_is_stable =
+					is_nearly_equal(1.f, acceleration_magnitude, 0.1f) &&
+					(PSVR_Vector3fDot(&k_identity_gravity_calibration_direction, &acceleration_direction)
+						/ (PSVR_Vector3fLength(&k_identity_gravity_calibration_direction) 
+							* PSVR_Vector3fLength(&acceleration_direction))) >= k_cosine_10_degrees;
+
+				result= PSVRResult_Success;
+            } break;
+        case PSVRController_DualShock4:
+            {
+                PSVRVector3f gyro= controller->ControllerState.PSDS4State.CalibratedSensorData.Gyroscope;
+                
+				const float k_gyro_noise= 10.f*k_degrees_to_radians; // noise threshold in rad/sec
+				const float worst_rotation_rate = fabsf(PSVR_Vector3fMaxValue(&gyro));
+
+				*out_is_stable = worst_rotation_rate < k_gyro_noise;
+
+				result= PSVRResult_Success;
+            } break;
+        }
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetIsControllerTracking(PSVRControllerID controller_id, bool *out_is_tracking)
+{
+    PSVRResult result= PSVRResult_Error;
+	assert(out_is_tracking);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+            {
+				*out_is_tracking = controller->ControllerState.PSMoveState.bIsCurrentlyTracking;
+				result= PSVRResult_Success;
+            } break;
+        case PSVRController_DualShock4:
+            {
+				*out_is_tracking = controller->ControllerState.PSDS4State.bIsCurrentlyTracking;
+				result= PSVRResult_Success;
+            } break;
+        }
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetControllerPixelLocationOnTracker(
+	PSVRControllerID controller_id, 
+	PSVRTrackingProjectionCount projection_index, 
+	PSVRTrackerID *outTrackerId, 
+	PSVRVector2f *outLocation)
+{
+	assert(outTrackerId);
+	assert(outLocation);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+		PSVRRawTrackerData *trackerData= nullptr;
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+            break;
+        case PSVRController_DualShock4:
+			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+            break;
+        }
+
+		if (trackerData != nullptr)
+		{
+            *outTrackerId = trackerData->TrackerID;
+			*outLocation = trackerData->ScreenLocations[projection_index];
+			return PSVRResult_Success;
+		}
+	}
+
+    return PSVRResult_Error;
+}
+
+PSVRResult PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, PSVRTrackerID *outTrackerId, PSVRVector3f *outPosition)
+{
+    assert(outTrackerId);
+	assert(outPosition);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+		PSVRRawTrackerData *trackerData= nullptr;
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+            break;
+        case PSVRController_DualShock4:
+			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+            break;
+        }
+
+		if (trackerData != nullptr)
+		{
+            *outTrackerId = trackerData->TrackerID;
+			*outPosition = trackerData->RelativePositionCm;
+			return PSVRResult_Success;
+        }
+	}
+
+    return PSVRResult_Error;
+}
+
+PSVRResult PSVR_GetControllerOrientationOnTracker(
+	PSVRControllerID controller_id,
+	PSVRTrackerID *outTrackerId,
+	PSVRQuatf *outOrientation)
+{
+    assert(outTrackerId);
+	assert(outOrientation);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+		PSVRRawTrackerData *trackerData= nullptr;
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+            break;
+        case PSVRController_DualShock4:
+			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+            break;
+        }
+
+		if (trackerData != nullptr)
+		{
+            *outTrackerId = trackerData->TrackerID;
+			*outOrientation = trackerData->RelativeOrientation;
+			return PSVRResult_Success;
+        }
+	}
+
+    return PSVRResult_Error;
+}
+
+PSVRResult PSVR_GetControllerProjectionOnTracker(
+	PSVRControllerID controller_id, 
+	PSVRTrackerID *outTrackerId, 
+	PSVRTrackingProjection *outProjection)
+{
+    assert(outTrackerId);
+	assert(outProjection);
+
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
+		PSVRRawTrackerData *trackerData= nullptr;
+        
+        switch (controller->ControllerType)
+        {
+        case PSVRController_Move:
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+            break;
+        case PSVRController_DualShock4:
+			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+            break;
+        }
+
+		if (trackerData != nullptr)
+		{
+            *outTrackerId = trackerData->TrackerID;
+			*outProjection = trackerData->TrackingProjection;
+			return PSVRResult_Success;
+        }
+	}
+
+    return PSVRResult_Error;
+}
+
 
 /// Tracker Pool
 PSVRTracker *PSVR_GetTracker(PSVRTrackerID tracker_id)
@@ -310,7 +823,7 @@ PSVRResult PSVR_StopTrackerDataStream(PSVRTrackerID tracker_id)
 
     if (g_psvr_service != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-		result= g_psvr_service->getRequestHandler()->start_tracker_data_stream(tracker_id);
+		result= g_psvr_service->getRequestHandler()->stop_tracker_data_stream(tracker_id);
     }
 
     return result;
@@ -452,7 +965,7 @@ PSVRResult PSVR_GetTrackerFrustum(PSVRTrackerID tracker_id, PSVRFrustum *out_fru
     return result;
 }
 
-PSVRResult PSVR_GetTrackerDebugFlags(PSMTrackerDebugFlags *out_debug_flags)
+PSVRResult PSVR_GetTrackerDebugFlags(PSVRTrackerDebugFlags *out_debug_flags)
 {
     PSVRResult result= PSVRResult_Error;
 	assert(out_debug_flags != nullptr);
@@ -465,7 +978,7 @@ PSVRResult PSVR_GetTrackerDebugFlags(PSMTrackerDebugFlags *out_debug_flags)
     return result;
 }
 
-PSVRResult PSVR_SetTrackerDebugFlags(PSMTrackerDebugFlags debug_flags)
+PSVRResult PSVR_SetTrackerDebugFlags(PSVRTrackerDebugFlags debug_flags)
 {
     PSVRResult result= PSVRResult_Error;
 

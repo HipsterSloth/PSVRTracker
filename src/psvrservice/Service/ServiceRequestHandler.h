@@ -134,6 +134,15 @@ public:
     /// Send a event to the client
     void publish_notification(const PSVREventMessage &message);
 
+	// -- controller requests -----
+    PSVRResult get_controller_list(PSVRControllerList *out_controller_list);
+    PSVRResult start_controller_data_stream(PSVRControllerID controller_id, unsigned int flags);
+    PSVRResult stop_controller_data_stream(PSVRControllerID controller_id);
+    PSVRResult set_led_tracking_color(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color);
+    PSVRResult reset_orientation(PSVRControllerID controller_id, const PSVRQuatf& q_pose);
+    PSVRResult set_controller_data_stream_tracker_index(PSVRControllerID controller_id, PSVRTrackerID tracker_id);
+	PSVRResult set_controller_hand(PSVRControllerID controller_id, PSVRControllerHand controller_hand);
+
     // -- tracker requests -----
     PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list);
     PSVRResult start_tracker_data_stream(PSVRTrackerID tracker_id);
@@ -155,8 +164,8 @@ public:
     PSVRResult set_tracker_intrinsics(const PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *tracker_intrinsics);
     PSVRResult get_tracking_space_settings(PSVRTrackingSpace *out_tracking_space);
     PSVRResult reload_tracker_settings(const PSVRTrackerID tracker_id);
-	PSVRResult get_tracker_debug_flags(PSMTrackerDebugFlags *out_flags) const;
-	PSVRResult set_tracker_debug_flags(PSMTrackerDebugFlags flags);
+	PSVRResult get_tracker_debug_flags(PSVRTrackerDebugFlags *out_flags) const;
+	PSVRResult set_tracker_debug_flags(PSVRTrackerDebugFlags flags);
 	
     // -- hmd requests -----
     ServerHMDView *get_hmd_view_or_null(PSVRHmdID hmd_id);
