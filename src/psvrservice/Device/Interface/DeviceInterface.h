@@ -21,12 +21,17 @@ struct CommonSensorState
 {
     enum eDeviceClass
     {
-        TrackingCamera = 0x00,
-        HeadMountedDisplay = 0x10
+		Controller = 0x00,
+        TrackingCamera = 0x10,
+        HeadMountedDisplay = 0x20
     };
     
     enum eDeviceType
-    {       
+    {
+        PSMove = Controller + 0x00,
+        PSDualShock4 = Controller + 0x01,
+        SUPPORTED_CONTROLLER_TYPE_COUNT = Controller + 0x02,
+
         PS3EYE = TrackingCamera + 0x00,
         WMFMonoCamera = TrackingCamera + 0x01,
 		WMFStereoCamera = TrackingCamera + 0x02,
@@ -59,6 +64,12 @@ struct CommonSensorState
 
         switch (device_type)
         {
+        case PSMove:
+            result= "PSMove";
+            break;
+        case PSDualShock4:
+            result = "PSDualShock4";
+            break;
         case PS3EYE:
             result = "PSEYE";
             break;
