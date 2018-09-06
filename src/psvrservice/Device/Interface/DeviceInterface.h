@@ -29,7 +29,7 @@ struct CommonSensorState
     enum eDeviceType
     {
         PSMove = Controller + 0x00,
-        PSDualShock4 = Controller + 0x01,
+        DualShock4 = Controller + 0x01,
         SUPPORTED_CONTROLLER_TYPE_COUNT = Controller + 0x02,
 
         PS3EYE = TrackingCamera + 0x00,
@@ -67,7 +67,7 @@ struct CommonSensorState
         case PSMove:
             result= "PSMove";
             break;
-        case PSDualShock4:
+        case DualShock4:
             result = "PSDualShock4";
             break;
         case PS3EYE:
@@ -90,6 +90,25 @@ struct CommonSensorState
         }
 
         return result;
+    }
+};
+
+struct CommonControllerState : CommonSensorState
+{
+    PSVRBatteryState Battery;
+    unsigned int AllButtons;                    // all-buttons, used to detect changes
+   
+    inline CommonControllerState()
+    {
+        clear();
+    }
+
+    inline void clear()
+    {
+        CommonSensorState::clear();
+        DeviceType= SUPPORTED_CONTROLLER_TYPE_COUNT; // invalid
+        Battery= PSVRBattery_Charged;
+        AllButtons= 0;
     }
 };
 
@@ -208,6 +227,69 @@ public:
 	// Assign a Tracker listener to send Tracker events to
 	virtual void setTrackerListener(ITrackerListener *listener) = 0;
 };
+
+/// Interface class for HMD events. Implemented HMD Server View
+class IControllerListener
+{
+public:
+	// Called when new sensor state has been read from the controller
+	virtual void notifySensorDataReceived(const CommonSensorState *sensor_state) = 0;
+};
+
+/// Abstract class for controller interface. Implemented in PSMoveController.cpp
+class IControllerInterface : public IDeviceInterface
+{
+public:
+    // -- Mutators
+    // Sets the address of the bluetooth adapter on the host PC with the controller
+    virtual bool setHostBluetoothAddress(const std::string &address) = 0;
+
+	// Sets the tracking color enum of the controller
+	virtual bool setTrackingColorID(const PSVRTrackingColorType tracking_color_id) = 0;
+
+	// Assign an HMD listener to send HMD events to
+	virtual void setControllerListener(IControllerListener *listener) = 0;
+
+    // -- Getters
+    // Returns true if the device is connected via Bluetooth, false if by USB
+    virtual bool getIsBluetooth() const = 0;
+
+    // Returns the full usb device path for the controller
+    virtual std::string getUSBDevicePath() const = 0;
+
+	// Returns the vendor ID of the controller
+	virtual int getVendorID() const = 0;
+
+	// Returns the product ID of the controller
+	virtual int getProductID() const = 0;
+
+    // Gets the bluetooth address of the adapter on the host PC that's registered with the controller
+    virtual std::string getAssignedHostBluetoothAddress() const = 0;
+
+    // Returns the serial number for the controller
+    virtual std::string getSerial() const  = 0;
+
+    // Get the tracking color of the controller
+    virtual const std::tuple<unsigned char, unsigned char, unsigned char> getColour() const = 0;
+
+    // Get the tracking shape use by the controller
+    virtual void getTrackingShape(PSVRTrackingShape &outTrackingShape) const = 0;
+
+	// Get the tracking color enum of the controller
+	virtual bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const = 0;
+
+	// Get the identity forward direction yaw direction relative to the global +X axis
+	// * 0 degrees would mean that the controller model was pointing down the globals +X axis 
+	//   when the controller had the identity pose 
+	// * 90 degrees would mean that the controller model was pointing down the globals +Z axis 
+	//   when the controller had the identity pose
+	// ...
+	virtual float getIdentityForwardDegrees() const = 0;
+
+	// Get the state prediction time specified in the controller config
+	virtual float getPredictionTime() const = 0;
+};
+
 
 /// Interface class for HMD events. Implemented HMD Server View
 class IHMDListener

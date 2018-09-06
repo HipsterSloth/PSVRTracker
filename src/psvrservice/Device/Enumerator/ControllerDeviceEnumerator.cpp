@@ -39,6 +39,39 @@ ControllerDeviceEnumerator::ControllerDeviceEnumerator(
     }
 }
 
+ControllerDeviceEnumerator::ControllerDeviceEnumerator(
+	eAPIType _apiType,
+	CommonSensorState::eDeviceType deviceTypeFilter)
+	: DeviceEnumerator(deviceTypeFilter)
+	, api_type(_apiType)
+	, enumerators(nullptr)
+	, enumerator_count(0)
+	, enumerator_index(0)
+{
+	switch (_apiType)
+	{
+	case eAPIType::CommunicationType_HID:
+		enumerators = new DeviceEnumerator *[1];
+		enumerators[0] = new ControllerHidDeviceEnumerator(deviceTypeFilter);
+		enumerator_count = 1;
+		break;
+	case eAPIType::CommunicationType_ALL:
+		enumerators = new DeviceEnumerator *[1];
+		enumerators[0] = new ControllerHidDeviceEnumerator(deviceTypeFilter);
+		enumerator_count = 1;
+		break;
+	}
+
+	if (is_valid())
+	{
+		m_deviceType= enumerators[enumerator_index]->get_device_type();
+	}
+	else
+    {
+        next();
+    }
+}
+
 ControllerDeviceEnumerator::~ControllerDeviceEnumerator()
 {
 	for (int index = 0; index < enumerator_count; ++index)

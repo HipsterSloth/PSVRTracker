@@ -108,6 +108,133 @@ namespace Utility
         return chars_written;
     }
 
+    bool bluetooth_cstr_address_normalize(
+        const char *addr, bool bLowercase, char separator, 
+        char *result, size_t result_max_size)
+    {
+        bool bSuccess= true;
+        size_t source_count = strlen(addr);
+        size_t result_count= 0;
+
+        if ((source_count == 17 || source_count == 12) && result_max_size >= 18)
+        {
+            int valid_octet_count= 0;
+
+            for (size_t source_index = 0; 
+                source_index<source_count && result_count<result_max_size;
+                source_index++) 
+            {
+                char result_character = '\0';
+
+                if (addr[source_index] >= 'A' && addr[source_index] <= 'F') 
+                {
+                    if (bLowercase) 
+                    {
+                        result_character = tolower(addr[source_index]);
+                    } 
+                    else 
+                    {
+                        result_character = addr[source_index];
+                    }
+                } 
+                else if (addr[source_index] >= '0' && addr[source_index] <= '9') 
+                {
+                    result_character = addr[source_index];
+                } 
+                else if (addr[source_index] >= 'a' && addr[source_index] <= 'f') 
+                {
+                    if (bLowercase) 
+                    {
+                        result_character = addr[source_index];
+                    }
+                    else 
+                    {
+                        result_character = toupper(addr[source_index]);
+                    }
+                }
+
+                if (result_character != '\0')
+                {
+                    result[result_count] = result_character;
+                    ++result_count;
+
+                    if (separator != '\0' && 
+                        (result_count + 1) % 3 == 0)
+                    {
+                        if (valid_octet_count < 5)
+                        {
+                            result[result_count] = separator;
+                        }
+                        else
+                        {
+                            result[result_count] = '\0';
+                        }
+
+                        ++valid_octet_count;
+                        ++result_count;
+                    }
+                }
+            }
+
+            // Make sure we parsed all all of the characters for a full 6 octet address
+            bSuccess = (valid_octet_count == 6);
+        }
+        else
+        {
+            bSuccess= false;
+        }
+
+        return bSuccess;
+    }
+
+    std::string bluetooth_byte_addr_to_string(const unsigned char* addr_buff)
+    {
+        // http://stackoverflow.com/questions/11181251/saving-hex-values-to-a-c-string
+        std::ostringstream stream;
+        int buff_ind = 5;
+        for (buff_ind = 5; buff_ind >= 0; buff_ind--)
+        {
+            stream << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(addr_buff[buff_ind]);
+            if (buff_ind > 0)
+            {
+                stream << ":";
+            }
+        }
+        return stream.str();
+    }
+
+    bool bluetooth_string_address_to_bytes(const std::string &addr, unsigned char *addr_buff, const int addr_buf_size)
+    {
+        bool success = false;
+
+        if (addr.length() >= 17 && addr_buf_size >= 6)
+        {
+            const char *raw_string = addr.c_str();
+            unsigned int octets[6];
+
+            success =
+                sscanf(raw_string, "%x:%x:%x:%x:%x:%x",
+                &octets[5],
+                &octets[4],
+                &octets[3],
+                &octets[2],
+                &octets[1],
+                &octets[0]) == 6;
+            //TODO: Make safe (sscanf_s is not portable)
+
+            if (success)
+            {
+                for (int i = 0; i < 6; ++i)
+                {
+                    addr_buff[i] = Utility::int32_to_int8_verify(octets[i]);
+                }
+            }
+        }
+
+        return success;
+    }
+
+
 #if defined WIN32 || defined _WIN32 || defined WINCE
     const DWORD MS_VC_EXCEPTION = 0x406D1388;
 

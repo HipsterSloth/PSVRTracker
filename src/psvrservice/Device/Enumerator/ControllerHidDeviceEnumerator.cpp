@@ -24,7 +24,7 @@ const int MAX_HID_CONTROLLER_TYPE_COUNT= 3;
 HIDApiDeviceFilter g_supported_hid_controller_infos[MAX_HID_CONTROLLER_TYPE_COUNT] = {
 	{ {0x054c, 0x03d5}, CommonSensorState::PSMove, true}, // PSMove
 	{ {0x054c, 0x0C5E}, CommonSensorState::PSMove, true}, // PSMove (newer model "CECH-ZCM2U")
-	{ {0x054c, 0x05C4}, CommonSensorState::PSDualShock4, true} // PSDualShock4
+	{ {0x054c, 0x05C4}, CommonSensorState::DualShock4, true} // PSDualShock4
 };
 
 // -- ControllerHidDeviceEnumerator -----
