@@ -272,6 +272,9 @@ public:
     // Get the tracking color of the controller
     virtual const std::tuple<unsigned char, unsigned char, unsigned char> getColour() const = 0;
 
+    // Fetch the latest controller state from the HID processing thread
+    virtual const CommonControllerState * getControllerState() = 0;
+
     // Get the tracking shape use by the controller
     virtual void getTrackingShape(PSVRTrackingShape &outTrackingShape) const = 0;
 

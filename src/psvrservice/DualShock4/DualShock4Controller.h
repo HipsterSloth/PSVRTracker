@@ -238,6 +238,10 @@ struct DualShock4ControllerOutputState
 
     unsigned char rumble_left;   // rumble value, 0x00..0xff
 	unsigned char rumble_right;  // rumble value, 0x00..0xff
+
+	DualShock4ControllerOutputState();
+
+	void clear();
 };
 
 class DualShock4Controller : public IControllerInterface {
@@ -272,6 +276,7 @@ public:
     virtual std::string getAssignedHostBluetoothAddress() const override;
     virtual std::string getSerial() const override;
     virtual const std::tuple<unsigned char, unsigned char, unsigned char> getColour() const override;
+	virtual const CommonControllerState * getControllerState() override;
     virtual void getTrackingShape(PSVRTrackingShape &outTrackingShape) const override;
 	virtual bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const override;
 	virtual float getIdentityForwardDegrees() const override;
@@ -282,15 +287,13 @@ public:
     {
         return &cfg;
     }
-    inline DualShock4ControllerConfig *getConfigMutable()
-    {
-        return &cfg;
-    }
 
     // -- Setters
+	void setConfig(const DualShock4ControllerConfig *config);
     bool setLED(unsigned char r, unsigned char g, unsigned char b);
     bool setLeftRumbleIntensity(unsigned char value);
     bool setRightRumbleIntensity(unsigned char value);
+	void setControllerListener(IControllerListener *listener) override;
 
 private:
     bool getBTAddressesViaUSB(std::string& host, std::string& controller);
@@ -300,10 +303,11 @@ private:
     DualShock4HIDDetails HIDDetails;
     bool IsBluetooth;                               // true if valid serial number on device opening
 
-    // Cached Setter State
+    // Cached MainThread Controller State
+	DualShock4ControllerInputState m_cachedInputState;
     DualShock4ControllerOutputState m_cachedOutputState;
 
-    // Controller State
+    // HID Packet Processing
 	class DualShock4HidPacketProcessor* m_HIDPacketProcessor;
 	IControllerListener* m_controllerListener;
 

@@ -38,4 +38,22 @@ public:
 	void update(const float delta_time, const PoseFilterPacket &packet) override;
 };
 
+/// Kalman Orientation filter for Optical Yaw + Angular Rate(Gyroscope) + Gravity(Accelerometer)
+class KalmanOrientationFilterDS4 : public KalmanOrientationFilter
+{
+public:
+	bool init(const OrientationFilterConstants &constant) override;
+	bool init(const OrientationFilterConstants &constant, const Eigen::Quaternionf &orientation) override;
+	void update(const float delta_time, const PoseFilterPacket &packet) override;
+};
+
+/// Kalman Orientation filter for Magnetometer + Angular Rate(Gyroscope) + Gravity(Accelerometer)
+class KalmanOrientationFilterPSMove : public KalmanOrientationFilter
+{
+public:
+	bool init(const OrientationFilterConstants &constant) override;
+	bool init(const OrientationFilterConstants &constant, const Eigen::Quaternionf &orientation) override;
+	void update(const float delta_time, const PoseFilterPacket &packet) override;
+};
+
 #endif // KALMAN_ORIENTATION_FILTER_H

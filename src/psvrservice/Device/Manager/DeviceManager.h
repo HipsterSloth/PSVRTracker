@@ -22,6 +22,9 @@ enum eDevicePlatformApiType
 class DeviceManagerConfig;
 typedef std::shared_ptr<DeviceManagerConfig> DeviceManagerConfigPtr;
 
+class ServerControllerView;
+typedef std::shared_ptr<ServerControllerView> ServerControllerViewPtr;
+
 class ServerTrackerView;
 typedef std::shared_ptr<ServerTrackerView> ServerTrackerViewPtr;
 
@@ -51,6 +54,9 @@ public:
     { return m_instance; }
 
 	// -- Accessors ---
+	class ControllerManager *getControllerManager() { return m_controller_manager; }
+	ServerControllerViewPtr getControllerViewPtr(int controller_id);
+
 	class TrackerManager *getTrackerManager() { return m_tracker_manager; }
 	ServerTrackerViewPtr getTrackerViewPtr(int tracker_id);
 
@@ -67,6 +73,7 @@ public:
 		char *buffer,
 		const int buffer_size);
 
+	int getControllerViewMaxCount() const;
     int getTrackerViewMaxCount() const;
     int getHMDViewMaxCount() const;       
 
@@ -74,6 +81,8 @@ public:
 	void registerHotplugListener(const DeviceCategory deviceClass, IDeviceHotplugListener *listener);
 	void handle_device_connected(enum DeviceClass device_class, const std::string &device_path) override;
 	void handle_device_disconnected(enum DeviceClass device_class, const std::string &device_path) override;
+	void handle_bluetooth_request_started();
+	void handle_bluetooth_request_finished();
     
 private:
 	/// Singleton instance of the class
@@ -90,6 +99,7 @@ private:
 	std::vector<DeviceHotplugListener> m_listeners;
 
 public:
+	class ControllerManager *m_controller_manager;
     class TrackerManager *m_tracker_manager;
     class HMDManager *m_hmd_manager;
 };

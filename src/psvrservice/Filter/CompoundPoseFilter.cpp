@@ -83,7 +83,22 @@ void CompoundPoseFilter::allocate_filters(
 		m_orientation_filter = new OrientationFilterComplementaryMARG;
 		break;
 	case OrientationFilterTypeKalman:
-		m_orientation_filter = new KalmanOrientationFilterPSVR;
+		{
+			switch (deviceType)
+			{
+			case CommonSensorState::Morpheus:
+				m_orientation_filter = new KalmanOrientationFilterPSVR;
+				break;
+			case CommonSensorState::DualShock4:
+				m_orientation_filter = new KalmanOrientationFilterDS4;
+				break;
+			case CommonSensorState::PSMove:
+				m_orientation_filter = new KalmanOrientationFilterPSMove;
+				break;
+			default:
+				assert(0 && "unreachable");
+			}
+		}
 		break;
 	default:
 		assert(0 && "unreachable");

@@ -5,6 +5,7 @@
 WorkerThread::WorkerThread(const std::string thread_name) 
 	: m_threadName(thread_name)
 	, m_exitSignaled({ false })
+	, m_threadEnded({ false })
     , m_threadStarted(false)
 	, m_workerThread()
 {
@@ -14,6 +15,7 @@ void WorkerThread::startThread()
 {
     if (!m_threadStarted)
     {
+		m_threadEnded.store(false);
 		m_exitSignaled= false;
 
         PSVR_LOG_INFO("WorkerThread::start") << "Starting worker thread: " << m_threadName;
@@ -66,4 +68,6 @@ void WorkerThread::threadFunc()
 			m_exitSignaled= true;
 		}
     }
+
+	m_threadEnded.store(true);
 }

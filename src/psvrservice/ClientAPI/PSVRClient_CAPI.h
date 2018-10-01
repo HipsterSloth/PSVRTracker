@@ -36,6 +36,7 @@ typedef int PSVRHmdID;
 /// Result enum in response to a client API request
 typedef enum
 {
+	PSVRResult_Canceled              = -3,	///< Request Was Canceled
     PSVRResult_NoData                = -2,	///< Request Returned No Data
     PSVRResult_Error                 = -1, 	///< General Error Result
     PSVRResult_Success               = 0,	///< General Success Result
@@ -580,15 +581,41 @@ typedef struct
 
 typedef enum 
 {
+	PSVREvent_controllerListUpdated,
     PSVREvent_trackerListUpdated,
-    PSVREvent_hmdListUpdated
+    PSVREvent_hmdListUpdated,
+	PSVREvent_pairControllerComplete,
+	PSVREvent_pairControllerProgress,
+	PSVREvent_unpairControllerComplete,
 } PSVREventType;
 
+
+typedef struct 
+{
+	PSVRResult result_code;
+} PSVRPairControllerResult;
+
+typedef struct 
+{
+	PSVRControllerID controller_id;
+	int steps_completed;
+	int total_steps;
+} PSVRPairControllerProgress;
+
+typedef struct 
+{
+	PSVRResult result_code;
+} PSVRUnpairControllerResult;
 
 /// A container for all PSVRService events
 typedef struct
 {
     PSVREventType event_type;
+	union{
+		PSVRPairControllerResult pair_controller_result;
+		PSVRPairControllerProgress pair_controller_progress;
+		PSVRUnpairControllerResult unpair_controller_result;
+	} event_parameters;
 } PSVREventMessage;
 
 // Service Responses

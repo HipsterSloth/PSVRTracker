@@ -77,6 +77,22 @@ file(GLOB PSVR_FILTER_SRC
 )
 source_group("Filter" FILES ${PSVR_FILTER_SRC})
 
+list(APPEND PSVR_PLATFORM_SRC
+    ${CMAKE_CURRENT_LIST_DIR}/Platform/BluetoothQueries.h
+    ${CMAKE_CURRENT_LIST_DIR}/Platform/BluetoothRequests.h
+    ${CMAKE_CURRENT_LIST_DIR}/Platform/BluetoothRequests.cpp)
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    list(APPEND PSVR_PLATFORM_SRC
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/BluetoothRequestsWin32.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/BluetoothQueriesWin32.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.h
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBApi.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBApi.h
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBBulkTransferBundle.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBBulkTransferBundle.h)
+ENDIF()
+source_group("Platform" FILES ${PSVR_PLATFORM_SRC})
 file(GLOB SERVICE_SRC
     "${CMAKE_CURRENT_LIST_DIR}/Service/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Service/*.h"
@@ -111,6 +127,7 @@ set(PSVR_SERVICE_SRC
     ${PSVR_DEVICE_VIEW_SRC}
     ${PSVR_HMD_SRC}
     ${PSVR_FILTER_SRC}
+    ${PSVR_PLATFORM_SRC}
     ${SERVICE_SRC} 
     ${PSVR_TRACKER_SRC}
 	${PSVR_UTILS_SRC}
@@ -162,11 +179,6 @@ list(APPEND PSVR_SERVICE_REQ_LIBS ${LIBUSB_LIBRARIES})
 # Platform Specific Device Management
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     # Windows utilities for querying driver infomation (provider name)
-    list(APPEND PSVR_SERVICE_INCL_DIRS ${ROOT_DIR}/src/psmoveservice/Platform)	
-	file(GLOB PSVR_WIN32_PLATFORM_SRC
-		"${CMAKE_CURRENT_LIST_DIR}/Platform/*.cpp"
-		"${CMAKE_CURRENT_LIST_DIR}/Platform/*.h"
-	)	
     list(APPEND PSVR_SERVICE_SRC ${PSVR_WIN32_PLATFORM_SRC})	
 	source_group("Device\\USB" FILES ${PSVR_WIN32_PLATFORM_SRC})
 		

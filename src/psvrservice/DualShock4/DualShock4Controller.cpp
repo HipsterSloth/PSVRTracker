@@ -6,7 +6,7 @@
 #include "Logger.h"
 #include "Utility.h"
 #include "WorkerThread.h"
-//#include "BluetoothQueries.h"
+#include "BluetoothQueries.h"
 
 #include <algorithm>
 #include <vector>
@@ -262,18 +262,23 @@ class DualShock4HidPacketProcessor : public WorkerThread
 public:
 	DualShock4HidPacketProcessor(const DualShock4ControllerConfig &cfg) 
 		: WorkerThread("PSMoveSensorProcessor")
-		, m_cfg(cfg)
 		, m_hidDevice(nullptr)
 		, m_controllerListener(nullptr)
 		, m_bSupportsMagnetometer(false)
 		, m_nextPollSequenceNumber(0)
 	{
+		setConfig(cfg);
 		memset(&m_previousHIDInputPacket, 0, sizeof(DualShock4DataInput));
 		memset(&m_currentHIDInputPacket, 0, sizeof(DualShock4DataInput));
 		m_previousHIDInputPacket.hid_protocol_code = DualShock4_BTReport_Input;
 		m_currentHIDInputPacket.hid_protocol_code = DualShock4_BTReport_Input;
 
 		memset(&m_previousOutputState, 0, sizeof(DualShock4ControllerOutputState));
+	}
+
+	void setConfig(const DualShock4ControllerConfig &cfg)
+	{
+		m_cfg.storeValue(cfg);
 	}
 
 	void fetchLatestInputData(DualShock4ControllerInputState &input_state)
@@ -318,14 +323,15 @@ protected:
 
 	virtual bool doWork() override
     {
-		bool bWorking= true;
-
 		// Attempt to read the next sensor update packet from the HMD
 		memcpy(&m_previousHIDInputPacket, &m_currentHIDInputPacket, sizeof(DualShock4DataInput));
 		int res = hid_read(m_hidDevice, (unsigned char*)&m_currentHIDInputPacket, sizeof(DualShock4DataInput));
 
 		if (res > 0)
 		{
+			DualShock4ControllerConfig cfg;
+			m_cfg.fetchValue(cfg);
+
 			// https://github.com/hrl7/node-psvr/blob/master/lib/psvr.js
 			DualShock4ControllerInputState newState;
 
@@ -334,14 +340,17 @@ protected:
 			++m_nextPollSequenceNumber;
 
 			// Processes the IMU data
-			newState.parseDataInput(&m_cfg, &m_previousHIDInputPacket, &m_currentHIDInputPacket);
+			newState.parseDataInput(&cfg, &m_previousHIDInputPacket, &m_currentHIDInputPacket);
 
 			// Store a copy of the parsed input date for functions
 			// that want to query input state off of the worker thread
 			m_currentInputState.storeValue(newState);
 
 			// Send the sensor data for processing by filter
-			m_controllerListener->notifySensorDataReceived(&newState);
+			if (m_controllerListener != nullptr)
+			{
+				m_controllerListener->notifySensorDataReceived(&newState);
+			}
 		}
 		else if (res < 0)
 		{
@@ -355,7 +364,8 @@ protected:
 				PSVR_MT_LOG_ERROR("PSMoveSensorProcessor::doWork") << "HID ERROR: " << hidapi_err_mbs;
 			}
 
-			bWorking= false;
+			// Halt the worker threads
+			return false;
 		}
 
         // Don't send output writes too frequently
@@ -410,14 +420,12 @@ protected:
 						{
 							PSVR_MT_LOG_ERROR("PSMoveSensorProcessor::doWork") << "HID ERROR: " << hidapi_err_mbs;
 						}
-
-						bWorking= false;
 					}
 				}
             }
         }
 
-		return bWorking;
+		return true;
     }
 
 	int writeOutputHidPacket(const DualShock4DataOutput &data_out)
@@ -436,12 +444,12 @@ protected:
 	}
 
     // Multi-threaded state
-	const DualShock4ControllerConfig m_cfg;
 	hid_device *m_hidDevice;
 	IControllerListener *m_controllerListener;
 	bool m_bSupportsMagnetometer;
 	AtomicObject<DualShock4ControllerInputState> m_currentInputState;
 	AtomicObject<DualShock4ControllerOutputState> m_currentOutputState;
+	AtomicObject<DualShock4ControllerConfig> m_cfg;
 
     // Worker thread state
     int m_nextPollSequenceNumber;
@@ -563,7 +571,7 @@ DualShock4ControllerConfig::readFromJSON(const configuru::Config &pt)
     }
     else
     {
-        PSVR_LOG_WARNING("PSDualShock4ControllerConfig") <<
+        PSVR_LOG_WARNING("DualShock4ControllerConfig") <<
             "Config version " << version << " does not match expected version " <<
             DualShock4ControllerConfig::CONFIG_VERSION << ", Using defaults.";
     }
@@ -781,6 +789,18 @@ void DualShock4ControllerInputState::parseDataInput(
     }
 }
 
+// -- DualShock4ControllerOutputState -----
+DualShock4ControllerOutputState::DualShock4ControllerOutputState()
+{
+	clear();
+}
+
+void DualShock4ControllerOutputState::clear()
+{
+	r= g= b= 0;
+	rumble_left= rumble_right= 0;
+}
+
 // -- DualShock4 Controller -----
 DualShock4Controller::DualShock4Controller()
     : m_HIDPacketProcessor(nullptr)
@@ -790,6 +810,8 @@ DualShock4Controller::DualShock4Controller()
 	HIDDetails.vendor_id = -1;
 	HIDDetails.product_id = -1;
     HIDDetails.Handle = nullptr;
+	memset(&m_cachedInputState, 0, sizeof(DualShock4ControllerInputState));
+	memset(&m_cachedOutputState, 0, sizeof(DualShock4ControllerOutputState));
 }
 
 DualShock4Controller::~DualShock4Controller()
@@ -890,7 +912,7 @@ bool DualShock4Controller::open(
                 HIDDetails.Bt_addr = std::string(szNormalizedControllerAddress);
 
 				// Get the (possibly cached) bluetooth address of the first bluetooth adapter
-				//if (!bluetooth_get_host_address(HIDDetails.Host_bt_addr))
+				if (!bluetooth_get_host_address(HIDDetails.Host_bt_addr))
 				{
 					HIDDetails.Host_bt_addr= "00:00:00:00:00:00";
 				}
@@ -957,6 +979,7 @@ void DualShock4Controller::close()
 			// halt the HID packet processing thread
 			m_HIDPacketProcessor->stop();
 			delete m_HIDPacketProcessor;
+			m_HIDPacketProcessor= nullptr;
 		}
 
         if (HIDDetails.Handle != nullptr)
@@ -1149,6 +1172,17 @@ DualShock4Controller::getColour() const
     return std::make_tuple(m_cachedOutputState.r, m_cachedOutputState.g, m_cachedOutputState.b);
 }
 
+const CommonControllerState * 
+DualShock4Controller::getControllerState()
+{
+	if (m_HIDPacketProcessor != nullptr && !m_HIDPacketProcessor->hasThreadEnded())
+	{
+		m_HIDPacketProcessor->fetchLatestInputData(m_cachedInputState);
+	}
+
+	return &m_cachedInputState;
+}
+
 void
 DualShock4Controller::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
 {
@@ -1211,6 +1245,18 @@ float DualShock4Controller::getPredictionTime() const
 	return getConfig()->prediction_time;
 }
 
+void 
+DualShock4Controller::setConfig(const DualShock4ControllerConfig *config)
+{
+	cfg= *config;
+
+	if (m_HIDPacketProcessor != nullptr)
+	{
+		m_HIDPacketProcessor->setConfig(*config);
+	}
+
+	cfg.save();
+}
 bool
 DualShock4Controller::setLED(unsigned char r, unsigned char g, unsigned char b)
 {
@@ -1259,6 +1305,12 @@ DualShock4Controller::setRightRumbleIntensity(unsigned char value)
         success = true;
     }
     return success;
+}
+
+void 
+DualShock4Controller::setControllerListener(IControllerListener *listener)
+{
+	m_controllerListener= listener;
 }
 
 // -- private helper functions -----

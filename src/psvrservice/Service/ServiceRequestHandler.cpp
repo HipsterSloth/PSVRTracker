@@ -2,6 +2,7 @@
 #include "ServiceRequestHandler.h"
 
 #include "DeviceManager.h"
+#include "ControllerManager.h"
 #include "DeviceEnumerator.h"
 #include "MathEigen.h"
 #include "HMDManager.h"
@@ -10,6 +11,7 @@
 #include "OrientationFilter.h"
 #include "PositionFilter.h"
 #include "PS3EyeTracker.h"
+#include "ServerControllerView.h"
 #include "ServerDeviceView.h"
 #include "ServerTrackerView.h"
 #include "ServerHMDView.h"
@@ -56,6 +58,24 @@ bool ServiceRequestHandler::startup(
 	
 void ServiceRequestHandler::shutdown()
 {           
+	for (int contorller_id = 0; contorller_id < ControllerManager::k_max_devices; ++contorller_id)
+	{
+		const ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[contorller_id];
+		ServerControllerViewPtr hmd_view = m_deviceManager->getControllerViewPtr(contorller_id);
+
+		// Undo the ROI suppression
+		if (streamInfo.disable_roi)
+		{
+			m_deviceManager->getControllerViewPtr(contorller_id)->popDisableROI();
+		}
+
+		// Halt any hmd tracking this connection had going on
+		if (streamInfo.include_position_data)
+		{
+			m_deviceManager->getControllerViewPtr(contorller_id)->stopTracking();
+		}
+	}
+
 	for (int tracker_id = 0; tracker_id < TrackerManager::k_max_devices; ++tracker_id)
 	{
 		// Restore any overridden camera settings from the config
@@ -91,6 +111,28 @@ void ServiceRequestHandler::shutdown()
 	}
 		
 	m_instance= nullptr;
+}
+
+
+void ServiceRequestHandler::publish_controller_data_frame(
+	class ServerControllerView *controller_view,
+	ServiceRequestHandler::t_generate_controller_data_frame_for_stream callback)
+{
+    int controller_id = controller_view->getDeviceID();
+
+    // Notify any connections that care about the tracker update
+    if (m_peristentRequestState->active_controller_streams.test(controller_id))
+    {
+        const ControllerStreamInfo &streamInfo =
+            m_peristentRequestState->active_controller_stream_info[controller_id];
+
+        // Fill out a data frame specific to this stream using the given callback
+        DeviceOutputDataFrame data_frame;
+        callback(controller_view, &streamInfo, data_frame);
+
+        // Send the hmd data frame over the network
+        m_dataFrameListener->handle_data_frame(data_frame);
+    }
 }
 
 void ServiceRequestHandler::publish_tracker_data_frame(

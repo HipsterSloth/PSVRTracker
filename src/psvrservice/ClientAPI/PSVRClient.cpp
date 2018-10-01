@@ -532,6 +532,9 @@ void PSVRClient::process_event_message(
     switch (event_message->event_type)
     {
     // Service Events
+    case PSVREvent_controllerListUpdated:
+        m_bHasControllerListChanged= true;
+        break;
     case PSVREvent_trackerListUpdated:
         m_bHasTrackerListChanged= true;
         break;

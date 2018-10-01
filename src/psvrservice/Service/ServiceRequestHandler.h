@@ -72,15 +72,23 @@ struct HMDStreamInfo
 
 struct PersistentRequestConnectionState
 {
+	std::bitset<PSVRSERVICE_MAX_CONTROLLER_COUNT> active_controller_streams;
     std::bitset<PSVRSERVICE_MAX_TRACKER_COUNT> active_tracker_streams;
     std::bitset<PSVRSERVICE_MAX_HMD_COUNT> active_hmd_streams;
+	ControllerStreamInfo  active_controller_stream_info[PSVRSERVICE_MAX_CONTROLLER_COUNT];
     TrackerStreamInfo active_tracker_stream_info[PSVRSERVICE_MAX_TRACKER_COUNT];
     HMDStreamInfo active_hmd_stream_info[PSVRSERVICE_MAX_HMD_COUNT];
 
     PersistentRequestConnectionState()
-        : active_tracker_streams()
+        : active_controller_streams()
+		, active_tracker_streams()
         , active_hmd_streams()
     {
+        for (int index = 0; index < PSVRSERVICE_MAX_CONTROLLER_COUNT; ++index)
+        {
+            active_controller_stream_info[index].Clear();
+        }
+
         for (int index = 0; index < PSVRSERVICE_MAX_TRACKER_COUNT; ++index)
         {
             active_tracker_stream_info[index].Clear();
@@ -106,6 +114,18 @@ public:
         class IDataFrameListener *data_frame_listener, 
         class INotificationListener *notification_listener);
     void shutdown();
+
+    /// When publishing controller data to all listening connections
+    /// we need to provide a callback that will fill out a data frame given:
+    /// * A \ref ServerControllerView we want to publish to all listening connections
+    /// * A \ref ControllerStreamInfo that describes what info the connection wants
+    /// This callback will be called for each listening connection
+    typedef void(*t_generate_controller_data_frame_for_stream)(
+        const class ServerControllerView *controller_view,
+        const ControllerStreamInfo *stream_info,
+        DeviceOutputDataFrame &data_frame);
+    void publish_controller_data_frame(
+        class ServerControllerView *controller_view, t_generate_controller_data_frame_for_stream callback);
 
     /// When publishing tracker data to all listening connections
     /// we need to provide a callback that will fill out a data frame given:

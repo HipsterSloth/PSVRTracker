@@ -927,6 +927,56 @@ public:
 	}
 };
 
+class DS4KalmanPoseFilterImpl : public KalmanPoseFilterImpl
+{
+public:
+	PoseGravMeasurementModel imu_measurement_model;
+	PoseOrientationMeasurementModel optical_measurement_model;
+
+	void init(
+		const PoseFilterConstants &constants) override
+	{
+        KalmanPoseFilterImpl::init(constants);
+		imu_measurement_model.init(constants.orientation_constants, &world_orientation);
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
+	}
+
+	void init(
+		const PoseFilterConstants &constants,
+		const Eigen::Vector3f &position,
+		const Eigen::Quaternionf &orientation) override
+	{
+        KalmanPoseFilterImpl::init(constants, position, orientation);
+		imu_measurement_model.init(constants.orientation_constants, &world_orientation);
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
+	}
+};
+
+class PSMoveKalmanPoseFilterImpl : public KalmanPoseFilterImpl
+{
+public:
+	PoseMagGravMeasurementModel imu_measurement_model;
+	PoseOrientationMeasurementModel optical_measurement_model;
+
+	void init(
+		const PoseFilterConstants &constants) override
+	{
+        KalmanPoseFilterImpl::init(constants);
+		imu_measurement_model.init(constants.orientation_constants, &world_orientation);
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
+	}
+
+	void init(
+		const PoseFilterConstants &constants, 
+		const Eigen::Vector3f &position,
+		const Eigen::Quaternionf &orientation) override
+	{
+        KalmanPoseFilterImpl::init(constants, position, orientation);
+		imu_measurement_model.init(constants.orientation_constants, &world_orientation);
+		optical_measurement_model.init(constants.orientation_constants, &world_orientation);
+	}
+};
+
 //-- public interface --
 //-- KalmanPoseFilter --
 KalmanPoseFilter::KalmanPoseFilter()
@@ -1335,6 +1385,233 @@ void KalmanPoseFilterMorpheus::update(const float delta_time, const PoseFilterPa
 
 			PoseGravMeasurementVectord measurement = PoseGravMeasurementVectord::Zero();
 			measurement.set_accelerometer(packet.imu_accelerometer_g_units.cast<double>());
+			filter->ukf.update(filter->imu_measurement_model, measurement);
+		}
+
+		// Apply the orientation error in the UKF state to the output quaternion.
+		// Zero out the error in the UKF state vector.
+		filter->apply_error_to_world_quaternion();
+		filter->time += (double)delta_time;
+	}
+	else
+	{
+		m_filter->ukf.init(PoseStateVectord::Identity());
+		m_filter->time = 0.0;
+		m_filter->bIsValid = true;
+	}
+}
+
+//-- KalmanPoseFilterDS4 --
+bool KalmanPoseFilterDS4::init(
+	const PoseFilterConstants &constants)
+{
+	KalmanPoseFilter::init(constants);
+
+	DS4KalmanPoseFilterImpl *filter = new DS4KalmanPoseFilterImpl();
+	filter->init(constants);
+	m_filter = filter;
+
+	return true;
+}
+
+bool KalmanPoseFilterDS4::init(
+	const PoseFilterConstants &constants,
+	const Eigen::Vector3f &position, 
+	const Eigen::Quaternionf &orientation)
+{
+    KalmanPoseFilter::init(constants, position, orientation);
+
+    DS4KalmanPoseFilterImpl *filter = new DS4KalmanPoseFilterImpl();
+    filter->init(constants, position, orientation);
+    m_filter = filter;
+
+    return true;
+}
+
+void KalmanPoseFilterDS4::update(const float delta_time, const PoseFilterPacket &packet)
+{
+	if (m_filter->bIsValid)
+	{
+		DS4KalmanPoseFilterImpl *filter = static_cast<DS4KalmanPoseFilterImpl *>(m_filter);
+		PoseOrientationMeasurementModel &optical_measurement_model = filter->optical_measurement_model;
+		PoseGravMeasurementModel &imu_measurement_model= filter->imu_measurement_model;
+
+		// Adjust the amount we trust the process model based on the tracking projection area
+		filter->system_model.update_process_noise(
+			m_constants,
+			packet.optical_tracking_projection.projections[0].screen_area);
+
+		// Predict state for current time-step using the filters
+		filter->system_model.set_time_step(delta_time);
+
+		// Snap filter state if we haven't seen an optical measurement before
+		if (packet.has_optical_measurement())
+		{
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
+
+			// If this is the first time we have seen the position, snap the position state
+			if (!m_filter->bSeenPositionMeasurement)
+			{
+				const Eigen::Vector3d optical_position_meters = packet.get_optical_position_in_meters().cast<double>();
+
+				m_filter->ukf.getStateMutable().set_position_meters(optical_position_meters);
+				m_filter->bSeenPositionMeasurement = true;
+			}
+
+			// If this is the first time we have seen the orientation, snap the orientation state
+			if (!m_filter->bSeenOrientationMeasurement)
+			{
+				const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
+
+				filter->set_world_quaternion(world_quaternion);
+				m_filter->bSeenOrientationMeasurement = true;
+			}
+		}
+
+		// Apply a physics update to the filter state
+		if (packet.has_imu_measurements())
+		{
+			PoseControlVectord control;
+			control.set_angular_rates(packet.imu_gyroscope_rad_per_sec.cast<double>());
+
+			filter->ukf.predict(filter->system_model, control);
+		}
+		else
+		{
+			filter->ukf.predict(filter->system_model);
+		}
+
+		// Apply any optical measurement to the filter
+		if (packet.has_optical_measurement())
+		{
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
+			const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
+			PoseOrientationMeasurementVectord measurement = PoseOrientationMeasurementVectord::Zero();
+			measurement.set_optical_quaterniond(world_quaternion);
+			filter->ukf.update(optical_measurement_model, measurement);
+		}
+
+		// Apply any IMU measurement to the filter
+		if (packet.has_imu_measurements())
+		{
+			assert(packet.has_accelerometer_measurement);
+
+			PoseGravMeasurementVectord measurement = PoseGravMeasurementVectord::Zero();
+			measurement.set_accelerometer(packet.imu_accelerometer_g_units.cast<double>());
+			filter->ukf.update(filter->imu_measurement_model, measurement);
+		}
+
+		// Apply the orientation error in the UKF state to the output quaternion.
+		// Zero out the error in the UKF state vector.
+		filter->apply_error_to_world_quaternion();
+		filter->time += (double)delta_time;
+	}
+	else
+	{
+		m_filter->ukf.init(PoseStateVectord::Identity());
+		m_filter->time = 0.0;
+		m_filter->bIsValid = true;
+	}
+}
+
+//-- PSMovePoseKalmanFilter --
+bool KalmanPoseFilterPSMove::init(
+	const PoseFilterConstants &constants)
+{
+	KalmanPoseFilter::init(constants);
+
+	PSMoveKalmanPoseFilterImpl *filter = new PSMoveKalmanPoseFilterImpl();
+	filter->init(constants);
+	m_filter = filter;
+
+	return true;
+}
+
+bool KalmanPoseFilterPSMove::init(
+	const PoseFilterConstants &constants,
+	const Eigen::Vector3f &position,
+	const Eigen::Quaternionf &orientation)
+{
+    KalmanPoseFilter::init(constants, position, orientation);
+
+    PSMoveKalmanPoseFilterImpl *filter = new PSMoveKalmanPoseFilterImpl();
+    filter->init(constants, position, orientation);
+    m_filter = filter;
+
+    return true;
+}
+
+void KalmanPoseFilterPSMove::update(const float delta_time, const PoseFilterPacket &packet)
+{
+	if (m_filter->bIsValid)
+	{
+		PSMoveKalmanPoseFilterImpl *filter = static_cast<PSMoveKalmanPoseFilterImpl *>(m_filter);
+		PoseOrientationMeasurementModel &optical_measurement_model = filter->optical_measurement_model;
+		PoseMagGravMeasurementModel &imu_measurement_model= filter->imu_measurement_model;
+
+		// Adjust the amount we trust the process model based on the tracking projection area
+		filter->system_model.update_process_noise(
+			m_constants,
+			packet.optical_tracking_projection.projections[0].screen_area);
+
+		// Predict state for current time-step using the filters
+		filter->system_model.set_time_step(delta_time);
+
+		// Snap filter state if we haven't seen an optical measurement before
+		if (packet.has_optical_measurement())
+		{
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
+
+			// If this is the first time we have seen the position, snap the position state
+			if (!m_filter->bSeenPositionMeasurement)
+			{
+				const Eigen::Vector3d optical_position_meters = packet.get_optical_position_in_meters().cast<double>();
+
+				m_filter->ukf.getStateMutable().set_position_meters(optical_position_meters);
+				m_filter->bSeenPositionMeasurement = true;
+			}
+
+			// If this is the first time we have seen the orientation, snap the orientation state
+			if (!m_filter->bSeenOrientationMeasurement)
+			{
+				const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
+
+				filter->set_world_quaternion(world_quaternion);
+				m_filter->bSeenOrientationMeasurement = true;
+			}
+		}
+
+		// Apply a physics update to the filter state
+		if (packet.has_imu_measurements())
+		{
+			PoseControlVectord control;
+			control.set_angular_rates(packet.imu_gyroscope_rad_per_sec.cast<double>());
+
+			filter->ukf.predict(filter->system_model, control);
+		}
+		else
+		{
+			filter->ukf.predict(filter->system_model);
+		}
+
+		// Apply any optical measurement to the filter
+		if (packet.has_optical_measurement())
+		{
+			assert(packet.optical_tracking_projection.projections[0].screen_area > 0.f);
+			const Eigen::Quaterniond world_quaternion = packet.optical_orientation.cast<double>();
+			PoseOrientationMeasurementVectord measurement = PoseOrientationMeasurementVectord::Zero();
+			measurement.set_optical_quaterniond(world_quaternion);
+			filter->ukf.update(optical_measurement_model, measurement);
+		}
+
+		// Apply any IMU measurement to the filter
+		if (packet.has_imu_measurements())
+		{
+			assert(packet.has_accelerometer_measurement);
+
+			PoseMagGravMeasurementVectord measurement = PoseMagGravMeasurementVectord::Zero();
+			measurement.set_accelerometer(packet.imu_accelerometer_g_units.cast<double>());
+			measurement.set_magnetometer(packet.imu_magnetometer_unit.cast<double>());
 			filter->ukf.update(filter->imu_measurement_model, measurement);
 		}
 

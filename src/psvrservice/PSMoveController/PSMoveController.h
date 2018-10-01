@@ -42,13 +42,14 @@ public:
 		, firmware_version(0)
 		, bt_firmware_version(0)
 		, firmware_revision(0)
+		, max_poll_failure_count(100)
         , poll_timeout_ms(1000) 
         , prediction_time(0.f)
 		, position_filter_type("LowPassExponential")
 		, orientation_filter_type("ComplementaryMARG")
-        , cal_ag_xyz_kb({{ 
-            {{ {{0, 0}}, {{0, 0}}, {{0, 0}} }},
-            {{ {{0, 0}}, {{0, 0}}, {{0, 0}} }} 
+        , cal_ag_xyz_kbd({{ 
+            {{ {{0, 0, 0}}, {{0, 0, 0}}, {{0, 0, 0}} }},
+            {{ {{0, 0, 0}}, {{0, 0, 0}}, {{0, 0, 0}} }} 
         }})
         , magnetometer_fit_error(0.f)
 		, magnetometer_variance(0.00059f) // rounded value from config tool measurement
@@ -90,6 +91,8 @@ public:
 	// Move's firmware revision number
 	unsigned short firmware_revision;
 
+	// The max number of polling failures before we consider the controller disconnected
+    long max_poll_failure_count;
 
 	long poll_timeout_ms;
 
@@ -102,8 +105,8 @@ public:
 	// The type of orientation filter to use
 	std::string orientation_filter_type;
 
-	// The accelerometer and gyroscope scale and bias values read from the USB calibration packet
-    std::array<std::array<std::array<float, 2>, 3>, 2> cal_ag_xyz_kb;
+	// The accelerometer and gyroscope scale/bias/drift values read from the USB calibration packet
+    std::array<std::array<std::array<float, 3>, 3>, 2> cal_ag_xyz_kbd;
 
 	// The direction of the magnetometer when in the identity pose
     PSVRVector3f magnetometer_identity;
@@ -148,6 +151,23 @@ public:
 	// The variance of the controller orientation (when sitting still) in rad^2
     float orientation_variance;
 
+	inline bool set_raw_gyro_bias(float raw_bias_x, float raw_bias_y, float raw_bias_z)
+	{
+		if (cal_ag_xyz_kbd[1][0][2] != raw_bias_x ||
+			cal_ag_xyz_kbd[1][1][2] != raw_bias_y ||
+			cal_ag_xyz_kbd[1][2][2] != raw_bias_z)
+		{
+			//         gyro=1 x/y/z drift=2
+			cal_ag_xyz_kbd[1][0][2] = raw_bias_x;
+			cal_ag_xyz_kbd[1][1][2] = raw_bias_y;
+			cal_ag_xyz_kbd[1][2][2] = raw_bias_z;
+
+			return true;
+		}
+
+		return false;
+	}
+
 	inline float get_position_variance(float projection_area) const {
 		return position_variance_exp_fit_a*exp(position_variance_exp_fit_b*projection_area);
 	}
@@ -177,7 +197,7 @@ struct PSMoveControllerInputState : public CommonControllerState
     PSVRButtonState Trigger;
 
     unsigned char TriggerValue;  // 0-255. Average of last two frames.
-    unsigned char BatteryValue;  // 0-5 for level, EE-EF for charging/charged 
+    PSVRBatteryState BatteryValue;  // 0-5 for level, EE-EF for charging/charged 
 
     std::array< std::array<int, 3>, 2> RawAccel;    // Two frames of 3 dimensions
     std::array< std::array<int, 3>, 2> RawGyro;     // Two frames of 3 dimensions
@@ -196,9 +216,12 @@ struct PSMoveControllerInputState : public CommonControllerState
     void clear();
 	void parseDataInput(
 		const PSMoveControllerConfig *config, 
-		const PSMoveControllerModelPID model,
-		const struct PSMoveDataInputCommon *previous_hid_packet,
-		const struct PSMoveDataInputCommon *new_hid_packet);
+		const struct PSMoveDataInputZCM1 *previous_hid_packet,
+		const struct PSMoveDataInputZCM1 *new_hid_packet);
+	void parseDataInput(
+		const PSMoveControllerConfig *config, 
+		const struct PSMoveDataInputZCM2 *previous_hid_packet,
+		const struct PSMoveDataInputZCM2 *new_hid_packet);
 };
 
 struct PSMoveControllerOutputState 
@@ -208,6 +231,10 @@ struct PSMoveControllerOutputState
     unsigned char b;        // blue value, 0x00..0xff
 
     unsigned char rumble;   // rumble value, 0x00..0xff
+
+	PSMoveControllerOutputState();
+
+	void clear();
 };
 
 class PSMoveController : public IControllerInterface {
@@ -243,6 +270,7 @@ public:
     virtual std::string getAssignedHostBluetoothAddress() const override;
     virtual std::string getSerial() const override;
     virtual const std::tuple<unsigned char, unsigned char, unsigned char> getColour() const override;
+    virtual const CommonControllerState * getControllerState() override;
     virtual void getTrackingShape(PSVRTrackingShape &outTrackingShape) const override;
 	virtual bool getTrackingColorID(PSVRTrackingColorType &out_tracking_color_id) const override;
 	virtual float getIdentityForwardDegrees() const override;
@@ -250,18 +278,16 @@ public:
 
     // -- Getters
     inline const PSMoveControllerConfig *getConfig() const
-    { return &cfg; }
-    inline PSMoveControllerConfig *getConfigMutable()
-    { return &cfg; }
-    float getTempCelsius() const;
-	bool getSupportsMagnetometer() const
-	{ return SupportsMagnetometer; }        
+    { return &cfg; }    
+    float getTempCelsius();
+	bool getSupportsMagnetometer() const;
     const unsigned long getLEDPWMFrequency() const
     { return LedPWMF; }
 	const bool getIsPS4Controller() const 
 	{ return HIDDetails.product_id == _psmove_controller_ZCM2; }
     
     // -- Setters
+	void setConfig(const PSMoveControllerConfig *config);
     bool setLED(unsigned char r, unsigned char g, unsigned char b); // 0x00..0xff. TODO: vec3
     bool setLEDPWMFrequency(unsigned long freq);    // 733..24e6
     bool setRumbleIntensity(unsigned char value);
@@ -280,11 +306,12 @@ private:
     bool IsBluetooth;                               // true if valid serial number on device opening
 	bool SupportsMagnetometer;                      // true if controller emits valid magnetometer data
 
-    // Cached Setter State
+    // Cached MainThread Controller State
     unsigned long LedPWMF;
+	PSMoveControllerInputState m_cachedInputState;
 	PSMoveControllerOutputState m_cachedOutputState;
 
-    // Controller State
+    // HID Packet Processing
 	class PSMoveHidPacketProcessor* m_HIDPacketProcessor;
 	IControllerListener* m_controllerListener;
 

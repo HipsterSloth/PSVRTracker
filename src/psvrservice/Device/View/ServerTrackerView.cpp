@@ -2,6 +2,7 @@
 #include "DeviceEnumerator.h"
 #include "DeviceManager.h"
 #include "HMDManager.h"
+#include "ServerControllerView.h"
 #include "ServerTrackerView.h"
 #include "ServerHMDView.h"
 #include "MathUtility.h"
@@ -662,6 +663,11 @@ static cv::Rect2i computeTrackerROIForPoseProjection(
     const ServerTrackerView *tracker,
     const PSVRVideoFrameSection section,
     const PSVRTrackingProjection *prior_tracking_projection);
+static bool computeTrackerRelativeLightBarProjection(
+    const PSVRTrackingShape *tracking_shape,
+    const PSVRVideoFrameSection section,
+    const t_opencv_float_contour &opencv_contour,
+    PSVRTrackingProjection *out_projection);
 static bool computeBestFitTriangleForContour(
     const t_opencv_float_contour &opencv_contour,
     cv::Point2f &out_triangle_top,
@@ -1147,6 +1153,35 @@ void ServerTrackerView::getZRange(float &outZNear, float &outZFar) const
 }
 
 void ServerTrackerView::gatherTrackingColorPresets(
+    const class ServerControllerView *controller,
+    PSVRClientTrackerSettings* settings) const
+{
+    std::string controller_id = (controller != nullptr) ? controller->getConfigIdentifier() : "";
+
+    return m_device->gatherTrackingColorPresets(controller_id, settings);
+}
+
+void ServerTrackerView::setControllerTrackingColorPreset(
+    const class ServerControllerView *controller,
+    PSVRTrackingColorType color,
+    const PSVR_HSVColorRange *preset)
+{
+    std::string controller_id = (controller != nullptr) ? controller->getConfigIdentifier() : "";
+
+    return m_device->setTrackingColorPreset(controller_id, color, preset);
+}
+
+void ServerTrackerView::getControllerTrackingColorPreset(
+    const class ServerControllerView *controller,
+    PSVRTrackingColorType color,
+    PSVR_HSVColorRange *out_preset) const
+{
+    std::string controller_id = (controller != nullptr) ? controller->getConfigIdentifier() : "";
+
+    return m_device->getTrackingColorPreset(controller_id, color, out_preset);
+}
+
+void ServerTrackerView::gatherTrackingColorPresets(
     const class ServerHMDView *hmd,
     PSVRClientTrackerSettings* settings) const
 {
@@ -1173,6 +1208,49 @@ void ServerTrackerView::getHMDTrackingColorPreset(
     std::string hmd_id = (hmd != nullptr) ? hmd->getConfigIdentifier() : "";
 
     return m_device->getTrackingColorPreset(hmd_id, color, out_preset);
+}
+
+bool ServerTrackerView::computeProjectionForController(
+	const class ServerControllerView* tracked_controller,
+	const PSVRTrackingShape *tracking_shape,
+	PSVRTrackingProjection *out_projection)
+{
+    bool bSuccess= false;
+
+    if (m_device->getIsStereoCamera())
+    {
+        bool bLeftSuccess=
+            computeProjectionForControllerInSection(
+                tracked_controller,
+                tracking_shape,
+                PSVRVideoFrameSection_Left,
+                out_projection);
+        bool bRightSuccess= true;
+            computeProjectionForControllerInSection(
+                tracked_controller,
+                tracking_shape,
+                PSVRVideoFrameSection_Right,
+                out_projection);
+
+        if (bLeftSuccess && bRightSuccess)
+        {
+            out_projection->projection_count= STEREO_PROJECTION_COUNT;
+            bSuccess= true;
+        }
+    }
+    else
+    {
+        out_projection->projection_count= MONO_PROJECTION_COUNT;
+
+        bSuccess=
+            computeProjectionForControllerInSection(
+                tracked_controller,
+                tracking_shape,
+                PSVRVideoFrameSection_Primary,
+                out_projection);
+    }
+
+    return bSuccess;
 }
 
 bool ServerTrackerView::computeProjectionForHMD(
@@ -1255,6 +1333,224 @@ ServerTrackerView::drawPoseProjection(
 	{
 		m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->draw_pose_projection(*projection);
 	}
+}
+
+bool
+ServerTrackerView::computeProjectionForControllerInSection(
+    const ServerControllerView* tracked_controller,
+    const PSVRTrackingShape *tracking_shape,
+    const PSVRVideoFrameSection section,
+    PSVRTrackingProjection *out_projection)
+{
+    bool bSuccess = true;
+
+    // Get the HSV filter used to find the tracking blob
+    PSVR_HSVColorRange hsvColorRange;
+    if (bSuccess)
+    {
+        PSVRTrackingColorType tracked_color_id = tracked_controller->getTrackingColorID();
+
+        if (tracked_color_id != PSVRTrackingColorType_INVALID)
+        {
+            getControllerTrackingColorPreset(tracked_controller, tracked_color_id, &hsvColorRange);
+        }
+        else
+        {
+            bSuccess = false;
+        }
+    }
+    
+    // Compute a region of interest in the tracker buffer around where we expect to find the tracking shape
+    const TrackerManagerConfig &trackerMgrConfig= DeviceManager::getInstance()->m_tracker_manager->getConfig();
+    const bool bRoiDisabled = tracked_controller->getIsROIDisabled() || trackerMgrConfig.disable_roi;
+
+    const ControllerOpticalPoseEstimation *priorPoseEst= 
+        tracked_controller->getOpticalPoseEstimateOnTrackerThread(this->getDeviceID());
+    const bool bIsTracking = priorPoseEst->bCurrentlyTracking;
+
+    cv::Rect2i ROI = computeTrackerROIForPoseProjection(
+        bRoiDisabled,
+        this,
+        section,
+        bIsTracking ? &priorPoseEst->projection : nullptr);
+    m_opencv_buffer_state[section]->applyROI(ROI);
+
+    // Find the N best contours associated with the HMD
+    t_opencv_int_contour_list biggest_contours;
+    std::vector<double> contour_areas;
+    if (bSuccess)
+    {
+        bSuccess = 
+            m_opencv_buffer_state[section]->computeBiggestNContours(
+                hsvColorRange, biggest_contours, contour_areas, MAX_POINT_CLOUD_POINT_COUNT);
+    }
+
+    // Compute the bounding box of the projection contours this frame
+    if (bSuccess)
+    {
+        if (biggest_contours.size() > 0)
+        {
+            cv::Rect bbox;
+            for (auto it = biggest_contours.begin(); it != biggest_contours.end(); ++it)
+            {
+                cv::Rect contour_bounds= cv::boundingRect(*it);
+
+                bbox= bbox | contour_bounds;
+            }
+
+            out_projection->projections[section].screen_bbox_center= 
+                {static_cast<float>(bbox.x + bbox.width/2), 
+                static_cast<float>(bbox.y + bbox.height/2)};
+            out_projection->projections[section].screen_bbox_half_extents= 
+                {static_cast<float>(bbox.width/2), 
+                static_cast<float>(bbox.height/2)};
+        }
+        else
+        {
+            out_projection->projections[section].screen_bbox_center= {0, 0};
+            out_projection->projections[section].screen_bbox_half_extents= {0, 0};
+        }
+    }
+
+    // Compute the tracker relative 3d position of the controller from the contour
+    if (bSuccess)
+    {
+        cv::Matx33f camera_matrix;
+        cv::Matx<float, 5, 1> distortions;
+        cv::Matx33d rectification_rotation;
+        cv::Matx34d rectification_projection; 
+        computeOpenCVCameraIntrinsicMatrix(m_device, section, camera_matrix, distortions);
+        bool valid_rectification= computeOpenCVCameraRectification(m_device, section, rectification_rotation, rectification_projection);
+
+        switch (tracking_shape->shape_type)
+        {
+        // For the sphere projection we can go ahead and compute the full pose estimation now
+        case PSVRTrackingShape_Sphere:
+            {
+                // Compute the convex hull of the contour
+                t_opencv_int_contour convex_contour;
+                cv::convexHull(biggest_contours[0], convex_contour);
+                m_opencv_buffer_state[section]->draw_contour(convex_contour);
+
+                // Convert integer to float
+                t_opencv_float_contour convex_contour_f;
+                cv::Mat(convex_contour).convertTo(convex_contour_f, cv::Mat(convex_contour_f).type());
+
+                // Undistort points
+                t_opencv_float_contour undistorted_contour;  //destination for undistorted contour
+                if (valid_rectification)
+                {
+                    cv::undistortPoints(convex_contour_f, undistorted_contour,
+                                        camera_matrix,
+                                        distortions,
+                                        rectification_rotation,
+                                        rectification_projection);
+                }
+                else 
+                {
+                    cv::undistortPoints(convex_contour_f, undistorted_contour,
+                                        camera_matrix,
+                                        distortions,
+                                        cv::noArray(),
+                                        camera_matrix);
+                }
+                // Note: if we omit the last two arguments, then
+                // undistort_contour points are in 'normalized' space.
+                // i.e., they are relative to their F_PX,F_PY
+                
+                // Compute the sphere center AND the projected ellipse
+                Eigen::Vector3f sphere_center;
+                EigenFitEllipse ellipse_projection;
+
+                std::vector<Eigen::Vector2f> eigen_contour;
+                std::for_each(undistorted_contour.begin(),
+                              undistorted_contour.end(),
+                              [&eigen_contour](const cv::Point2f& p) {
+                                  eigen_contour.push_back(Eigen::Vector2f(p.x, p.y));
+                              });
+                eigen_alignment_fit_focal_cone_to_sphere(eigen_contour.data(),
+                                                         static_cast<int>(eigen_contour.size()),
+                                                         tracking_shape->shape.sphere.radius,
+                                                         1, //I was expecting this to be -1. Is it +1 because we're using -F_PY?
+                                                         &sphere_center,
+                                                         &ellipse_projection);
+                
+                if (ellipse_projection.area > k_real_epsilon)
+                {
+                    //Save the optically-estimate 3D pose.
+                    out_projection->projections[section].shape.ellipse.source_position = eigen_vector3f_to_PSVR_vector3f(sphere_center);
+                    out_projection->projections[section].shape.ellipse.source_radius = tracking_shape->shape.sphere.radius;
+
+                    // Save off the projection of the sphere (an ellipse)
+                    out_projection->projections[section].shape.ellipse.angle = ellipse_projection.angle;
+                    out_projection->projections[section].screen_area= ellipse_projection.area;
+                    //The ellipse projection is still in normalized space.
+                    //i.e., it is a 2-dimensional ellipse floating somewhere.
+                    //We must reproject it onto the camera.
+                    //TODO: Use opencv's project points instead of manual way below
+                    //because it will account for distortion, at least for the center point.
+                    out_projection->shape_type = PSVRShape_Ellipse;
+                    out_projection->projections[section].shape.ellipse.center= {
+                        ellipse_projection.center.x()*camera_matrix.val[0] + camera_matrix.val[2],
+                        ellipse_projection.center.y()*camera_matrix.val[4] + camera_matrix.val[5]};
+                    out_projection->projections[section].shape.ellipse.half_x_extent = ellipse_projection.extents.x()*camera_matrix.val[0];
+                    out_projection->projections[section].shape.ellipse.half_y_extent = ellipse_projection.extents.y()*camera_matrix.val[0];
+                    out_projection->projections[section].screen_area=
+                        k_real_pi
+                        *out_projection->projections[section].shape.ellipse.half_x_extent
+                        *out_projection->projections[section].shape.ellipse.half_y_extent;
+                
+                    bSuccess = true;
+                }
+            } break;
+        case PSVRTrackingShape_LightBar:
+            {
+                // Compute the convex hull of the contour
+                t_opencv_int_contour convex_contour;
+                cv::convexHull(biggest_contours[0], convex_contour);
+                m_opencv_buffer_state[section]->draw_contour(convex_contour);
+
+                // Convert integer to float
+                t_opencv_float_contour convex_contour_f;
+                cv::Mat(convex_contour).convertTo(convex_contour_f, cv::Mat(convex_contour_f).type());
+
+                // Undistort points
+                t_opencv_float_contour undistorted_contour;  //destination for undistorted contour
+                if (valid_rectification)
+                {
+                    cv::undistortPoints(convex_contour_f, undistorted_contour,
+                                        camera_matrix,
+                                        distortions,
+                                        rectification_rotation,
+                                        rectification_projection);
+                }
+                else 
+                {
+                    cv::undistortPoints(convex_contour_f, undistorted_contour,
+                                        camera_matrix,
+                                        distortions,
+                                        cv::noArray(),
+                                        camera_matrix);
+                }
+                // Note: if we omit the last two arguments, then
+                // undistort_contour points are in 'normalized' space.
+                // i.e., they are relative to their F_PX,F_PY
+
+                // Compute the lightbar tracking projection from the undistored contour
+                bSuccess=
+                    computeTrackerRelativeLightBarProjection(
+                        tracking_shape,
+						section,
+                        undistorted_contour,
+                        out_projection);
+            } break;
+        default:
+            assert(0 && "Unreachable");
+            break;
+        }
+    }
+
+    return bSuccess;
 }
 
 bool

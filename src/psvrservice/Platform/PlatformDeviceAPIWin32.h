@@ -23,6 +23,10 @@ public:
 	void pollSystemEvents() override;
 	void shutdown() override;
 
+	// Events
+	void handle_bluetooth_request_started() override;
+	void handle_bluetooth_request_finished() override;
+
 	// Queries
     const void* get_device_class_platform_identifier(const DeviceClass deviceClass) const override;
 	bool get_device_property(

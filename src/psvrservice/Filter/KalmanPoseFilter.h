@@ -73,4 +73,22 @@ public:
 	void update(const float delta_time, const PoseFilterPacket &packet) override;
 };
 
+/// Kalman Pose filter for Optical Pose + Angular Rate(Gyroscope) + Gravity(Accelerometer)
+class KalmanPoseFilterDS4 : public KalmanPoseFilter
+{
+public:
+	bool init(const PoseFilterConstants &constant) override;
+	bool init(const PoseFilterConstants &constant, const Eigen::Vector3f &position, const Eigen::Quaternionf &orientation) override;
+	void update(const float delta_time, const PoseFilterPacket &packet) override;
+};
+
+/// Kalman Pose filter for Optical Position + Magnetometer + Angular Rate(Gyroscope) + Gravity(Accelerometer)
+class KalmanPoseFilterPSMove : public KalmanPoseFilter
+{
+public:
+	bool init(const PoseFilterConstants &constant) override;
+	bool init(const PoseFilterConstants &constant, const Eigen::Vector3f &position, const Eigen::Quaternionf &orientation) override;
+	void update(const float delta_time, const PoseFilterPacket &packet) override;
+};
+
 #endif // KALMAN_POSE_FILTER_H

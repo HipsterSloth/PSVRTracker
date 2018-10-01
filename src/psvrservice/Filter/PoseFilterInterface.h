@@ -193,6 +193,9 @@ private:
 /// Filter parameters that remain constant during the lifetime of the the filter
 struct OrientationFilterConstants 
 {
+	/// The geometry of the optical tracking shape
+	PSVRTrackingShape tracking_shape;
+
     /// The direction of gravity when the controller is in it's calibration pose
     Eigen::Vector3f gravity_calibration_direction; // unit vector
 
@@ -201,6 +204,9 @@ struct OrientationFilterConstants
 
     /// The average time delta between position updates during calibration
     float mean_update_time_delta; // seconds
+
+	/// Best fit parameters for variance as a function of screen projection area
+	ExponentialCurve position_variance_curve;
 
 	/// Best fit parameters for variance as a function of screen projection area
 	ExponentialCurve orientation_variance_curve;
@@ -225,9 +231,11 @@ struct OrientationFilterConstants
 
 	inline void clear()
 	{
+		tracking_shape.shape_type = PSVRTrackingShape_INVALID;
 		gravity_calibration_direction = Eigen::Vector3f::Zero();
 		magnetometer_calibration_direction = Eigen::Vector3f::Zero();
 		mean_update_time_delta = 0.f;
+		position_variance_curve.clear();
 		orientation_variance_curve.clear();
 		accelerometer_variance = Eigen::Vector3f::Zero();
 		accelerometer_drift = Eigen::Vector3f::Zero();

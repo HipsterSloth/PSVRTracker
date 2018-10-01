@@ -36,6 +36,10 @@ public:
 	virtual void pollSystemEvents() = 0;
 	virtual void shutdown() = 0;
 
+	// Events
+	virtual void handle_bluetooth_request_started() {};
+	virtual void handle_bluetooth_request_finished() {};
+
 	// Queries
     virtual const void* get_device_class_platform_identifier(const DeviceClass deviceClass) const = 0;
 	virtual bool get_device_property(

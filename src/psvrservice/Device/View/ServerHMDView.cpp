@@ -25,14 +25,16 @@ static const float k_min_time_delta_seconds = 1 / 2500.f;
 static const float k_max_time_delta_seconds = 1 / 30.f;
 
 //-- private methods -----
-static void init_filters_for_morpheus_hmd(
-    const MorpheusHMD *morpheusHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
-static void init_filters_for_virtual_hmd(
-    const VirtualHMD *virtualHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
 static IPoseFilter *pose_filter_factory(
     const CommonSensorState::eDeviceType deviceType,
     const std::string &position_filter_type, const std::string &orientation_filter_type,
     const PoseFilterConstants &constants);
+
+static void init_filters_for_morpheus_hmd(
+    const MorpheusHMD *morpheusHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
+static void init_filters_for_virtual_hmd(
+    const VirtualHMD *virtualHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
+
 static void post_imu_filter_packets_for_morpheus_hmd(
     const MorpheusHMD *morpheusHMD, const MorpheusHMDSensorState *morpheusHMDState,
     const t_high_resolution_timepoint now, 
@@ -50,6 +52,7 @@ static void post_optical_filter_packet_for_virtual_hmd(
     const t_high_resolution_timepoint now,
     const HMDOpticalPoseEstimation *poseEstimation,
 	t_hmd_pose_sensor_queue *pose_filter_queue);
+
 static void generate_morpheus_hmd_data_frame_for_stream(
     const ServerHMDView *hmd_view, const HMDStreamInfo *stream_info,
     DeviceOutputDataFrame &data_frame);
@@ -702,7 +705,7 @@ ServerHMDView::getUSBDevicePath() const
     return m_device->getUSBDevicePath();
 }
 
-// Returns the "controller_" + serial number for the controller
+// Returns the "hmd_" + serial number for the controller
 std::string
 ServerHMDView::getConfigIdentifier() const
 {

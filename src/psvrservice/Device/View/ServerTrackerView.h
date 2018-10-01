@@ -76,6 +76,10 @@ public:
 	int getVideoProperty(const PSVRVideoPropertyType property_type) const;
 	void setVideoProperty(const PSVRVideoPropertyType property_type, int desired_value, bool save_setting);
 
+    bool computeProjectionForController(
+		const class ServerControllerView* tracked_controller,
+		const PSVRTrackingShape *tracking_shape,
+		PSVRTrackingProjection *out_projection);
     bool computeProjectionForHMD(
 		const class ServerHMDView* tracked_hmd,
 		const PSVRTrackingShape *tracking_shape,
@@ -109,9 +113,13 @@ public:
     void getFOV(float &outHFOV, float &outVFOV) const;
     void getZRange(float &outZNear, float &outZFar) const;
 
+	void gatherTrackingColorPresets(const class ServerControllerView *hmd, PSVRClientTrackerSettings* settings) const;
+	void setControllerTrackingColorPreset(const class ServerControllerView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
+	void getControllerTrackingColorPreset(const class ServerControllerView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
+
 	void gatherTrackingColorPresets(const class ServerHMDView *hmd, PSVRClientTrackerSettings* settings) const;
-	void setHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
-	void getHMDTrackingColorPreset(const class ServerHMDView *controller, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
+	void setHMDTrackingColorPreset(const class ServerHMDView *hmd, PSVRTrackingColorType color, const PSVR_HSVColorRange *preset);
+	void getHMDTrackingColorPreset(const class ServerHMDView *hmd, PSVRTrackingColorType color, PSVR_HSVColorRange *out_preset) const;
 
 	//-- ITrackerListener
 	virtual void notifyVideoFrameReceived(const unsigned char *raw_video_frame_buffer) override;
@@ -126,6 +134,11 @@ protected:
         const ServerTrackerView *tracker_view, const struct TrackerStreamInfo *stream_info,
         DeviceOutputDataFrame &data_frame);
 
+    bool computeProjectionForControllerInSection(
+        const ServerControllerView* tracked_controller,
+        const PSVRTrackingShape *tracking_shape,
+        const PSVRVideoFrameSection section,
+        PSVRTrackingProjection *out_projection);
     bool computeProjectionForHmdInSection(
         const ServerHMDView* tracked_controller,
         const PSVRTrackingShape *tracking_shape,
