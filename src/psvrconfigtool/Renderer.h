@@ -148,6 +148,8 @@ void drawOpenCVChessBoardInSubWindow(
     const float *points2d, const int point_count, 
     bool validPoints);
 void drawPoseArrayStrip(const PSVRPosef *poses, const int poseCount, const glm::vec3 &color);
+void drawPSMoveModel(const glm::mat4 &transform, const glm::vec3 &color);
+void drawPSDualShock4Model(const glm::mat4 &transform, const glm::vec3 &color);
 void drawPS3EyeModel(const glm::mat4 &transform);
 void drawGenericStereoCameraModel(const glm::mat4 &transform);
 void drawTrackerList(const PSVRClientTrackerInfo *trackerList, const int trackerCount);

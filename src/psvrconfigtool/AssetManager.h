@@ -56,6 +56,14 @@ public:
     const TextureAsset *getPS3EyeTextureAsset()
     { return &m_ps3eyeTexture; }
 
+    const TextureAsset *getPSMoveTextureAsset()
+    { return &m_psmoveTexture; }
+
+    const TextureAsset *getPSDualShock4TextureAsset()
+    { return &m_psdualshock4Texture; }
+
+
+
     const TextureAsset *getMorpheusTextureAsset()
     { return &m_morpheusTexture; }    
     
@@ -68,6 +76,8 @@ private:
 
     // Utility Textures
 	TextureAsset m_ps3eyeTexture;
+    TextureAsset m_psmoveTexture;
+    TextureAsset m_psdualshock4Texture;
     TextureAsset m_morpheusTexture;
 
     // Font Rendering

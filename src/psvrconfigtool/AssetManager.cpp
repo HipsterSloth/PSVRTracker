@@ -19,6 +19,8 @@
 
 //-- constants -----
 static const char *k_ps3eye_texture_filename= "./assets/textures/PS3EyeDiffuse.jpg";
+static const char *k_psmove_texture_filename= "./assets/textures/PSMoveDiffuse.jpg";
+static const char *k_psdualshock4_texture_filename = "./assets/textures/PSDS4Diffuse.jpg";
 static const char *k_morpheus_texture_filename = "./assets/textures/MorpheusDiffuse.jpg";
 
 static const char *k_default_font_filename= "./assets/fonts/OpenSans-Regular.ttf";
@@ -36,6 +38,8 @@ AssetManager *AssetManager::m_instance= NULL;
 //-- public methods -----
 AssetManager::AssetManager()
     : m_ps3eyeTexture()
+	, m_psmoveTexture()
+    , m_psdualshock4Texture()
     , m_morpheusTexture()
     , m_defaultFont()
 {
@@ -54,6 +58,18 @@ bool AssetManager::init()
 	{
 		success= loadTexture(k_ps3eye_texture_filename, &m_ps3eyeTexture);		
 	}
+
+    if (success)
+    {
+        success= loadTexture(k_psmove_texture_filename, &m_psmoveTexture);
+    }
+
+
+    if (success)
+    {
+        success = loadTexture(k_psdualshock4_texture_filename, &m_psdualshock4Texture);
+    }
+
 
     if (success)
     {
@@ -85,6 +101,8 @@ bool AssetManager::init()
 void AssetManager::destroy()
 {
 	m_ps3eyeTexture.dispose();
+    m_psmoveTexture.dispose();
+    m_psdualshock4Texture.dispose();
     m_morpheusTexture.dispose();
     m_defaultFont.dispose();
 

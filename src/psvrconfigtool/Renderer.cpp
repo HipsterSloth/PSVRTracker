@@ -16,7 +16,11 @@
 
 #include <imgui.h>
 
+#include "psmovebody_3dmodel.h"
+#include "psmovebulb_3dmodel.h"
 #include "ps3eye_3dmodel.h"
+#include "ds4body_3dmodel.h"
+#include "ds4lightbar_3dmodel.h"
 #include "morpheus_3dmodel.h"
 
 #include <algorithm>
@@ -1416,6 +1420,70 @@ void drawPS3EyeModel(const glm::mat4 &transform)
         glDrawArrays(GL_TRIANGLES, 0, ps3eyeNumVerts);
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glPopMatrix();
+
+    // rebind the default texture
+    glBindTexture(GL_TEXTURE_2D, 0); 
+}
+
+void drawPSMoveModel(const glm::mat4 &transform, const glm::vec3 &color)
+{
+    assert(Renderer::getIsRenderingStage());
+
+    int textureID= AssetManager::getInstance()->getPSMoveTextureAsset()->texture_id;
+
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glPushMatrix();
+        glMultMatrixf(glm::value_ptr(transform));
+
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        
+        glColor3f(1.f, 1.f, 1.f);
+        glVertexPointer(3, GL_FLOAT, 0, psmovebodyVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, psmovebodyTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, psmovebodyNumVerts);
+
+        glColor3fv(glm::value_ptr(color));
+        glVertexPointer(3, GL_FLOAT, 0, psmovebulbVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, psmovebulbTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, psmovebulbNumVerts);
+
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+    glPopMatrix();
+
+    // rebind the default texture
+    glBindTexture(GL_TEXTURE_2D, 0); 
+}
+
+void drawPSDualShock4Model(const glm::mat4 &transform, const glm::vec3 &color)
+{
+    assert(Renderer::getIsRenderingStage());
+
+    int textureID = AssetManager::getInstance()->getPSDualShock4TextureAsset()->texture_id;
+
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glColor3f(1.f, 1.f, 1.f);
+
+    glPushMatrix();
+        glMultMatrixf(glm::value_ptr(transform));
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        
+		glVertexPointer(3, GL_FLOAT, 0, ds4bodyVerts);
+        glTexCoordPointer(2, GL_FLOAT, 0, ds4bodyTexCoords);
+        glDrawArrays(GL_TRIANGLES, 0, ds4bodyNumVerts);
+
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+		glColor3fv(glm::value_ptr(color));
+		glVertexPointer(3, GL_FLOAT, 0, ds4lightbarVerts);
+		glDrawArrays(GL_TRIANGLES, 0, ds4lightbarNumVerts);
+
+        glDisableClientState(GL_VERTEX_ARRAY);
     glPopMatrix();
 
     // rebind the default texture
