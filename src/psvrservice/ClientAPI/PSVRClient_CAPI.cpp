@@ -199,13 +199,13 @@ PSVRResult PSVR_FreeControllerListener(PSVRControllerID controller_id)
 }
 
 /// Controller Requests
-PSVRResult PSVR_GetControllerList(PSVRControllerList *out_controller_list)
+PSVRResult PSVR_GetControllerList(const bool include_usb, PSVRControllerList *out_controller_list)
 {
     PSVRResult result= PSVRResult_Error;
 
     if (g_psvr_service != nullptr)
     {
-		result= g_psvr_service->getRequestHandler()->get_controller_list(out_controller_list);
+		result= g_psvr_service->getRequestHandler()->get_controller_list(include_usb, out_controller_list);
     }
     
     return result;
@@ -242,6 +242,102 @@ PSVRResult PSVR_SetControllerLEDTrackingColor(PSVRControllerID controller_id, PS
     if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
     {
 		result_code= g_psvr_service->getRequestHandler()->set_led_tracking_color(controller_id, tracking_color);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_ResetControllerOrientation(PSVRControllerID controller_id, const PSVRQuatf *q_pose)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->reset_orientation(controller_id, *q_pose);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerDataStreamTrackerIndex(PSVRControllerID controller_id, PSVRTrackerID tracker_id)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_data_stream_tracker_index(controller_id, tracker_id);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerHand(PSVRControllerID controller_id, PSVRControllerHand hand)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_hand(controller_id, hand);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerAccelerometerCalibration(PSVRControllerID controller_id, float noise_radius, float noise_variance)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_accelerometer_calibration(controller_id, noise_radius, noise_variance);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerGyroscopeCalibration(PSVRControllerID controller_id, float drift, float variance, const char *gain_setting)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_gyroscope_calibration(controller_id, drift, variance, gain_setting);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerPositionFilter(PSVRControllerID controller_id, const char *position_filter)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_position_filter(controller_id, position_filter);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerOrientationFilter(PSVRControllerID controller_id, const char *orientation_filter)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_orientation_filter(controller_id, orientation_filter);
+    }
+
+    return result_code;
+}
+
+PSVRResult PSVR_SetControllerPredictionTime(PSVRControllerID controller_id, float prediction_time)
+{
+    PSVRResult result_code= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result_code= g_psvr_service->getRequestHandler()->set_controller_prediction_time(controller_id, prediction_time);
     }
 
     return result_code;

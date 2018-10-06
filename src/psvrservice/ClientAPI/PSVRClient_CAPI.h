@@ -340,16 +340,34 @@ typedef struct
 // HMD State
 //----------
 
+/// Static properties about a Controller
+typedef struct
+{
+    PSVRControllerID controller_id;
+    PSVRControllerType controller_type;
+	PSVRControllerHand controller_hand;
+    PSVRTrackingColorType tracking_color_type;
+    bool is_bluetooth;
+	bool has_magnetometer;
+    float prediction_time;
+    char device_path[128];
+    char orientation_filter[64];
+    char position_filter[64];
+	char gyro_gain_setting[64];
+    char controller_serial[PSVRSERVICE_CONTROLLER_SERIAL_LEN];
+	char assigned_host_serial[PSVRSERVICE_CONTROLLER_SERIAL_LEN];
+} PSVRClientControllerInfo;
+
 /// Static properties about an HMD
 typedef struct
 {
-	PSVRHmdID hmd_id;
-	PSVRHmdType hmd_type;
-	PSVRTrackingColorType tracking_color_type;
-	char device_path[128];
-	char orientation_filter[64];
-	char position_filter[64];
-	float prediction_time;
+    PSVRHmdID hmd_id;
+    PSVRHmdType hmd_type;
+    PSVRTrackingColorType tracking_color_type;
+    char device_path[128];
+    char orientation_filter[64];
+    char position_filter[64];
+    float prediction_time;
 } PSVRClientHMDInfo;
 
 /// Morpheus Raw IMU sensor data
@@ -630,11 +648,8 @@ typedef struct
 /// List of controllers attached to PSMoveService
 typedef struct
 {
-    PSVRControllerID controller_id[PSVRSERVICE_MAX_CONTROLLER_COUNT];
-    PSVRControllerType controller_type[PSVRSERVICE_MAX_CONTROLLER_COUNT];
-	PSVRControllerHand controller_hand[PSVRSERVICE_MAX_CONTROLLER_COUNT];
-	char controller_serial[PSVRSERVICE_MAX_CONTROLLER_COUNT][PSVRSERVICE_CONTROLLER_SERIAL_LEN];
-	char parent_controller_serial[PSVRSERVICE_MAX_CONTROLLER_COUNT][PSVRSERVICE_CONTROLLER_SERIAL_LEN];
+	char host_serial[PSVRSERVICE_CONTROLLER_SERIAL_LEN];
+	PSVRClientControllerInfo controllers[PSVRSERVICE_MAX_CONTROLLER_COUNT];
     int count;
 } PSVRControllerList;
 
@@ -787,11 +802,11 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_FreeControllerListener(PSVRControllerID co
 // Controller Requests
 /** \brief Requests a list of the streamable controllers currently connected to PSVRService.
 	Sends a request to PSVRService to get the list of currently streamable controllers.
-	\remark Blocking - Returns after either the controller list is returned OR the timeout period is reached. 
+	\param include_usb If true, we also include usb connected controllers in this list
 	\param[out] out_controller_list The controller list to write the result into.
 	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerList(PSVRControllerList *out_controller_list);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerList(const bool include_usb, PSVRControllerList *out_controller_list);
 
 /** \brief Requests start of a data stream for a given controller
 	Asks PSVRService to start stream data for the given controller with the given set of stream properties.
@@ -840,13 +855,12 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerLEDTrackingColor(PSVRControll
 	\param q_pose The pose the controller is currently being held in relative to the identity pose (like straight up).
 	\return PSVRResult_Success upon receiving result, PSVRResult_Timeoout, or PSVRResult_Error on request error.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_ResetControllerOrientation(PSVRControllerID controller_id, PSVRQuatf *q_pose);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_ResetControllerOrientation(PSVRControllerID controller_id, const PSVRQuatf *q_pose);
 
 /** \brief Requests setting the selected tracker index for a controller
 	This request is used to set the selected tracker index on a controller data stream
     when the data stream has tracking projection data active. The projection data is
     only provided for the selected tracker.
-	\remark Blocking - Returns after either the result is returned OR the timeout period is reached. 
 	\param controller_id The ID of the controller whose data stream we want to modify
     \param tracker_id The ID of the tracker we want to assign as the active tracker
 	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
@@ -857,12 +871,51 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerDataStreamTrackerIndex(PSVRCo
 	This request is used to set the suggested hand for a controller.
 	Hand information is used by external APIs and not by PSVRService.
 	No restrictions are made about which hands are assigned to a given controller.
-	\remark Blocking - Returns after either the result is returned OR the timeout period is reached. 
 	\param controller_id The ID of the controller whose data stream we want to modify
     \param hand The hand to assign to a controller (Any, Left or Right)
 	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerHand(PSVRControllerID controller_id, PSVRControllerHand hand);
+
+/** \brief Requests setting the acceleration calibration settings for a controller
+	This request is used to set the accelerometer calibration settings for a controller.
+	\param controller_id The ID of the controller whose accelerometer settings we want to modify
+    \param noise_radius The radius of the measured accelerometer readings when stationary
+	\param noise_variance The variance of the measures accelerometer readings when stationary
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerAccelerometerCalibration(PSVRControllerID controller_id, float noise_radius, float noise_variance);
+
+/** \brief Requests setting the acceleration calibration settings for a controller
+	This request is used to set the accelerometer calibration settings for a controller.
+	\param controller_id The ID of the controller whose accelerometer settings we want to modify
+    \param drift The radius of the measured accelerometer readings when stationary
+	\param variance The variance of the measures accelerometer readings when stationary
+	\param gain_setting The Dualshock 4 gain setting preset: "125deg/s", "250deg/s", "500deg/s", "1000deg/s" or "2000deg/s"
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerGyroscopeCalibration(PSVRControllerID controller_id, float drift, float variance, const char *gain_setting);
+
+/** \brief Selects the position filter used by the given controller
+	\param controller_id The ID of the controller whose position filter we want to set
+    \param position_filter The string name of the position filter to set
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the filter type was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerPositionFilter(PSVRControllerID controller_id, const char *position_filter);
+
+/** \brief Selects the orientation filter used by the given controller
+	\param controller_id The ID of the controller whose position filter we want to set
+    \param orientation_filter The string name of the orientation filter to set
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the filter type was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerOrientationFilter(PSVRControllerID controller_id, const char *orientation_filter);
+
+/** \brief Sets the amount of prediction to use when computing final controller pose
+	\param controller_id The ID of the controller whose position filter we want to set
+    \param prediction_time The prediction time in seconds
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the hmd was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerPredictionTime(PSVRControllerID controller_id, float prediction_time);
 
 // Controller State Methods
 /** \brief Get the current orientation of a controller

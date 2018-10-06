@@ -4,6 +4,7 @@
 #include "DeviceManager.h"
 #include "ControllerManager.h"
 #include "DeviceEnumerator.h"
+#include "DualShock4Controller.h"
 #include "MathEigen.h"
 #include "HMDManager.h"
 #include "Logger.h"
@@ -11,6 +12,7 @@
 #include "OrientationFilter.h"
 #include "PositionFilter.h"
 #include "PS3EyeTracker.h"
+#include "PSMoveController.h"
 #include "ServerControllerView.h"
 #include "ServerDeviceView.h"
 #include "ServerTrackerView.h"
@@ -61,7 +63,6 @@ void ServiceRequestHandler::shutdown()
 	for (int contorller_id = 0; contorller_id < ControllerManager::k_max_devices; ++contorller_id)
 	{
 		const ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[contorller_id];
-		ServerControllerViewPtr hmd_view = m_deviceManager->getControllerViewPtr(contorller_id);
 
 		// Undo the ROI suppression
 		if (streamInfo.disable_roi)
@@ -95,7 +96,6 @@ void ServiceRequestHandler::shutdown()
 	for (int hmd_id = 0; hmd_id < HMDManager::k_max_devices; ++hmd_id)
 	{
 		const HMDStreamInfo &streamInfo = m_peristentRequestState->active_hmd_stream_info[hmd_id];
-		ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
 
 		// Undo the ROI suppression
 		if (streamInfo.disable_roi)
@@ -183,39 +183,562 @@ void ServiceRequestHandler::publish_notification(const PSVREventMessage &message
 }
 	
 // -- controller requests -----
-PSVRResult ServiceRequestHandler::get_controller_list(PSVRControllerList *out_controller_list)
+PSVRResult ServiceRequestHandler::get_controller_list(
+	const bool include_usb,
+	PSVRControllerList *out_controller_list)
 {
-	return PSVRResult_Success;
+    memset(out_controller_list, 0, sizeof(PSVRControllerList));
+    for (int controller_id = 0; controller_id < m_deviceManager->getControllerViewMaxCount(); ++controller_id)
+    {
+        ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+        if (out_controller_list->count < PSVRSERVICE_MAX_CONTROLLER_COUNT && 
+			controller_view->getIsOpen() &&
+			(controller_view->getIsBluetooth() || include_usb))
+        {
+            PSVRClientControllerInfo *controller_info = &out_controller_list-> controllers[out_controller_list->count++];
+			std::string controller_hand = "";
+			std::string gyro_gain_setting = "";
+
+            switch (controller_view->getControllerDeviceType())
+            {
+            case CommonSensorState::PSMove:
+                {
+                    const PSMoveController *psmove= controller_view->castCheckedConst<PSMoveController>();
+                    const PSMoveControllerConfig *config= psmove->getConfig();
+
+                    controller_info->controller_type= PSVRController_Move;
+                    controller_info->prediction_time= config->prediction_time;
+					controller_info->has_magnetometer= psmove->getSupportsMagnetometer();
+					strncpy(controller_info->orientation_filter, config->orientation_filter_type.c_str(), sizeof(controller_info->orientation_filter));
+					strncpy(controller_info->position_filter, config->position_filter_type.c_str(), sizeof(controller_info->position_filter));
+					controller_hand= config->hand;
+                }
+                break;
+            case CommonSensorState::DualShock4:
+                {
+                    const DualShock4Controller *ds4= controller_view->castCheckedConst<DualShock4Controller>();
+                    const DualShock4ControllerConfig *config= ds4->getConfig();
+
+                    controller_info->controller_type= PSVRController_DualShock4;
+                    controller_info->prediction_time= config->prediction_time;
+					controller_info->has_magnetometer= false;
+                    strncpy(controller_info->orientation_filter, config->orientation_filter_type.c_str(), sizeof(controller_info->orientation_filter));
+                    strncpy(controller_info->position_filter, config->position_filter_type.c_str(), sizeof(controller_info->position_filter));
+					controller_hand= config->hand;
+
+                    float radian_gain_divisor = safe_divide_with_default(1.f, config->gyro_gain, 1.f);
+                    float degree_gain_divisor = radian_gain_divisor * k_degrees_to_radians;
+
+                    // Gyro gain mode can vary from controller to controller
+                    // Sensitivity values from Pg.15 of:
+                    // https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMI055-DS000-08.pdf
+                    if (is_nearly_equal(degree_gain_divisor, 262.4f, 1.f))
+                    {
+                        gyro_gain_setting = "125deg/s";
+                    }
+                    else if (is_nearly_equal(degree_gain_divisor, 131.2f, 1.f))
+                    {
+                        gyro_gain_setting = "250deg/s";
+                    }
+                    else if (is_nearly_equal(degree_gain_divisor, 65.6f, 1.f))
+                    {
+                        gyro_gain_setting = "500deg/s";
+                    }
+                    else if (is_nearly_equal(degree_gain_divisor, 32.8f, 1.f))
+                    {
+                        gyro_gain_setting = "1000deg/s";
+                    }
+                    else if (is_nearly_equal(degree_gain_divisor, 16.4f, 1.f))
+                    {
+                        gyro_gain_setting = "2000deg/s";
+                    }
+                    else
+                    {
+                        gyro_gain_setting = "custom";
+                    }
+                }
+                break;
+            default:
+                assert(0 && "Unhandled tracker type");
+            }
+
+            controller_info->controller_id= controller_id;
+			controller_info->is_bluetooth= controller_view->getIsBluetooth();
+            controller_info->tracking_color_type= controller_view->getTrackingColorID();
+            strncpy(controller_info->device_path, controller_view->getUSBDevicePath().c_str(), sizeof(controller_info->device_path));
+			strncpy(controller_info->controller_serial, controller_view->getSerial().c_str(), sizeof(controller_info->controller_serial));
+			strncpy(controller_info->assigned_host_serial, controller_view->getAssignedHostBluetoothAddress().c_str(), sizeof(controller_info->assigned_host_serial));
+			strncpy(controller_info->gyro_gain_setting, gyro_gain_setting.c_str(), sizeof(controller_info->gyro_gain_setting));
+
+			if (controller_hand == "Left")
+				controller_info->controller_hand= PSMControllerHand_Left;
+			else if (controller_hand == "Right")
+				controller_info->controller_hand= PSMControllerHand_Right;
+			else
+				controller_info->controller_hand= PSMControllerHand_Any;
+        }
+    }
+
+	strncpy(out_controller_list->host_serial, 
+		m_deviceManager->getControllerManager()->getBluetoothHostAddress().c_str(), 
+		sizeof(out_controller_list->host_serial));
+
+    return PSVRResult_Success;
 }
 
-PSVRResult ServiceRequestHandler::start_controller_data_stream(PSVRControllerID controller_id, unsigned int flags)
+PSVRResult ServiceRequestHandler::start_controller_data_stream(PSVRControllerID controller_id, unsigned int data_stream_flags)
 {
-	return PSVRResult_Success;
+	PSVRResult result= PSVRResult_Error;
+
+    ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+    if (controller_view && controller_view->getIsOpen())
+    {
+        ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[controller_id];
+
+        // The controller manager will always publish updates regardless of who is listening.
+        // All we have to do is keep track of which connections care about the updates.
+        m_peristentRequestState->active_controller_streams.set(controller_id, true);
+
+        // Set control flags for the stream
+        streamInfo.Clear();
+        streamInfo.include_position_data = (data_stream_flags & PSVRStreamFlags_includePositionData) > 0;
+        streamInfo.include_physics_data = (data_stream_flags & PSVRStreamFlags_includePhysicsData) > 0;
+        streamInfo.include_raw_sensor_data = (data_stream_flags & PSVRStreamFlags_includeRawSensorData) > 0;
+        streamInfo.include_calibrated_sensor_data = (data_stream_flags & PSVRStreamFlags_includeCalibratedSensorData) > 0;
+        streamInfo.include_raw_tracker_data = (data_stream_flags & PSVRStreamFlags_includeRawTrackerData) > 0;
+        streamInfo.disable_roi = (data_stream_flags & PSVRStreamFlags_disableROI) > 0;
+
+        PSVR_LOG_INFO("ServerRequestHandler") << "Start controller(" << controller_id << ") stream ("
+            << "pos=" << streamInfo.include_position_data
+            << ",phys=" << streamInfo.include_physics_data
+            << ",raw_sens=" << streamInfo.include_raw_sensor_data
+            << ",cal_sens=" << streamInfo.include_calibrated_sensor_data
+            << ",trkr=" << streamInfo.include_raw_tracker_data
+            << ",roi=" << streamInfo.disable_roi
+            << ")";
+
+        if (streamInfo.disable_roi)
+        {
+            controller_view->pushDisableROI();
+        }
+
+        if (streamInfo.include_position_data)
+        {
+            controller_view->startTracking();
+        }
+
+        // Return the name of the shared memory block the video frames will be written to
+		result= PSVRResult_Success;
+	}
+
+	return result;
 }
 
 PSVRResult ServiceRequestHandler::stop_controller_data_stream(PSVRControllerID controller_id)
 {
-	return PSVRResult_Success;
+	PSVRResult result= PSVRResult_Error;
+
+    ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+    if (controller_view && controller_view->getIsOpen())
+    {
+        const ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[controller_id];
+
+        if (streamInfo.disable_roi)
+        {
+            controller_view->popDisableROI();
+        }
+
+        if (streamInfo.include_position_data)
+        {
+            controller_view->stopTracking();
+        }
+
+        m_peristentRequestState->active_controller_streams.set(controller_id, false);
+        m_peristentRequestState->active_controller_stream_info[controller_id].Clear();
+
+        result= PSVRResult_Success;
+    }
+
+	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_led_tracking_color(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color)
+PSVRResult ServiceRequestHandler::set_led_tracking_color(PSVRControllerID controller_id, PSVRTrackingColorType new_color_id)
 {
-	return PSVRResult_Success;
+	PSVRResult result= PSVRResult_Error;
+
+    ServerControllerViewPtr ControllerView = m_deviceManager->getControllerViewPtr(controller_id);
+
+    if (ControllerView)
+    {
+        const PSVRTrackingColorType oldColorID = ControllerView->getTrackingColorID();
+
+        if (new_color_id != oldColorID)
+        {
+            // Give up control of our existing tracking color
+            if (oldColorID != PSVRTrackingColorType_INVALID)
+            {
+                m_deviceManager->m_tracker_manager->freeTrackingColorID(oldColorID);
+            }
+
+            // Take the color from any other controller that might have it
+            if (m_deviceManager->m_tracker_manager->claimTrackingColorID(ControllerView.get(), new_color_id))
+            {
+                // Assign the new color to ourselves
+                ControllerView->setTrackingColorID(new_color_id);
+                result= PSVRResult_Success;
+            }
+            else
+            {
+                if (oldColorID != PSVRTrackingColorType_INVALID)
+                {
+                    m_deviceManager->m_tracker_manager->claimTrackingColorID(ControllerView.get(), oldColorID);
+                }
+            }
+        }
+    }
+		
+	return result;
 }
 
 PSVRResult ServiceRequestHandler::reset_orientation(PSVRControllerID controller_id, const PSVRQuatf& q_pose)
 {
-	return PSVRResult_Success;
+	ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+	PSVRResult result= PSVRResult_Error;
+
+	if (controller_view && controller_view->getIsOpen())
+	{
+		result= controller_view->recenterOrientation(q_pose) ? PSVRResult_Success : PSVRResult_Error;
+	}
+
+	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_controller_data_stream_tracker_index(PSVRControllerID controller_id, PSVRTrackerID tracker_id)
+PSVRResult ServiceRequestHandler::set_controller_data_stream_tracker_index(
+	PSVRControllerID controller_id, 
+	PSVRTrackerID tracker_id)
 {
-	return PSVRResult_Success;
+	PSVRResult result= PSVRResult_Error;
+
+    if (Utility::is_index_valid(controller_id, m_deviceManager->getControllerViewMaxCount()) &&
+        Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+    {
+        ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+        ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[controller_id];
+
+        PSVR_LOG_INFO("ServerRequestHandler") << "Set controller(" << controller_id << ") stream tracker id: " << tracker_id;
+
+        streamInfo.selected_tracker_index= tracker_id;
+
+        result= PSVRResult_Success;
+    }
+		
+	return result;
 }
 
 PSVRResult ServiceRequestHandler::set_controller_hand(PSVRControllerID controller_id, PSVRControllerHand controller_hand)
 {
-	return PSVRResult_Success;
+	PSVRResult result= PSVRResult_Error;
+	ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+	if (controller_view)
+	{
+        std::string hand;
+
+		switch (controller_hand)
+		{
+		case PSMControllerHand_Left:
+			hand= "Left";
+			break;
+		case PSMControllerHand_Right:
+			hand= "Right";
+			break;
+		case PSMControllerHand_Any:
+		default:
+			hand= "Any";
+			break;
+		}
+
+		switch (controller_view->getControllerDeviceType())
+		{
+		case CommonSensorState::PSMove:
+			{
+				PSMoveController *psmove= controller_view->castChecked<PSMoveController>();
+				PSMoveControllerConfig config= *psmove->getConfig();
+
+				config.hand= hand;
+
+				psmove->setConfig(&config);
+				result= PSVRResult_Success;
+			} break;
+		case CommonSensorState::DualShock4:
+			{
+				DualShock4Controller *ds4= controller_view->castChecked<DualShock4Controller>();
+				DualShock4ControllerConfig config= *ds4->getConfig();
+
+				config.hand= hand;
+
+				ds4->setConfig(&config);
+				result= PSVRResult_Success;
+			} break;
+		}
+	}
+
+	return result;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_accelerometer_calibration(
+	PSVRControllerID controller_id, 
+	float noise_radius, 
+	float noise_variance)
+{
+	PSVRResult result= PSVRResult_Error;
+	ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+	if (controller_view)
+	{
+		switch (controller_view->getControllerDeviceType())
+		{
+		case CommonSensorState::PSMove:
+			{
+				PSMoveController *psmove= controller_view->castChecked<PSMoveController>();
+				PSMoveControllerConfig config= *psmove->getConfig();
+
+				config.accelerometer_noise_radius= noise_radius;
+				config.accelerometer_variance= noise_variance;
+
+				psmove->setConfig(&config);
+				result= PSVRResult_Success;
+			} break;
+		case CommonSensorState::DualShock4:
+			{
+				DualShock4Controller *ds4= controller_view->castChecked<DualShock4Controller>();
+				DualShock4ControllerConfig config= *ds4->getConfig();
+
+				config.accelerometer_noise_radius= noise_radius;
+				config.accelerometer_variance= noise_variance;
+
+				ds4->setConfig(&config);
+				result= PSVRResult_Success;
+			} break;
+		}
+	}
+
+	return result;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_gyroscope_calibration(
+	PSVRControllerID controller_id,
+	float drift,
+	float variance,
+	const char *gain_setting)
+{
+	PSVRResult result= PSVRResult_Error;
+	ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+	if (controller_view)
+	{
+		switch (controller_view->getControllerDeviceType())
+		{
+		case CommonSensorState::PSMove:
+			{
+				PSMoveController *psmove= controller_view->castChecked<PSMoveController>();
+				PSMoveControllerConfig config= *psmove->getConfig();
+
+                config.gyro_drift= drift;
+                config.gyro_variance= variance;
+
+				psmove->setConfig(&config);
+				controller_view->resetPoseFilter();
+
+				result= PSVRResult_Success;
+			} break;
+		case CommonSensorState::DualShock4:
+			{
+				DualShock4Controller *ds4= controller_view->castChecked<DualShock4Controller>();
+				DualShock4ControllerConfig config= *ds4->getConfig();
+
+				bool bChanged = false;
+
+				if (drift > 0.f)
+				{
+	                config.gyro_drift= drift;
+					bChanged= true;
+				}
+
+				if (variance > 0.f)
+				{
+					config.gyro_variance= variance;
+					bChanged= true;
+				}
+
+                const std::string gain_setting_string = gain_setting;
+                if (gain_setting_string.length() > 0)
+                {
+                    // Sensitivity values from Pg.15 of:
+                    // https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMI055-DS000-08.pdf
+                    if (gain_setting_string == "125deg/s")
+                    {
+                        config.gyro_gain = 1.f / (262.4f / k_degrees_to_radians);
+						bChanged= true;
+                    }
+                    else if (gain_setting_string == "250deg/s")
+                    {
+                        config.gyro_gain = 1.f / (131.2f / k_degrees_to_radians);
+						bChanged= true;
+                    }
+                    else if (gain_setting_string == "500deg/s")
+                    {
+                        config.gyro_gain = 1.f / (65.6f / k_degrees_to_radians);
+						bChanged= true;
+                    }
+                    else if (gain_setting_string == "1000deg/s")
+                    {
+                        config.gyro_gain = 1.f / (32.8f / k_degrees_to_radians);
+						bChanged= true;
+                    }
+                    else if (gain_setting_string == "2000deg/s")
+                    {
+                        config.gyro_gain = 1.f / (16.4f / k_degrees_to_radians);
+						bChanged= true;
+                    }
+                }
+
+				if (bChanged)
+				{
+					ds4->setConfig(&config);
+					controller_view->resetPoseFilter();
+				}
+
+				result= PSVRResult_Success;
+			} break;
+		}
+	}
+
+	return result;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_orientation_filter(PSVRControllerID controller_id, const std::string orientation_filter)
+{
+	PSVRResult result= PSVRResult_Error;
+
+    ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+    if (controller_view && controller_view->getIsOpen())
+    {
+        if (controller_view->getControllerDeviceType() == CommonSensorState::PSMove)
+        {
+            PSMoveController *psmove = controller_view->castChecked<PSMoveController>();
+            PSMoveControllerConfig config = *psmove->getConfig();
+
+            if (config.orientation_filter_type != orientation_filter)
+            {
+                config.orientation_filter_type = orientation_filter;
+                psmove->setConfig(&config);				
+				controller_view->resetPoseFilter();
+            }
+
+            result= PSVRResult_Success;
+        }
+        else if (controller_view->getControllerDeviceType() == CommonSensorState::DualShock4)
+        {
+            DualShock4Controller *ds4 = controller_view->castChecked<DualShock4Controller>();
+            DualShock4ControllerConfig config = *ds4->getConfig();
+
+            if (config.orientation_filter_type != orientation_filter)
+            {
+                config.orientation_filter_type = orientation_filter;
+                ds4->setConfig(&config);
+				controller_view->resetPoseFilter();
+            }
+
+            result= PSVRResult_Success;
+        }
+    }
+		
+	return result;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_position_filter(PSVRControllerID controller_id, const std::string position_filter)
+{
+	PSVRResult result= PSVRResult_Error;
+
+    ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+    if (controller_view && controller_view->getIsOpen())
+    {
+        if (controller_view->getControllerDeviceType() == CommonSensorState::PSMove)
+        {
+            PSMoveController *psmove = controller_view->castChecked<PSMoveController>();
+            PSMoveControllerConfig config = *psmove->getConfig();
+
+            if (config.position_filter_type != position_filter)
+            {
+                config.position_filter_type = position_filter;
+                psmove->setConfig(&config);				
+				controller_view->resetPoseFilter();
+            }
+
+            result= PSVRResult_Success;
+        }
+        else if (controller_view->getControllerDeviceType() == CommonSensorState::DualShock4)
+        {
+            DualShock4Controller *ds4 = controller_view->castChecked<DualShock4Controller>();
+            DualShock4ControllerConfig config = *ds4->getConfig();
+
+            if (config.position_filter_type != position_filter)
+            {
+                config.position_filter_type = position_filter;
+                ds4->setConfig(&config);
+				controller_view->resetPoseFilter();
+            }
+
+            result= PSVRResult_Success;
+        }
+    }
+		
+	return result;
+}
+
+PSVRResult ServiceRequestHandler::set_controller_prediction_time(PSVRControllerID controller_id, const float prediction_time)
+{
+	PSVRResult result= PSVRResult_Error;
+
+    ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+
+    if (controller_view && controller_view->getIsOpen())
+    {
+        if (controller_view->getControllerDeviceType() == CommonSensorState::PSMove)
+        {
+            PSMoveController *psmove = controller_view->castChecked<PSMoveController>();
+            PSMoveControllerConfig config = *psmove->getConfig();
+
+            if (config.prediction_time != prediction_time)
+            {
+                config.prediction_time = prediction_time;
+                psmove->setConfig(&config);
+            }
+
+            result= PSVRResult_Success;
+        }
+        else if (controller_view->getControllerDeviceType() == CommonSensorState::DualShock4)
+        {
+            DualShock4Controller *ds4 = controller_view->castChecked<DualShock4Controller>();
+            DualShock4ControllerConfig config = *ds4->getConfig();
+
+            if (config.prediction_time != prediction_time)
+            {
+                config.prediction_time = prediction_time;
+                ds4->setConfig(&config);
+            }
+
+            result= PSVRResult_Success;
+        }
+    }
+		
+	return result;
 }
 
 // -- tracker requests -----

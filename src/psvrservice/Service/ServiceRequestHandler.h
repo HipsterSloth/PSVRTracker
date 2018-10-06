@@ -155,13 +155,19 @@ public:
     void publish_notification(const PSVREventMessage &message);
 
 	// -- controller requests -----
-    PSVRResult get_controller_list(PSVRControllerList *out_controller_list);
+    PSVRResult get_controller_list(bool inlcude_usb, PSVRControllerList *out_controller_list);
     PSVRResult start_controller_data_stream(PSVRControllerID controller_id, unsigned int flags);
     PSVRResult stop_controller_data_stream(PSVRControllerID controller_id);
     PSVRResult set_led_tracking_color(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color);
     PSVRResult reset_orientation(PSVRControllerID controller_id, const PSVRQuatf& q_pose);
     PSVRResult set_controller_data_stream_tracker_index(PSVRControllerID controller_id, PSVRTrackerID tracker_id);
 	PSVRResult set_controller_hand(PSVRControllerID controller_id, PSVRControllerHand controller_hand);
+	PSVRResult set_controller_accelerometer_calibration(PSVRControllerID controller_id, float noise_radius, float noise_variance);
+	PSVRResult set_controller_gyroscope_calibration(PSVRControllerID controller_id, float drift, float variance, const char *gain_setting);
+    PSVRResult set_controller_orientation_filter(PSVRControllerID controller_id, const std::string orientation_filter);
+    PSVRResult set_controller_position_filter(PSVRControllerID controller_id, const std::string position_filter);
+    PSVRResult set_controller_prediction_time(PSVRControllerID controller_id, const float prediction_time);
+
 
     // -- tracker requests -----
     PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list);

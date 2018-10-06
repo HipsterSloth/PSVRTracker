@@ -44,10 +44,8 @@ public:
 
     ServerControllerViewPtr getControllerViewPtr(int device_id);
 
-    inline const ControllerManagerConfig& getConfig() const
-    {
-        return cfg;
-    }
+    inline const ControllerManagerConfig& getConfig() const { return cfg; }
+	inline const std::string& getBluetoothHostAddress() const { return m_bluetooth_host_address; }
 
 	// Broadcasts new video frame from a single tracker on tracker thread
 	void notifyVideoFrameReceived(class ServerTrackerView* tracker_view);
