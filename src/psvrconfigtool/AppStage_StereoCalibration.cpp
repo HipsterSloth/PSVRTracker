@@ -1102,7 +1102,7 @@ void AppStage_StereoCalibration::enter()
 {
     const AppStage_TrackerSettings *trackerSettings =
         m_app->getAppStage<AppStage_TrackerSettings>();
-    const PSVRClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTrackerInfo();
+    const PSVRClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTracker();
     assert(trackerInfo->tracker_id != -1);
 
     m_app->setCameraType(_cameraFixed);
@@ -1677,7 +1677,7 @@ void AppStage_StereoCalibration::request_exit()
     {
         const AppStage_TrackerSettings *trackerSettings =
             m_app->getAppStage<AppStage_TrackerSettings>();
-        const PSVRClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTrackerInfo();
+        const PSVRClientTrackerInfo *trackerInfo = trackerSettings->getSelectedTracker();
 
         request_tracker_stop_stream();
     }

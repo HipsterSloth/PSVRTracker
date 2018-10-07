@@ -2,6 +2,7 @@
 #include "AppStage_TrackerSettings.h"
 #include "AppStage_TrackerTest.h"
 #include "AppStage_ColorCalibration.h"
+//#include "AppStage_ComputeTrackerPoses.h"
 #include "AppStage_MonoCalibration.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_HMDTrackingTest.h"
@@ -25,7 +26,15 @@ AppStage_TrackerSettings::AppStage_TrackerSettings(App *app)
     : AppStage(app)
     , m_menuState(AppStage_TrackerSettings::inactive)
     , m_selectedTrackerIndex(-1)
+    , m_selectedControllerIndex(-1)
     , m_selectedHmdIndex(-1)
+    , m_gotoControllerColorCalib(false)
+    , m_gotoHMDColorCalib(false)
+    , m_gotoTestControllerTracking(false)
+    , m_gotoTrackingControllerVideo(false)
+    , m_gotoTestHmdTracking(false)
+    , m_gotoTrackingHmdVideo(false)
+    , m_gotoTrackingVideoALL(false)
 { }
 
 void AppStage_TrackerSettings::enter()
@@ -80,6 +89,8 @@ void AppStage_TrackerSettings::render()
     case eTrackerMenuState::pendingSearchForNewTrackersRequest:
     case eTrackerMenuState::pendingTrackerListRequest:
     case eTrackerMenuState::failedTrackerListRequest:
+    case eTrackerMenuState::pendingControllerListRequest:
+    case eTrackerMenuState::failedControllerListRequest:
     case eTrackerMenuState::pendingHmdListRequest:
     case eTrackerMenuState::failedHmdListRequest:
     {
@@ -90,15 +101,15 @@ void AppStage_TrackerSettings::render()
     }
 }
 
-const PSVRClientTrackerInfo *AppStage_TrackerSettings::getSelectedTrackerInfo() const
+void AppStage_TrackerSettings::setSelectedControllerIndex(int index)
 {
-    return
-        (m_selectedTrackerIndex != -1)
-        ? &m_trackerInfos.trackers[m_selectedTrackerIndex]
-        : nullptr;
+    m_selectedControllerIndex =
+        (index > -2 && index < m_controllerInfos.count)
+        ? index
+        : m_selectedControllerIndex;
 }
-    
-void AppStage_TrackerSettings::set_selectedTrackerIndex(int index)
+
+void AppStage_TrackerSettings::setSelectedTrackerIndex(int index)
 {
     m_selectedTrackerIndex = 
         (index != -1 && index < m_trackerInfos.count)
@@ -106,26 +117,81 @@ void AppStage_TrackerSettings::set_selectedTrackerIndex(int index)
         : m_selectedTrackerIndex;
 }
     
-int AppStage_TrackerSettings::get_tracker_count() const
+void AppStage_TrackerSettings::setSelectedHmdIndex(int index)
 {
-    return static_cast<int>(m_trackerInfos.count); 
+    m_selectedHmdIndex = 
+        (index != -1 && index < m_hmdInfos.count)
+        ? index
+        : m_selectedHmdIndex;
 }
 
-int AppStage_TrackerSettings::get_tracker_Index() const
+const PSVRClientControllerInfo *AppStage_TrackerSettings::getSelectedController() const 
+{
+    return
+        (m_selectedControllerIndex != -1)
+        ? &m_controllerInfos.controllers[m_selectedControllerIndex]
+        : nullptr;
+}
+
+const PSVRClientTrackerInfo *AppStage_TrackerSettings::getSelectedTracker() const
+{
+    return
+        (m_selectedTrackerIndex != -1)
+        ? &m_trackerInfos.trackers[m_selectedTrackerIndex]
+        : nullptr;
+}
+
+const PSVRClientHMDInfo *AppStage_TrackerSettings::getSelectedHmd() const
+{
+    return
+        (m_selectedHmdIndex != -1)
+        ? &m_hmdInfos.hmds[m_selectedHmdIndex]
+        : nullptr;
+}
+
+int AppStage_TrackerSettings::getControllerCount() const
+{
+    return m_controllerInfos.count;
+}
+
+int AppStage_TrackerSettings::getTrackerCount() const
+{
+    return m_trackerInfos.count; 
+}
+
+int AppStage_TrackerSettings::getHmdCount() const
+{
+	return m_hmdInfos.count; 
+}
+
+int AppStage_TrackerSettings::getSelectedControllerIndex() const
+{
+	return m_selectedControllerIndex;
+}
+
+int AppStage_TrackerSettings::getSelectedTrackerIndex() const
 {
     return m_selectedTrackerIndex;
 }
 
-const PSVRClientHMDInfo *AppStage_TrackerSettings::get_selected_hmd()
+int AppStage_TrackerSettings::getSelectedHmdIndex() const
 {
-    const PSVRClientHMDInfo *hmd = NULL;
+	return m_selectedHmdIndex;
+}
 
-    if (m_selectedHmdIndex != -1)
-    {
-        hmd = &m_hmdInfos.hmds[m_selectedHmdIndex];
-    }
+const PSVRClientControllerInfo * AppStage_TrackerSettings::getControllerInfo(int index) const
+{
+    return &m_controllerInfos.controllers[index];
+}
 
-    return hmd;
+const PSVRClientTrackerInfo *AppStage_TrackerSettings::getTrackerInfo(int index) const
+{
+	return &m_trackerInfos.trackers[index];
+}
+
+const PSVRClientHMDInfo *AppStage_TrackerSettings::getHmdInfo(int index) const
+{
+	return &m_hmdInfos.hmds[index];
 }
 
 void AppStage_TrackerSettings::renderUI()
@@ -265,9 +331,103 @@ void AppStage_TrackerSettings::renderUI()
 
         if (m_trackerInfos.count > 0)
         {
+            if (m_controllerInfos.count > 0)
+            {
+                if (m_selectedControllerIndex >= 0)
+                {
+                    if (ImGui::Button("<##Controller"))
+                    {
+                        --m_selectedControllerIndex;
+                    }
+                    ImGui::SameLine();
+                }
+                
+                if (m_selectedControllerIndex != -1)
+                {
+                    const PSVRClientControllerInfo *controllerInfo = getSelectedController();
+
+                    const char *szControllerLabel= "";
+					switch (controllerInfo->controller_type)
+					{
+					case PSVRController_Move:
+						szControllerLabel= "PSMove";
+						break;
+					case PSVRController_DualShock4:
+						szControllerLabel= "Dualshock 4";
+						break;
+					}
+
+                    if (controllerInfo->tracking_color_type > PSVRTrackingColorType_INVALID && 
+						controllerInfo->tracking_color_type < PSVRTrackingColorType_MaxColorTypes) 
+                    {
+                        const char *colors[] = { "Magenta","Cyan","Yellow","Red","Green","Blue" };
+
+                        ImGui::Text("Controller: %d (%s) - %s", 
+                            m_selectedControllerIndex,
+                            szControllerLabel,
+                            colors[controllerInfo->tracking_color_type]);
+                    }
+                    else 
+                    {
+                        ImGui::Text("Controller: %d (%s)", m_selectedControllerIndex, szControllerLabel);
+                    }
+                }
+                else
+                {
+                    ImGui::Text("Controller: <ALL>");
+                }
+
+                if (m_selectedControllerIndex + 1 < m_controllerInfos.count)
+                {
+                    ImGui::SameLine();
+                    if (ImGui::Button(">##Controller"))
+                    {
+                        ++m_selectedControllerIndex;
+                    }
+                }
+
+                {
+                    int controllerID = (m_selectedControllerIndex != -1) ? getSelectedController()->controller_id : -1;
+
+                    if (ImGui::Button("Calibrate Controller Tracking Colors") || m_gotoControllerColorCalib)
+                    {
+                        const PSVRClientControllerInfo *controller = getSelectedController();
+                        if (controller != NULL) {
+                            m_app->getAppStage<AppStage_ColorCalibration>()->set_override_controller_id(controller->controller_id);
+                            m_app->getAppStage<AppStage_ColorCalibration>()->set_override_hmd_id(-1);
+                            m_app->getAppStage<AppStage_ColorCalibration>()->set_override_tracking_color(controller->tracking_color_type);
+                        }
+                        m_app->setAppStage(AppStage_ColorCalibration::APP_STAGE_NAME);
+                    }
+
+                    //if (ImGui::Button("Compute Tracker Poses Using Controller"))
+                    //{
+                    //    AppStage_ComputeTrackerPoses::enterStageAndCalibrateTrackersWithController(m_app, controllerID);
+                    //}
+
+                    //if (ImGui::Button("Test Tracking Pose##ControllerTrackingPose") || m_gotoTestControllerTracking)
+                    //{
+                    //    if (m_gotoTestControllerTracking) m_gotoTestControllerTracking = false;
+                    //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, controllerID, -1);
+                    //}
+                    //ImGui::SameLine();
+                    //if (ImGui::Button("Test Tracking Video##ControllerTrackingVideo") || m_gotoTrackingControllerVideo)
+                    //{
+                    //    if (m_gotoTrackingControllerVideo) m_gotoTrackingControllerVideo = false;
+                    //    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
+                    //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, controllerID, -1);
+                    //}
+                    //if (m_gotoTrackingVideoALL)
+                    //{
+                    //    m_gotoTrackingVideoALL = false;
+                    //    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
+                    //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, -1, -1);
+                    //}
+                }
+            }
             if (m_hmdInfos.count > 0)
             {
-                int hmdID = (m_selectedHmdIndex != -1) ? m_hmdInfos.hmds[m_selectedHmdIndex].hmd_id : -1;
+                int hmdID = (m_selectedHmdIndex != -1) ? getSelectedHmd()->hmd_id : -1;
 
                 ImGui::Separator();
 
@@ -282,29 +442,31 @@ void AppStage_TrackerSettings::renderUI()
 
                 if (m_selectedHmdIndex != -1)
                 {
-                    const PSVRClientHMDInfo &hmdInfo = m_hmdInfos.hmds[m_selectedHmdIndex];
+                    const PSVRClientHMDInfo *hmdInfo = getSelectedHmd();
                     const char *colors[] = { "Magenta","Cyan","Yellow","Red","Green","Blue" };
 
-                    if (hmdInfo.hmd_type == PSVRHmd_Morpheus)
+                    if (hmdInfo->hmd_type == PSVRHmd_Morpheus)
                     {
-                        if (0 <= hmdInfo.tracking_color_type && hmdInfo.tracking_color_type < PSVRTrackingColorType_MaxColorTypes) 
+                        if (0 <= hmdInfo->tracking_color_type && 
+							hmdInfo->tracking_color_type < PSVRTrackingColorType_MaxColorTypes) 
                         {
                             ImGui::Text("HMD: %d (Morpheus) - %s",
                                 m_selectedHmdIndex,
-                                colors[hmdInfo.tracking_color_type]);
+                                colors[hmdInfo->tracking_color_type]);
                         }
                         else
                         {
                             ImGui::Text("HMD: %d (Morpheus)", m_selectedHmdIndex);
                         }
                     }
-                    else if (hmdInfo.hmd_type == PSVRHmd_Virtual)
+                    else if (hmdInfo->hmd_type == PSVRHmd_Virtual)
                     {
-                        if (0 <= hmdInfo.tracking_color_type && hmdInfo.tracking_color_type < PSVRTrackingColorType_MaxColorTypes) 
+                        if (0 <= hmdInfo->tracking_color_type && 
+							hmdInfo->tracking_color_type < PSVRTrackingColorType_MaxColorTypes) 
                         {
                             ImGui::Text("HMD: %d (Virtual) - %s",
                                 m_selectedHmdIndex,
-                                colors[hmdInfo.tracking_color_type]);
+                                colors[hmdInfo->tracking_color_type]);
                         }
                         else
                         {
@@ -322,28 +484,51 @@ void AppStage_TrackerSettings::renderUI()
                     }
                 }
 
-                if (ImGui::Button("Calibrate HMD Tracking Colors"))
+                if (ImGui::Button("Calibrate HMD Tracking Colors") || m_gotoHMDColorCalib)
                 {                        
-                    const PSVRClientHMDInfo *hmd = get_selected_hmd();
+                    const PSVRClientHMDInfo *hmd = getSelectedHmd();
                     if (hmd != nullptr) 
                     {
+                        m_app->getAppStage<AppStage_ColorCalibration>()->set_override_controller_id(-1);
                         m_app->getAppStage<AppStage_ColorCalibration>()->set_override_hmd_id(hmd->hmd_id);
                         m_app->getAppStage<AppStage_ColorCalibration>()->set_override_tracking_color(hmd->tracking_color_type);
                     }
 
                     m_app->setAppStage(AppStage_ColorCalibration::APP_STAGE_NAME);
                 }
-
-                if (ImGui::Button("Test Tracking Pose##HMDTrackingPose"))
+				
+				if (m_selectedHmdIndex != -1)
                 {
+                    const PSVRClientHMDInfo *hmdInfo = getSelectedHmd();
+
+                    //if (hmdInfo->hmd_type == PSVRHmd_Virtual)
+                    //{
+                    //    if (ImGui::Button("Compute Tracker Poses Using HMD"))
+                    //    {
+                    //        AppStage_ComputeTrackerPoses::enterStageAndCalibrateTrackersWithHMD(m_app, hmdID);
+                    //    }
+                    //}
+                }				
+
+                if (ImGui::Button("Test Tracking Pose##HMDTrackingPose") || m_gotoTestHmdTracking)
+                {
+                    m_gotoTestHmdTracking = false;
                     AppStage_HMDTrackingTest::enterStageAndTestTracking(m_app, hmdID);
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Test Tracking Video##HMDTrackingVideo"))
+                if (ImGui::Button("Test Tracking Video##HMDTrackingVideo") || m_gotoTrackingHmdVideo)
                 {
+                    m_gotoTrackingHmdVideo = false;
                     m_app->getAppStage<AppStage_HMDTrackingTest>()->set_tracker_id(m_selectedTrackerIndex);
                     AppStage_HMDTrackingTest::enterStageAndTestTracking(m_app, hmdID);
                 }
+
+                //if (m_gotoTrackingVideoALL)
+                //{
+                //    m_gotoTrackingVideoALL = false;
+                //    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
+                //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, -1, -1);
+                //}
             }
         }
 
@@ -358,6 +543,7 @@ void AppStage_TrackerSettings::renderUI()
     } break;
     case eTrackerMenuState::pendingSearchForNewTrackersRequest:
     case eTrackerMenuState::pendingTrackerListRequest:
+    case eTrackerMenuState::pendingControllerListRequest:
     case eTrackerMenuState::pendingHmdListRequest:
     {
         ImGui::SetNextWindowPosCenter();
@@ -369,6 +555,7 @@ void AppStage_TrackerSettings::renderUI()
         ImGui::End();
     } break;
     case eTrackerMenuState::failedTrackerListRequest:
+    case eTrackerMenuState::failedControllerListRequest:
     case eTrackerMenuState::failedHmdListRequest:
     {
         ImGui::SetNextWindowPosCenter();
@@ -453,6 +640,50 @@ void AppStage_TrackerSettings::handle_tracker_list_response(
     }
 
     // Request the list of controllers next
+    request_controller_list();
+}
+
+void AppStage_TrackerSettings::request_controller_list()
+{
+    if (m_menuState != AppStage_TrackerSettings::pendingControllerListRequest)
+    {
+        m_menuState= AppStage_TrackerSettings::pendingControllerListRequest;
+
+        // Tell the PSVR service that we we want a list of trackers connected to this machine
+        PSVRControllerList controller_list;
+        if (PSVR_GetControllerList(false, &controller_list) == PSVRResult_Success)
+        {
+            handle_controller_list_response(controller_list);
+        }
+        else
+        {
+            m_menuState = AppStage_TrackerSettings::failedTrackerListRequest;
+        }
+    }
+}
+
+void AppStage_TrackerSettings::handle_controller_list_response(
+    const PSVRControllerList &controller_list)
+{
+    int oldSelectedControllerIndex= m_selectedControllerIndex;
+
+	m_selectedControllerIndex = -1;
+    m_controllerInfos= controller_list;
+
+    if (oldSelectedControllerIndex != -1)
+    {
+        // Maintain the same position in the list if possible
+        m_selectedControllerIndex= 
+            (oldSelectedControllerIndex < m_controllerInfos.count) 
+            ? oldSelectedControllerIndex
+            : -1;
+    }
+    else
+    {
+        m_selectedControllerIndex= (m_controllerInfos.count > 0) ? 0 : -1;
+    }
+
+    // Request the list of HMDs next
     request_hmd_list();
 }
 
