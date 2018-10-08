@@ -5,6 +5,10 @@ A sample application that demonstrates optical position and orientation tracking
 
 ![Tracking Sample](https://github.com/HipsterSloth/PSVRTracker/raw/master/misc/images/TrackingSample.gif)
 
+# IMPORTANT NOTE
+This project is still heavily under development and is not really in a usuable state yet. Follow this issue for status updates:
+https://github.com/HipsterSloth/PSVRTracker/issues/3
+
 # Prebuilt Releases
 You can download prebuilt releases (Windows only at the moment) from the [Releases](https://github.com/HipsterSloth/PSVRTracker/releases) page. Then follow the initial setup instructions found in the [wiki](https://github.com/HipsterSloth/PSVRTracker/wiki#initial-setup). 
 
@@ -16,8 +20,8 @@ If you want to make modifications to the service or want to debug it, you can bu
 * Documentation for the code is hosted on [codedocs](https://codedocs.xyz/HipsterSloth/PSVRTracker/)
 
 # Near Term Goals
-* Create a new Tracker class for the PS4 camera that mirrors the PS3EyeTracker class
-* Create a KalmanFilter for the MorpheusHMD
+* Finish porting over PSMove and DualShock 4 controller support from PSMoveService
+* Finish implementing and testing multi-camera tracking
 
 # Usage in other projects
 Feel free to use this code as-is, modified or adapted in other projects (commercial or otherwise). It's intended to be a reference algorithm that I hope other can make use of in any way they see fit.
