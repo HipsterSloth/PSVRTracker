@@ -1,5 +1,5 @@
-#ifndef APP_STAGE_COMPUTE_TRACKER_POSES_H
-#define APP_STAGE_COMPUTE_TRACKER_POSES_H
+#ifndef APP_STAGE_HMD_TRACKING_TEST_H
+#define APP_STAGE_HMD_TRACKING_TEST_H
 
 //-- includes -----
 #include "AppStage.h"
@@ -109,4 +109,4 @@ protected:
 	float m_AlignmentOffset;
 };
 
-#endif // APP_STAGE_COMPUTE_TRACKER_POSES_H
+#endif // APP_STAGE_HMD_TRACKING_TEST_H

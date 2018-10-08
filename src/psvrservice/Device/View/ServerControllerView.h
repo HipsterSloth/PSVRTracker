@@ -206,7 +206,7 @@ protected:
     void free_device_interface() override;
     void publish_device_data_frame() override;
     static void generate_controller_data_frame_for_stream(
-        const ServerControllerView *hmd_view,
+        const ServerControllerView *controller_view,
         const struct ControllerStreamInfo *stream_info,
         DeviceOutputDataFrame &data_frame);
 

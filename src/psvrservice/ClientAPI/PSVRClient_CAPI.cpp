@@ -842,7 +842,7 @@ PSVRResult PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrin
 	return result;
 }
 
-PSVRResult PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrinsics *intrinsics)
+PSVRResult PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *intrinsics)
 {
     PSVRResult result= PSVRResult_Error;
 
@@ -855,6 +855,26 @@ PSVRResult PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrin
     		PSVRTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
 
             tracker->tracker_info.tracker_intrinsics= *intrinsics;
+		    result= PSVRResult_Success;
+        }
+	}
+
+	return result;
+}
+
+PSVRResult PSVR_SetTrackerPose(PSVRTrackerID tracker_id, const PSVRPosef *pose)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_client != nullptr && 
+        g_psvr_service != nullptr &&
+        IS_VALID_TRACKER_INDEX(tracker_id))
+    {
+        if (g_psvr_service->getRequestHandler()->set_tracker_pose(tracker_id, pose) == PSVRResult_Success)
+        {
+    		PSVRTracker *tracker= g_psvr_client->get_tracker_view(tracker_id);
+
+            tracker->tracker_info.tracker_pose= *pose;
 		    result= PSVRResult_Success;
         }
 	}

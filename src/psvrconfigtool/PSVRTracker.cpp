@@ -1,6 +1,7 @@
 //-- includes -----
 #include "App.h"
 #include "AppStage_AccelerometerCalibration.h"
+#include "AppStage_ComputeTrackerPoses.h"
 #include "AppStage_ControllerSettings.h"
 #include "AppStage_ColorCalibration.h"
 #include "AppStage_HMDAccelerometerTest.h"
@@ -29,6 +30,7 @@ extern "C" int main(int argc, char *argv[])
 
     // Register all of the app stages
 	app.registerAppStage<AppStage_AccelerometerCalibration>();
+	app.registerAppStage<AppStage_ComputeTrackerPoses>();
 	app.registerAppStage<AppStage_ControllerSettings>();
 	app.registerAppStage<AppStage_ColorCalibration>();
 	app.registerAppStage<AppStage_HMDAccelerometerTest>();

@@ -229,8 +229,8 @@ bool ServerControllerView::open(const class DeviceEnumerator *enumerator)
 
         switch (device->getDeviceType())
         {
-        case CommonSensorState::Morpheus:
-        case CommonSensorState::VirtualHMD:
+        case CommonSensorState::PSMove:
+        case CommonSensorState::DualShock4:
             {
                 // Create a pose filter based on the HMD type
                 resetPoseFilter();
@@ -1209,21 +1209,24 @@ static void generate_psmove_data_frame_for_stream(
             // One frame: [mx, my, mz]
 			if (imu_sensor_packet->has_magnetometer_measurement)
 			{
-				calibrated_sensor_data->Magnetometer= calibrated_sensor_data->Magnetometer;
+				calibrated_sensor_data->Magnetometer= 
+					eigen_vector3f_to_PSVR_vector3f(imu_sensor_packet->imu_magnetometer_unit);
 			}
 
             // Two frames: [[ax0, ay0, az0], [ax1, ay1, az1]] 
             // Take the most recent frame: [ax1, ay1, az1]
 			if (imu_sensor_packet->has_accelerometer_measurement)
 			{
-				calibrated_sensor_data->Accelerometer= calibrated_sensor_data->Accelerometer;
+				calibrated_sensor_data->Accelerometer= 
+					eigen_vector3f_to_PSVR_vector3f(imu_sensor_packet->imu_accelerometer_g_units);
 			}
 
             // Two frames: [[wx0, wy0, wz0], [wx1, wy1, wz1]] 
             // Take the most recent frame: [wx1, wy1, wz1]
 			if (imu_sensor_packet->has_gyroscope_measurement)
 			{
-				calibrated_sensor_data->Gyroscope= calibrated_sensor_data->Gyroscope;
+				calibrated_sensor_data->Gyroscope= 
+					eigen_vector3f_to_PSVR_vector3f(imu_sensor_packet->imu_gyroscope_rad_per_sec);
 			}
 
 			calibrated_sensor_data->TimeInSeconds= time_seconds;
@@ -1394,12 +1397,14 @@ static void generate_psdualshock4_data_frame_for_stream(
 
 			if (imu_sensor_packet->has_accelerometer_measurement)
 			{
-				calibrated_sensor_data->Accelerometer= calibrated_sensor_data->Accelerometer;
+				calibrated_sensor_data->Accelerometer=
+					eigen_vector3f_to_PSVR_vector3f(imu_sensor_packet->imu_accelerometer_g_units);
 			}
 
 			if (imu_sensor_packet->has_gyroscope_measurement)
 			{
-				calibrated_sensor_data->Gyroscope= calibrated_sensor_data->Gyroscope;
+				calibrated_sensor_data->Gyroscope=
+					eigen_vector3f_to_PSVR_vector3f(imu_sensor_packet->imu_gyroscope_rad_per_sec);
 			}
 
 			calibrated_sensor_data->TimeInSeconds= time_seconds;

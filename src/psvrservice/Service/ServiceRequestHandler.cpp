@@ -324,6 +324,10 @@ PSVRResult ServiceRequestHandler::start_controller_data_stream(PSVRControllerID 
             controller_view->pushDisableROI();
         }
 
+        // Attach the initial state of the controller
+		controller_view->markStateAsUnpublished();
+		controller_view->publish();
+
         if (streamInfo.include_position_data)
         {
             controller_view->startTracking();
@@ -1241,6 +1245,10 @@ PSVRResult ServiceRequestHandler::start_hmd_data_stream(
 
                 hmd_view->pushDisableROI();
             }
+
+            // Attach the initial state of the HMD
+			hmd_view->markStateAsUnpublished();
+			hmd_view->publish();
 
             if (streamInfo.include_position_data)
             {

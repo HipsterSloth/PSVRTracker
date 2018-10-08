@@ -371,6 +371,22 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame &data_frame)
 {
     switch (data_frame.device_category)
     {
+	case DeviceCategory_CONTROLLER:
+        {
+            const ControllerDataPacket& controller_packet = data_frame.device.controller_data_packet;
+			const PSVRControllerID controller_id= controller_packet.controller_id;
+
+            PSVR_LOG_TRACE("handle_data_frame")
+                << "received data frame for ControllerID: "
+                << controller_id;
+
+			if (IS_VALID_CONTROLLER_INDEX(controller_id))
+			{
+				PSVRController *controller= get_controller_view(controller_id);
+
+				applyControllerDataFrame(controller_packet, controller);
+			}
+        } break;
     case DeviceCategory_TRACKER:
         {
             const TrackerDataPacket& tracker_packet = data_frame.device.tracker_data_packet;
@@ -433,8 +449,26 @@ static void applyControllerDataFrame(
 
     if (controller_packet.output_sequence_num > controller->OutputSequenceNum)
     {
+		controller->bValid = controller_packet.is_valid;
+		controller->ControllerType= controller_packet.controller_type;
         controller->OutputSequenceNum = controller_packet.output_sequence_num;
 		controller->IsConnected = controller_packet.is_connected;
+    }
+
+	// Don't bother updating the rest of the hmd state if it's not connected
+	if (!controller->IsConnected)
+		return;
+
+    switch (controller->ControllerType) 
+	{
+        case PSVRController_Move:
+			controller->ControllerState.PSMoveState= controller_packet.controller_state.psmove_state;
+            break;
+        case PSVRController_DualShock4:
+            controller->ControllerState.PSDS4State= controller_packet.controller_state.ds4_state;
+            break;            
+        default:
+            break;
     }
 }
 

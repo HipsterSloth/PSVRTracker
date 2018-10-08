@@ -1107,8 +1107,15 @@ void AppStage_ColorCalibration::request_tracker_start_stream()
                 allocate_video_buffers();
             }
 
-            // Now that the tracker stream is started, start the HMD stream
-            request_start_hmd_stream();
+			if (m_hmdView != nullptr)
+			{
+				// Now that the tracker stream is started, start the HMD stream
+				request_start_hmd_stream();
+			}
+			else
+			{
+				request_start_controller_streams();
+			}
         }
         else
         {

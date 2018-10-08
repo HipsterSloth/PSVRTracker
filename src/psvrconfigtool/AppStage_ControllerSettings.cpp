@@ -294,7 +294,6 @@ void AppStage_ControllerSettings::render()
 
 void AppStage_ControllerSettings::renderUI()
 {
-#if 0
     const char *k_window_title= "Controller Settings";
     const ImGuiWindowFlags window_flags = 
         ImGuiWindowFlags_ShowBorders |
@@ -405,16 +404,18 @@ void AppStage_ControllerSettings::renderUI()
 							{
 								if (ImGui::Button("Unpair Controller"))
 								{
-									m_app->getAppStage<AppStage_PairController>()->request_controller_unpair(info.ControllerID, info.controller.controller_type);
-									m_app->setAppStage(AppStage_PairController::APP_STAGE_NAME);
+									//###HipsterSloth $TODO $CONTROLLER_UI
+									//m_app->getAppStage<AppStage_PairController>()->request_controller_unpair(info.ControllerID, info.controller.controller_type);
+									//m_app->setAppStage(AppStage_PairController::APP_STAGE_NAME);
 								}
 							}
 							else
 							{
 								if (ImGui::Button("Pair Controller"))
 								{
-									m_app->getAppStage<AppStage_PairController>()->request_controller_pair(info.ControllerID, info.controller.controller_type);
-									m_app->setAppStage(AppStage_PairController::APP_STAGE_NAME);
+									//###HipsterSloth $TODO $CONTROLLER_UI
+									//m_app->getAppStage<AppStage_PairController>()->request_controller_pair(info.ControllerID, info.controller.controller_type);
+									//m_app->setAppStage(AppStage_PairController::APP_STAGE_NAME);
 								}
 							}
 #ifdef _WIN32
@@ -515,10 +516,12 @@ void AppStage_ControllerSettings::renderUI()
 					{
 						if (info.controller.has_magnetometer)
 						{
-							if (ImGui::Button("Calibrate Magnetometer"))
+							ImGui::TextDisabled("Calibrate Magnetometer");
+							//if (ImGui::Button("Calibrate Magnetometer"))
 							{
-								m_app->getAppStage<AppStage_MagnetometerCalibration>()->setBypassCalibrationFlag(false);
-								m_app->setAppStage(AppStage_MagnetometerCalibration::APP_STAGE_NAME);
+								//###HipsterSloth $TODO $CONTROLLER_UI
+								//m_app->getAppStage<AppStage_MagnetometerCalibration>()->setBypassCalibrationFlag(false);
+								//m_app->setAppStage(AppStage_MagnetometerCalibration::APP_STAGE_NAME);
 							}
 						}
 						else
@@ -526,16 +529,20 @@ void AppStage_ControllerSettings::renderUI()
 							ImGui::TextDisabled("Magnetometer Disabled");
 						}
 
-						if (ImGui::Button("Calibrate Gyroscope"))
+						ImGui::TextDisabled("Calibrate Gyroscope");
+						//if (ImGui::Button("Calibrate Gyroscope"))
 						{
-							m_app->getAppStage<AppStage_GyroscopeCalibration>()->setBypassCalibrationFlag(false);
-							m_app->setAppStage(AppStage_GyroscopeCalibration::APP_STAGE_NAME);
+							//###HipsterSloth $TODO $CONTROLLER_UI
+							//m_app->getAppStage<AppStage_GyroscopeCalibration>()->setBypassCalibrationFlag(false);
+							//m_app->setAppStage(AppStage_GyroscopeCalibration::APP_STAGE_NAME);
 						}
 
-						if (ImGui::Button("Calibrate Optical Noise"))
+						ImGui::TextDisabled("Calibrate Optical Noise");
+						//if (ImGui::Button("Calibrate Optical Noise"))
 						{
-						    m_app->getAppStage<AppStage_OpticalCalibration>()->setBypassCalibrationFlag(false);
-						    m_app->setAppStage(AppStage_OpticalCalibration::APP_STAGE_NAME);
+							//###HipsterSloth $TODO $CONTROLLER_UI
+						    //m_app->getAppStage<AppStage_OpticalCalibration>()->setBypassCalibrationFlag(false);
+						    //m_app->setAppStage(AppStage_OpticalCalibration::APP_STAGE_NAME);
 						}
 					}
 				}
@@ -546,28 +553,33 @@ void AppStage_ControllerSettings::renderUI()
 					{
 						if (info.controller.controller_type == PSVRController_Move)
 						{
-							if (ImGui::Button("Test Orientation"))
+							ImGui::TextDisabled("Test Orientation");
+							//if (ImGui::Button("Test Orientation"))
 							{
-								m_app->getAppStage<AppStage_MagnetometerCalibration>()->setBypassCalibrationFlag(true);
-								m_app->setAppStage(AppStage_MagnetometerCalibration::APP_STAGE_NAME);
+								//###HipsterSloth $TODO $CONTROLLER_UI
+								//m_app->getAppStage<AppStage_MagnetometerCalibration>()->setBypassCalibrationFlag(true);
+								//m_app->setAppStage(AppStage_MagnetometerCalibration::APP_STAGE_NAME);
 							}
 						}
 
-						if (info.controller.controller_type == PSVRController_DualShock4 ||
-							info.controller.controller_type == PSMController_Virtual)
+						if (info.controller.controller_type == PSVRController_DualShock4)
 						{
-							if (ImGui::Button("Calibrate Optical Noise"))
+							ImGui::TextDisabled("Calibrate Optical Noise");
+							//if (ImGui::Button("Calibrate Optical Noise"))
 							{
-							    m_app->getAppStage<AppStage_OpticalCalibration>()->setBypassCalibrationFlag(false);
-							    m_app->setAppStage(AppStage_OpticalCalibration::APP_STAGE_NAME);
+								//###HipsterSloth $TODO $CONTROLLER_UI
+							    //m_app->getAppStage<AppStage_OpticalCalibration>()->setBypassCalibrationFlag(false);
+							    //m_app->setAppStage(AppStage_OpticalCalibration::APP_STAGE_NAME);
 							}
 
 							if (info.controller.controller_type == PSVRController_DualShock4)
 							{
-								if (ImGui::Button("Test Orientation"))
+								ImGui::TextDisabled("Test Orientation");
+								//if (ImGui::Button("Test Orientation"))
 								{
-									m_app->getAppStage<AppStage_GyroscopeCalibration>()->setBypassCalibrationFlag(true);
-									m_app->setAppStage(AppStage_GyroscopeCalibration::APP_STAGE_NAME);
+									//###HipsterSloth $TODO $CONTROLLER_UI
+									//m_app->getAppStage<AppStage_GyroscopeCalibration>()->setBypassCalibrationFlag(true);
+									//m_app->setAppStage(AppStage_GyroscopeCalibration::APP_STAGE_NAME);
 								}
 							}
 						}
@@ -581,15 +593,19 @@ void AppStage_ControllerSettings::renderUI()
 								m_app->setAppStage(AppStage_AccelerometerCalibration::APP_STAGE_NAME);
 							}
 
-							if (ImGui::Button("Test Rumble"))
+							ImGui::TextDisabled("Test Rumble");
+							//if (ImGui::Button("Test Rumble"))
 							{
-								m_app->setAppStage(AppStage_TestRumble::APP_STAGE_NAME);
+								//###HipsterSloth $TODO $CONTROLLER_UI
+								//m_app->setAppStage(AppStage_TestRumble::APP_STAGE_NAME);
 							}
 						}
 
-						if (ImGui::Button("Test Buttons"))
+						ImGui::TextDisabled("Test Buttons");
+						//if (ImGui::Button("Test Buttons"))
 						{
-							m_app->setAppStage(AppStage_TestButtons::APP_STAGE_NAME);
+							//###HipsterSloth $TODO $CONTROLLER_UI
+							//m_app->setAppStage(AppStage_TestButtons::APP_STAGE_NAME);
 						}
 					}
 				}
@@ -640,7 +656,6 @@ void AppStage_ControllerSettings::renderUI()
     default:
         assert(0 && "unreachable");
     }
-#endif // 0
 }
 
 bool AppStage_ControllerSettings::onClientAPIEvent(

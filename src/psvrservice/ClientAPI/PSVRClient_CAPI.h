@@ -579,7 +579,6 @@ typedef struct
 {
     PSVRControllerID ControllerID;
     PSVRControllerType ControllerType;
-	PSVRControllerHand ControllerHand;
     union
     {
         PSVRPSMove PSMoveState;
@@ -1072,7 +1071,13 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerIntrinsics(PSVRTrackerID tracker
 	\param tracker_id The id of the tracker
 	\param intrinsics The full set of camera intrinsics for the tracker
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, PSVRTrackerIntrinsics *intrinsics);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerIntrinsics(PSVRTrackerID tracker_id, const PSVRTrackerIntrinsics *intrinsics);
+
+/** \brief Set the world space pose for the given tracker
+	\param tracker_id The id of the tracker
+	\param pose The world space pose for the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerPose(PSVRTrackerID tracker_id, const PSVRPosef *pose);
 
 /** \brief Get the tracker config settings for the given tracker and hmd
 	\param tracker_id The id of the tracker

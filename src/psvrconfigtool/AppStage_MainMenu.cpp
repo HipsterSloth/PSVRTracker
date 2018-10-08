@@ -1,6 +1,7 @@
 //-- inludes -----
 #include "AppStage_MainMenu.h"
 #include "AppStage_TrackerSettings.h"
+#include "AppStage_ControllerSettings.h"
 #include "AppStage_HMDSettings.h"
 #include "App.h"
 #include "Camera.h"
@@ -40,8 +41,18 @@ void AppStage_MainMenu::renderUI()
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoCollapse;
         ImGui::SetNextWindowPosCenter();
-        ImGui::Begin("Main Menu", nullptr, ImVec2(300, 400), k_background_alpha, window_flags);
+        char szVersionString[255];
+		PSVR_GetVersionString(szVersionString, sizeof(szVersionString));
+
+        char szWindowTitle[255];
+        snprintf(szWindowTitle, sizeof(szWindowTitle), "PSVR Config Tool v%s", szVersionString);
+
+        ImGui::Begin(szWindowTitle, nullptr, ImVec2(300, 400), k_background_alpha, window_flags);
          
+        if (ImGui::Button("Controller Settings"))
+        {
+            m_app->setAppStage(AppStage_ControllerSettings::APP_STAGE_NAME);
+        }
         if (ImGui::Button("HMD Settings"))
         {
             m_app->setAppStage(AppStage_HMDSettings::APP_STAGE_NAME);

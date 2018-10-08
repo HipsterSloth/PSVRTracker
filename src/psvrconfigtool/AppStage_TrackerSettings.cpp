@@ -2,7 +2,7 @@
 #include "AppStage_TrackerSettings.h"
 #include "AppStage_TrackerTest.h"
 #include "AppStage_ColorCalibration.h"
-//#include "AppStage_ComputeTrackerPoses.h"
+#include "AppStage_ComputeTrackerPoses.h"
 #include "AppStage_MonoCalibration.h"
 #include "AppStage_StereoCalibration.h"
 #include "AppStage_HMDTrackingTest.h"
@@ -18,8 +18,6 @@
 
 //-- statics ----
 const char *AppStage_TrackerSettings::APP_STAGE_NAME= "CameraSettings";
-
-//-- constants -----
 
 //-- public methods -----
 AppStage_TrackerSettings::AppStage_TrackerSettings(App *app) 
@@ -400,29 +398,29 @@ void AppStage_TrackerSettings::renderUI()
                         m_app->setAppStage(AppStage_ColorCalibration::APP_STAGE_NAME);
                     }
 
-                    //if (ImGui::Button("Compute Tracker Poses Using Controller"))
-                    //{
-                    //    AppStage_ComputeTrackerPoses::enterStageAndCalibrateTrackersWithController(m_app, controllerID);
-                    //}
+                    if (ImGui::Button("Compute Tracker Poses Using Controller"))
+                    {
+                        AppStage_ComputeTrackerPoses::enterStageAndCalibrateTrackersWithController(m_app, controllerID);
+                    }
 
-                    //if (ImGui::Button("Test Tracking Pose##ControllerTrackingPose") || m_gotoTestControllerTracking)
-                    //{
-                    //    if (m_gotoTestControllerTracking) m_gotoTestControllerTracking = false;
-                    //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, controllerID, -1);
-                    //}
-                    //ImGui::SameLine();
-                    //if (ImGui::Button("Test Tracking Video##ControllerTrackingVideo") || m_gotoTrackingControllerVideo)
-                    //{
-                    //    if (m_gotoTrackingControllerVideo) m_gotoTrackingControllerVideo = false;
-                    //    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
-                    //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, controllerID, -1);
-                    //}
-                    //if (m_gotoTrackingVideoALL)
-                    //{
-                    //    m_gotoTrackingVideoALL = false;
-                    //    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
-                    //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, -1, -1);
-                    //}
+                    if (ImGui::Button("Test Tracking Pose##ControllerTrackingPose") || m_gotoTestControllerTracking)
+                    {
+                        if (m_gotoTestControllerTracking) m_gotoTestControllerTracking = false;
+                        AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, controllerID, -1);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Test Tracking Video##ControllerTrackingVideo") || m_gotoTrackingControllerVideo)
+                    {
+                        if (m_gotoTrackingControllerVideo) m_gotoTrackingControllerVideo = false;
+                        m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
+                        AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, controllerID, -1);
+                    }
+                    if (m_gotoTrackingVideoALL)
+                    {
+                        m_gotoTrackingVideoALL = false;
+                        m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
+                        AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, -1, -1);
+                    }
                 }
             }
             if (m_hmdInfos.count > 0)
@@ -501,13 +499,13 @@ void AppStage_TrackerSettings::renderUI()
                 {
                     const PSVRClientHMDInfo *hmdInfo = getSelectedHmd();
 
-                    //if (hmdInfo->hmd_type == PSVRHmd_Virtual)
-                    //{
-                    //    if (ImGui::Button("Compute Tracker Poses Using HMD"))
-                    //    {
-                    //        AppStage_ComputeTrackerPoses::enterStageAndCalibrateTrackersWithHMD(m_app, hmdID);
-                    //    }
-                    //}
+                    if (hmdInfo->hmd_type == PSVRHmd_Virtual)
+                    {
+                        if (ImGui::Button("Compute Tracker Poses Using HMD"))
+                        {
+                            AppStage_ComputeTrackerPoses::enterStageAndCalibrateTrackersWithHMD(m_app, hmdID);
+                        }
+                    }
                 }				
 
                 if (ImGui::Button("Test Tracking Pose##HMDTrackingPose") || m_gotoTestHmdTracking)
@@ -523,12 +521,12 @@ void AppStage_TrackerSettings::renderUI()
                     AppStage_HMDTrackingTest::enterStageAndTestTracking(m_app, hmdID);
                 }
 
-                //if (m_gotoTrackingVideoALL)
-                //{
-                //    m_gotoTrackingVideoALL = false;
-                //    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
-                //    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, -1, -1);
-                //}
+                if (m_gotoTrackingVideoALL)
+                {
+                    m_gotoTrackingVideoALL = false;
+                    m_app->getAppStage<AppStage_ComputeTrackerPoses>()->set_tracker_id(m_selectedTrackerIndex);
+                    AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(m_app, -1, -1);
+                }
             }
         }
 
