@@ -115,6 +115,8 @@ public:
         class INotificationListener *notification_listener);
     void shutdown();
 
+	void handle_input_data_frame(DeviceInputDataFrame &data_frame);
+
     /// When publishing controller data to all listening connections
     /// we need to provide a callback that will fill out a data frame given:
     /// * A \ref ServerControllerView we want to publish to all listening connections
@@ -155,6 +157,7 @@ public:
     void publish_notification(const PSVREventMessage &message);
 
 	// -- controller requests -----
+	ServerControllerView *get_controller_view_or_null(PSVRControllerID hmd_id);
     PSVRResult get_controller_list(bool inlcude_usb, PSVRControllerList *out_controller_list);
     PSVRResult start_controller_data_stream(PSVRControllerID controller_id, unsigned int flags);
     PSVRResult stop_controller_data_stream(PSVRControllerID controller_id);
@@ -167,7 +170,6 @@ public:
     PSVRResult set_controller_orientation_filter(PSVRControllerID controller_id, const std::string orientation_filter);
     PSVRResult set_controller_position_filter(PSVRControllerID controller_id, const std::string position_filter);
     PSVRResult set_controller_prediction_time(PSVRControllerID controller_id, const float prediction_time);
-
 
     // -- tracker requests -----
     PSVRResult get_tracker_list(PSVRTrackerList *out_tracker_list);
@@ -182,7 +184,13 @@ public:
     PSVRResult set_tracker_video_property(
 		const PSVRTrackerID tracker_id, const PSVRVideoPropertyType property_type, int desired_value, bool save_setting, 
 		int *out_value);
-    PSVRResult set_tracker_color_preset(
+	PSVRResult set_tracker_controller_color_preset(
+		const PSVRTrackerID tracker_id, 
+		const PSVRControllerID hmd_id, 
+		const PSVRTrackingColorType tracking_color_type,
+		const PSVR_HSVColorRange &desired_color_filter, 
+		PSVR_HSVColorRange &out_color_filter);
+    PSVRResult set_tracker_hmd_color_preset(
         const PSVRTrackerID tracker_id, const PSVRHmdID HmdID, 
         const PSVRTrackingColorType tracking_color_type,
         const PSVR_HSVColorRange &desired_color_filter, PSVR_HSVColorRange &out_color_filter);
@@ -213,6 +221,8 @@ public:
     PSVRResult get_service_version(char *out_version_string, size_t max_version_string);		
 
 private:
+	void handle_data_frame__controller_packet(DeviceInputDataFrame &data_frame);
+
     // Keeps track of all active stream state
     PersistentRequestConnectionState *m_peristentRequestState;
 

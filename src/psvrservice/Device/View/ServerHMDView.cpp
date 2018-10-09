@@ -853,7 +853,7 @@ void ServerHMDView::generate_hmd_data_frame_for_stream(
     const struct HMDStreamInfo *stream_info,
     DeviceOutputDataFrame &data_frame)
 {
-    HMDDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
+    HMDOutputDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
 
     hmd_data_frame->hmd_id= hmd_view->getDeviceID();
     hmd_data_frame->output_sequence_num= hmd_view->m_sequence_number;
@@ -1232,7 +1232,7 @@ static void generate_morpheus_hmd_data_frame_for_stream(
     const PoseSensorPacket *imu_sensor_packet = hmd_view->getLastIMUSensorPacket();
     const PSVRPosef hmd_pose = hmd_view->getFilteredPose();
 
-    HMDDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
+    HMDOutputDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
 
     if (imu_sensor_packet != nullptr)
     {
@@ -1334,7 +1334,7 @@ static void generate_virtual_hmd_data_frame_for_stream(
     const IPoseFilter *pose_filter = hmd_view->getPoseFilter();
     const PSVRPosef hmd_pose = hmd_view->getFilteredPose();
 
-    HMDDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
+    HMDOutputDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
     PSVRVirtualHMD *virtual_hmd_data_frame = &hmd_data_frame->hmd_state.virtual_hmd_state;
 
     virtual_hmd_data_frame->bIsCurrentlyTracking= hmd_view->getIsCurrentlyTracking();

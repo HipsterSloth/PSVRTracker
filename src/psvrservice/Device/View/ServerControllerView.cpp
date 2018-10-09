@@ -1099,11 +1099,12 @@ void ServerControllerView::generate_controller_data_frame_for_stream(
     const ControllerStreamInfo *stream_info,
     DeviceOutputDataFrame &data_frame)
 {
-    ControllerDataPacket *controller_data_frame= &data_frame.device.controller_data_packet;
+    ControllerOutputDataPacket *controller_data_frame= &data_frame.device.controller_data_packet;
 
     controller_data_frame->controller_id= controller_view->getDeviceID();
     controller_data_frame->output_sequence_num= controller_view->m_sequence_number;
     controller_data_frame->is_connected= controller_view->getDevice()->getIsOpen();
+	controller_data_frame->is_valid= true;
 
     switch (controller_view->getControllerDeviceType())
     {
@@ -1133,7 +1134,7 @@ static void generate_psmove_data_frame_for_stream(
     const PoseSensorPacket *imu_sensor_packet = controller_view->getLastIMUSensorPacket();
     const PSVRPosef controller_pose = controller_view->getFilteredPose();
 
-    ControllerDataPacket *controller_data_frame = &data_frame.device.controller_data_packet;
+    ControllerOutputDataPacket *controller_data_frame = &data_frame.device.controller_data_packet;
     PSVRPSMove *psmove_data_frame = &controller_data_frame->controller_state.psmove_state;
    
     if (imu_sensor_packet != nullptr)
@@ -1312,7 +1313,7 @@ static void generate_psdualshock4_data_frame_for_stream(
     const PoseSensorPacket *imu_sensor_packet = controller_view->getLastIMUSensorPacket();
     const PSVRPosef controller_pose = controller_view->getFilteredPose();
 
-    ControllerDataPacket *controller_data_frame = &data_frame.device.controller_data_packet;
+    ControllerOutputDataPacket *controller_data_frame = &data_frame.device.controller_data_packet;
     PSVRDualShock4 *ds4_data_frame = &controller_data_frame->controller_state.ds4_state;
 
     if (imu_sensor_packet != nullptr)

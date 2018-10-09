@@ -113,6 +113,118 @@ void ServiceRequestHandler::shutdown()
 	m_instance= nullptr;
 }
 
+void ServiceRequestHandler::handle_input_data_frame(DeviceInputDataFrame &data_frame)
+{
+    switch (data_frame.device_category)
+    {
+	case DeviceCategory_CONTROLLER:
+        {
+            handle_data_frame__controller_packet(data_frame);
+        } break;
+    }
+}
+
+void ServiceRequestHandler::handle_data_frame__controller_packet(
+    DeviceInputDataFrame &data_frame)
+{
+    const ControllerInputDataPacket &controllerDataPacket = data_frame.device.controller_data_packet;
+    const int controller_id = controllerDataPacket.controller_id;
+
+    if (Utility::is_index_valid(controller_id, m_deviceManager->getControllerViewMaxCount()))
+    {
+        ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
+        ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[controller_id];
+
+        // Don't consider this data frame if the controller isn't in a streamable connection
+        // or if the sequence number is old
+        if (controller_view->getIsStreamable() && 
+            controllerDataPacket.input_sequence_num > streamInfo.last_data_input_sequence_number)
+        {
+            // Remember the last sequence number we received from this connection
+            streamInfo.last_data_input_sequence_number = controllerDataPacket.input_sequence_num;
+
+            switch (controller_view->getControllerDeviceType())
+            {
+            case CommonSensorState::eDeviceType::PSMove:
+                {
+                    const PSVRPSMoveInput &psmove_state= controllerDataPacket.controller_state.psmove_state;
+
+                    // Update the rumble
+                    const float rumbleValue= static_cast<float>(psmove_state.Rumble) / 255.f;
+                    controller_view->setControllerRumble(rumbleValue, PSVRControllerRumbleChannel_All);
+
+                    // Update the override led color
+                    {
+                        unsigned char r = static_cast<unsigned char>(psmove_state.LED_r);
+                        unsigned char g = static_cast<unsigned char>(psmove_state.LED_g);
+                        unsigned char b = static_cast<unsigned char>(psmove_state.LED_b);
+
+                        // (0,0,0) is treated as clearing the override
+                        if (r == 0 && g == 0 && b == 0)
+                        {
+                            if (controller_view->getIsLEDOverrideActive())
+                            {
+                                // Removes the over led color and restores the tracking color
+                                // of the controller is currently being tracked
+                                controller_view->clearLEDOverride();
+                            }
+                        }
+                        // Otherwise we are setting the override to a new color
+                        else
+                        {
+                            // Sets the bulb LED color to some new override color
+                            // If tracking was active this likely will affect controller tracking
+                            controller_view->setLEDOverride(r, g, b);
+                        }
+
+                        // Flag if the LED override is active
+                        // If the stream closes and this flag is active we'll need to clear the led override
+                        streamInfo.led_override_active= controller_view->getIsLEDOverrideActive();
+                    }
+                } break;
+            case CommonSensorState::eDeviceType::DualShock4:
+                {
+                    const PSVRDualShock4Input &psmove_state= controllerDataPacket.controller_state.ds4_state;
+
+                    // Update the rumble
+                    const float bigRumbleValue= static_cast<float>(psmove_state.BigRumble) / 255.f;
+                    const float smallRumbleValue= static_cast<float>(psmove_state.SmallRumble) / 255.f;
+                    controller_view->setControllerRumble(bigRumbleValue, PSVRControllerRumbleChannel_Left);
+                    controller_view->setControllerRumble(smallRumbleValue, PSVRControllerRumbleChannel_Right);
+
+                    // Update the override led color
+                    {
+                        unsigned char r = static_cast<unsigned char>(psmove_state.LED_r);
+                        unsigned char g = static_cast<unsigned char>(psmove_state.LED_g);
+                        unsigned char b = static_cast<unsigned char>(psmove_state.LED_b);
+
+                        // (0,0,0) is treated as clearing the override
+                        if (r == 0 && g == 0 && b == 0)
+                        {
+                            if (controller_view->getIsLEDOverrideActive())
+                            {
+                                // Removes the over led color and restores the tracking color
+                                // of the controller is currently being tracked
+                                controller_view->clearLEDOverride();
+                            }
+                        }
+                        // Otherwise we are setting the override to a new color
+                        else
+                        {
+                            // Sets the bulb LED color to some new override color
+                            // If tracking was active this likely will affect controller tracking
+                            controller_view->setLEDOverride(r, g, b);
+                        }
+
+                        // Flag if the LED override is active
+                        // If the stream closes and this flag is active we'll need to clear the led override
+                        streamInfo.led_override_active= controller_view->getIsLEDOverrideActive();
+                    }
+                } break;
+            }
+        }
+    }
+}
 
 void ServiceRequestHandler::publish_controller_data_frame(
 	class ServerControllerView *controller_view,
@@ -128,6 +240,7 @@ void ServiceRequestHandler::publish_controller_data_frame(
 
         // Fill out a data frame specific to this stream using the given callback
         DeviceOutputDataFrame data_frame;
+		memset(&data_frame, 0, sizeof(DeviceOutputDataFrame));
         callback(controller_view, &streamInfo, data_frame);
 
         // Send the hmd data frame over the network
@@ -149,6 +262,7 @@ void ServiceRequestHandler::publish_tracker_data_frame(
 
         // Fill out a data frame specific to this stream using the given callback
         DeviceOutputDataFrame data_frame;
+		memset(&data_frame, 0, sizeof(DeviceOutputDataFrame));
         callback(tracker_view, &streamInfo, data_frame);
 
         // Send the tracker data frame over the network
@@ -170,6 +284,7 @@ void ServiceRequestHandler::publish_hmd_data_frame(
 
         // Fill out a data frame specific to this stream using the given callback
         DeviceOutputDataFrame data_frame;
+		memset(&data_frame, 0, sizeof(DeviceOutputDataFrame));
         callback(hmd_view, &streamInfo, data_frame);
 
         // Send the hmd data frame over the network
@@ -183,6 +298,23 @@ void ServiceRequestHandler::publish_notification(const PSVREventMessage &message
 }
 	
 // -- controller requests -----
+ServerControllerView *ServiceRequestHandler::get_controller_view_or_null(PSVRControllerID controller_id)
+{
+    ServerControllerView *controller_view = nullptr;
+
+    if (Utility::is_index_valid(controller_id, m_deviceManager->getControllerViewMaxCount()))
+    {
+        ServerControllerViewPtr controller_view_ptr = m_deviceManager->getControllerViewPtr(controller_id);
+
+        if (controller_view_ptr->getIsOpen())
+        {
+            controller_view = controller_view_ptr.get();
+        }
+    }
+
+    return controller_view;
+}
+
 PSVRResult ServiceRequestHandler::get_controller_list(
 	const bool include_usb,
 	PSVRControllerList *out_controller_list)
@@ -1006,7 +1138,36 @@ PSVRResult ServiceRequestHandler::set_tracker_video_property(
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_tracker_color_preset(
+PSVRResult ServiceRequestHandler::set_tracker_controller_color_preset(
+    const PSVRTrackerID tracker_id, 
+    const PSVRControllerID controller_id, 
+    const PSVRTrackingColorType tracking_color_type,
+    const PSVR_HSVColorRange &desired_color_filter, 
+    PSVR_HSVColorRange &out_color_filter)
+{
+	PSVRResult result= PSVRResult_Error;
+
+    if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+    {
+        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
+
+        if (tracker_view->getIsOpen())
+        {
+            ServerControllerView *controller_view = get_controller_view_or_null(controller_id);
+
+            // Assign the color range
+            tracker_view->setControllerTrackingColorPreset(controller_view, tracking_color_type, &desired_color_filter);
+            // Read back what actually got set
+            tracker_view->getControllerTrackingColorPreset(controller_view, tracking_color_type, &out_color_filter);
+
+            result= PSVRResult_Success;
+        }
+    }
+
+    return result;
+}
+
+PSVRResult ServiceRequestHandler::set_tracker_hmd_color_preset(
     const PSVRTrackerID tracker_id, 
     const PSVRHmdID hmd_id, 
     const PSVRTrackingColorType tracking_color_type,

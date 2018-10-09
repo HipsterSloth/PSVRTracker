@@ -357,24 +357,24 @@ PSVRResult PSVR_SetControllerLEDOverrideColor(PSVRControllerID controller_id, un
             {
                 PSVRPSMove *psmove= &controller->ControllerState.PSMoveState;
 
-                if (r != psmove->LED_r || g != psmove->LED_g || b != psmove->LED_b)
+                if (r != psmove->InputState.LED_r || g != psmove->InputState.LED_g || b != psmove->InputState.LED_b)
                 {
-                    psmove->LED_r = r;
-                    psmove->LED_g = g;
-                    psmove->LED_b = b;
+                    psmove->InputState.LED_r = r;
+                    psmove->InputState.LED_g = g;
+                    psmove->InputState.LED_b = b;
 
                     psmove->bHasUnpublishedState = true;
                 }
             } break;
         case PSVRController_DualShock4:
             {
-                PSVRDualShock4 *ds4= &controller->ControllerState.PSDS4State;
+                PSVRDualShock4 *ds4= &controller->ControllerState.DS4State;
 
-                if (r != ds4->LED_r || g != ds4->LED_g || b != ds4->LED_b)
+                if (r != ds4->InputState.LED_r || g != ds4->InputState.LED_g || b != ds4->InputState.LED_b)
                 {
-                    ds4->LED_r = r;
-                    ds4->LED_g = g;
-                    ds4->LED_b = b;
+                    ds4->InputState.LED_r = r;
+                    ds4->InputState.LED_g = g;
+                    ds4->InputState.LED_b = b;
 
                     ds4->bHasUnpublishedState = true;
                 }
@@ -400,17 +400,17 @@ PSVRResult PSVR_GetControllerRumble(PSVRControllerID controller_id, PSVRControll
         {
         case PSVRController_Move:
             {
-                rumbleByte= controller->ControllerState.PSMoveState.Rumble;
+                rumbleByte= controller->ControllerState.PSMoveState.InputState.Rumble;
             } break;
         case PSVRController_DualShock4:
             {                
                 if (channel == PSVRControllerRumbleChannel_Left)
                 {
-                    rumbleByte= controller->ControllerState.PSDS4State.BigRumble;
+                    rumbleByte= controller->ControllerState.DS4State.InputState.BigRumble;
                 }
                 else if (channel == PSVRControllerRumbleChannel_Right)
                 {
-                    rumbleByte= controller->ControllerState.PSDS4State.SmallRumble;
+                    rumbleByte= controller->ControllerState.DS4State.InputState.SmallRumble;
                 }
             } break;
         }
@@ -437,27 +437,27 @@ PSVRResult PSVR_SetControllerRumble(PSVRControllerID controller_id, PSVRControll
             {
                 PSVRPSMove *psmove= &controller->ControllerState.PSMoveState;
 
-                if (psmove->Rumble != rumbleByte)
+                if (psmove->InputState.Rumble != rumbleByte)
                 {
-                    psmove->Rumble = rumbleByte;
+                    psmove->InputState.Rumble = rumbleByte;
                     psmove->bHasUnpublishedState = true;
                 }
             } break;
         case PSVRController_DualShock4:
             {
-                PSVRDualShock4 *ds4= &controller->ControllerState.PSDS4State;
+                PSVRDualShock4 *ds4= &controller->ControllerState.DS4State;
                 
                 if ((channel == PSVRControllerRumbleChannel_All || channel == PSVRControllerRumbleChannel_Left) &&
-                    ds4->BigRumble != rumbleByte)
+                    ds4->InputState.BigRumble != rumbleByte)
                 {
-                    ds4->BigRumble = rumbleByte;
+                    ds4->InputState.BigRumble = rumbleByte;
                     ds4->bHasUnpublishedState = true;
                 }
 
                 if ((channel == PSVRControllerRumbleChannel_All || channel == PSVRControllerRumbleChannel_Right) &&
-                    ds4->SmallRumble != rumbleByte)
+                    ds4->InputState.SmallRumble != rumbleByte)
                 {
-                    ds4->SmallRumble = rumbleByte;
+                    ds4->InputState.SmallRumble = rumbleByte;
                     ds4->bHasUnpublishedState = true;
                 }
             } break;
@@ -489,7 +489,7 @@ PSVRResult PSVR_GetControllerOrientation(PSVRControllerID controller_id, PSVRQua
             } break;
         case PSVRController_DualShock4:
             {
-				PSVRDualShock4 State= controller->ControllerState.PSDS4State;
+				PSVRDualShock4 State= controller->ControllerState.DS4State;
 				*out_orientation = State.Pose.Orientation;
 
 				result= State.bIsOrientationValid ? PSVRResult_Success : PSVRResult_Error;
@@ -520,7 +520,7 @@ PSVRResult PSVR_GetControllerPosition(PSVRControllerID controller_id, PSVRVector
             } break;
         case PSVRController_DualShock4:
             {
-				PSVRDualShock4 State= controller->ControllerState.PSDS4State;
+				PSVRDualShock4 State= controller->ControllerState.DS4State;
 				*out_position = State.Pose.Position;
 
 				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
@@ -551,7 +551,7 @@ PSVRResult PSVR_GetControllerPose(PSVRControllerID controller_id, PSVRPosef *out
             } break;
         case PSVRController_DualShock4:
             {
-				PSVRDualShock4 State= controller->ControllerState.PSDS4State;
+				PSVRDualShock4 State= controller->ControllerState.DS4State;
 				*out_pose = State.Pose;
 
 				result= (State.bIsOrientationValid && State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
@@ -593,7 +593,7 @@ PSVRResult PSVR_GetIsControllerStable(PSVRControllerID controller_id, bool *out_
             } break;
         case PSVRController_DualShock4:
             {
-                PSVRVector3f gyro= controller->ControllerState.PSDS4State.CalibratedSensorData.Gyroscope;
+                PSVRVector3f gyro= controller->ControllerState.DS4State.CalibratedSensorData.Gyroscope;
                 
 				const float k_gyro_noise= 10.f*k_degrees_to_radians; // noise threshold in rad/sec
 				const float worst_rotation_rate = fabsf(PSVR_Vector3fMaxValue(&gyro));
@@ -626,7 +626,7 @@ PSVRResult PSVR_GetIsControllerTracking(PSVRControllerID controller_id, bool *ou
             } break;
         case PSVRController_DualShock4:
             {
-				*out_is_tracking = controller->ControllerState.PSDS4State.bIsCurrentlyTracking;
+				*out_is_tracking = controller->ControllerState.DS4State.bIsCurrentlyTracking;
 				result= PSVRResult_Success;
             } break;
         }
@@ -655,7 +655,7 @@ PSVRResult PSVR_GetControllerPixelLocationOnTracker(
 			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
             break;
         }
 
@@ -686,7 +686,7 @@ PSVRResult PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, P
 			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
             break;
         }
 
@@ -720,7 +720,7 @@ PSVRResult PSVR_GetControllerOrientationOnTracker(
 			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
             break;
         }
 
@@ -754,7 +754,7 @@ PSVRResult PSVR_GetControllerProjectionOnTracker(
 			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.PSDS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
             break;
         }
 
@@ -1554,7 +1554,25 @@ PSVRResult PSVR_SetHmdTrackingColorID(PSVRHmdID hmd_id, PSVRTrackingColorType tr
     return result;
 }
 
-PSVRResult PSVR_SetTrackerColorFilter(
+PSVRResult PSVR_SetTrackerControllerColorFilter(
+	PSVRTrackerID tracker_id, PSVRControllerID controller_id, PSVRTrackingColorType tracking_color_type,
+	PSVR_HSVColorRange *desired_color_filter, PSVR_HSVColorRange *out_color_filter)
+{
+	PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && 
+        IS_VALID_TRACKER_INDEX(tracker_id) &&
+        IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+		result= g_psvr_service->getRequestHandler()->set_tracker_controller_color_preset(
+            tracker_id, controller_id, tracking_color_type,
+            *desired_color_filter, *out_color_filter);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_SetTrackerHMDColorFilter(
     PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRTrackingColorType tracking_color_type,
     PSVR_HSVColorRange *desired_color_filter, PSVR_HSVColorRange *out_color_filter)
 {
@@ -1564,7 +1582,7 @@ PSVRResult PSVR_SetTrackerColorFilter(
         IS_VALID_TRACKER_INDEX(tracker_id) &&
         IS_VALID_HMD_INDEX(hmd_id))
     {
-		result= g_psvr_service->getRequestHandler()->set_tracker_color_preset(
+		result= g_psvr_service->getRequestHandler()->set_tracker_hmd_color_preset(
             tracker_id, hmd_id, tracking_color_type,
             *desired_color_filter, *out_color_filter);
     }

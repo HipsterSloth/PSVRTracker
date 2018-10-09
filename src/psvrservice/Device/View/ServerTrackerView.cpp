@@ -1036,7 +1036,7 @@ void ServerTrackerView::generate_tracker_data_frame_for_stream(
     const struct TrackerStreamInfo *stream_info,
     DeviceOutputDataFrame &data_frame)
 {
-    TrackerDataPacket *tracker_data_frame = &data_frame.device.tracker_data_packet;
+    TrackerOutputDataPacket *tracker_data_frame = &data_frame.device.tracker_data_packet;
 
     tracker_data_frame->tracker_id= tracker_view->getDeviceID();
     tracker_data_frame->sequence_num= tracker_view->m_sequence_number;

@@ -453,6 +453,13 @@ typedef struct
     double      TimeInSeconds;
 } PSVRPSMoveCalibratedSensorData;
 
+/// PSMove Controller Input State sent to the controller
+typedef struct
+{
+    unsigned char                Rumble;
+    unsigned char                LED_r, LED_g, LED_b;
+} PSVRPSMoveInput;
+
 /// PSMove Controller State in Controller Pool Entry
 typedef struct
 {
@@ -487,8 +494,7 @@ typedef struct
     PSVRButtonState               TriggerButton;
     PSVRBatteryState              BatteryValue;
     unsigned char                TriggerValue;
-    unsigned char                Rumble;
-    unsigned char                LED_r, LED_g, LED_b;
+    PSVRPSMoveInput               InputState;
 
     long long                    ResetPoseButtonPressTime;
     bool                         bResetPoseRequestSent;
@@ -511,6 +517,14 @@ typedef struct
     PSVRVector3f Gyroscope;
     double      TimeInSeconds;
 } PSVRDS4CalibratedSensorData;
+
+/// DualShock4 Controller Input State sent to the controller
+typedef struct
+{
+    unsigned char                BigRumble, SmallRumble;
+    unsigned char                LED_r, LED_g, LED_b;
+
+} PSVRDualShock4Input;
 
 /// DualShock4 Controller State in Controller Pool Entry
 typedef struct
@@ -565,8 +579,7 @@ typedef struct
     float                        LeftTriggerValue;
     float                        RightTriggerValue;
 
-    unsigned char                BigRumble, SmallRumble;
-    unsigned char                LED_r, LED_g, LED_b;
+	PSVRDualShock4Input          InputState;
 
     long long                    ResetPoseButtonPressTime;
     bool                         bResetPoseRequestSent;
@@ -582,7 +595,7 @@ typedef struct
     union
     {
         PSVRPSMove PSMoveState;
-		PSVRDualShock4 PSDS4State;
+		PSVRDualShock4 DS4State;
     }               ControllerState;
     bool            bValid;
     int             OutputSequenceNum;
@@ -1093,13 +1106,25 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_ReloadTrackerSettings(PSVRTrackerID tracke
 
 /** \brief Sets the HSV color filter parameters for the given tracking color
     \param tracker_id The id of the tracker
+	\param controller_id The ID of the controller whose color filters we want to modify
+    \param tracking_color_type The filter color ID we want to modify
+    \param desired_color_filter The desired HSV filter
+    \param out_color_filter The actual resulting HSV filter
+	\return PSVRResult_RequestSent on success or PSVRResult_Error if the color was invalid
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerControllerColorFilter(
+    PSVRTrackerID tracker_id, PSVRControllerID controller_id, PSVRTrackingColorType tracking_color_type,
+    PSVR_HSVColorRange *desired_color_filter, PSVR_HSVColorRange *out_color_filter);
+
+/** \brief Sets the HSV color filter parameters for the given tracking color
+    \param tracker_id The id of the tracker
 	\param hmd_id The ID of the HMD whose color filters we want to modify
     \param tracking_color_type The filter color ID we want to modify
     \param desired_color_filter The desired HSV filter
     \param out_color_filter The actual resulting HSV filter
 	\return PSVRResult_RequestSent on success or PSVRResult_Error if the color was invalid
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerColorFilter(
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerHMDColorFilter(
     PSVRTrackerID tracker_id, PSVRHmdID HmdID, PSVRTrackingColorType tracking_color_type,
     PSVR_HSVColorRange *desired_color_filter, PSVR_HSVColorRange *out_color_filter);
 

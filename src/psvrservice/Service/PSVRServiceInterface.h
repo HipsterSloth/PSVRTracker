@@ -13,7 +13,7 @@ enum DeviceCategory
 	DeviceCategory_HMD= 2
 };
 
-struct ControllerDataPacket
+struct ControllerOutputDataPacket
 {
     PSVRControllerID controller_id;
     PSVRControllerType controller_type;
@@ -27,7 +27,7 @@ struct ControllerDataPacket
     bool            is_connected;
 };	
 
-struct TrackerDataPacket
+struct TrackerOutputDataPacket
 {
 	PSVRTrackerID tracker_id; 
 	PSVRTrackerType tracker_type;
@@ -35,7 +35,7 @@ struct TrackerDataPacket
 	bool is_connected;
 };
 	
-struct HMDDataPacket
+struct HMDOutputDataPacket
 {
     PSVRHmdID hmd_id;
     PSVRHmdType hmd_type;
@@ -52,9 +52,29 @@ struct HMDDataPacket
 struct DeviceOutputDataFrame
 {
 	union{
-		ControllerDataPacket controller_data_packet;
-		TrackerDataPacket tracker_data_packet;
-		HMDDataPacket hmd_data_packet;
+		ControllerOutputDataPacket controller_data_packet;
+		TrackerOutputDataPacket tracker_data_packet;
+		HMDOutputDataPacket hmd_data_packet;
+	} device;
+	DeviceCategory device_category;
+};
+
+struct ControllerInputDataPacket
+{
+    PSVRControllerID controller_id;
+    PSVRControllerType controller_type;
+    int input_sequence_num;
+    union
+    {
+        PSVRPSMoveInput      psmove_state;
+        PSVRDualShock4Input  ds4_state;
+    } controller_state;
+};
+
+struct DeviceInputDataFrame
+{
+	union{
+		ControllerInputDataPacket controller_data_packet;
 	} device;
 	DeviceCategory device_category;
 };

@@ -238,8 +238,8 @@ void AppStage_ComputeTrackerPoses::render()
                     physicsData= controllerView->ControllerState.PSMoveState.PhysicsData;
                     break;
                 case PSVRControllerType::PSVRController_DualShock4:
-                    controllerPose = controllerView->ControllerState.PSDS4State.Pose;
-                    physicsData= controllerView->ControllerState.PSDS4State.PhysicsData;
+                    controllerPose = controllerView->ControllerState.DS4State.Pose;
+                    physicsData= controllerView->ControllerState.DS4State.PhysicsData;
                     break;
                 }
                 glm::mat4 controllerMat4 = PSVR_posef_to_glm_mat4(controllerPose);
@@ -738,7 +738,7 @@ void AppStage_ComputeTrackerPoses::onEnterState(eMenuState newState)
                     controllerView->ControllerState.PSMoveState.bPoseResetButtonEnabled= true;
                     break;
                 case PSVRController_DualShock4:
-                    controllerView->ControllerState.PSDS4State.bPoseResetButtonEnabled= true;
+                    controllerView->ControllerState.DS4State.bPoseResetButtonEnabled= true;
                     break;
                 }
             }
@@ -1265,10 +1265,10 @@ bool AppStage_ComputeTrackerPoses::does_tracker_see_any_controller(const PSVRTra
             break;
         }
         else if (controllerView->ControllerType == PSVRControllerType::PSVRController_DualShock4 &&
-                 controllerView->ControllerState.PSDS4State.bIsCurrentlyTracking)
+                 controllerView->ControllerState.DS4State.bIsCurrentlyTracking)
         {
             bTrackerSeesAnyController= 
-                (controllerView->ControllerState.PSDS4State.RawTrackerData.ValidTrackerBitmask | 
+                (controllerView->ControllerState.DS4State.RawTrackerData.ValidTrackerBitmask | 
                  (1 << tracker_id)) > 0;
             break;
         }

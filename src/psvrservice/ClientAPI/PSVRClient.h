@@ -51,6 +51,8 @@ public:
 	PSVRHeadMountedDisplay* get_hmd_view(PSVRHmdID tracker_id);
     
 protected:
+	void publish();
+
     // IDataFrameListener
     virtual void handle_data_frame(const DeviceOutputDataFrame &data_frame) override;
 

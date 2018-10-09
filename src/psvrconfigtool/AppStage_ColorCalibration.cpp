@@ -1161,12 +1161,25 @@ void AppStage_ColorCalibration::request_tracker_set_color_filter(
 
     PSVR_HSVColorRange desired_color_filter= color_filter;
     PSVR_HSVColorRange result_color_filter;
-    if (PSVR_SetTrackerColorFilter(
-            m_trackerView->tracker_info.tracker_id, m_hmdView->HmdID, color_type,
-            &desired_color_filter, &result_color_filter) == PSVRResult_Success)
-    {
-        m_colorPresetTable.color_presets[color_type]= result_color_filter;
-    }
+
+	if (m_hmdView != nullptr)
+	{
+		if (PSVR_SetTrackerHMDColorFilter(
+				m_trackerView->tracker_info.tracker_id, m_hmdView->HmdID, color_type,
+				&desired_color_filter, &result_color_filter) == PSVRResult_Success)
+		{
+			m_colorPresetTable.color_presets[color_type]= result_color_filter;
+		}
+	}
+	else
+	{
+		if (PSVR_SetTrackerControllerColorFilter(
+				m_trackerView->tracker_info.tracker_id, m_masterControllerView->ControllerID, color_type,
+				&desired_color_filter, &result_color_filter) == PSVRResult_Success)
+		{
+			m_colorPresetTable.color_presets[color_type]= result_color_filter;
+		}
+	}
 }
 
 void AppStage_ColorCalibration::request_tracker_get_settings()

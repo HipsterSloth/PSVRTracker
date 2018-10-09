@@ -168,7 +168,7 @@ void AppStage_AccelerometerCalibration::update()
         case PSVRController_DualShock4:
             {
                 const PSVRDS4CalibratedSensorData &calibratedSensorData =
-                    m_controllerView->ControllerState.PSDS4State.CalibratedSensorData;
+                    m_controllerView->ControllerState.DS4State.CalibratedSensorData;
 
                 m_lastCalibratedAccelerometer = calibratedSensorData.Accelerometer;
             } break;
@@ -232,7 +232,7 @@ void AppStage_AccelerometerCalibration::update()
     case eCalibrationMenuState::test:
         {
 			if (m_controllerView->ControllerType == PSVRController_DualShock4 &&
-				m_controllerView->ControllerState.PSDS4State.OptionsButton == PSVRButtonState_PRESSED)
+				m_controllerView->ControllerState.DS4State.OptionsButton == PSVRButtonState_PRESSED)
 			{
 				PSVR_ResetControllerOrientation(m_controllerView->ControllerID, k_PSVR_quaternion_identity);
 			}
@@ -319,7 +319,7 @@ void AppStage_AccelerometerCalibration::render()
 						q= PSVR_quatf_to_glm_quat(m_controllerView->ControllerState.PSMoveState.Pose.Orientation);
 						break;
 					case PSVRController_DualShock4:
-						q= PSVR_quatf_to_glm_quat(m_controllerView->ControllerState.PSDS4State.Pose.Orientation);
+						q= PSVR_quatf_to_glm_quat(m_controllerView->ControllerState.DS4State.Pose.Orientation);
 						break;
 					}
 

@@ -22,9 +22,12 @@ typedef std::deque<PSVREventMessage> t_message_queue;
 #define IS_VALID_HMD_INDEX(x) ((x) >= 0 && (x) < PSVRSERVICE_MAX_HMD_COUNT)
 
 // -- prototypes -----
-static void applyControllerDataFrame(const ControllerDataPacket& tracker_packet, PSVRController *controller);
-static void applyTrackerDataFrame(const TrackerDataPacket& tracker_packet, PSVRTracker *tracker);
-static void applyHmdDataFrame(const HMDDataPacket& hmd_packet, PSVRHeadMountedDisplay *hmd);
+static void processPSMoveRecenterAction(PSVRController *controller);
+static void processDualShock4RecenterAction(PSVRController *controller);
+
+static void applyControllerDataFrame(const ControllerOutputDataPacket& tracker_packet, PSVRController *controller);
+static void applyTrackerDataFrame(const TrackerOutputDataPacket& tracker_packet, PSVRTracker *tracker);
+static void applyHmdDataFrame(const HMDOutputDataPacket& hmd_packet, PSVRHeadMountedDisplay *hmd);
 
 // -- methods -----
 PSVRClient::PSVRClient()
@@ -111,6 +114,9 @@ void PSVRClient::update()
 {
     // Drop an unread messages from the previous call to update
     m_message_queue.clear();
+
+    // Publish modified device state back to the service
+    publish();
 }
 
 void PSVRClient::process_messages()
@@ -121,6 +127,170 @@ void PSVRClient::process_messages()
 		// Only handle events
 		process_event_message(&message);
     }
+}
+
+void PSVRClient::publish()
+{
+    // Publish all of the modified controller state
+	for (PSVRControllerID controller_id= 0; controller_id < PSVRSERVICE_MAX_CONTROLLER_COUNT; ++controller_id)    
+	{
+		PSVRController *Controller= &m_controllers[controller_id];
+			
+		if (Controller->bValid)
+		{
+			bool bHasUnpublishedState = false;
+
+			switch (Controller->ControllerType)
+			{
+			case PSVRController_Move:
+				bHasUnpublishedState = Controller->ControllerState.PSMoveState.bHasUnpublishedState;
+				break;
+			case PSVRController_DualShock4:
+				bHasUnpublishedState = Controller->ControllerState.DS4State.bHasUnpublishedState;
+				break;
+			}
+
+			if (bHasUnpublishedState)
+			{
+				DeviceInputDataFrame data_frame;
+				data_frame.device_category= DeviceCategory_CONTROLLER;
+
+				ControllerInputDataPacket &controller_data_packet= data_frame.device.controller_data_packet;
+				controller_data_packet.controller_id= Controller->ControllerID;
+				controller_data_packet.input_sequence_num= ++Controller->InputSequenceNum;
+
+				switch (Controller->ControllerType)
+				{
+				case PSVRController_Move:
+					{
+						controller_data_packet.controller_state.psmove_state= 
+							Controller->ControllerState.PSMoveState.InputState;
+						Controller->ControllerState.PSMoveState.bHasUnpublishedState= false;
+					}
+					break;
+				case PSVRController_DualShock4:
+					{
+						controller_data_packet.controller_state.ds4_state= 
+							Controller->ControllerState.DS4State.InputState;
+						Controller->ControllerState.DS4State.bHasUnpublishedState= false;
+					}
+					break;
+				default:
+					assert(0 && "Unhandled controller type");
+				}
+
+				// Send the controller data frame to the request handler
+				m_requestHandler->handle_input_data_frame(data_frame);
+			}
+		}
+	}
+
+    // Send any pending re-center controller actions
+	for (PSVRControllerID controller_id= 0; controller_id < PSVRSERVICE_MAX_CONTROLLER_COUNT; ++controller_id)    
+	{
+		PSVRController *Controller= &m_controllers[controller_id];
+			
+		if (Controller->bValid)
+		{
+			switch (Controller->ControllerType)
+			{
+			case PSVRController_Move:
+				{
+					processPSMoveRecenterAction(Controller);
+				}
+				break;
+			case PSVRController_DualShock4:
+				{
+					processDualShock4RecenterAction(Controller);
+				}
+				break;
+			default:
+				assert(0 && "Unhandled controller type");
+			}
+		}
+	}
+}
+
+static void processPSMoveRecenterAction(PSVRController *controller)
+{
+	PSVRPSMove *psmove= &controller->ControllerState.PSMoveState;
+
+	if (psmove->bPoseResetButtonEnabled)
+	{
+		long long now =
+			std::chrono::duration_cast< std::chrono::milliseconds >(
+				std::chrono::system_clock::now().time_since_epoch()).count();
+
+		PSVRButtonState resetPoseButtonState = psmove->SelectButton;
+
+		switch (resetPoseButtonState)
+		{
+		case PSVRButtonState_PRESSED:
+			{
+				psmove->ResetPoseButtonPressTime = now;
+			} break;
+		case PSVRButtonState_DOWN:
+			{
+				if (!psmove->bResetPoseRequestSent)
+				{
+					const long long k_hold_duration_milli = 250;
+					long long pressDurationMilli = now - psmove->ResetPoseButtonPressTime;
+
+					if (pressDurationMilli >= k_hold_duration_milli)
+					{
+						PSVR_ResetControllerOrientation(controller->ControllerID, k_PSVR_quaternion_identity);
+
+						psmove->bResetPoseRequestSent = true;
+					}
+				}
+			} break;
+		case PSVRButtonState_RELEASED:
+			{
+				psmove->bResetPoseRequestSent = false;
+			} break;
+		}
+	}
+}
+
+static void processDualShock4RecenterAction(PSVRController *controller)
+{
+	PSVRDualShock4 *ds4= &controller->ControllerState.DS4State;
+
+	if (ds4->bPoseResetButtonEnabled)
+	{
+		long long now =
+			std::chrono::duration_cast< std::chrono::milliseconds >(
+				std::chrono::system_clock::now().time_since_epoch()).count();
+
+		PSVRButtonState resetPoseButtonState = ds4->OptionsButton;
+
+		switch (resetPoseButtonState)
+		{
+		case PSVRButtonState_PRESSED:
+			{
+				ds4->ResetPoseButtonPressTime = now;
+			} break;
+		case PSVRButtonState_DOWN:
+			{
+				if (!ds4->bResetPoseRequestSent)
+				{
+					const long long k_hold_duration_milli = 250;
+					long long pressDurationMilli = now - ds4->ResetPoseButtonPressTime;
+
+					if (pressDurationMilli >= k_hold_duration_milli)
+					{
+						PSVR_ResetControllerOrientation(controller->ControllerID, k_PSVR_quaternion_identity);
+
+						ds4->bResetPoseRequestSent = true;
+					}
+				}
+			} break;
+		case PSVRButtonState_RELEASED:
+			{
+				ds4->bResetPoseRequestSent = false;
+			} break;
+		}
+	}
 }
 
 bool PSVRClient::poll_next_message(PSVREventMessage *message, size_t message_size)
@@ -373,7 +543,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame &data_frame)
     {
 	case DeviceCategory_CONTROLLER:
         {
-            const ControllerDataPacket& controller_packet = data_frame.device.controller_data_packet;
+            const ControllerOutputDataPacket& controller_packet = data_frame.device.controller_data_packet;
 			const PSVRControllerID controller_id= controller_packet.controller_id;
 
             PSVR_LOG_TRACE("handle_data_frame")
@@ -389,7 +559,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame &data_frame)
         } break;
     case DeviceCategory_TRACKER:
         {
-            const TrackerDataPacket& tracker_packet = data_frame.device.tracker_data_packet;
+            const TrackerOutputDataPacket& tracker_packet = data_frame.device.tracker_data_packet;
 			const PSVRTrackerID tracker_id= tracker_packet.tracker_id;
 
             PSVR_LOG_TRACE("handle_data_frame")
@@ -405,7 +575,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame &data_frame)
         } break;
     case DeviceCategory_HMD:
         {
-            const HMDDataPacket& hmd_packet = data_frame.device.hmd_data_packet;
+            const HMDOutputDataPacket& hmd_packet = data_frame.device.hmd_data_packet;
 			const PSVRHmdID hmd_id= hmd_packet.hmd_id;
 
             PSVR_LOG_TRACE("handle_data_frame")
@@ -424,7 +594,7 @@ void PSVRClient::handle_data_frame(const DeviceOutputDataFrame &data_frame)
 }
 
 static void applyControllerDataFrame(
-	const ControllerDataPacket& controller_packet,
+	const ControllerOutputDataPacket& controller_packet,
 	PSVRController *controller)
 {
 	assert(controller_packet.controller_id == controller->ControllerID);
@@ -462,18 +632,46 @@ static void applyControllerDataFrame(
     switch (controller->ControllerType) 
 	{
         case PSVRController_Move:
-			controller->ControllerState.PSMoveState= controller_packet.controller_state.psmove_state;
+			{
+				if (controller->ControllerState.PSMoveState.bHasUnpublishedState)
+				{
+					// Don't stomp unpublished input state
+					PSVRPSMoveInput backup_input_state= controller->ControllerState.PSMoveState.InputState;
+
+					controller->ControllerState.PSMoveState= controller_packet.controller_state.psmove_state;
+					controller->ControllerState.PSMoveState.InputState= backup_input_state;
+					controller->ControllerState.PSMoveState.bHasUnpublishedState= true;
+				}
+				else
+				{
+					controller->ControllerState.PSMoveState= controller_packet.controller_state.psmove_state;
+				}
+			}
             break;
         case PSVRController_DualShock4:
-            controller->ControllerState.PSDS4State= controller_packet.controller_state.ds4_state;
-            break;            
+			{
+				controller->ControllerState.DS4State= controller_packet.controller_state.ds4_state;
+				if (controller->ControllerState.DS4State.bHasUnpublishedState)
+				{
+					// Don't stomp unpublished input state
+					PSVRDualShock4Input backup_input_state= controller->ControllerState.DS4State.InputState;
+
+					controller->ControllerState.DS4State= controller_packet.controller_state.ds4_state;
+					controller->ControllerState.DS4State.InputState= backup_input_state;
+					controller->ControllerState.DS4State.bHasUnpublishedState= true;
+				}
+				else
+				{
+					controller->ControllerState.DS4State= controller_packet.controller_state.ds4_state;
+				}
+			} break;            
         default:
             break;
     }
 }
 
 static void applyTrackerDataFrame(
-	const TrackerDataPacket& tracker_packet, 
+	const TrackerOutputDataPacket& tracker_packet, 
 	PSVRTracker *tracker)
 {
 	assert(tracker_packet.tracker_id == tracker->tracker_info.tracker_id);
@@ -504,7 +702,7 @@ static void applyTrackerDataFrame(
 }
 
 static void applyHmdDataFrame(
-	const HMDDataPacket& hmd_packet, 
+	const HMDOutputDataPacket& hmd_packet, 
 	PSVRHeadMountedDisplay *hmd)
 {
 	// Ignore old packets
