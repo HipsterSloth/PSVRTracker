@@ -398,7 +398,7 @@ static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
 
                         firmware.read((char*)chunk, size);
 
-                        USBTransferRequest request;
+                        USBTransferRequest request(_USBRequestType_ControlTransfer);
                         request.payload.control_transfer.usb_device_handle= dev_handle;
                         request.payload.control_transfer.bmRequestType= 0x40;
                         request.payload.control_transfer.bRequest= 0x0;
@@ -408,7 +408,6 @@ static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
                         request.payload.control_transfer.timeout= 1000;
                         assert(size <= sizeof(request.payload.control_transfer.data)); 
                         memcpy(request.payload.control_transfer.data, chunk, size);
-                        request.request_type= _USBRequestType_ControlTransfer;
                         usb_device_submit_transfer_request_blocking(request);
 
                         if (((uint32_t)value + size) > 0xFFFF)
@@ -420,7 +419,7 @@ static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
                     }
                     firmware.close();
 
-                    USBTransferRequest request;
+                    USBTransferRequest request(_USBRequestType_ControlTransfer);
                     request.payload.control_transfer.usb_device_handle= dev_handle;
                     request.payload.control_transfer.bmRequestType= 0x40;
                     request.payload.control_transfer.bRequest= 0x0;
@@ -429,7 +428,6 @@ static void uploadFirmwareToAllPS4Cameras(const std::string &firmware_path)
                     request.payload.control_transfer.wLength= 1;
                     request.payload.control_transfer.timeout= 1000;
                     request.payload.control_transfer.data[0]= 0x5b;
-                    request.request_type= _USBRequestType_ControlTransfer;
                     usb_device_submit_transfer_request_blocking(request);
             
                     PSVR_LOG_INFO("PS4CameraTracker::uploadFirmware") << "Firmware uploaded...";

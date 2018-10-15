@@ -88,10 +88,19 @@ void usb_device_close(t_usb_device_handle usb_device_handle);
 // Send the transfer request to the worker thread asynchronously
 bool usb_device_submit_transfer_request_async(
 	const USBTransferRequest &request,
-	std::function<void(USBTransferResult&)> callback = [](USBTransferResult &result) {});
+	std::function<void(const USBTransferResult&)> callback = [](const USBTransferResult &result) {});
 
 // Send the transfer request to the worker thread and block until it completes
 USBTransferResult usb_device_submit_transfer_request_blocking(const USBTransferRequest &request);
+
+// Used to perform a complex set of transfer requests on the USB worker thread
+USBTransferResult usb_device_submit_complex_transfer_request_blocking(
+	t_usb_device_handle handle,
+	std::function<eUSBResultCode(void)> worker_thread_callback);
+
+// USB WORKER THREAD ONLY! DONT CALL THIS ON THE MAIN THREAD!!!
+// Used by ComplexTransfer type to process requests on the worker thread instead of queuing them
+USBTransferResult usb_device_process_transfer_request_blocking(const USBTransferRequest &request);
 
 // -- Device Queries ----
 bool usb_device_can_be_opened(struct USBDeviceEnumerator* enumerator, char *outReason, size_t bufferSize);
@@ -102,6 +111,6 @@ bool usb_device_get_is_open(t_usb_device_handle handle);
 const char *usb_device_get_error_string(eUSBResultCode result_code);
 
 // -- Notifications ----
-void usb_device_post_transfer_result(const USBTransferResult &result, std::function<void(USBTransferResult&)> callback);
+void usb_device_post_transfer_result(const USBTransferRequestState *request_state, const USBTransferResult &result);
 
 #endif  // USB_DEVICE_MANAGER_H

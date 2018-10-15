@@ -9,8 +9,18 @@ PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
 {
 	CommonTrackerConfig::current_mode= "640x480(60FPS)";
 
-	setExposure(32);
-    setGain(32);
+	video_properties[PSVRVideoProperty_Gain]= 32;
+	video_properties[PSVRVideoProperty_Exposure]= 32;
+	video_properties[PSVRVideoProperty_Sharpness]= 0;
+	video_properties[PSVRVideoProperty_Hue]= 143;
+	video_properties[PSVRVideoProperty_Brightness]= 20;
+	video_properties[PSVRVideoProperty_Contrast]= 37;
+	video_properties[PSVRVideoProperty_BlueBalance]= 128;
+	video_properties[PSVRVideoProperty_RedBalance]= 128;
+	video_properties[PSVRVideoProperty_GreenBalance]= 128;
+
+	flip_horizontal= true;
+	flip_vertical= false;
 
 	trackerIntrinsics.pixel_width= 640.f;
 	trackerIntrinsics.pixel_height= 480.f;
@@ -36,6 +46,8 @@ PS3EyeTrackerConfig::writeToJSON()
 
 	pt["fovSetting"]= static_cast<int>(fovSetting);
 	pt["ps3eye_video_mode_index"]= ps3eye_video_mode_index;
+	pt["flip_horizontal"]= flip_horizontal;
+	pt["flip_vertical"]= flip_vertical;
 
     writeMatrix3d(pt, "camera_matrix", trackerIntrinsics.camera_matrix);
     writeDistortionCoefficients(pt, "distortion", &trackerIntrinsics.distortion_coefficients);
@@ -61,6 +73,8 @@ PS3EyeTrackerConfig::readFromJSON(const configuru::Config &pt)
         &trackerIntrinsics.distortion_coefficients);
 
 	ps3eye_video_mode_index= pt.get_or<int>("ps3eye_video_mode_index", ps3eye_video_mode_index);
+	flip_horizontal= pt.get_or<bool>("flip_horizontal", flip_horizontal);
+	flip_vertical= pt.get_or<bool>("flip_vertical", flip_horizontal);
 	fovSetting = 
 		static_cast<PS3EyeTrackerConfig::eFOVSetting>(
 			pt.get_or<int>("fovSetting", PS3EyeTrackerConfig::eFOVSetting::BlueDot));

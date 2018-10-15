@@ -1039,7 +1039,7 @@ PSVRResult ServiceRequestHandler::get_shared_video_frame_buffer(PSVRTrackerID tr
 	return result;		
 }
 
-PSVRResult ServiceRequestHandler::get_tracker_settings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings)
+PSVRResult ServiceRequestHandler::get_hmd_tracker_settings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings)
 {
 	PSVRResult result= PSVRResult_Error;
 
@@ -1060,6 +1060,35 @@ PSVRResult ServiceRequestHandler::get_tracker_settings(PSVRTrackerID tracker_id,
 			}
 				
 			tracker_view->gatherTrackingColorPresets(hmd_view, out_settings);
+				
+			result= PSVRResult_Success;
+        }
+    }
+		
+	return result;
+}
+
+PSVRResult ServiceRequestHandler::get_controller_tracker_settings(PSVRTrackerID tracker_id, PSVRControllerID controller_id, PSVRClientTrackerSettings *out_settings)
+{
+	PSVRResult result= PSVRResult_Error;
+
+	if (Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
+    {
+        ServerTrackerViewPtr tracker_view = m_deviceManager->getTrackerViewPtr(tracker_id);
+        if (tracker_view->getIsOpen())
+        {
+			ServerControllerView *controller_view = get_controller_view_or_null(controller_id);
+
+            out_settings->frame_width= static_cast<float>(tracker_view->getFrameWidth());
+            out_settings->frame_height= static_cast<float>(tracker_view->getFrameHeight());
+            out_settings->frame_rate= static_cast<float>(tracker_view->getFrameRate());
+
+			for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
+			{
+				out_settings->video_properties[prop_index]= tracker_view->getVideoProperty((PSVRVideoPropertyType)prop_index);
+			}
+				
+			tracker_view->gatherTrackingColorPresets(controller_view, out_settings);
 				
 			result= PSVRResult_Success;
         }

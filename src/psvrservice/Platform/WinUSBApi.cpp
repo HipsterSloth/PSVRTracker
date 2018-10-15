@@ -781,7 +781,7 @@ eUSBResultCode WinUSBApi::submit_interrupt_transfer(
     case ERROR_SUCCESS:
         result.payload.interrupt_transfer.result_code = _USBResultCode_Completed;
 		// Add the result to the outgoing result queue on success only
-		usb_device_post_transfer_result(result, requestState->callback);
+		usb_device_post_transfer_result(requestState, result);
         break;
     case ERROR_INVALID_HANDLE:
         result.payload.interrupt_transfer.result_code = _USBResultCode_BadHandle;
@@ -895,7 +895,7 @@ eUSBResultCode WinUSBApi::submit_control_transfer(
     case ERROR_SUCCESS:
         result.payload.control_transfer.result_code = _USBResultCode_Completed;
 		// Add the result to the outgoing result queue on success only
-		usb_device_post_transfer_result(result, requestState->callback);
+		usb_device_post_transfer_result(requestState, result);
         break;
     case ERROR_INVALID_HANDLE:
         result.payload.control_transfer.result_code = _USBResultCode_BadHandle;
@@ -991,7 +991,7 @@ eUSBResultCode WinUSBApi::submit_bulk_transfer(
     case ERROR_SUCCESS:
         result.payload.bulk_transfer.result_code = _USBResultCode_Completed;
 		// Add the result to the outgoing result queue on success only
-		usb_device_post_transfer_result(result, requestState->callback);
+		usb_device_post_transfer_result(requestState, result);
         break;
     case ERROR_INVALID_HANDLE:
         result.payload.bulk_transfer.result_code = _USBResultCode_BadHandle;

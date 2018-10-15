@@ -1097,7 +1097,14 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetTrackerPose(PSVRTrackerID tracker_id, c
     \param hmd_id The id of the hmd
 	\param[out] out_settings The settings for the tracker
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHMDTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings);
+
+/** \brief Get the tracker config settings for the given tracker and controller
+	\param tracker_id The id of the tracker
+    \param controller_id The id of the controller
+	\param[out] out_settings The settings for the tracker
+ */
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerTrackerSettings(PSVRTrackerID tracker_id, PSVRControllerID controller_id, PSVRClientTrackerSettings *out_settings);
 
 /** \brief Restores tracker settings from the config file
 	\param tracker_id The id of the tracker

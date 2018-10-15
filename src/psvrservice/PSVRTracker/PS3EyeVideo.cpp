@@ -51,6 +51,7 @@
 */
 
 //-- includes -----
+#include "AtomicPrimitives.h"
 #include "PS3EyeVideo.h"
 #include "DeviceInterface.h"
 #include "Logger.h"
@@ -344,9 +345,8 @@ class PS3EyeFrameProcessorThread : public WorkerThread
 public:
 	PS3EyeFrameProcessorThread(const PS3EyeVideoModeInfo &video_mode, ITrackerListener *trackerListener)
 		: WorkerThread(std::string("PS3EyeVideoFrameProcessor"))
-		, m_maxCompressedFrameCount(3)
-		, m_compressedFrameWriteIndex({0})
-		, m_compressedFrameReadIndex({0})
+		, m_compressedFrameIndexQueue(4)
+		, m_compressedFrameWriteIndex(0)
 		, m_frameWidth(video_mode.width)
 		, m_frameHeight(video_mode.height)
 		, m_compressedFramesBuffer(nullptr)
@@ -357,7 +357,7 @@ public:
 	{
         if (m_compressedFrameSizeBytes > 0)
         {
-            m_compressedFramesBuffer = new uint8_t[m_compressedFrameSizeBytes*m_maxCompressedFrameCount];
+            m_compressedFramesBuffer = new uint8_t[m_compressedFrameSizeBytes*m_compressedFrameIndexQueue.getCapacity()];
             m_uncompressedFrameBuffer = new uint8_t[m_uncompressedFrameSizeBytes];
             memset(m_compressedFramesBuffer, 0, m_compressedFrameSizeBytes);
             memset(m_uncompressedFrameBuffer, 0, m_uncompressedFrameSizeBytes);
@@ -392,13 +392,17 @@ public:
 	uint8_t* enqueueCompressedFrame()
 	{
 		uint8_t* new_frame = nullptr;
+		uint32_t new_write_index= (m_compressedFrameWriteIndex + 1) % m_compressedFrameIndexQueue.getCapacity();
 
-		// Note: we don't need to copy any data to the buffer since the USB packets are directly written to the frame buffer.
-		// We just need to update head and available count to signal to the consumer that a new frame is available
-		m_compressedFrameWriteIndex = (m_compressedFrameWriteIndex + 1) % m_maxCompressedFrameCount;
+		if (m_compressedFrameIndexQueue.enqueue(new_write_index))
+		{
+			// Note: we don't need to copy any data to the buffer since the USB packets are directly written to the frame buffer.
+			// We just need to update head and available count to signal to the consumer that a new frame is available
+			m_compressedFrameWriteIndex = new_write_index;
 
-		// Determine the next frame pointer that the producer should write to
-		new_frame = m_compressedFramesBuffer + m_compressedFrameWriteIndex*m_compressedFrameSizeBytes;
+			// Determine the next frame pointer that the producer should write to
+			new_frame = m_compressedFramesBuffer + m_compressedFrameWriteIndex*m_compressedFrameSizeBytes;
+		}		
 
 		return new_frame;
 	}
@@ -412,19 +416,17 @@ protected:
 		if (!m_exitSignaled)
 		{
 			// Send the uncompressed frame off to the tracker for processing
-			if (m_compressedFrameReadIndex != m_compressedFrameWriteIndex)
+			uint32_t read_index= 0;
+			if (m_compressedFrameIndexQueue.dequeue(read_index))
 			{
 				// Get the current frame buffer
-				uint8_t* source = m_compressedFramesBuffer + m_compressedFrameReadIndex*m_compressedFrameSizeBytes;
+				uint8_t* source = m_compressedFramesBuffer + read_index*m_compressedFrameSizeBytes;
 
 				// Convert the bayer encoded frame to BGR
 				debayer(m_frameWidth, m_frameHeight, source, m_uncompressedFrameBuffer, true);
 
 				// Notify the client
 				m_trackerListener->notifyVideoFrameReceived(m_uncompressedFrameBuffer);
-
-				// Advance to the next read buffer slot
-				m_compressedFrameReadIndex= (m_compressedFrameWriteIndex + 1) % m_maxCompressedFrameCount;
 			}
 			else
 			{
@@ -543,9 +545,9 @@ protected:
 
 protected:
 	// Queue State
+	AtomicRingBufferSPSC<uint32_t> m_compressedFrameIndexQueue;
 	uint32_t m_maxCompressedFrameCount;
-	std::atomic_uint32_t m_compressedFrameWriteIndex;
-	std::atomic_uint32_t m_compressedFrameReadIndex;
+	uint32_t m_compressedFrameWriteIndex;
 
 	// Buffer State
 	int m_frameWidth;
@@ -585,9 +587,7 @@ public:
 		// Send a request to the USBDeviceManager to start a bulk transfer stream for video frames.
 		// This will spin up a thread in the USB manager for reading the incoming USB packets.
 		// The usbBulkTransferCallback_workerThread() callback will be executed on this thread.
-		USBTransferRequest request;
-		memset(&request, 0, sizeof(USBTransferRequest));
-		request.request_type= eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle;
+		USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle);
 		request.payload.start_bulk_transfer_bundle.usb_device_handle= usb_device_handle;
 		request.payload.start_bulk_transfer_bundle.bAutoResubmit= true;
 		request.payload.start_bulk_transfer_bundle.in_flight_transfer_packet_count= NUM_TRANSFERS;
@@ -610,9 +610,7 @@ public:
 	void stopUSBBulkTransfer(t_usb_device_handle usb_device_handle)
 	{
 		// Send a request to the USBDeviceManager to stop the bulk transfer stream for video frames
-		USBTransferRequest request;
-		memset(&request, 0, sizeof(USBTransferRequest));
-		request.request_type= eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle;
+		USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle);
 		request.payload.cancel_bulk_transfer_bundle.usb_device_handle= usb_device_handle;
 
 		// This will block until the processing USB packet processing thread exits
@@ -756,7 +754,10 @@ protected:
             }
             else
             {
-                memcpy(m_currentFrameStart+m_currentFrameBytesWritten, data, len);
+				if (m_currentFrameStart != nullptr)
+				{
+	                memcpy(m_currentFrameStart+m_currentFrameBytesWritten, data, len);
+				}
                 m_currentFrameBytesWritten += len;
             }
         }
@@ -766,6 +767,8 @@ protected:
         if (packet_type == LAST_PACKET)
         {
             m_currentFrameBytesWritten = 0;
+
+			// Can be NULL if the reader thread has fallen behind!
             m_currentFrameStart = m_frameProcessorThread->enqueueCompressedFrame();
         }
     }
@@ -876,26 +879,13 @@ bool PS3EyeVideoDevice::open(
 	assert(desired_video_mode >= 0 && desired_video_mode < PS3EyeVideoMode_COUNT);
 	const PS3EyeVideoModeInfo &video_mode= k_supported_video_modes[desired_video_mode];
 
-    // Initialize the camera
-	init_camera(m_usb_device_handle, video_mode);
-   
-    if (video_mode.width == 320) // 320x240
-        ov534_reg_write_array(m_usb_device_handle, bridge_start_qvga, ARRAY_SIZE(bridge_start_qvga));
-    else // 640x480 
-        ov534_reg_write_array(m_usb_device_handle, bridge_start_vga, ARRAY_SIZE(bridge_start_vga));
-
-    if (video_mode.width == 320) // 320x240
-        sccb_reg_write_array(m_usb_device_handle, sensor_start_qvga, ARRAY_SIZE(sensor_start_qvga));
-    else // 640x480
-        sccb_reg_write_array(m_usb_device_handle, sensor_start_vga, ARRAY_SIZE(sensor_start_vga));
-
-	// Set the desired frame rate
-    set_frame_rate(m_usb_device_handle, video_mode);
+	// Remember which video mode was last successfully opened
+	cfg.ps3eye_video_mode_index= desired_video_mode;
 
 	// Remember the video frame properties
-    m_properties.frame_width = video_mode.width;
-    m_properties.frame_height = video_mode.height;
-    m_properties.frame_rate = video_mode.fps;
+	m_properties.frame_width = video_mode.width;
+	m_properties.frame_height = video_mode.height;
+	m_properties.frame_rate = video_mode.fps;
 
 	// Cache the property constraints for the current video format
 	for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
@@ -903,7 +893,8 @@ bool PS3EyeVideoDevice::open(
 		getVideoPropertyConstraint((PSVRVideoPropertyType)prop_index, m_videoPropertyConstraints[prop_index]);
 	}
 
-	// Apply video property settings stored in config onto the camera
+	// Apply the constraints to video property settings stored in config
+	unsigned char video_properties[PSVRVideoProperty_COUNT];
 	for (int prop_index = 0; prop_index < PSVRVideoProperty_COUNT; ++prop_index)
 	{
 		const PSVRVideoPropertyType prop_type = (PSVRVideoPropertyType)prop_index;
@@ -911,60 +902,77 @@ bool PS3EyeVideoDevice::open(
 
 		if (constraint.is_supported)
 		{
-			// Use the properties from the config if we used this video mode previously
-			if (desired_video_mode == cfg.ps3eye_video_mode_index)
-			{
-				int currentValue= getVideoProperty(prop_type);
-				int desiredValue= cfg.video_properties[prop_index];
+			int desired_config_value= cfg.video_properties[prop_index];
 
-				if (desiredValue != currentValue)
-				{
-					// Use the desired value if it is in-range
-					if (desiredValue >= constraint.min_value &&
-						desiredValue <= constraint.max_value)
-					{
-						setVideoProperty(prop_type, desiredValue);
-					}
-					// Otherwise update the config to use the current value
-					else
-					{
-						cfg.video_properties[prop_index]= currentValue;
-					}
-				}
-			}
-			// Otherwise use the current value for the property
-			// and update the config to match
-			else
+			if (desired_config_value < constraint.min_value || desired_config_value > constraint.max_value)
 			{
-				int currentValue= getVideoProperty(prop_type);
-
-				if (currentValue >= constraint.min_value &&
-					currentValue <= constraint.max_value)
-				{
-					cfg.video_properties[prop_index]= currentValue;
-				}
-				else
-				{
-					// If the current value is somehow out-of-range
-					// fallback to the default value
-					setVideoProperty(prop_type, constraint.default_value);
-					cfg.video_properties[prop_index]= constraint.default_value;
-				}
+				// If the desired value is out-of-range, fallback to the default value
+				desired_config_value= constraint.default_value;
+				cfg.video_properties[prop_index]= constraint.default_value;
 			}
+
+			//setVideoProperty(prop_type, desiredValue);
+			video_properties[prop_type]= (unsigned char)desired_config_value;
 		}
 	}
 
-	// Remember which video mode was last successfully opened
-	cfg.ps3eye_video_mode_index= desired_video_mode;
+	// Store the constrained camera settings onto the cache camera properties
+	m_properties.brightness= video_properties[PSVRVideoProperty_Brightness];
+    m_properties.autogain= false;
+    m_properties.gain= video_properties[PSVRVideoProperty_Gain];
+    m_properties.exposure= video_properties[PSVRVideoProperty_Exposure];
+    m_properties.sharpness= video_properties[PSVRVideoProperty_Sharpness];
+    m_properties.hue= video_properties[PSVRVideoProperty_Hue]; 
+    m_properties.awb= video_properties[PSVRVideoProperty_WhiteBalance] > 0;
+    m_properties.brightness= video_properties[PSVRVideoProperty_Brightness];
+    m_properties.contrast= video_properties[PSVRVideoProperty_Contrast];
+    m_properties.blueBalance= video_properties[PSVRVideoProperty_BlueBalance];
+    m_properties.redBalance= video_properties[PSVRVideoProperty_RedBalance];
+    m_properties.greenBalance= video_properties[PSVRVideoProperty_GreenBalance];
 
-	// Flip the image horizontally
-	set_flip(m_usb_device_handle, true, false);
+	// Handle a bunch of requests on the USB worker thread directly
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() 
+		{
+			// Initialize the camera
+			init_camera(m_usb_device_handle, video_mode);
+   
+			if (video_mode.width == 320) // 320x240
+				ov534_reg_write_array(m_usb_device_handle, bridge_start_qvga, ARRAY_SIZE(bridge_start_qvga));
+			else // 640x480 
+				ov534_reg_write_array(m_usb_device_handle, bridge_start_vga, ARRAY_SIZE(bridge_start_vga));
 
-	// Turn on the "recording" LED
-    ov534_set_led(m_usb_device_handle, true);
+			if (video_mode.width == 320) // 320x240
+				sccb_reg_write_array(m_usb_device_handle, sensor_start_qvga, ARRAY_SIZE(sensor_start_qvga));
+			else // 640x480
+				sccb_reg_write_array(m_usb_device_handle, sensor_start_vga, ARRAY_SIZE(sensor_start_vga));
 
-	// Tell the camera to start the video stream
-    ov534_reg_write(m_usb_device_handle, 0xe0, 0x00);
+			// Set the desired frame rate
+			set_frame_rate(m_usb_device_handle, video_mode);
+
+			// Apply video property settings stored in config onto the camera
+			set_brightness(m_usb_device_handle, video_properties[PSVRVideoProperty_Brightness]);
+			set_contrast(m_usb_device_handle, video_properties[PSVRVideoProperty_Contrast]);
+			set_hue(m_usb_device_handle, video_properties[PSVRVideoProperty_Hue]);
+			set_auto_white_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_WhiteBalance] == 1);
+			set_red_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_RedBalance]);
+			set_green_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_GreenBalance]);
+			set_blue_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_BlueBalance]);
+			set_gain(m_usb_device_handle, video_properties[PSVRVideoProperty_Gain]);
+			set_exposure(m_usb_device_handle, video_properties[PSVRVideoProperty_Exposure]);
+
+			// Flip the image horizontally
+			set_flip(m_usb_device_handle, cfg.flip_horizontal, cfg.flip_vertical);
+
+			// Turn on the "recording" LED
+			ov534_set_led(m_usb_device_handle, true);
+
+			// Tell the camera to start the video stream
+			ov534_reg_write(m_usb_device_handle, 0xe0, 0x00);
+
+			return _USBResultCode_Completed;
+		});
 
     // Start the USB video packet bulk transfers and the frame processor thread
     m_video_packet_processor= new PS3EyeUSBPacketProcessor(video_mode, tracker_listener);
@@ -980,11 +988,18 @@ void PS3EyeVideoDevice::close()
 
 	if (m_usb_device_handle != k_invalid_usb_device_handle)
 	{
-		// Tell the camera to stop the video stream
-		ov534_reg_write(m_usb_device_handle, 0xe0, 0x09); 
+		usb_device_submit_complex_transfer_request_blocking(
+			m_usb_device_handle, 
+			[&]() 
+			{
+				// Tell the camera to stop the video stream
+				ov534_reg_write(m_usb_device_handle, 0xe0, 0x09); 
 
-		// Turn off the "recording" LED light
-		ov534_set_led(m_usb_device_handle, false);
+				// Turn off the "recording" LED light
+				ov534_set_led(m_usb_device_handle, false);
+
+				return _USBResultCode_Completed;
+			});
 	}
 
 	// Stop the USB video packet bulk transfers and the frame processor thread
@@ -1194,7 +1209,12 @@ void PS3EyeVideoDevice::setAutogain(bool bAutoGain)
     m_properties.autogain = bAutoGain;
 
     // Add an async task to set the autogain on the camera
-    set_autogain(m_usb_device_handle, bAutoGain, m_properties.gain, m_properties.exposure);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+		    set_autogain(m_usb_device_handle, bAutoGain, m_properties.gain, m_properties.exposure);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setAutoWhiteBalance(bool val)
@@ -1203,7 +1223,12 @@ void PS3EyeVideoDevice::setAutoWhiteBalance(bool val)
     m_properties.awb = val;
 
     // Add an async task to set the awb on the camera
-    set_auto_white_balance(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+		    set_auto_white_balance(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setGain(unsigned char val)
@@ -1212,7 +1237,12 @@ void PS3EyeVideoDevice::setGain(unsigned char val)
     m_properties.gain = val;
 
     // Add an async task to set the gain on the camera
-    set_gain(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+		    set_gain(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setExposure(unsigned char val)
@@ -1221,7 +1251,12 @@ void PS3EyeVideoDevice::setExposure(unsigned char val)
     m_properties.exposure = val;
 
     // Add an async task to set the exposure on the camera
-    set_exposure(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+		    set_exposure(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 
@@ -1231,7 +1266,12 @@ void PS3EyeVideoDevice::setSharpness(unsigned char val)
     m_properties.sharpness = val;
 
     // Add an async task to set the sharpness on the camera
-    set_sharpness(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+		    set_sharpness(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setContrast(unsigned char val)
@@ -1240,7 +1280,12 @@ void PS3EyeVideoDevice::setContrast(unsigned char val)
     m_properties.contrast = val;
 
     // Add an async task to set the sharpness on the camera
-    set_contrast(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_contrast(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setBrightness(unsigned char val)
@@ -1248,8 +1293,13 @@ void PS3EyeVideoDevice::setBrightness(unsigned char val)
     // Cache the new brightness value (the camera will converge to this)
     m_properties.brightness = val;
 
-    // Add an async task to set the sharpness on the camera
-    set_brightness(m_usb_device_handle, val);
+	// Add an async task to set the sharpness on the camera
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_brightness(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setHue(unsigned char val)
@@ -1258,7 +1308,12 @@ void PS3EyeVideoDevice::setHue(unsigned char val)
     m_properties.hue = val;
 
     // Add an async task to set the sharpness on the camera
-    set_hue(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_hue(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setRedBalance(unsigned char val)
@@ -1267,7 +1322,12 @@ void PS3EyeVideoDevice::setRedBalance(unsigned char val)
     m_properties.redBalance = val;
 
     // Add an async task to set the red balance on the camera
-    set_red_balance(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_red_balance(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setGreenBalance(unsigned char val)
@@ -1276,7 +1336,12 @@ void PS3EyeVideoDevice::setGreenBalance(unsigned char val)
     m_properties.greenBalance = val;
 
     // Add an async task to set the green balance on the camera
-    set_green_balance(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_green_balance(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setBlueBalance(unsigned char val)
@@ -1285,7 +1350,12 @@ void PS3EyeVideoDevice::setBlueBalance(unsigned char val)
     m_properties.blueBalance = val;
 
     // Add an async task to set the red balance on the camera
-    set_blue_balance(m_usb_device_handle, val);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_blue_balance(m_usb_device_handle, val);
+			return _USBResultCode_Completed;
+		});
 }
 
 void PS3EyeVideoDevice::setFlip(bool horizontal, bool vertical)
@@ -1295,7 +1365,12 @@ void PS3EyeVideoDevice::setFlip(bool horizontal, bool vertical)
     m_properties.flip_v= vertical;
 
     // Add an async task to set the red balance on the camera
-    set_flip(m_usb_device_handle, horizontal, vertical);
+	usb_device_submit_complex_transfer_request_blocking(
+		m_usb_device_handle, 
+		[&]() {
+			set_flip(m_usb_device_handle, horizontal, vertical);
+			return _USBResultCode_Completed;
+		});
 }
 
 bool PS3EyeVideoDevice::getUSBPortPath(char *out_identifier, size_t max_identifier_length) const
@@ -1330,7 +1405,7 @@ static void init_camera(
 	sensor_id = sccb_reg_read(device_handle, 0x0a) << 8;
 	sccb_reg_read(device_handle, 0x0b);
 	sensor_id |= sccb_reg_read(device_handle, 0x0b);
-	PSVR_LOG_INFO("init_camera") <<  "PS3EYE Sensor ID: "
+	PSVR_MT_LOG_INFO("init_camera") <<  "PS3EYE Sensor ID: "
 		<< std::hex << std::setfill('0') << std::setw(2) << sensor_id;
 
     // initialize 
@@ -1495,7 +1570,7 @@ static void sccb_reg_write(
 	
 	if (!sccb_check_status(device_handle))
 	{
-		PSVR_LOG_WARNING("sccb_reg_write") << "failed";
+		PSVR_MT_LOG_WARNING("sccb_reg_write") << "failed";
 	}
 }
 
@@ -1531,14 +1606,14 @@ static uint8_t sccb_reg_read(
     ov534_reg_write(device_handle, OV534_REG_OPERATION, OV534_OP_WRITE_2);
     if (!sccb_check_status(device_handle))
     {
-		PSVR_LOG_WARNING("sccb_reg_read") << "failed 1st write";
+		PSVR_MT_LOG_WARNING("sccb_reg_read") << "failed 1st write";
         return 0;
     }
 
     ov534_reg_write(device_handle, OV534_REG_OPERATION, OV534_OP_READ_2);
     if (!sccb_check_status(device_handle))
     {
-		PSVR_LOG_WARNING("sccb_reg_read") << "failed 2nd write";
+		PSVR_MT_LOG_WARNING("sccb_reg_read") << "failed 2nd write";
         return 0;
     }
 
@@ -1560,7 +1635,7 @@ static bool sccb_check_status(t_usb_device_handle device_handle)
 		case 0x03:
 			break;
 		default:
-            PSVR_LOG_WARNING("sccb_check_status") << "unknown sccb status 0x"
+            PSVR_MT_LOG_WARNING("sccb_check_status") << "unknown sccb status 0x"
                 << std::hex << std::setfill('0') << std::setw(2) << data;
 		}
 	}
@@ -1573,9 +1648,7 @@ static void ov534_reg_write(
     uint16_t reg, 
     uint8_t val)
 {
-    USBTransferRequest request;
-    memset(&request, 0, sizeof(USBTransferRequest));
-    request.request_type= eUSBTransferRequestType::_USBRequestType_ControlTransfer;
+    USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_ControlTransfer);
     request.payload.control_transfer.usb_device_handle= device_handle;
     request.payload.control_transfer.bmRequestType = 
         USB_ENDPOINT_OUT | USB_REQUEST_TYPE_VENDOR | USB_RECIPIENT_DEVICE;
@@ -1587,7 +1660,7 @@ static void ov534_reg_write(
     request.payload.control_transfer.timeout= 500;
 
     // Submit the async USB control transfer request...
-	USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
+	USBTransferResult result= usb_device_process_transfer_request_blocking(request);
     assert(result.result_type == eUSBTransferResultType::_USBResultType_ControlTransfer);
 
     //... whose result we get notified of here
@@ -1618,9 +1691,7 @@ static uint8_t ov534_reg_read(
     t_usb_device_handle device_handle, 
     uint16_t reg)
 {
-    USBTransferRequest request;
-    memset(&request, 0, sizeof(USBTransferRequest));
-    request.request_type = eUSBTransferRequestType::_USBRequestType_ControlTransfer;
+    USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_ControlTransfer);
     request.payload.control_transfer.usb_device_handle= device_handle;
     request.payload.control_transfer.bmRequestType =
         USB_ENDPOINT_IN | USB_REQUEST_TYPE_VENDOR | USB_RECIPIENT_DEVICE;
@@ -1631,7 +1702,7 @@ static uint8_t ov534_reg_read(
     request.payload.control_transfer.timeout = 500;
 
     // Submit the async USB control transfer request...
-	USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
+	USBTransferResult result= usb_device_process_transfer_request_blocking(request);
     assert(result.result_type == eUSBTransferResultType::_USBResultType_ControlTransfer);
 
     //... whose result we get notified of here
@@ -1687,45 +1758,45 @@ static void log_usb_result_code(const char *function_name, eUSBResultCode result
     {
     // Success Codes
     case eUSBResultCode::_USBResultCode_Started:
-        PSVR_LOG_INFO(function_name) << "request started";
+        PSVR_MT_LOG_INFO(function_name) << "request started";
         break;
     case eUSBResultCode::_USBResultCode_Canceled:
-        PSVR_LOG_INFO(function_name) << "request canceled";
+        PSVR_MT_LOG_INFO(function_name) << "request canceled";
         break;
     case eUSBResultCode::_USBResultCode_Completed:
-        PSVR_LOG_INFO(function_name) << "request completed";
+        PSVR_MT_LOG_INFO(function_name) << "request completed";
         break;
 
     // Failure Codes
     case eUSBResultCode::_USBResultCode_GeneralError:
-        PSVR_LOG_INFO(function_name) << "request failed: general request error";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: general request error";
         break;
     case eUSBResultCode::_USBResultCode_BadHandle:
-        PSVR_LOG_INFO(function_name) << "request failed: bad USB device handle";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: bad USB device handle";
         break;
     case eUSBResultCode::_USBResultCode_NoMemory:
-        PSVR_LOG_INFO(function_name) << "request failed: no memory";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: no memory";
         break;
     case eUSBResultCode::_USBResultCode_SubmitFailed:
-        PSVR_LOG_INFO(function_name) << "request failed: submit failed";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: submit failed";
         break;
     case eUSBResultCode::_USBResultCode_DeviceNotOpen:
-        PSVR_LOG_INFO(function_name) << "request failed: device not open";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: device not open";
         break;
     case eUSBResultCode::_USBResultCode_TransferNotActive:
-        PSVR_LOG_INFO(function_name) << "request failed: transfer not active";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: transfer not active";
         break;
     case eUSBResultCode::_USBResultCode_TransferAlreadyStarted:
-        PSVR_LOG_INFO(function_name) << "request failed: transfer already started";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: transfer already started";
         break;
     case eUSBResultCode::_USBResultCode_Overflow:
-        PSVR_LOG_INFO(function_name) << "request failed: transfer overflow";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: transfer overflow";
         break;
     case eUSBResultCode::_USBResultCode_Pipe:
-        PSVR_LOG_INFO(function_name) << "request failed: transfer pipe error";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: transfer pipe error";
         break;
     case eUSBResultCode::_USBResultCode_TimedOut:
-        PSVR_LOG_INFO(function_name) << "request failed: transfer timed out";
+        PSVR_MT_LOG_INFO(function_name) << "request failed: transfer timed out";
         break;
     };
 }

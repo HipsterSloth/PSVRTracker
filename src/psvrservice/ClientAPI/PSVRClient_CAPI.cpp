@@ -882,7 +882,7 @@ PSVRResult PSVR_SetTrackerPose(PSVRTrackerID tracker_id, const PSVRPosef *pose)
 	return result;
 }
 
-PSVRResult PSVR_GetTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings)
+PSVRResult PSVR_GetHMDTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, PSVRClientTrackerSettings *out_settings)
 {
     PSVRResult result= PSVRResult_Error;
 
@@ -890,7 +890,21 @@ PSVRResult PSVR_GetTrackerSettings(PSVRTrackerID tracker_id, PSVRHmdID hmd_id, P
         IS_VALID_TRACKER_INDEX(tracker_id) && 
         IS_VALID_HMD_INDEX(hmd_id))
     {
-        result= g_psvr_service->getRequestHandler()->get_tracker_settings(tracker_id, hmd_id, out_settings);
+        result= g_psvr_service->getRequestHandler()->get_hmd_tracker_settings(tracker_id, hmd_id, out_settings);
+    }
+
+    return result;
+}
+
+PSVRResult PSVR_GetControllerTrackerSettings(PSVRTrackerID tracker_id, PSVRControllerID controller_id, PSVRClientTrackerSettings *out_settings)
+{
+    PSVRResult result= PSVRResult_Error;
+
+    if (g_psvr_service != nullptr && 
+        IS_VALID_TRACKER_INDEX(tracker_id) && 
+        IS_VALID_CONTROLLER_INDEX(controller_id))
+    {
+        result= g_psvr_service->getRequestHandler()->get_controller_tracker_settings(tracker_id, controller_id, out_settings);
     }
 
     return result;

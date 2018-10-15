@@ -113,6 +113,7 @@ enum eUSBTransferRequestType
     _USBRequestType_BulkTransfer,
     _USBRequestType_StartBulkTransferBundle,
     _USBRequestType_CancelBulkTransferBundle,
+	_USBRequestType_ComplexTransfer,
 };
 
 enum eUSBTransferResultType
@@ -120,7 +121,8 @@ enum eUSBTransferResultType
 	_USBResultType_InterruptTransfer,
     _USBResultType_ControlTransfer,
     _USBResultType_BulkTransfer,
-    _USBResultType_BulkTransferBundle
+    _USBResultType_BulkTransferBundle,
+	_USBResultType_ComplexTransfer
 };
 
 #define MAX_INTERRUPT_TRANSFER_PAYLOAD  512
@@ -140,6 +142,13 @@ struct USBRequestPayload_InterruptTransfer
 	unsigned int length;
 	unsigned char data[MAX_INTERRUPT_TRANSFER_PAYLOAD];
 	unsigned char endpoint;
+
+	USBRequestPayload_InterruptTransfer()
+		: usb_device_handle(k_invalid_usb_device_handle)
+		, timeout(0)
+		, length(0)
+		, endpoint(0)
+	{}
 };
 
 struct USBRequestPayload_ControlTransfer
@@ -152,6 +161,16 @@ struct USBRequestPayload_ControlTransfer
     unsigned char data[MAX_CONTROL_TRANSFER_PAYLOAD];
     unsigned char bmRequestType;
     unsigned char bRequest;
+
+	USBRequestPayload_ControlTransfer()
+		: usb_device_handle(k_invalid_usb_device_handle)
+		, timeout(0)
+		, wValue(0)
+		, wIndex(0)
+		, wLength(0)
+		, bmRequestType(0)
+		, bRequest(0)
+	{}
 };
 
 struct USBRequestPayload_BulkTransfer
@@ -161,6 +180,12 @@ struct USBRequestPayload_BulkTransfer
 	unsigned int length;
 	unsigned char data[MAX_BULK_TRANSFER_PAYLOAD];
 	unsigned char endpoint;
+
+	USBRequestPayload_BulkTransfer()
+		: usb_device_handle(k_invalid_usb_device_handle)
+		, length(0)
+		, endpoint(0)
+	{}
 };
 
 struct USBRequestPayload_BulkTransferBundle
@@ -171,24 +196,130 @@ struct USBRequestPayload_BulkTransferBundle
     usb_bulk_transfer_cb_fn on_data_callback;
     void *transfer_callback_userdata;
     bool bAutoResubmit;
+
+	USBRequestPayload_BulkTransferBundle()
+		: usb_device_handle(k_invalid_usb_device_handle)
+		, transfer_packet_size(0)
+		, in_flight_transfer_packet_count(0)
+		, on_data_callback(nullptr)
+		, transfer_callback_userdata(nullptr)
+		, bAutoResubmit(false)
+	{}
 };
 
 struct USBRequestPayload_CancelBulkTransferBundle
 {
     t_usb_device_handle usb_device_handle;
+
+	USBRequestPayload_CancelBulkTransferBundle()
+		: usb_device_handle(k_invalid_usb_device_handle)
+	{}
+};
+
+struct USBRequestPayload_ComplexTransfer
+{
+	t_usb_device_handle usb_device_handle;
+	std::function<eUSBResultCode(void)> worker_thread_callback;
+
+	USBRequestPayload_ComplexTransfer()
+		: usb_device_handle(k_invalid_usb_device_handle)
+		, worker_thread_callback(nullptr)
+	{}
+};
+
+union USBRequestPayload
+{
+	USBRequestPayload_InterruptTransfer interrupt_transfer;
+    USBRequestPayload_ControlTransfer control_transfer;
+    USBRequestPayload_BulkTransfer bulk_transfer;
+    USBRequestPayload_BulkTransferBundle start_bulk_transfer_bundle;
+    USBRequestPayload_CancelBulkTransferBundle cancel_bulk_transfer_bundle;
+	USBRequestPayload_ComplexTransfer complex_transfer;
+
+	USBRequestPayload() {
+		// Initialize USBRequestPayload_ComplexTransfer object using placement 'new'.
+		new(&complex_transfer) USBRequestPayload_ComplexTransfer(); 
+	} 
+	USBRequestPayload(const USBRequestPayload_ComplexTransfer &payload) 
+		: complex_transfer(payload) 
+	{}
+	USBRequestPayload& operator=(const USBRequestPayload_ComplexTransfer& payload) { 
+		// Assign USBRequestPayload_ComplexTransfer object using placement 'new'.
+		new(&complex_transfer) USBRequestPayload_ComplexTransfer(payload); 
+		return *this; 
+	} 
+	~USBRequestPayload() 
+	{}
 };
 
 struct USBTransferRequest
 {
-    union
-    {
-		USBRequestPayload_InterruptTransfer interrupt_transfer;
-        USBRequestPayload_ControlTransfer control_transfer;
-        USBRequestPayload_BulkTransfer bulk_transfer;
-        USBRequestPayload_BulkTransferBundle start_bulk_transfer_bundle;
-        USBRequestPayload_CancelBulkTransferBundle cancel_bulk_transfer_bundle;
-    } payload;
+    USBRequestPayload payload;
     eUSBTransferRequestType request_type;
+
+	USBTransferRequest()
+	{
+		request_type= _USBRequestType_ComplexTransfer;
+		payload.complex_transfer= USBRequestPayload_ComplexTransfer();
+	}
+
+	USBTransferRequest(eUSBTransferRequestType _request_type)
+	{
+		request_type= _request_type;
+		switch (request_type)
+		{
+		case _USBRequestType_InterruptTransfer:
+			payload.interrupt_transfer= USBRequestPayload_InterruptTransfer();
+			break;
+		case _USBRequestType_ControlTransfer:
+			payload.control_transfer= USBRequestPayload_ControlTransfer();
+			break;
+		case _USBRequestType_BulkTransfer:
+			payload.bulk_transfer= USBRequestPayload_BulkTransfer();
+			break;
+		case _USBRequestType_StartBulkTransferBundle:
+			payload.start_bulk_transfer_bundle= USBRequestPayload_BulkTransferBundle();
+			break;
+		case _USBRequestType_CancelBulkTransferBundle:
+			payload.cancel_bulk_transfer_bundle= USBRequestPayload_CancelBulkTransferBundle();
+			break;
+		case _USBRequestType_ComplexTransfer:
+			payload.complex_transfer= USBRequestPayload_ComplexTransfer();
+			break;
+		}
+	}
+
+	USBTransferRequest(const USBTransferRequest &request) {
+		*this= request;
+	}
+	USBTransferRequest& operator=(const USBTransferRequest& request) { 
+		request_type= request.request_type;
+		switch (request_type)
+		{
+		case _USBRequestType_InterruptTransfer:
+			payload.interrupt_transfer= request.payload.interrupt_transfer;
+			break;
+		case _USBRequestType_ControlTransfer:
+			payload.control_transfer= request.payload.control_transfer;
+			break;
+		case _USBRequestType_BulkTransfer:
+			payload.bulk_transfer= request.payload.bulk_transfer;
+			break;
+		case _USBRequestType_StartBulkTransferBundle:
+			payload.start_bulk_transfer_bundle= request.payload.start_bulk_transfer_bundle;
+			break;
+		case _USBRequestType_CancelBulkTransferBundle:
+			payload.cancel_bulk_transfer_bundle= request.payload.cancel_bulk_transfer_bundle;
+			break;
+		case _USBRequestType_ComplexTransfer:
+			payload.complex_transfer= request.payload.complex_transfer;
+			break;
+		}
+
+		return *this;
+	}
+
+	~USBTransferRequest() {} // Due to complex_transfer member having non-trivial destructor
 };
 
 //-- Result Structures --
@@ -222,28 +353,38 @@ struct USBResultPayload_InterruptTransfer
 	int dataLength;
 };
 
+struct USBResultPayload_ComplexTransfer
+{
+    t_usb_device_handle usb_device_handle;
+    eUSBResultCode result_code;
+};
+
+union USBResultPayload
+{
+	USBResultPayload_InterruptTransfer interrupt_transfer;
+    USBResultPayload_ControlTransfer control_transfer;
+    USBResultPayload_BulkTransfer bulk_transfer;
+    USBResultPayload_BulkTransferBundle bulk_transfer_bundle;
+	USBResultPayload_ComplexTransfer complex_transfer;
+};
+
 struct USBTransferResult
 {
-    union 
-    {
-		USBResultPayload_InterruptTransfer interrupt_transfer;
-        USBResultPayload_ControlTransfer control_transfer;
-        USBResultPayload_BulkTransfer bulk_transfer;
-        USBResultPayload_BulkTransferBundle bulk_transfer_bundle;
-    } payload;
+    USBResultPayload payload;
     eUSBTransferResultType result_type;
 };
 
 struct USBTransferRequestState
 {
+	bool bImmediate;
 	USBTransferRequest request;
-	std::function<void(USBTransferResult&)> callback;
+	std::function<void(const USBTransferResult&)> callback;
 };
 
 struct USBTransferResultState
 {
 	USBTransferResult result;
-	std::function<void(USBTransferResult&)> callback;
+	std::function<void(const USBTransferResult&)> callback;
 };
 
 #endif // USB_DEVICE_REQUEST_H

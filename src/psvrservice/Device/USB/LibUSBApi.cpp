@@ -461,7 +461,7 @@ static void LIBUSB_CALL interrupt_transfer_cb(struct libusb_transfer *transfer)
 #endif
 
 	// Add the result to the outgoing result queue
-	usb_device_post_transfer_result(result, requestStateOnHeap->callback);
+	usb_device_post_transfer_result(requestStateOnHeap, result);
 
 	// Free request state stored in the heap now that the result is posted
 	delete requestStateOnHeap;
@@ -641,7 +641,7 @@ static void LIBUSB_CALL control_transfer_cb(struct libusb_transfer *transfer)
 #endif
 
 	// Add the result to the outgoing result queue
-	usb_device_post_transfer_result(result, requestStateOnHeap->callback);
+	usb_device_post_transfer_result(requestStateOnHeap, result);
 
 	// Free request state stored in the heap now that the result is posted
 	delete requestStateOnHeap;
@@ -790,7 +790,7 @@ static void LIBUSB_CALL bulk_transfer_cb(struct libusb_transfer *transfer)
 #endif
 
 	// Add the result to the outgoing result queue
-	usb_device_post_transfer_result(result, requestStateOnHeap->callback);
+	usb_device_post_transfer_result(requestStateOnHeap, result);
 
 	// Free request state stored in the heap now that the result is posted
 	delete requestStateOnHeap;

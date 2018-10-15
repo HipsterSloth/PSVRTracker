@@ -255,13 +255,13 @@ public:
     }
 
     // -- Request Queue ----
-    bool submitTransferRequest(const USBTransferRequest &request, std::function<void(USBTransferResult&)> callback)
+    bool submitTransferRequest(const USBTransferRequest &request, std::function<void(const USBTransferResult&)> callback)
     {
 		bool bAddedRequest= false;
 
 		if (m_transfers_enabled)
 		{
-			USBTransferRequestState requestState = {request, callback};
+			USBTransferRequestState requestState= {false, request, callback};
 
 			if (request_queue.enqueue(requestState))
 			{
@@ -272,42 +272,57 @@ public:
 		}
 		else
 		{
-			USBTransferResult result;
-			memset(&result, 0, sizeof(USBTransferResult));
+			USBTransferResult result= buildFailedTransferSubmitResult(request);
 
-			switch (request.request_type)
-			{
-			case eUSBTransferRequestType::_USBRequestType_InterruptTransfer:
-				result.result_type= _USBResultType_InterruptTransfer;
-				result.payload.interrupt_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.interrupt_transfer.usb_device_handle= request.payload.interrupt_transfer.usb_device_handle;
-				break;
-			case eUSBTransferRequestType::_USBRequestType_ControlTransfer:
-				result.result_type= _USBResultType_ControlTransfer;
-				result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.control_transfer.usb_device_handle= request.payload.control_transfer.usb_device_handle;
-				break;
-			case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
-				result.result_type= _USBResultType_BulkTransfer;
-				result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.control_transfer.usb_device_handle= request.payload.bulk_transfer.usb_device_handle;
-				break;
-			case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
-				result.result_type= _USBResultType_BulkTransferBundle;
-				result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.bulk_transfer.usb_device_handle= request.payload.start_bulk_transfer_bundle.usb_device_handle;
-				break;
-			case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
-				result.result_type= _USBResultType_BulkTransferBundle;
-				result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-				result.payload.bulk_transfer.usb_device_handle= request.payload.cancel_bulk_transfer_bundle.usb_device_handle;
-				break;
-			}
-			
 			callback(result);
 		}
 
         return bAddedRequest;
+    }
+
+    USBTransferResult processTransferRequest(const USBTransferRequest &request)
+    {
+		USBTransferResult result;
+
+		if (m_transfers_enabled)
+		{
+			bool bIsPending = true;
+
+			if (request.request_type != _USBRequestType_ComplexTransfer)
+			{
+				auto callback=
+					[&result, &bIsPending](const USBTransferResult &r)
+					{
+						result = r;
+						bIsPending = false;
+					};
+
+				USBTransferRequestState requestState= {true, request, callback};
+				processSingleNonComplexRequest(requestState);
+
+				// Spin until the transfer completes
+				while (bIsPending)
+				{
+					// Give the worker thread a chance to do work
+					Utility::sleep_ms(1);
+
+					// Poll to see if the usb transfer completed
+					// (will execute the callback on completion)
+					pollUsbApi();
+				}
+			}
+			else
+			{
+				// Complex submissions only allowed with submitTransferRequest()
+				result= buildFailedTransferSubmitResult(request);
+			}
+		}
+		else
+		{
+			result= buildFailedTransferSubmitResult(request);
+		}
+
+        return result;
     }
 
 	// -- accessors ----
@@ -361,10 +376,8 @@ public:
 		return bIsOpen;
 	}
 
-	void postUSBTransferResult(const USBTransferResult &result, std::function<void(USBTransferResult&)> callback)
+	void postUSBTransferResult(const USBTransferRequestState *request_state, const USBTransferResult &result)
 	{
-		USBTransferResultState state = { result, callback };
-
 		// If a control transfer just completed (successfully or unsuccessfully)
 		// decrement the outstanding control transfer count
 		if (result.result_type == _USBResultType_ControlTransfer)
@@ -387,10 +400,61 @@ public:
 			--m_active_bulk_transfers;
 		}
 
-		result_queue.enqueue(state);
+		if (request_state->bImmediate)
+		{
+			request_state->callback(result);
+		}
+		else
+		{
+			USBTransferResultState state = { result, request_state->callback };
+
+			result_queue.enqueue(state);
+		}
 	}
 
 protected:
+	USBTransferResult buildFailedTransferSubmitResult(const USBTransferRequest &request)
+	{
+		USBTransferResult result;
+		memset(&result, 0, sizeof(USBTransferResult));
+
+		switch (request.request_type)
+		{
+		case eUSBTransferRequestType::_USBRequestType_InterruptTransfer:
+			result.result_type= _USBResultType_InterruptTransfer;
+			result.payload.interrupt_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+			result.payload.interrupt_transfer.usb_device_handle= request.payload.interrupt_transfer.usb_device_handle;
+			break;
+		case eUSBTransferRequestType::_USBRequestType_ControlTransfer:
+			result.result_type= _USBResultType_ControlTransfer;
+			result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+			result.payload.control_transfer.usb_device_handle= request.payload.control_transfer.usb_device_handle;
+			break;
+		case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
+			result.result_type= _USBResultType_BulkTransfer;
+			result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+			result.payload.control_transfer.usb_device_handle= request.payload.bulk_transfer.usb_device_handle;
+			break;
+		case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
+			result.result_type= _USBResultType_BulkTransferBundle;
+			result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+			result.payload.bulk_transfer.usb_device_handle= request.payload.start_bulk_transfer_bundle.usb_device_handle;
+			break;
+		case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
+			result.result_type= _USBResultType_BulkTransferBundle;
+			result.payload.bulk_transfer_bundle.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+			result.payload.bulk_transfer_bundle.usb_device_handle= request.payload.cancel_bulk_transfer_bundle.usb_device_handle;
+			break;
+		case eUSBTransferRequestType::_USBRequestType_ComplexTransfer:
+			result.result_type= _USBResultType_ComplexTransfer;
+			result.payload.complex_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
+			result.payload.complex_transfer.usb_device_handle= request.payload.cancel_bulk_transfer_bundle.usb_device_handle;
+			break;
+		}
+			
+		return result;
+	}
+
     void startWorkerThread()
     {
         if (!m_thread_started)
@@ -401,7 +465,7 @@ protected:
         }
     }
 
-    bool processRequests()
+    bool processRequestQueue()
     {
         bool bHadRequests= false;
 
@@ -409,28 +473,47 @@ protected:
 		USBTransferRequestState requestState;
         while (request_queue.try_dequeue(requestState))
         {
-            switch (requestState.request.request_type)
-            {
-			case eUSBTransferRequestType::_USBRequestType_InterruptTransfer:
-				handleInterruptTransferRequest(requestState);
-				break;
-            case eUSBTransferRequestType::_USBRequestType_ControlTransfer:
-                handleControlTransferRequest(requestState);
-                break;
-            case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
-                handleBulkTransferRequest(requestState);
-                break;
-            case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
-                handleStartBulkTransferRequest(requestState);
-                break;
-            case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
-                handleCancelBulkTransferRequest(requestState);
-                break;
-            }
+			if (requestState.request.request_type == _USBRequestType_ComplexTransfer)
+			{
+	            handleComplexTransferRequest(requestState);
+			}
+			else
+			{
+				processSingleNonComplexRequest(requestState);
+			}
 
             bHadRequests= true;
         }
 
+		pollUsbApi();
+
+        return bHadRequests;
+    }
+
+    void processSingleNonComplexRequest(const USBTransferRequestState &requestState)
+    {
+        switch (requestState.request.request_type)
+        {
+		case eUSBTransferRequestType::_USBRequestType_InterruptTransfer:
+			handleInterruptTransferRequest(requestState);
+			break;
+        case eUSBTransferRequestType::_USBRequestType_ControlTransfer:
+            handleControlTransferRequest(requestState);
+            break;
+        case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
+            handleBulkTransferRequest(requestState);
+            break;
+        case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
+            handleStartBulkTransferRequest(requestState);
+            break;
+        case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
+            handleCancelBulkTransferRequest(requestState);
+            break;
+        }
+    }
+
+	void pollUsbApi()
+	{
         if (m_active_bulk_transfer_bundles.size() > 0 || 
             m_canceled_bulk_transfer_bundles.size() > 0 ||
 			m_active_bulk_transfers > 0 ||
@@ -447,9 +530,7 @@ protected:
             // Cleanup any requests that no longer have any pending cancellations
             cleanupCanceledRequests(false);
         }
-
-        return bHadRequests;
-    }
+	}
 
     void processResults()
     {
@@ -504,7 +585,7 @@ protected:
         // Stay in the message loop until asked to exit by the main thread
         while (!m_exit_signaled)
         {
-            processRequests();
+            processRequestQueue();
         }
     }
 
@@ -580,7 +661,7 @@ protected:
 			result.payload.interrupt_transfer.result_code = result_code;
 			result.result_type = _USBResultType_InterruptTransfer;
 
-			postUSBTransferResult(result, requestState.callback);
+			postUSBTransferResult(&requestState, result);
 		}
 	}
 
@@ -636,7 +717,7 @@ protected:
             result.payload.control_transfer.result_code= result_code;
             result.result_type = _USBResultType_ControlTransfer;
 
-            postUSBTransferResult(result, requestState.callback);
+            postUSBTransferResult(&requestState, result);
         }
     }
 
@@ -693,7 +774,7 @@ protected:
 			result.payload.bulk_transfer.result_code = result_code;
 			result.result_type = _USBResultType_BulkTransfer;
 
-			postUSBTransferResult(result, requestState.callback);
+			postUSBTransferResult(&requestState, result);
 		}
 	}
 
@@ -775,7 +856,7 @@ protected:
             result.payload.bulk_transfer.usb_device_handle= request.usb_device_handle;
             result.payload.bulk_transfer.result_code = result_code;
 
-            postUSBTransferResult(result, requestState.callback);
+            postUSBTransferResult(&requestState, result);
         }
     }
 
@@ -833,9 +914,52 @@ protected:
             result.payload.bulk_transfer.usb_device_handle = request.usb_device_handle;
             result.payload.bulk_transfer.result_code = result_code;
 
-            postUSBTransferResult(result, requestState.callback);
+            postUSBTransferResult(&requestState, result);
         }
     }
+
+	void handleComplexTransferRequest(const USBTransferRequestState &requestState)
+	{
+		const USBRequestPayload_ComplexTransfer &request = requestState.request.payload.complex_transfer;
+
+		t_usb_device_map_iterator iter = m_device_state_map.find(request.usb_device_handle);
+		USBDeviceState *state = iter->second;
+
+		eUSBResultCode result_code;
+		bool bSuccess = true;
+
+#if defined(DEBUG_USB)
+		debug("USBMgr REQUEST: complex transfer write - dev: %d\n",
+			requestState.request.payload.interrupt_transfer.usb_device_handle);
+#endif
+
+		if (state != nullptr)
+		{
+			result_code= request.worker_thread_callback();
+
+			if (result_code != _USBResultCode_Completed)
+			{
+				bSuccess = false;
+			}
+		}
+		else
+		{
+			result_code = _USBResultCode_BadHandle;
+			bSuccess = false;
+		}
+
+		// Post the result of the complex transfer
+		{
+			USBTransferResult result;
+
+			memset(&result, 0, sizeof(USBTransferResult));
+			result.payload.complex_transfer.usb_device_handle = request.usb_device_handle;
+			result.payload.complex_transfer.result_code = result_code;
+			result.result_type = _USBResultType_ComplexTransfer;
+
+			postUSBTransferResult(&requestState, result);
+		}
+	}
 
     void stopWorkerThread()
     {
@@ -1006,7 +1130,7 @@ bool usb_device_can_be_opened(struct USBDeviceEnumerator* enumerator, char *outR
 
 bool usb_device_submit_transfer_request_async(
 	const USBTransferRequest &request,
-	std::function<void(USBTransferResult&)> callback)
+	std::function<void(const USBTransferResult&)> callback)
 {
 	return USBDeviceManager::getInstance()->getImplementation()->submitTransferRequest(request, callback);
 }
@@ -1022,7 +1146,7 @@ USBTransferResult usb_device_submit_transfer_request_blocking(const USBTransferR
 	// Submit the async usb control transfer request to the worker thread
 	deviceManagerImpl->submitTransferRequest(
 		request,
-		[&result, &bIsPending](USBTransferResult &r)
+		[&result, &bIsPending](const USBTransferResult &r)
 		{
 			result = r;
 			bIsPending = false;
@@ -1039,6 +1163,32 @@ USBTransferResult usb_device_submit_transfer_request_blocking(const USBTransferR
 		// (will execute the callback on completion)
 		deviceManagerImpl->update();
 	}
+
+	return result;
+}
+
+USBTransferResult usb_device_submit_complex_transfer_request_blocking(
+	t_usb_device_handle handle,
+	std::function<eUSBResultCode(void)> worker_thread_callback)
+{
+	// Add an async task to set the sharpness on the camera
+	USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_ComplexTransfer);
+	request.payload.complex_transfer.usb_device_handle= handle;
+	request.payload.complex_transfer.worker_thread_callback= worker_thread_callback;
+
+	// Submit the async USB complex transfer request...
+	USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
+	assert(result.result_type == eUSBTransferResultType::_USBResultType_ComplexTransfer);
+
+	return result;
+}
+
+USBTransferResult usb_device_process_transfer_request_blocking(const USBTransferRequest &request)
+{
+	USBDeviceManagerImpl *deviceManagerImpl= USBDeviceManager::getInstance()->getImplementation();
+
+	// Submit the async usb control transfer request to the worker thread
+	USBTransferResult result= deviceManagerImpl->processTransferRequest(request);
 
 	return result;
 }
@@ -1114,7 +1264,7 @@ const char *usb_device_get_error_string(eUSBResultCode result_code)
 }
 
 // -- Notifications ----
-void usb_device_post_transfer_result(const USBTransferResult &result, std::function<void(USBTransferResult&)> callback)
+void usb_device_post_transfer_result(const USBTransferRequestState *request_state, const USBTransferResult &result)
 {
-	return USBDeviceManager::getInstance()->getImplementation()->postUSBTransferResult(result, callback);
+	return USBDeviceManager::getInstance()->getImplementation()->postUSBTransferResult(request_state, result);
 }

@@ -1185,11 +1185,23 @@ void AppStage_ColorCalibration::request_tracker_set_color_filter(
 void AppStage_ColorCalibration::request_tracker_get_settings()
 {
     PSVRClientTrackerSettings settings;
-    if (PSVR_GetTrackerSettings(m_trackerView->tracker_info.tracker_id, m_overrideHmdId, &settings) == PSVRResult_Success)
-    {
-		memcpy(m_videoProperties, settings.video_properties, sizeof(m_videoProperties));
-        m_colorPresetTable = settings.color_range_table;
-    }
+
+	if (m_overrideHmdId != -1)
+	{
+		if (PSVR_GetHMDTrackerSettings(m_trackerView->tracker_info.tracker_id, m_overrideHmdId, &settings) == PSVRResult_Success)
+		{
+			memcpy(m_videoProperties, settings.video_properties, sizeof(m_videoProperties));
+			m_colorPresetTable = settings.color_range_table;
+		}
+	}
+	else
+	{
+		if (PSVR_GetControllerTrackerSettings(m_trackerView->tracker_info.tracker_id, m_overrideControllerId, &settings) == PSVRResult_Success)
+		{
+			memcpy(m_videoProperties, settings.video_properties, sizeof(m_videoProperties));
+			m_colorPresetTable = settings.color_range_table;
+		}
+	}
 }
 
 void AppStage_ColorCalibration::release_devices()

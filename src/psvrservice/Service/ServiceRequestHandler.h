@@ -176,8 +176,11 @@ public:
     PSVRResult start_tracker_data_stream(PSVRTrackerID tracker_id);
     PSVRResult stop_tracker_data_stream(PSVRTrackerID tracker_id);
 	PSVRResult get_shared_video_frame_buffer(PSVRTrackerID tracker_id, const SharedVideoFrameBuffer **out_shared_buffer);
-    PSVRResult get_tracker_settings(
+    PSVRResult get_hmd_tracker_settings(
 		PSVRTrackerID tracker_id, PSVRHmdID hmd_id, 
+		PSVRClientTrackerSettings *out_settings);
+    PSVRResult get_controller_tracker_settings(
+		PSVRTrackerID tracker_id, PSVRControllerID controller_id, 
 		PSVRClientTrackerSettings *out_settings);
 	PSVRResult get_tracker_mode(const PSVRTrackerID tracker_id, std::string &out_mode);
     PSVRResult set_tracker_mode(const PSVRTrackerID tracker_id, const std::string &new_mode);

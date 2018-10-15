@@ -29,6 +29,8 @@ public:
 	inline void setGain(int gain) { video_properties[PSVRVideoProperty_Gain]= gain; }
 
 	int ps3eye_video_mode_index;
+	bool flip_horizontal;
+	bool flip_vertical;
     eFOVSetting fovSetting;    
     PSVRMonoTrackerIntrinsics trackerIntrinsics;
 };

@@ -117,4 +117,79 @@ private:
     AtomicObject &operator=(const AtomicObject &copy) = delete;
 };
 
+// Adapted From: https://github.com/mstump/queues/blob/master/include/spsc-bounded-queue.hpp
+template<typename t_element_type>
+class AtomicRingBufferSPSC
+{
+public:
+    AtomicRingBufferSPSC(size_t capacity) 
+		: m_capacity(capacity)
+        , m_mask(capacity - 1)
+        , m_buffer(reinterpret_cast<t_element_type*>(new aligned_t[m_capacity + 1])) // need one extra element for a guard
+        , m_head(0)
+        , m_tail(0)
+    {
+        // make sure it's a power of 2
+        assert((m_capacity != 0) && ((m_capacity & (~m_capacity + 1)) == m_capacity));
+    }
+
+    ~AtomicRingBufferSPSC()
+    {
+        delete[] m_buffer;
+    }
+
+	size_t getCapacity() const
+	{
+		return m_capacity;
+	}
+
+    bool enqueue(t_element_type& input)
+    {
+        const size_t head = m_head.load(std::memory_order_relaxed);
+
+        if (((m_tail.load(std::memory_order_acquire) - (head + 1)) & m_mask) >= 1)
+		{
+            m_buffer[head & m_mask] = input;
+            m_head.store(head + 1, std::memory_order_release);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    bool dequeue(t_element_type& output)
+    {
+        const size_t tail = m_tail.load(std::memory_order_relaxed);
+
+        if (((m_head.load(std::memory_order_acquire) - tail) & m_mask) >= 1) 
+		{
+            output = m_buffer[m_tail & m_mask];
+            m_tail.store(tail + 1, std::memory_order_release);
+
+            return true;
+        }
+
+        return false;
+    }
+
+private:
+    typedef typename std::aligned_storage<sizeof(t_element_type), std::alignment_of<t_element_type>::value>::type aligned_t;
+    typedef char cache_line_pad_t[64];
+
+    cache_line_pad_t    pad0;
+    const size_t        m_capacity;
+    const size_t        m_mask;
+    t_element_type* const m_buffer;
+
+    cache_line_pad_t    pad1;
+    std::atomic<size_t> m_head;
+
+    cache_line_pad_t    pad2;
+    std::atomic<size_t> m_tail;
+
+    AtomicRingBufferSPSC(const AtomicRingBufferSPSC&) {}
+    void operator=(const AtomicRingBufferSPSC&) {}
+};
+
 #endif // ATOMIC_PRIMITIVES_H
