@@ -9,10 +9,12 @@ PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
 {
 	CommonTrackerConfig::current_mode= "640x480(60FPS)";
 
-	video_properties[PSVRVideoProperty_Gain]= 32;
-	video_properties[PSVRVideoProperty_Exposure]= 32;
+	memset(video_properties, 0, sizeof(video_properties));
+	video_properties[PSVRVideoProperty_Gain]= 20;
+	video_properties[PSVRVideoProperty_Exposure]= 120;
 	video_properties[PSVRVideoProperty_Sharpness]= 0;
 	video_properties[PSVRVideoProperty_Hue]= 143;
+	video_properties[PSVRVideoProperty_WhiteBalance]= 0;
 	video_properties[PSVRVideoProperty_Brightness]= 20;
 	video_properties[PSVRVideoProperty_Contrast]= 37;
 	video_properties[PSVRVideoProperty_BlueBalance]= 128;

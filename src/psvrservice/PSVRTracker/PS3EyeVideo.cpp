@@ -113,6 +113,8 @@ enum gspca_packet_type {
     #include <stdint.h>
 #endif
 
+//#define debug(...) fprintf(stdout, __VA_ARGS__); fprintf(stdout, "\n");
+
 //-- data -----
 struct PS3EyeVideoModeInfo 
 {
@@ -311,7 +313,7 @@ static const uint8_t sensor_start_qvga[][2] = {
 };
 
 //-- private methods -----
-static void init_camera(t_usb_device_handle device_handle, const PS3EyeVideoModeInfo &video_mode);
+static void init_camera(t_usb_device_handle device_handle);
 
 static void set_autogain(t_usb_device_handle device_handle, bool bAutoGain, uint8_t gain, uint8_t exposure);
 static void set_auto_white_balance(t_usb_device_handle device_handle, bool bAutoWhiteBalance);
@@ -914,6 +916,10 @@ bool PS3EyeVideoDevice::open(
 			//setVideoProperty(prop_type, desiredValue);
 			video_properties[prop_type]= (unsigned char)desired_config_value;
 		}
+		else
+		{
+			video_properties[prop_type]= 0;
+		}
 	}
 
 	// Store the constrained camera settings onto the cache camera properties
@@ -936,39 +942,58 @@ bool PS3EyeVideoDevice::open(
 		[&]() 
 		{
 			// Initialize the camera
-			init_camera(m_usb_device_handle, video_mode);
+			init_camera(m_usb_device_handle);
    
+			debug("ov534_reg_write_array -> bridge_start_vga");
 			if (video_mode.width == 320) // 320x240
 				ov534_reg_write_array(m_usb_device_handle, bridge_start_qvga, ARRAY_SIZE(bridge_start_qvga));
 			else // 640x480 
 				ov534_reg_write_array(m_usb_device_handle, bridge_start_vga, ARRAY_SIZE(bridge_start_vga));
 
+			debug("sccb_w_array -> sensor_start_vga");
 			if (video_mode.width == 320) // 320x240
 				sccb_reg_write_array(m_usb_device_handle, sensor_start_qvga, ARRAY_SIZE(sensor_start_qvga));
 			else // 640x480
 				sccb_reg_write_array(m_usb_device_handle, sensor_start_vga, ARRAY_SIZE(sensor_start_vga));
 
 			// Set the desired frame rate
+			debug("set_frame_rate");
 			set_frame_rate(m_usb_device_handle, video_mode);
 
 			// Apply video property settings stored in config onto the camera
-			set_brightness(m_usb_device_handle, video_properties[PSVRVideoProperty_Brightness]);
-			set_contrast(m_usb_device_handle, video_properties[PSVRVideoProperty_Contrast]);
-			set_hue(m_usb_device_handle, video_properties[PSVRVideoProperty_Hue]);
+			debug("set_autogain");
+			set_autogain(m_usb_device_handle, false, video_properties[PSVRVideoProperty_Gain], video_properties[PSVRVideoProperty_Exposure]);
+			debug("set_auto_white_balance");
 			set_auto_white_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_WhiteBalance] == 1);
-			set_red_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_RedBalance]);
-			set_green_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_GreenBalance]);
-			set_blue_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_BlueBalance]);
+			debug("set_gain");
 			set_gain(m_usb_device_handle, video_properties[PSVRVideoProperty_Gain]);
+			debug("set_hue");
+			set_hue(m_usb_device_handle, video_properties[PSVRVideoProperty_Hue]);
+			debug("set_exposure");
 			set_exposure(m_usb_device_handle, video_properties[PSVRVideoProperty_Exposure]);
+			debug("set_brightness");
+			set_brightness(m_usb_device_handle, video_properties[PSVRVideoProperty_Brightness]);
+			debug("set_contrast");
+			set_contrast(m_usb_device_handle, video_properties[PSVRVideoProperty_Contrast]);
+			debug("set_sharpness");
+			set_sharpness(m_usb_device_handle, video_properties[PSVRVideoProperty_Sharpness]);
+			debug("set_red_balance");
+			set_red_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_RedBalance]);
+			debug("set_green_balance");
+			set_green_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_GreenBalance]);
+			debug("set_blue_balance");
+			set_blue_balance(m_usb_device_handle, video_properties[PSVRVideoProperty_BlueBalance]);
 
 			// Flip the image horizontally
+			debug("set_flip");
 			set_flip(m_usb_device_handle, cfg.flip_horizontal, cfg.flip_vertical);
 
 			// Turn on the "recording" LED
+			debug("set_led -> true");
 			ov534_set_led(m_usb_device_handle, true);
 
 			// Tell the camera to start the video stream
+			debug("ov534_reg_write");
 			ov534_reg_write(m_usb_device_handle, 0xe0, 0x00);
 
 			return _USBResultCode_Completed;
@@ -1052,7 +1077,7 @@ bool PS3EyeVideoDevice::getVideoPropertyConstraint(const PSVRVideoPropertyType p
 		outConstraint= create_property_constraint(0, 0, 0, 0, false, false);
 		break;
 	case PSVRVideoProperty_Sharpness:
-		outConstraint= create_property_constraint(0, 63, 1, 0, false, false);
+		outConstraint= create_property_constraint(0, 63, 1, 0, false, true);
 		break;
 	case PSVRVideoProperty_Gamma:
 		outConstraint= create_property_constraint(0, 0, 0, 0, false, false);
@@ -1380,39 +1405,44 @@ bool PS3EyeVideoDevice::getUSBPortPath(char *out_identifier, size_t max_identifi
 
 //-- private helpers ----
 static void init_camera(
-    t_usb_device_handle device_handle,
-    const PS3EyeVideoModeInfo &video_mode)
+    t_usb_device_handle device_handle)
 {
-    uint8_t sensor_id= 0;
-
-	// Set the desired frame rate
-	set_frame_rate(device_handle, video_mode);
+    uint16_t sensor_id= 0;
 
     // reset bridge
+	debug("Reset Bridge");
     ov534_reg_write(device_handle, 0xe7, 0x3a);
     ov534_reg_write(device_handle, 0xe0, 0x08);
     Utility::sleep_ms(100);
 
     // initialize the sensor address
+	debug("Initialize the sensor address");
     ov534_reg_write(device_handle, OV534_REG_ADDRESS, 0x42);
 
 	// reset sensor
+	debug("reset sensor");
     sccb_reg_write(device_handle, 0x12, 0x80);
     Utility::sleep_ms(10);
 
     // probe the sensor
+	debug("probe sensor");
 	sccb_reg_read(device_handle, 0x0a);
 	sensor_id = sccb_reg_read(device_handle, 0x0a) << 8;
 	sccb_reg_read(device_handle, 0x0b);
 	sensor_id |= sccb_reg_read(device_handle, 0x0b);
 	PSVR_MT_LOG_INFO("init_camera") <<  "PS3EYE Sensor ID: "
-		<< std::hex << std::setfill('0') << std::setw(2) << sensor_id;
+		<< std::hex << std::setfill('0') << std::setw(4) << sensor_id;
 
     // initialize 
+	debug("ov534_reg_write_array");
     ov534_reg_write_array(device_handle, ov534_reg_initdata, ARRAY_SIZE(ov534_reg_initdata));
+	debug("set led -> true");
     ov534_set_led(device_handle, true);
+	debug("sccb_reg_write_array");
     sccb_reg_write_array(device_handle, ov772x_reg_initdata, ARRAY_SIZE(ov772x_reg_initdata));
+	debug("ov534_reg_write");
     ov534_reg_write(device_handle, 0xe0, 0x09);
+	debug("set led -> false");
     ov534_set_led(device_handle, false);
 }
 
@@ -1557,6 +1587,7 @@ static void set_frame_rate(
     sccb_reg_write(device_handle, 0x11, video_mode.r11);
     sccb_reg_write(device_handle, 0x0d, video_mode.r0d);
     ov534_reg_write(device_handle, 0xe5, video_mode.re5);
+	debug("frame_rate: %d\n", video_mode.fps);
 }
 
 static void sccb_reg_write(
@@ -1564,6 +1595,7 @@ static void sccb_reg_write(
     uint8_t reg, 
     uint8_t val)
 {
+	debug("reg: 0x%02x, val: 0x%02x", reg, val);
 	ov534_reg_write(device_handle, OV534_REG_SUBADDR, reg);
 	ov534_reg_write(device_handle, OV534_REG_WRITE, val);
 	ov534_reg_write(device_handle, OV534_REG_OPERATION, OV534_OP_WRITE_3);
@@ -1614,6 +1646,7 @@ static uint8_t sccb_reg_read(
     if (!sccb_check_status(device_handle))
     {
 		PSVR_MT_LOG_WARNING("sccb_reg_read") << "failed 2nd write";
+		debug( "sccb_reg_read failed 2");
         return 0;
     }
 
@@ -1648,6 +1681,8 @@ static void ov534_reg_write(
     uint16_t reg, 
     uint8_t val)
 {
+	debug("reg=0x%04x, val=0%02x", reg, val);
+
     USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_ControlTransfer);
     request.payload.control_transfer.usb_device_handle= device_handle;
     request.payload.control_transfer.bmRequestType = 
@@ -1705,6 +1740,8 @@ static uint8_t ov534_reg_read(
 	USBTransferResult result= usb_device_process_transfer_request_blocking(request);
     assert(result.result_type == eUSBTransferResultType::_USBResultType_ControlTransfer);
 
+	debug("reg=0x%04x, data=0x%02x", reg, result.payload.control_transfer.data[0]);
+
     //... whose result we get notified of here
     if (result.payload.control_transfer.result_code == eUSBResultCode::_USBResultCode_Completed)
     {
@@ -1729,6 +1766,8 @@ static void ov534_set_led(
     bool bLedOn)
 {
 	uint8_t read_reg_result;
+
+	debug("led status: %d\n", bLedOn ? 1 : 0);
 
     // Change register value 0x21
 	read_reg_result= ov534_reg_read(device_handle, 0x21); 
