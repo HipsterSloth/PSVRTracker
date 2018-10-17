@@ -65,7 +65,7 @@ void WorkerThread::threadFunc()
     {
 		if (!doWork())
 		{
-			m_exitSignaled= true;
+			break;
 		}
     }
 
