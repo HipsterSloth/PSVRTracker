@@ -2,7 +2,6 @@
 #include "WMFMonoTracker.h"
 #include "Logger.h"
 #include "Utility.h"
-#include "PSEyeVideoCapture.h"
 #include "ServerTrackerView.h"
 #include "TrackerDeviceEnumerator.h"
 #include "TrackerCapabilitiesConfig.h"
