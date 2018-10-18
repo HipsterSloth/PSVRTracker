@@ -342,10 +342,10 @@ static void ov534_set_led(t_usb_device_handle device_handle, bool bLedOn);
 static void log_usb_result_code(const char *function_name, eUSBResultCode result_code);
 
 //-- PS3EyeVideoFrameProcessor -----
-class PS3EyeFrameProcessorThread : public WorkerThread
+class PS3EyeFrameProcessor : public WorkerThread
 {
 public:
-	PS3EyeFrameProcessorThread(const PS3EyeVideoModeInfo &video_mode, ITrackerListener *trackerListener)
+	PS3EyeFrameProcessor(const PS3EyeVideoModeInfo &video_mode, ITrackerListener *trackerListener)
 		: WorkerThread(std::string("PS3EyeVideoFrameProcessor"))
 		, m_compressedFrameIndexQueue(4)
 		, m_compressedFrameWriteIndex(0)
@@ -366,7 +366,7 @@ public:
         }
 	}
 
-    virtual ~PS3EyeFrameProcessorThread()
+    virtual ~PS3EyeFrameProcessor()
     {
         if (m_compressedFramesBuffer != nullptr)
         {
@@ -386,27 +386,25 @@ public:
 		return m_compressedFrameSizeBytes;
 	}
 
-	uint8_t* getCompressedFrameBufferStart()
+	uint8_t* getCompressedFrameAtIndex(uint32_t frame_index)
 	{
-		return m_compressedFramesBuffer;
+		assert(frame_index < m_compressedFrameIndexQueue.getCapacity());
+		return m_compressedFramesBuffer + frame_index*m_compressedFrameSizeBytes;
 	}
 
-	uint8_t* enqueueCompressedFrame()
+	uint8_t* enqueueCompressedFrame_usbThread()
 	{
-		uint8_t* new_frame = nullptr;
-		uint32_t new_write_index= (m_compressedFrameWriteIndex + 1) % m_compressedFrameIndexQueue.getCapacity();
-
-		if (m_compressedFrameIndexQueue.enqueue(new_write_index))
+		// Add the index of the currently completed frame to the queue
+		if (m_compressedFrameIndexQueue.enqueue(m_compressedFrameWriteIndex))
 		{
+			uint32_t new_write_index= (m_compressedFrameWriteIndex + 1) % m_compressedFrameIndexQueue.getCapacity();
+
 			// Note: we don't need to copy any data to the buffer since the USB packets are directly written to the frame buffer.
 			// We just need to update head and available count to signal to the consumer that a new frame is available
 			m_compressedFrameWriteIndex = new_write_index;
+		}
 
-			// Determine the next frame pointer that the producer should write to
-			new_frame = m_compressedFramesBuffer + m_compressedFrameWriteIndex*m_compressedFrameSizeBytes;
-		}		
-
-		return new_frame;
+		return getCompressedFrameAtIndex(m_compressedFrameWriteIndex);
 	}
 
 protected:
@@ -422,7 +420,7 @@ protected:
 			if (m_compressedFrameIndexQueue.dequeue(read_index))
 			{
 				// Get the current frame buffer
-				uint8_t* source = m_compressedFramesBuffer + read_index*m_compressedFrameSizeBytes;
+				uint8_t* source = getCompressedFrameAtIndex(read_index);
 
 				// Convert the bayer encoded frame to BGR
 				debayer(m_frameWidth, m_frameHeight, source, m_uncompressedFrameBuffer, true);
@@ -576,10 +574,10 @@ public:
         , m_lastFieldID(0)
         , m_currentFrameStart(nullptr)
         , m_currentFrameBytesWritten(0)
-		, m_frameProcessorThread(new PS3EyeFrameProcessorThread(video_mode, tracker_listener))
+		, m_frameProcessorThread(new PS3EyeFrameProcessor(video_mode, tracker_listener))
     {	
         // Point the write pointer at the start of the bayer buffer
-        m_currentFrameStart= m_frameProcessorThread->getCompressedFrameBufferStart();
+        m_currentFrameStart= m_frameProcessorThread->getCompressedFrameAtIndex(0);
     }
 
 	bool startUSBBulkTransfer(t_usb_device_handle usb_device_handle)
@@ -756,10 +754,7 @@ protected:
             }
             else
             {
-				if (m_currentFrameStart != nullptr)
-				{
-	                memcpy(m_currentFrameStart+m_currentFrameBytesWritten, data, len);
-				}
+	            memcpy(m_currentFrameStart+m_currentFrameBytesWritten, data, len);
                 m_currentFrameBytesWritten += len;
             }
         }
@@ -769,9 +764,7 @@ protected:
         if (packet_type == LAST_PACKET)
         {
             m_currentFrameBytesWritten = 0;
-
-			// Can be NULL if the reader thread has fallen behind!
-            m_currentFrameStart = m_frameProcessorThread->enqueueCompressedFrame();
+            m_currentFrameStart = m_frameProcessorThread->enqueueCompressedFrame_usbThread();
         }
     }
 
@@ -784,7 +777,7 @@ private:
     uint32_t m_currentFrameBytesWritten;
     
 	// Frame Decompression Thread
-	PS3EyeFrameProcessorThread *m_frameProcessorThread;
+	PS3EyeFrameProcessor *m_frameProcessorThread;
 };
 
 //-- PS3EyeVideoDevice -----
