@@ -101,18 +101,6 @@ public:
         const char *vector_name,
         PSVRVector3d &outVector);
 
-    static void writeColorPreset(
-        configuru::Config &pt,
-        const char *profile_name,
-        const char *color_name,
-        const PSVR_HSVColorRange *colorPreset);
-    static void readColorPreset(
-        const configuru::Config &pt,
-        const char *profile_name,
-        const char *color_name,
-        PSVR_HSVColorRange *outColorPreset,
-        const PSVR_HSVColorRange *defaultPreset);
-
 	static void writeColorPropertyPresetTable(
 		const PSVR_HSVColorRangeTable *table,
 		configuru::Config &pt);

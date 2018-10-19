@@ -353,6 +353,36 @@ void PSVRConfig::readVector3d(
     }
 }
 
+configuru::Config create_color_range_config(
+	const PSVR_HSVColorRange &color_preset)
+{
+	configuru::Config cfg = configuru::Config::object({
+		{"hue_center", color_preset.hue_range.center},
+		{"hue_range", color_preset.hue_range.range},
+		{"saturation_center", color_preset.saturation_range.center},
+		{"saturation_range", color_preset.saturation_range.range},
+		{"value_center", color_preset.value_range.center},
+		{"value_range", color_preset.value_range.range}
+	});
+
+	return cfg;
+}
+
+configuru::Config create_color_preset_config(
+	const PSVR_HSVColorRangeTable *table)
+{
+	configuru::Config cfg = configuru::Config::object();
+
+	cfg["magenta"] = create_color_range_config(table->color_presets[PSVRTrackingColorType_Magenta]);
+	cfg["cyan"] = create_color_range_config(table->color_presets[PSVRTrackingColorType_Cyan]);
+	cfg["yellow"] = create_color_range_config(table->color_presets[PSVRTrackingColorType_Yellow]);
+	cfg["red"] = create_color_range_config(table->color_presets[PSVRTrackingColorType_Red]);
+	cfg["green"] = create_color_range_config(table->color_presets[PSVRTrackingColorType_Green]);
+	cfg["blue"] = create_color_range_config(table->color_presets[PSVRTrackingColorType_Blue]);
+
+	return cfg;
+}
+
 void
 PSVRConfig::writeColorPropertyPresetTable(
 	const PSVR_HSVColorRangeTable *table,
@@ -360,12 +390,52 @@ PSVRConfig::writeColorPropertyPresetTable(
 {
 	const char *profile_name= table->table_name;
 
-    writeColorPreset(pt, profile_name, "magenta", &table->color_presets[PSVRTrackingColorType_Magenta]);
-    writeColorPreset(pt, profile_name, "cyan", &table->color_presets[PSVRTrackingColorType_Cyan]);
-    writeColorPreset(pt, profile_name, "yellow", &table->color_presets[PSVRTrackingColorType_Yellow]);
-    writeColorPreset(pt, profile_name, "red", &table->color_presets[PSVRTrackingColorType_Red]);
-    writeColorPreset(pt, profile_name, "green", &table->color_presets[PSVRTrackingColorType_Green]);
-    writeColorPreset(pt, profile_name, "blue", &table->color_presets[PSVRTrackingColorType_Blue]);
+    if (profile_name != nullptr && profile_name[0] != '\0')
+    {
+        pt.insert_or_assign(profile_name, {
+			{"color_preset", create_color_preset_config(table)}
+		});
+    }
+    else
+    {
+		pt.insert_or_assign("color_preset", create_color_preset_config(table));
+    }
+}
+
+static void read_color_range(
+	const configuru::Config &cfg,
+	const char *color_name,
+	PSVR_HSVColorRange &out_color_preset)
+{
+    if (cfg.has_key(color_name))
+    {
+        const auto &color= cfg[color_name];
+
+		out_color_preset.hue_range.center= color.get_or<float>("hue_center", out_color_preset.hue_range.center);
+		out_color_preset.hue_range.range= color.get_or<float>("hue_range", out_color_preset.hue_range.range);
+		out_color_preset.saturation_range.center= color.get_or<float>("saturation_center", out_color_preset.saturation_range.center);
+		out_color_preset.saturation_range.range= color.get_or<float>("saturation_range", out_color_preset.saturation_range.range);
+		out_color_preset.value_range.center= color.get_or<float>("value_center", out_color_preset.value_range.center);
+		out_color_preset.value_range.range= color.get_or<float>("value_range", out_color_preset.value_range.range);
+    }
+
+}
+
+static void read_color_preset(
+	const configuru::Config &cfg,
+	PSVR_HSVColorRangeTable *out_table)
+{
+    if (cfg.has_key("color_preset"))
+    {
+        const auto &color_preset= cfg["color_preset"];
+
+		read_color_range(color_preset, "magenta", out_table->color_presets[PSVRTrackingColorType_Magenta]);
+		read_color_range(color_preset, "cyan", out_table->color_presets[PSVRTrackingColorType_Cyan]);
+		read_color_range(color_preset, "yellow", out_table->color_presets[PSVRTrackingColorType_Yellow]);
+		read_color_range(color_preset, "red", out_table->color_presets[PSVRTrackingColorType_Red]);
+		read_color_range(color_preset, "green", out_table->color_presets[PSVRTrackingColorType_Green]);
+		read_color_range(color_preset, "blue", out_table->color_presets[PSVRTrackingColorType_Blue]);
+    }
 }
 
 void
@@ -375,12 +445,17 @@ PSVRConfig::readColorPropertyPresetTable(
 {
 	const char *profile_name= table->table_name;
 
-    readColorPreset(pt, profile_name, "magenta", &table->color_presets[PSVRTrackingColorType_Magenta], &k_default_color_presets[PSVRTrackingColorType_Magenta]);
-    readColorPreset(pt, profile_name, "cyan", &table->color_presets[PSVRTrackingColorType_Cyan], &k_default_color_presets[PSVRTrackingColorType_Cyan]);
-    readColorPreset(pt, profile_name, "yellow", &table->color_presets[PSVRTrackingColorType_Yellow], &k_default_color_presets[PSVRTrackingColorType_Yellow]);
-    readColorPreset(pt, profile_name, "red", &table->color_presets[PSVRTrackingColorType_Red], &k_default_color_presets[PSVRTrackingColorType_Red]);
-    readColorPreset(pt, profile_name, "green", &table->color_presets[PSVRTrackingColorType_Green], &k_default_color_presets[PSVRTrackingColorType_Green]);
-    readColorPreset(pt, profile_name, "blue", &table->color_presets[PSVRTrackingColorType_Blue], &k_default_color_presets[PSVRTrackingColorType_Blue]);
+    if (profile_name != nullptr && profile_name[0] != '\0')
+    {
+        if (pt.has_key(profile_name))
+        {
+			read_color_preset(pt[profile_name], table);
+		}
+	}
+	else
+	{
+		read_color_preset(pt, table);
+	}
 }
 
 void
@@ -449,110 +524,4 @@ PSVRConfig::readTrackingColor(
 	}
 
 	return tracking_color_id;
-}
-
-void
-PSVRConfig::writeColorPreset(
-    configuru::Config &pt,
-    const char *profile_name,
-    const char *color_name,
-    const PSVR_HSVColorRange *colorPreset)
-{
-    if (profile_name != nullptr && profile_name[0] != '\0')
-    {
-        pt.insert_or_assign(profile_name, {
-            {"color_preset", {
-                {color_name, {
-                    {"hue_center", colorPreset->hue_range.center},
-                    {"hue_range", colorPreset->hue_range.range},
-                    {"saturation_center", colorPreset->saturation_range.center},
-                    {"saturation_range", colorPreset->saturation_range.range},
-                    {"value_center", colorPreset->value_range.center},
-                    {"value_range", colorPreset->value_range.range}
-                }},
-            }},
-        });
-    }
-    else
-    {
-        pt.insert_or_assign("color_preset", {
-            {color_name, {
-                    {"hue_center", colorPreset->hue_range.center},
-                    {"hue_range", colorPreset->hue_range.range},
-                    {"saturation_center", colorPreset->saturation_range.center},
-                    {"saturation_range", colorPreset->saturation_range.range},
-                    {"value_center", colorPreset->value_range.center},
-                    {"value_range", colorPreset->value_range.range}
-                },
-            },
-        });
-    }
-}
-
-static void
-readColorPropertyPreset(
-    const configuru::Config &pt,
-    const char *profile_name,
-    const char *color_name,
-    const char *property_name,
-    float &out_value,
-    const float default_value)
-{
-    if (profile_name != nullptr && profile_name[0] != '\0')
-    {
-        if (pt.has_key(profile_name))
-        {
-            const auto &profile= pt[profile_name];
-
-            if (profile.has_key("color_preset"))
-            {
-                const auto &color_preset= profile["color_preset"];
-
-                if (color_preset.has_key(color_name))
-                {
-                    const auto &color= color_preset[color_name];
-
-                    if (color.has_key(property_name))
-                    {
-                        out_value= color.get_or<float>(property_name, default_value);
-                        return;
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        const auto &color_preset= pt["color_preset"];
-
-        if (color_preset.has_key(color_name))
-        {
-            const auto &color= color_preset[color_name];
-
-            if (color.has_key(property_name))
-            {
-                out_value= color.get_or<float>(property_name, default_value);
-                return;
-            }
-        }
-    }
-
-    out_value= default_value;
-    return;
-}
-
-void
-PSVRConfig::readColorPreset(
-    const configuru::Config &pt,
-    const char *profile_name,
-    const char *color_name,
-    PSVR_HSVColorRange *outColorPreset,
-    const PSVR_HSVColorRange *defaultPreset)
-{
-    readColorPropertyPreset(pt, profile_name, color_name, "hue_center", outColorPreset->hue_range.center, defaultPreset->hue_range.center);
-    readColorPropertyPreset(pt, profile_name, color_name, "hue_range", outColorPreset->hue_range.range, defaultPreset->hue_range.range);
-    readColorPropertyPreset(pt, profile_name, color_name, "saturation_center", outColorPreset->saturation_range.center, defaultPreset->saturation_range.center);
-    readColorPropertyPreset(pt, profile_name, color_name, "saturation_range", outColorPreset->saturation_range.range, defaultPreset->saturation_range.range);
-    readColorPropertyPreset(pt, profile_name, color_name, "value_center", outColorPreset->value_range.center, defaultPreset->value_range.center);
-    readColorPropertyPreset(pt, profile_name, color_name, "value_range", outColorPreset->value_range.range, defaultPreset->value_range.range);
 }
