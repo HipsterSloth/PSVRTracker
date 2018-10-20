@@ -19,7 +19,7 @@
 #include <sstream>
 
 //-- statics ----
-const char *AppStage_HMDTrackingTest::APP_STAGE_NAME = "ComputeTrackerPoses";
+const char *AppStage_HMDTrackingTest::APP_STAGE_NAME = "HMDTrackingTest";
 
 //-- constants -----
 static const glm::vec3 k_hmd_frustum_color = glm::vec3(1.f, 0.788f, 0.055f);
@@ -281,7 +281,7 @@ void AppStage_HMDTrackingTest::render()
 void AppStage_HMDTrackingTest::renderUI()
 {
     const float k_panel_width = 300.f;
-    const char *k_window_title = "Compute Tracker Poses";
+    const char *k_window_title = "Test HMD Tracking Pose";
     const ImGuiWindowFlags window_flags =
         ImGuiWindowFlags_ShowBorders |
         ImGuiWindowFlags_NoResize |
