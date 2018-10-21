@@ -870,11 +870,9 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
 		DeviceManager *device_manager= DeviceManager::getInstance();
 		ControllerManager *controller_manager = device_manager->getControllerManager();
 		HMDManager *hmd_manager= device_manager->getHMDManager();
-		ControllerManager *controller_manager= device_manager->getControllerManager();
 
 		controller_manager->notifyVideoFrameReceived(this);
 		hmd_manager->notifyVideoFrameReceived(this);
-		controller_manager->notifyVideoFrameReceived(this);
 	}
 
 	// Copy the final opencv RGB buffer (annotated with debug info by he HMD) to the client API
