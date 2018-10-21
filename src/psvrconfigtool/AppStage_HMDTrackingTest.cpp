@@ -83,15 +83,10 @@ void AppStage_HMDTrackingTest::update()
     case eMenuState::failedHmdStartRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
-    case eMenuState::verifyTrackers:
-        update_tracker_video();
-        break;
     case eMenuState::testTracking:
         break;
     case eMenuState::showTrackerVideo:
         update_tracker_video();
-        break;
-    case eMenuState::calibrateStepFailed:
         break;
     default:
         assert(0 && "unreachable");
@@ -212,10 +207,6 @@ void AppStage_HMDTrackingTest::render()
     case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
-    case eMenuState::verifyTrackers:
-        {
-            render_tracker_video();
-        } break;
     case eMenuState::testTracking:
         {
             // Draw the chaperone origin axes
@@ -271,8 +262,6 @@ void AppStage_HMDTrackingTest::render()
         {
             render_tracker_video();
         } break;
-    case eMenuState::calibrateStepFailed:
-        break;
     default:
         assert(0 && "unreachable");
     }
@@ -351,88 +340,6 @@ void AppStage_HMDTrackingTest::renderUI()
             ImGui::End();
         } break;
 
-    case eMenuState::verifyTrackers:
-        {
-            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - 500.f / 2.f, 20.f));
-            ImGui::SetNextWindowSize(ImVec2(500.f, (m_trackerView != nullptr) ? 150.f : 100.f));
-            ImGui::Begin(k_window_title, nullptr, window_flags);
-
-            ImGui::Text("Verify that your tracking cameras can see the tracking origin");
-            ImGui::Separator();
-
-            if (ImGui::Button("Looks Good!"))
-            {
-                setState(eMenuState::testTracking);
-            }
-
-            if (ImGui::Button("Hmm... Something is wrong."))
-            {
-                request_exit_to_app_stage(AppStage_TrackerSettings::APP_STAGE_NAME);
-            }
-
-            ImGui::End();
-        }
-
-        // Alignment marker: x
-        if (ImGui::IsKeyReleased(120)) m_bShowAlignment = !m_bShowAlignment;
-        // Move alignment window up: Up
-        if (m_bShowAlignment && ImGui::IsKeyPressed(119))
-        {
-            m_AlignmentOffset -= (ImGui::GetIO().DisplaySize.y / 2 > -m_AlignmentOffset) 
-                ? 1.f 
-                : -ImGui::GetIO().DisplaySize.y;
-        }
-        // Move alignment window down: Down
-        if (m_bShowAlignment && ImGui::IsKeyPressed(115))
-        {
-            m_AlignmentOffset += (ImGui::GetIO().DisplaySize.y / 2 > m_AlignmentOffset) 
-                ? 1.f 
-                : -ImGui::GetIO().DisplaySize.y;
-        }
-        // Move alignment window to center: Z
-        if (m_bShowAlignment && ImGui::IsKeyPressed(122)) m_AlignmentOffset = 0;
-
-        // Tracker Alignment Marker
-        if (m_bShowAlignment)
-        {
-            float prevAlpha = ImGui::GetStyle().Alpha;
-            ImGui::GetStyle().Alpha = 0.f;
-
-            float align_window_size = 30.f;
-            float x0 = (ImGui::GetIO().DisplaySize.x - align_window_size) / 2;
-            float y0 = (ImGui::GetIO().DisplaySize.y - align_window_size) / 2 + m_AlignmentOffset;
-
-            ImGui::SetNextWindowPos(ImVec2(x0, y0));
-            ImGui::SetNextWindowSize(ImVec2(align_window_size, align_window_size));
-            ImGui::Begin("Alignment Window", nullptr,
-                ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_ShowBorders |
-                ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoScrollbar |
-                ImGuiWindowFlags_NoCollapse);
-
-            ImU32 line_colour = ImColor(0x00, 0x00, 0x00, 200);
-            float line_thickness = 2.f;
-
-            ImGui::GetWindowDrawList()->AddLine(ImVec2(x0, y0)
-                , ImVec2(x0 + align_window_size, y0 + align_window_size)
-                , line_colour
-                , line_thickness
-            );
-            ImGui::GetWindowDrawList()->AddLine(
-                ImVec2(x0 + align_window_size, y0)
-                , ImVec2(x0, y0 + align_window_size)
-                , line_colour
-                , line_thickness
-            );
-
-            ImGui::End();
-            ImGui::GetStyle().Alpha = prevAlpha;
-        }
-
-        break;
-
     case eMenuState::testTracking:
         {
             ImGui::SetNextWindowPos(ImVec2(20.f, 20.f));
@@ -496,28 +403,6 @@ void AppStage_HMDTrackingTest::renderUI()
         }
         break;
 
-    case eMenuState::calibrateStepFailed:
-        {
-            ImGui::SetNextWindowPosCenter();
-            ImGui::SetNextWindowSize(ImVec2(k_panel_width, 130));
-            ImGui::Begin(k_window_title, nullptr, window_flags);
-
-            ImGui::Text("Calibration Failed");
-
-            if (ImGui::Button("Restart Calibration"))
-            {
-                setState(eMenuState::verifyTrackers);
-            }
-
-            if (ImGui::Button("Cancel"))
-            {
-                m_app->setAppStage(AppStage_TrackerSettings::APP_STAGE_NAME);
-            }
-
-            ImGui::End();
-        }
-        break;
-
     default:
         assert(0 && "unreachable");
     }
@@ -550,14 +435,10 @@ void AppStage_HMDTrackingTest::onExitState(eMenuState newState)
     case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
-    case eMenuState::verifyTrackers:
-        break;
     case eMenuState::testTracking:
         m_app->setCameraType(_cameraFixed);
         break;
     case eMenuState::showTrackerVideo:
-        break;
-    case eMenuState::calibrateStepFailed:
         break;
     default:
         assert(0 && "unreachable");
@@ -588,16 +469,12 @@ void AppStage_HMDTrackingTest::onEnterState(eMenuState newState)
     case eMenuState::failedHmdStartRequest:
     case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
-    case eMenuState::verifyTrackers:
-        break;
     case eMenuState::testTracking:
         {
             m_app->setCameraType(_cameraOrbit);
         }
         break;
     case eMenuState::showTrackerVideo:
-        break;
-    case eMenuState::calibrateStepFailed:
         break;
     default:
         assert(0 && "unreachable");
