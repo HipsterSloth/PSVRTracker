@@ -58,7 +58,7 @@ void AppStage_HMDTrackingTest::enter()
     // -> tracker start request
     request_hmd_list();
 
-    m_app->setCameraType(_cameraFixed);
+    m_app->setCameraType(_cameraOrbit);
 }
 
 void AppStage_HMDTrackingTest::exit()
@@ -162,13 +162,6 @@ static void draw_image_point_camera_lines(
 
 		cv_image_points.push_back({image_point.x, image_point.y});
 	}
-
-	// Reverse the effects of the camera lens distortion
-    std::vector<cv::Point2f> undistorted_image_points;
-	undistorted_image_points.resize(image_point_count);
-    cv::undistortPoints(
-		cv_image_points, undistorted_image_points, 
-		intrinsic_matrix, dist_coeffs);
 
 	// Compute a normalized ray for each projection point
 	// See: http://answers.opencv.org/question/4862/how-can-i-do-back-projection/
