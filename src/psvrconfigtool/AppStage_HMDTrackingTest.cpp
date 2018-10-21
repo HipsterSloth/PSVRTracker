@@ -58,7 +58,7 @@ void AppStage_HMDTrackingTest::enter()
     // -> tracker start request
     request_hmd_list();
 
-    m_app->setCameraType(_cameraFixed);
+    m_app->setCameraType(_cameraOrbit);
 }
 
 void AppStage_HMDTrackingTest::exit()
