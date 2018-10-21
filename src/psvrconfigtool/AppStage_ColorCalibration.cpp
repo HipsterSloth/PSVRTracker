@@ -1024,7 +1024,10 @@ void AppStage_ColorCalibration::request_start_controller_streams()
 
     for (PSVRController *controllerView : m_controllerViews)
     {
-		if (PSVR_StartControllerDataStream(controllerView->ControllerID, PSVRStreamFlags_defaultStreamOptions) != PSVRResult_Success)
+		if (PSVR_StartControllerDataStream(
+				controllerView->ControllerID,
+				PSVRStreamFlags_defaultStreamOptions |
+				PSVRStreamFlags_includePositionData) != PSVRResult_Success)
 		{
 			m_areAllControllerStreamsActive= false;
 			break;
