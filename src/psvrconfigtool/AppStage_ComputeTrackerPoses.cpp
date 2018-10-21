@@ -35,8 +35,6 @@ static void drawHMD(const PSVRHeadMountedDisplay *hmdView, const glm::mat4 &tran
 AppStage_ComputeTrackerPoses::AppStage_ComputeTrackerPoses(App *app)
     : AppStage(app)
     , m_menuState(AppStage_ComputeTrackerPoses::inactive)
-    , m_pendingTrackerStartCount(0)
-    , m_pendingControllerStartCount(0)
     , m_renderTrackerIndex(0)
     , m_pCalibrateWithMat(new AppSubStage_CalibrateWithMat(this))
     , m_bSkipCalibration(false)
@@ -127,14 +125,7 @@ void AppStage_ComputeTrackerPoses::update()
     {
     case eMenuState::inactive:
         break;
-    case eMenuState::pendingControllerStartRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
-        break;
-    case eMenuState::failedControllerListRequest:
     case eMenuState::failedControllerStartRequest:
-    case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
@@ -175,16 +166,8 @@ void AppStage_ComputeTrackerPoses::render()
     {
     case eMenuState::inactive:
         break;
-    case eMenuState::pendingControllerStartRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
-        break;
-    case eMenuState::failedControllerListRequest:
     case eMenuState::failedControllerStartRequest:
-    case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
-    case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
     case eMenuState::verifyTrackers:
@@ -320,30 +303,8 @@ void AppStage_ComputeTrackerPoses::renderUI()
     case eMenuState::inactive:
         break;
 
-    case eMenuState::pendingControllerStartRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
-        {
-            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_panel_width / 2.f, 20.f));
-            ImGui::SetNextWindowSize(ImVec2(k_panel_width, 80));
-            ImGui::Begin(k_window_title, nullptr, window_flags);
-
-            ImGui::Text("Pending device initialization...");
-
-            if (ImGui::Button("Return to Tracker Settings"))
-            {
-                request_exit_to_app_stage(AppStage_TrackerSettings::APP_STAGE_NAME);
-            }
-
-            ImGui::End();
-        } break;
-
-    case eMenuState::failedControllerListRequest:
     case eMenuState::failedControllerStartRequest:
-    case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
-    case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         {
             ImGui::SetNextWindowPosCenter();
@@ -352,20 +313,11 @@ void AppStage_ComputeTrackerPoses::renderUI()
 
             switch (m_menuState)
             {
-            case eMenuState::failedControllerListRequest:
-                ImGui::Text("Failed controller list retrieval!");
-                break;
             case eMenuState::failedControllerStartRequest:
                 ImGui::Text("Failed controller stream start!");
                 break;
-            case eMenuState::failedHmdListRequest:
-                ImGui::Text("Failed HMD list retrieval!");
-                break;
             case eMenuState::failedHmdStartRequest:
                 ImGui::Text("Failed HMD stream start!");
-                break;
-            case eMenuState::failedTrackerListRequest:
-                ImGui::Text("Failed tracker list retrieval!");
                 break;
             case eMenuState::failedTrackerStartRequest:
                 ImGui::Text("Failed tracker stream start!");
@@ -660,16 +612,8 @@ void AppStage_ComputeTrackerPoses::onExitState(eMenuState newState)
     {
     case eMenuState::inactive:
         break;
-    case eMenuState::pendingControllerStartRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
-        break;
-    case eMenuState::failedControllerListRequest:
     case eMenuState::failedControllerStartRequest:
-    case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
-    case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
     case eMenuState::verifyTrackers:
@@ -697,25 +641,8 @@ void AppStage_ComputeTrackerPoses::onEnterState(eMenuState newState)
     {
     case eMenuState::inactive:
         break;
-    case eMenuState::pendingControllerStartRequest:
-        m_controllerViews.clear();
-        m_pendingControllerStartCount = 0;
-        break;
-    case eMenuState::pendingHmdStartRequest:
-        m_hmdViews.clear();
-        m_pendingHmdStartCount = 0;
-        break;
-    case eMenuState::pendingTrackerListRequest:
-        break;
-    case eMenuState::pendingTrackerStartRequest:
-        m_trackerViews.clear();
-        m_pendingTrackerStartCount = 0;
-        break;
-    case eMenuState::failedControllerListRequest:
     case eMenuState::failedControllerStartRequest:
-    case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
-    case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
     case eMenuState::verifyTrackers:
@@ -854,7 +781,6 @@ void AppStage_ComputeTrackerPoses::release_devices()
         }
     }
     m_controllerViews.clear();
-    m_pendingControllerStartCount = 0;
 
     for (t_hmd_state_map_iterator iter = m_hmdViews.begin(); iter != m_hmdViews.end(); ++iter)
     {
@@ -867,7 +793,6 @@ void AppStage_ComputeTrackerPoses::release_devices()
         }
     }
     m_hmdViews.clear();
-    m_pendingHmdStartCount = 0;
 
     for (t_tracker_state_map_iterator iter = m_trackerViews.begin(); iter != m_trackerViews.end(); ++iter)
     {
@@ -888,7 +813,6 @@ void AppStage_ComputeTrackerPoses::release_devices()
         }
     }
     m_trackerViews.clear();
-    m_pendingTrackerStartCount= 0;
 
     m_renderTrackerIndex= 0;
     m_renderTrackerIter = m_trackerViews.end();
@@ -903,14 +827,16 @@ void AppStage_ComputeTrackerPoses::request_exit_to_app_stage(const char *app_sta
 
 void AppStage_ComputeTrackerPoses::request_controller_list()
 {
+	bool bStartedAnyControllers = false;
+
+	m_controllerViews.clear();
+
 	// Request a list of controllers back from the server
 	PSVRControllerList controller_list;
 	if (PSVR_GetControllerList(false, &controller_list) == PSVRResult_Success)
 	{
 		if (m_overrideControllerId == -1)
 		{
-			bool bStartedAnyControllers = false;
-
 			// Start all psmove and dual shock 4 controllers
 			for (int list_index = 0; list_index < controller_list.count; ++list_index)
 			{
@@ -923,15 +849,13 @@ void AppStage_ComputeTrackerPoses::request_controller_list()
 					int trackedControllerId = controller.controller_id;
 					const PSVRTrackingColorType trackingColorType= controller.tracking_color_type;
 
-					request_start_controller_stream(trackedControllerId, list_index, trackingColorType);
-					bStartedAnyControllers = true;
+					if (request_start_controller_stream(trackedControllerId, list_index, trackingColorType))
+					{
+						bStartedAnyControllers = true;
+					}
 				}
 			}
 
-			if (!bStartedAnyControllers)
-			{
-				setState(AppStage_ComputeTrackerPoses::failedControllerListRequest);
-			}
 		}
 		else
 		{
@@ -955,24 +879,40 @@ void AppStage_ComputeTrackerPoses::request_controller_list()
 
 			if (trackedControllerId != -1)
 			{
-				request_start_controller_stream(trackedControllerId, trackedControllerListIndex, trackingColorType);
-			}
-			else
-			{
-				setState(AppStage_ComputeTrackerPoses::failedControllerListRequest);
+				if (request_start_controller_stream(trackedControllerId, trackedControllerListIndex, trackingColorType))
+				{
+					bStartedAnyControllers = true;
+				}
 			}
 		}
     }
+
+	if (bStartedAnyControllers)
+	{
+        if (m_overrideControllerId != -1)
+        {
+            // If we requested a specific controller to test, 
+            // that means we don't care about testing any HMDs
+            request_tracker_list();
+        }
+        else
+        {
+            // Move on to the HMDs
+            request_hmd_list();
+        }
+	}
+	else
+	{
+		setState(AppStage_ComputeTrackerPoses::failedControllerStartRequest);
+	}
 }
 
-void AppStage_ComputeTrackerPoses::request_start_controller_stream(
-    int ControllerID,
+bool AppStage_ComputeTrackerPoses::request_start_controller_stream(
+    PSVRControllerID ControllerID,
     int listIndex,
     PSVRTrackingColorType trackingColorType)
 {
     ControllerState controllerState;
-
-    setState(eMenuState::pendingControllerStartRequest);
 
     // Allocate a new controller view
     PSVR_AllocateControllerListener(ControllerID);
@@ -983,9 +923,6 @@ void AppStage_ComputeTrackerPoses::request_start_controller_stream(
     // Add the controller to the list of controllers we're monitoring
     assert(m_controllerViews.find(ControllerID) == m_controllerViews.end());
     m_controllerViews.insert(t_id_controller_state_pair(ControllerID, controllerState));
-
-    // Increment the number of requests we're waiting to get back
-    ++m_pendingControllerStartCount;
 
     unsigned int flags =
         PSVRStreamFlags_includePositionData |
@@ -1003,41 +940,22 @@ void AppStage_ComputeTrackerPoses::request_start_controller_stream(
     PSVR_SetControllerDataStreamTrackerIndex(controllerState.controllerView->ControllerID, 0);
 
     // Start receiving data from the controller
-	if (PSVR_StartControllerDataStream(controllerState.controllerView->ControllerID, flags) == PSVRResult_Success)
-	{
-        // See if this was the last controller we were waiting to get a response from
-        --m_pendingControllerStartCount;
-        if (m_pendingControllerStartCount <= 0)
-        {
-            if (m_overrideControllerId != -1)
-            {
-                // If we requested a specific controller to test, 
-                // that means we don't care about testing any HMDs
-                request_tracker_list();
-            }
-            else
-            {
-                // Move on to the HMDs
-                request_hmd_list();
-            }
-        }
-	}
-	else
-	{
-		setState(AppStage_ComputeTrackerPoses::failedControllerStartRequest);
-	}
+	return PSVR_StartControllerDataStream(controllerState.controllerView->ControllerID, flags) == PSVRResult_Success;
+
 }
 
 void AppStage_ComputeTrackerPoses::request_hmd_list()
 {
-    // Request a list of controllers back from the server
+	bool bStartedAnyHMDs = false;
+
+	m_hmdViews.clear();
+
+	// Request a list of controllers back from the server
 	PSVRHmdList hmd_list;
 	if (PSVR_GetHmdList(&hmd_list) == PSVRResult_Success)
 	{
         if (m_overrideHmdId == -1)
         {
-            bool bStartedAnyHMDs = false;
-
             // Start all head mounted displays
             for (int list_index = 0; list_index < hmd_list.count; ++list_index)
             {
@@ -1049,15 +967,11 @@ void AppStage_ComputeTrackerPoses::request_hmd_list()
                     int trackedHmdId = hmd.hmd_id;
                     const PSVRTrackingColorType trackingColorType= hmd.tracking_color_type;
 
-                    request_start_hmd_stream(trackedHmdId, list_index, trackingColorType);
-                    bStartedAnyHMDs = true;
+					if (request_start_hmd_stream(trackedHmdId, list_index, trackingColorType))
+					{
+						bStartedAnyHMDs= true;
+					}
                 }
-            }
-
-            if (!bStartedAnyHMDs)
-            {
-                // Move on to the tracker list if there are no HMDs
-                request_tracker_list();
             }
         }
         else
@@ -1082,28 +996,31 @@ void AppStage_ComputeTrackerPoses::request_hmd_list()
 
             if (trackedHmdId != -1)
             {
-                request_start_hmd_stream(trackedHmdId, trackedHmdListIndex, trackingColorType);
-            }
-            else
-            {
-                setState(AppStage_ComputeTrackerPoses::failedHmdListRequest);
+                bStartedAnyHMDs= request_start_hmd_stream(trackedHmdId, trackedHmdListIndex, trackingColorType);
             }
         }
 	}
 	else
 	{
-		setState(AppStage_ComputeTrackerPoses::failedHmdListRequest);
+		
+	}
+
+    if (bStartedAnyHMDs)
+    {
+        request_tracker_list();
+    }
+	else
+	{
+		setState(AppStage_ComputeTrackerPoses::failedHmdStartRequest);
 	}
 }
 
-void AppStage_ComputeTrackerPoses::request_start_hmd_stream(
+bool AppStage_ComputeTrackerPoses::request_start_hmd_stream(
     PSVRHmdID HmdID,
     int listIndex,
     PSVRTrackingColorType trackingColorType)
 {
     HMDState hmdState;
-
-    setState(eMenuState::pendingHmdStartRequest);
 
     // Allocate a new HMD view
     PSVR_AllocateHmdListener(HmdID);
@@ -1115,9 +1032,6 @@ void AppStage_ComputeTrackerPoses::request_start_hmd_stream(
     assert(m_hmdViews.find(HmdID) == m_hmdViews.end());
     m_hmdViews.insert(t_id_hmd_state_pair(HmdID, hmdState));
 
-    // Increment the number of requests we're waiting to get back
-    ++m_pendingHmdStartCount;
-
     unsigned int flags =
         PSVRStreamFlags_includePositionData |
         PSVRStreamFlags_includeRawTrackerData;
@@ -1126,51 +1040,44 @@ void AppStage_ComputeTrackerPoses::request_start_hmd_stream(
     PSVR_SetHmdDataStreamTrackerIndex(hmdState.hmdView->HmdID, 0);
 
     // Start receiving data from the controller
-	if (PSVR_StartHmdDataStream(hmdState.hmdView->HmdID, flags) == PSVRResult_Success)
-	{
-		// See if this was the last controller we were waiting to get a response from
-		--m_pendingHmdStartCount;
-		if (m_pendingHmdStartCount <= 0)
-		{
-			// Move on to the trackers
-			request_tracker_list();
-		}
-	}
-	else
-	{
-		setState(AppStage_ComputeTrackerPoses::failedHmdStartRequest);
-	}
+	return PSVR_StartHmdDataStream(hmdState.hmdView->HmdID, flags) == PSVRResult_Success;
 }
 
 void AppStage_ComputeTrackerPoses::request_tracker_list()
 {
-    if (m_menuState != eMenuState::pendingTrackerListRequest)
-    {
-        setState(eMenuState::pendingTrackerListRequest);
+	bool bStartedAnyTrackers= false;
 
-        // Tell the psmove service that we we want a list of trackers connected to this machine
-		PSVRTrackerList tracker_list;
-		if (PSVR_GetTrackerList(&tracker_list) == PSVRResult_Success)
-		{
-            for (int tracker_index = 0; tracker_index < tracker_list.count; ++tracker_index)
-            {
-                request_tracker_start_stream(&tracker_list.trackers[tracker_index], tracker_index);
-            }
-		}
-		else
-		{
-			setState(eMenuState::failedTrackerListRequest);
-		}
-    }
+	m_trackerViews.clear();
+
+    // Tell the psmove service that we we want a list of trackers connected to this machine
+	PSVRTrackerList tracker_list;
+	if (PSVR_GetTrackerList(&tracker_list) == PSVRResult_Success)
+	{
+        for (int tracker_index = 0; tracker_index < tracker_list.count; ++tracker_index)
+        {
+			if (request_tracker_start_stream(&tracker_list.trackers[tracker_index], tracker_index))
+			{
+				bStartedAnyTrackers= true;
+			}
+        }
+	}
+
+	if (bStartedAnyTrackers)
+	{
+		handle_all_devices_ready();
+	}
+	else
+	{
+		setState(eMenuState::failedTrackerStartRequest);
+	}
 }
 
-void AppStage_ComputeTrackerPoses::request_tracker_start_stream(
+bool AppStage_ComputeTrackerPoses::request_tracker_start_stream(
     const PSVRClientTrackerInfo *TrackerInfo,
     int listIndex)
 {
     TrackerState trackerState;
-
-    setState(eMenuState::pendingTrackerStartRequest);
+	bool bStartedTracker= false;
 
     // Allocate a new tracker view
     const int tracker_id= TrackerInfo->tracker_id;
@@ -1182,9 +1089,6 @@ void AppStage_ComputeTrackerPoses::request_tracker_start_stream(
     // Add the tracker to the list of trackers we're monitoring
     assert(m_trackerViews.find(TrackerInfo->tracker_id) == m_trackerViews.end());
     m_trackerViews.insert(t_id_tracker_state_pair(TrackerInfo->tracker_id, trackerState));
-
-    // Increment the number of requests we're waiting to get back
-    ++m_pendingTrackerStartCount;
 
     // Request data to start streaming to the tracker
 	if (PSVR_StartTrackerDataStream(TrackerInfo->tracker_id) == PSVRResult_Success)
@@ -1202,25 +1106,18 @@ void AppStage_ComputeTrackerPoses::request_tracker_start_stream(
         {
             // Create a texture to render the video frame to
             trackerState.textureAsset = new TextureAsset();
-            trackerState.textureAsset->init(
-                static_cast<unsigned int>(trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_width),
-                static_cast<unsigned int>(trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_height),
-                GL_RGB, // texture format
-                GL_BGR, // buffer format
-                nullptr);
-        }
 
-        // See if this was the last tracker we were waiting to get a response from
-        --m_pendingTrackerStartCount;
-        if (m_pendingTrackerStartCount <= 0)
-        {
-            handle_all_devices_ready();
+            bStartedTracker=
+				trackerState.textureAsset->init(
+					static_cast<unsigned int>(trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_width),
+					static_cast<unsigned int>(trackerInfo.tracker_intrinsics.intrinsics.mono.pixel_height),
+					GL_RGB, // texture format
+					GL_BGR, // buffer format
+					nullptr);
         }
 	}
-	else
-	{
-		setState(eMenuState::failedTrackerStartRequest);
-	}
+
+	return bStartedTracker;
 }
 
 void AppStage_ComputeTrackerPoses::request_set_tracker_pose(

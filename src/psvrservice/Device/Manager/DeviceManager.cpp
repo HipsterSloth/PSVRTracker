@@ -218,14 +218,14 @@ DeviceManager::shutdown()
 		m_config->save();
 	}
 
-	if (m_controller_manager != nullptr)
-	{
-	    m_controller_manager->shutdown();
-	}
-
 	if (m_tracker_manager != nullptr)
 	{
 	    m_tracker_manager->shutdown();
+	}
+
+	if (m_controller_manager != nullptr)
+	{
+	    m_controller_manager->shutdown();
 	}
 
 	if (m_hmd_manager != nullptr)

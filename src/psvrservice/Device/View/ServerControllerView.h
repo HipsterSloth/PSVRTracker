@@ -15,7 +15,8 @@
 class TrackerManager;
 
 struct PoseSensorPacket;
-using t_controller_pose_sensor_queue= moodycamel::ReaderWriterQueue<PoseSensorPacket, 1024>;
+using t_controller_imu_sensor_queue= moodycamel::ReaderWriterQueue<PoseSensorPacket, 1024>;
+using t_controller_optical_sensor_queue= moodycamel::ReaderWriterQueue<PoseSensorPacket, 16>;
 
 template<typename t_object_type>
 class AtomicObject;
@@ -235,8 +236,8 @@ private:
 	bool m_bIsLastSensorDataTimestampValid;
 
 	// Filter State (Shared)
-	t_controller_pose_sensor_queue m_PoseSensorIMUPacketQueue;
-	t_controller_pose_sensor_queue m_PoseSensorOpticalPacketQueue;
+	t_controller_imu_sensor_queue m_PoseSensorIMUPacketQueue;
+	t_controller_optical_sensor_queue *m_PoseSensorOpticalPacketQueues; // array of size TrackerManager::k_max_devices
 	AtomicObject<ShapeTimestampedPose> *m_sharedFilteredPose;
 	std::atomic_ulong m_currentlyTrackingBitmask;
 

@@ -51,26 +51,26 @@ static void post_imu_filter_packets_for_psmove(
 	const PSMoveControllerInputState *psmoveState,
 	const t_high_resolution_timepoint now,
 	const t_high_resolution_duration duration_since_last_update,
-	t_controller_pose_sensor_queue *pose_filter_queue);
+	t_controller_imu_sensor_queue *pose_filter_queue);
 static void post_optical_filter_packet_for_psmove(
     const PSMoveController *psmove,
 	const int tracker_id,
     const t_high_resolution_timepoint now,
     const ControllerOpticalPoseEstimation *pose_estimation,
-    t_controller_pose_sensor_queue *pose_sensor_queue);
+    t_controller_optical_sensor_queue *pose_sensor_queue);
 
 static void post_imu_filter_packets_for_dualshock4(
 	const DualShock4Controller *ds4, 
 	const DualShock4ControllerInputState *ds4State,
 	const t_high_resolution_timepoint now,
 	const t_high_resolution_duration duration_since_last_update,
-	t_controller_pose_sensor_queue *pose_filter_queue);
+	t_controller_imu_sensor_queue *pose_filter_queue);
 static void post_optical_filter_packet_for_dualshock4(
 	const DualShock4Controller *ds4,
 	const int tracker_id,
 	const t_high_resolution_timepoint now,
 	const ControllerOpticalPoseEstimation *pose_estimation,
-	t_controller_pose_sensor_queue *pose_sensor_queue);
+	t_controller_optical_sensor_queue *pose_sensor_queue);
 
 static void generate_psmove_data_frame_for_stream(
     const ServerControllerView *controller_view, const ControllerStreamInfo *stream_info, 
@@ -89,6 +89,7 @@ ServerControllerView::ServerControllerView(const int device_id)
     , m_LED_override_active(false)
     , m_shape_tracking_models(nullptr)
     , m_optical_pose_estimations(nullptr)
+	, m_PoseSensorOpticalPacketQueues(nullptr)
 	, m_sharedFilteredPose(nullptr)
 	, m_currentlyTrackingBitmask({0})
 	, m_lastIMUSensorPacket(nullptr)
@@ -128,6 +129,7 @@ bool ServerControllerView::allocate_device_interface(
 			m_sharedFilteredPose= new AtomicObject<ShapeTimestampedPose>;
             m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
             m_optical_pose_estimations = new ControllerOpticalPoseEstimation[TrackerManager::k_max_devices];
+			m_PoseSensorOpticalPacketQueues = new t_controller_optical_sensor_queue[TrackerManager::k_max_devices];
 			m_lastOpticalSensorPacket = new PoseSensorPacket[TrackerManager::k_max_devices];
             for (int tracker_index = 0; tracker_index < TrackerManager::k_max_devices; ++tracker_index)
             {
@@ -153,6 +155,7 @@ bool ServerControllerView::allocate_device_interface(
 			m_sharedFilteredPose= new AtomicObject<ShapeTimestampedPose>;
             m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
             m_optical_pose_estimations = new ControllerOpticalPoseEstimation[TrackerManager::k_max_devices];
+			m_PoseSensorOpticalPacketQueues = new t_controller_optical_sensor_queue[TrackerManager::k_max_devices];
 			m_lastOpticalSensorPacket = new PoseSensorPacket[TrackerManager::k_max_devices];
             for (int tracker_index = 0; tracker_index < TrackerManager::k_max_devices; ++tracker_index)
             {
@@ -189,6 +192,12 @@ void ServerControllerView::free_device_interface()
 	{
 		delete m_lastIMUSensorPacket;
 		m_lastIMUSensorPacket= nullptr;
+	}
+
+	if (m_PoseSensorOpticalPacketQueues != nullptr)
+	{
+		delete[] m_PoseSensorOpticalPacketQueues;
+		m_PoseSensorOpticalPacketQueues= nullptr;
 	}
 
 	if (m_lastOpticalSensorPacket != nullptr)
@@ -379,6 +388,7 @@ void ServerControllerView::notifyTrackerDataReceived(ServerTrackerView* tracker)
 	int tracker_id= tracker->getDeviceID();
 	ControllerOpticalPoseEstimation &tracker_pose_estimate_ref = m_optical_pose_estimations[tracker_id];
     IShapeTrackingModel *shape_tracking_model= m_shape_tracking_models[tracker_id];
+	t_controller_optical_sensor_queue &optical_sensor_queue= m_PoseSensorOpticalPacketQueues[tracker_id];
 
 	// Compute an optical pose estimate from latest projection
     if (getIsTrackingEnabled())
@@ -487,7 +497,7 @@ void ServerControllerView::notifyTrackerDataReceived(ServerTrackerView* tracker)
 					tracker_id,
 					now,
 					&tracker_pose_estimate_ref,
-					&m_PoseSensorOpticalPacketQueue);
+					&optical_sensor_queue);
 			} break;
 		case CommonSensorState::DualShock4:
 			{
@@ -499,7 +509,7 @@ void ServerControllerView::notifyTrackerDataReceived(ServerTrackerView* tracker)
 					tracker_id,
 					now,
 					&tracker_pose_estimate_ref,
-					&m_PoseSensorOpticalPacketQueue);
+					&optical_sensor_queue);
 			} break;
 		default:
 			assert(0 && "Unhandled controller type");
@@ -575,9 +585,12 @@ void ServerControllerView::updatePoseFilter()
 	{
 		timeSortedPackets.push_back(packet);
 	}
-	while (m_PoseSensorOpticalPacketQueue.try_dequeue(packet))
+	for (int tracker_id = 0; tracker_id < TrackerManager::k_max_devices; ++tracker_id)
 	{
-		timeSortedPackets.push_back(packet);
+		while (m_PoseSensorOpticalPacketQueues[tracker_id].try_dequeue(packet))
+		{
+			timeSortedPackets.push_back(packet);
+		}
 	}
 
 	// Sort the packets in order of ascending time
@@ -1750,7 +1763,7 @@ post_imu_filter_packets_for_psmove(
 	const PSMoveControllerInputState *psmoveState,
 	const t_high_resolution_timepoint now,
 	const t_high_resolution_duration duration_since_last_update,
-	t_controller_pose_sensor_queue *pose_filter_queue)
+	t_controller_imu_sensor_queue *pose_filter_queue)
 {
     const PSMoveControllerConfig *config = psmove->getConfig();
 
@@ -1849,7 +1862,7 @@ post_optical_filter_packet_for_psmove(
 	const int tracker_id,
     const t_high_resolution_timepoint now,
     const ControllerOpticalPoseEstimation *pose_estimation,
-    t_controller_pose_sensor_queue *pose_sensor_queue)
+    t_controller_optical_sensor_queue *pose_sensor_queue)
 {
     const PSMoveControllerConfig *config = psmove->getConfig();
 
@@ -1885,7 +1898,7 @@ static void post_imu_filter_packets_for_dualshock4(
 	const DualShock4ControllerInputState *ds4State,
 	const t_high_resolution_timepoint now,
 	const t_high_resolution_duration duration_since_last_update,
-	t_controller_pose_sensor_queue *pose_filter_queue)
+	t_controller_imu_sensor_queue *pose_filter_queue)
 {
     const DualShock4ControllerConfig *config = ds4->getConfig();
     PoseSensorPacket sensor_packet;
@@ -1913,7 +1926,7 @@ static void post_optical_filter_packet_for_dualshock4(
 	const int tracker_id,
 	const t_high_resolution_timepoint now,
 	const ControllerOpticalPoseEstimation *pose_estimation,
-	t_controller_pose_sensor_queue *pose_sensor_queue)
+	t_controller_optical_sensor_queue *pose_sensor_queue)
 {
     const DualShock4ControllerConfig *config = ds4->getConfig();
 

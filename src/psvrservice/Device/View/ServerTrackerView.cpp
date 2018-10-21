@@ -1,4 +1,5 @@
 //-- includes -----
+#include "ControllerManager.h"
 #include "DeviceEnumerator.h"
 #include "DeviceManager.h"
 #include "HMDManager.h"
@@ -867,8 +868,10 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
 	{
 		DeviceManager *device_manager= DeviceManager::getInstance();
 		HMDManager *hmd_manager= device_manager->getHMDManager();
+		ControllerManager *controller_manager= device_manager->getControllerManager();
 
 		hmd_manager->notifyVideoFrameReceived(this);
+		controller_manager->notifyVideoFrameReceived(this);
 	}
 
 	// Copy the final opencv RGB buffer (annotated with debug info by he HMD) to the client API
@@ -1499,9 +1502,11 @@ ServerTrackerView::computeProjectionForControllerInSection(
                         k_real_pi
                         *out_projection->projections[section].shape.ellipse.half_x_extent
                         *out_projection->projections[section].shape.ellipse.half_y_extent;
-                
-                    bSuccess = true;
                 }
+				else
+				{
+					bSuccess = false;
+				}
             } break;
         case PSVRTrackingShape_LightBar:
             {

@@ -68,20 +68,8 @@ protected:
     {
         inactive,
 
-        failedControllerListRequest,
-
-        pendingControllerStartRequest,
         failedControllerStartRequest,
-
-        failedHmdListRequest,
-
-        pendingHmdStartRequest,
         failedHmdStartRequest,
-
-        pendingTrackerListRequest,
-        failedTrackerListRequest,
-
-        pendingTrackerStartRequest,
         failedTrackerStartRequest,
 
         verifyTrackers,
@@ -108,11 +96,11 @@ protected:
     PSVRHeadMountedDisplay *get_calibration_hmd_view() const;
 
     void request_controller_list();
-    void request_start_controller_stream(int ControllerID, int listIndex, PSVRTrackingColorType trackingColorType);
+    bool request_start_controller_stream(PSVRControllerID ControllerID, int listIndex, PSVRTrackingColorType trackingColorType);
     void request_hmd_list();
-    void request_start_hmd_stream(int HmdID, int listIndex, PSVRTrackingColorType trackingColorType);
+    bool request_start_hmd_stream(PSVRHmdID HmdID, int listIndex, PSVRTrackingColorType trackingColorType);
     void request_tracker_list();
-    void request_tracker_start_stream(const PSVRClientTrackerInfo *TrackerInfo, int listIndex);
+    bool request_tracker_start_stream(const PSVRClientTrackerInfo *TrackerInfo, int listIndex);
     void request_set_tracker_pose(const PSVRPosef *pose, PSVRTracker *TrackerView);
 
     void handle_all_devices_ready();
@@ -127,13 +115,8 @@ protected:
     eMenuState m_menuState;
 
     t_tracker_state_map m_trackerViews;
-    int m_pendingTrackerStartCount;
-
 	t_controller_state_map m_controllerViews;
-	int m_pendingControllerStartCount;
-
 	t_hmd_state_map m_hmdViews;
-	int m_pendingHmdStartCount;
 
     int m_renderTrackerIndex;
     t_tracker_state_map_iterator m_renderTrackerIter;
@@ -149,7 +132,7 @@ protected:
 	PSVRControllerID m_overrideControllerId;
     PSVRHmdID m_overrideHmdId;
 
-	// Alignment Marker visability
+	// Alignment Marker visibility
 	bool m_bShowAlignment;
 	float m_AlignmentOffset;
 };
