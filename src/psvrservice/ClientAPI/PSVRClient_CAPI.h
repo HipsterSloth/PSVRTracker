@@ -324,7 +324,7 @@ typedef struct
     float data_frame_average_fps;
 
     // SharedVideoFrameBuffer pointer internally
-    const void *opaque_shared_video_frame_buffer;
+    void *opaque_shared_video_frame_buffer;
 } PSVRTracker;
 
 /// Tracked object physics data state

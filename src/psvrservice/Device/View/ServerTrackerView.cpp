@@ -750,7 +750,7 @@ ServerTrackerView::getSharedMemoryStreamName() const
     return std::string(m_shared_memory_name);
 }
 
-const SharedVideoFrameBuffer *
+SharedVideoFrameBuffer *
 ServerTrackerView::getSharedVideoFrameBuffer() const
 {
     return m_shared_memory_accesor;
@@ -883,24 +883,19 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
 			if (m_opencv_buffer_state[PSVRVideoFrameSection_Left] != nullptr &&
 				m_opencv_buffer_state[PSVRVideoFrameSection_Right] != nullptr)
 			{
-				// Copy the video frame to shared memory (if requested)
-				m_shared_memory_accesor->writeVideoFrame(
-					PSVRVideoFrameSection_Left, 
-					m_opencv_buffer_state[PSVRVideoFrameSection_Left]->bgrShmemBuffer->data);
-				m_shared_memory_accesor->writeVideoFrame(
-					PSVRVideoFrameSection_Right, 
+				// NOTE: This can block on a client read
+				m_shared_memory_accesor->writeStereoVideoFrame(
+					m_opencv_buffer_state[PSVRVideoFrameSection_Left]->bgrShmemBuffer->data,
 					m_opencv_buffer_state[PSVRVideoFrameSection_Right]->bgrShmemBuffer->data);
-				m_shared_memory_accesor->finalizeVideoFrameWrite();
 			}
 		}
 		else
 		{
 			if (m_opencv_buffer_state[PSVRVideoFrameSection_Primary] != nullptr)
 			{
-				m_shared_memory_accesor->writeVideoFrame(
-					PSVRVideoFrameSection_Primary,
+				// NOTE: This can block on a client read
+				m_shared_memory_accesor->writeMonoVideoFrame(
 					m_opencv_buffer_state[PSVRVideoFrameSection_Primary]->bgrShmemBuffer->data);
-				m_shared_memory_accesor->finalizeVideoFrameWrite();
 			}
 		}
 	}

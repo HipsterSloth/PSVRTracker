@@ -1021,7 +1021,7 @@ PSVRResult ServiceRequestHandler::stop_tracker_data_stream(
 	return result;
 }
 	
-PSVRResult ServiceRequestHandler::get_shared_video_frame_buffer(PSVRTrackerID tracker_id, const SharedVideoFrameBuffer **out_shared_buffer)
+PSVRResult ServiceRequestHandler::get_shared_video_frame_buffer(PSVRTrackerID tracker_id, SharedVideoFrameBuffer **out_shared_buffer)
 {
 	PSVRResult result= PSVRResult_Error;
 

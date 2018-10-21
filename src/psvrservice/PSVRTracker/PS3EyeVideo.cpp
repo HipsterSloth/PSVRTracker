@@ -113,8 +113,6 @@ enum gspca_packet_type {
     #include <stdint.h>
 #endif
 
-//#define debug(...) fprintf(stdout, __VA_ARGS__); fprintf(stdout, "\n");
-
 //-- data -----
 struct PS3EyeVideoModeInfo 
 {
@@ -347,8 +345,9 @@ class PS3EyeFrameProcessor : public WorkerThread
 public:
 	PS3EyeFrameProcessor(const PS3EyeVideoModeInfo &video_mode, ITrackerListener *trackerListener)
 		: WorkerThread(std::string("PS3EyeVideoFrameProcessor"))
-		, m_compressedFrameIndexQueue(4)
-		, m_compressedFrameWriteIndex(0)
+		, m_pendingFrameIndexQueue(4)
+		, m_processedFrameIndexQueue(4)
+		, m_pendingFrameWriteIndex(0)
 		, m_frameWidth(video_mode.width)
 		, m_frameHeight(video_mode.height)
 		, m_compressedFramesBuffer(nullptr)
@@ -359,11 +358,19 @@ public:
 	{
         if (m_compressedFrameSizeBytes > 0)
         {
-            m_compressedFramesBuffer = new uint8_t[m_compressedFrameSizeBytes*m_compressedFrameIndexQueue.getCapacity()];
+            m_compressedFramesBuffer = new uint8_t[m_compressedFrameSizeBytes*m_pendingFrameIndexQueue.getCapacity()];
             m_uncompressedFrameBuffer = new uint8_t[m_uncompressedFrameSizeBytes];
-            memset(m_compressedFramesBuffer, 0, m_compressedFrameSizeBytes);
-            memset(m_uncompressedFrameBuffer, 0, m_uncompressedFrameSizeBytes);
+            memset(m_compressedFramesBuffer, 0, sizeof(m_compressedFrameSizeBytes));
+            memset(m_uncompressedFrameBuffer, 0, sizeof(m_uncompressedFrameSizeBytes));
         }
+
+		// Initialize the list of frames available for writing compressed frames to.
+		// Frame index 0 isn't available because that the one we immediately start writing to.
+		m_pendingFrameWriteIndex= 0;
+		for (uint32_t frameIndex = 1; frameIndex < m_processedFrameIndexQueue.getCapacity(); ++frameIndex)
+		{
+			m_processedFrameIndexQueue.enqueue(frameIndex);
+		}
 	}
 
     virtual ~PS3EyeFrameProcessor()
@@ -388,23 +395,39 @@ public:
 
 	uint8_t* getCompressedFrameAtIndex(uint32_t frame_index)
 	{
-		assert(frame_index < m_compressedFrameIndexQueue.getCapacity());
-		return m_compressedFramesBuffer + frame_index*m_compressedFrameSizeBytes;
+		return (frame_index != (uint32_t)-1) ? m_compressedFramesBuffer + frame_index*m_compressedFrameSizeBytes : nullptr;
 	}
 
 	uint8_t* enqueueCompressedFrame_usbThread()
-	{
-		// Add the index of the currently completed frame to the queue
-		if (m_compressedFrameIndexQueue.enqueue(m_compressedFrameWriteIndex))
+	{		
+		// Get the index of the next frame that it's safe to write the next compressed frame to
+		uint32_t newFrameWriteIndex;
+		if (!m_processedFrameIndexQueue.dequeue(newFrameWriteIndex))
 		{
-			uint32_t new_write_index= (m_compressedFrameWriteIndex + 1) % m_compressedFrameIndexQueue.getCapacity();
-
-			// Note: we don't need to copy any data to the buffer since the USB packets are directly written to the frame buffer.
-			// We just need to update head and available count to signal to the consumer that a new frame is available
-			m_compressedFrameWriteIndex = new_write_index;
+			debug("USB: NO WRITE FRAMES AVAILABLE!\n");
+			// Worker thread not keeping up with the frame reading.
+			// Drop the next frame.
+			newFrameWriteIndex= (uint32_t)-1;
 		}
 
-		return getCompressedFrameAtIndex(m_compressedFrameWriteIndex);
+		// Add the index of the currently completed frame to the pending frame queue
+		if (m_pendingFrameWriteIndex != (uint32_t)-1)
+		{
+			debug("USB: Stop Write frame %d\n", m_pendingFrameWriteIndex);
+			if (!m_pendingFrameIndexQueue.enqueue(m_pendingFrameWriteIndex))
+			{
+				assert(false && "Can't write to pending frame queue.");
+			}
+		}
+
+		// Update to the new write frame index
+		if (newFrameWriteIndex != (uint32_t)-1)
+		{
+			debug("USB: Start Write frame %d\n", newFrameWriteIndex);
+		}
+		m_pendingFrameWriteIndex= newFrameWriteIndex;
+
+		return getCompressedFrameAtIndex(m_pendingFrameWriteIndex);
 	}
 
 protected:
@@ -416,9 +439,11 @@ protected:
 		if (!m_exitSignaled)
 		{
 			// Send the uncompressed frame off to the tracker for processing
-			uint32_t read_index= 0;
-			if (m_compressedFrameIndexQueue.dequeue(read_index))
+			uint32_t read_index= (uint32_t)-1;
+			if (m_pendingFrameIndexQueue.dequeue(read_index))
 			{
+				debug("Worker: Start Read frame %d\n", read_index);
+
 				// Get the current frame buffer
 				uint8_t* source = getCompressedFrameAtIndex(read_index);
 
@@ -427,6 +452,11 @@ protected:
 
 				// Notify the client
 				m_trackerListener->notifyVideoFrameReceived(m_uncompressedFrameBuffer);
+
+				debug("Worker: Stop Read frame %d\n", read_index);
+
+				// Tell the usb processing thread that this frame is safe to write to now
+				m_processedFrameIndexQueue.enqueue(read_index);
 			}
 			else
 			{
@@ -545,9 +575,10 @@ protected:
 
 protected:
 	// Queue State
-	AtomicRingBufferSPSC<uint32_t> m_compressedFrameIndexQueue;
+	AtomicRingBufferSPSC<uint32_t> m_pendingFrameIndexQueue;
+	AtomicRingBufferSPSC<uint32_t> m_processedFrameIndexQueue;
 	uint32_t m_maxCompressedFrameCount;
-	uint32_t m_compressedFrameWriteIndex;
+	uint32_t m_pendingFrameWriteIndex;
 
 	// Buffer State
 	int m_frameWidth;
@@ -754,7 +785,10 @@ protected:
             }
             else
             {
-	            memcpy(m_currentFrameStart+m_currentFrameBytesWritten, data, len);
+				if (m_currentFrameStart != nullptr)
+				{
+		            memcpy(m_currentFrameStart+m_currentFrameBytesWritten, data, len);
+				}
                 m_currentFrameBytesWritten += len;
             }
         }

@@ -58,7 +58,7 @@ public:
     std::string getSharedMemoryStreamName() const;
 
     // Returns a pointer the memory buffer the video frames are published to
-    const class SharedVideoFrameBuffer *getSharedVideoFrameBuffer() const;
+    class SharedVideoFrameBuffer *getSharedVideoFrameBuffer() const;
     
     void loadSettings();
     void saveSettings();

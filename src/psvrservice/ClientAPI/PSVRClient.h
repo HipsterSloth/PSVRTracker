@@ -44,7 +44,7 @@ public:
 	bool open_video_stream(PSVRTrackerID tracker_id);
 	void close_video_stream(PSVRTrackerID tracker_id);
     int get_video_frame_section_count(PSVRTrackerID tracker_id) const;
-	const unsigned char *get_video_frame_buffer(PSVRTrackerID tracker_id, PSVRVideoFrameSection section) const;
+	const unsigned char *fetch_video_frame_buffer(PSVRTrackerID tracker_id, PSVRVideoFrameSection section);
 
     bool allocate_hmd_listener(PSVRHmdID HmdID);
     void free_hmd_listener(PSVRHmdID HmdID);   

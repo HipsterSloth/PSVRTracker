@@ -419,7 +419,7 @@ bool PSVRClient::open_video_stream(PSVRTrackerID tracker_id)
 
 		if (tracker->opaque_shared_video_frame_buffer == nullptr)
 		{
-			const SharedVideoFrameBuffer *shared_buffer= nullptr;
+			SharedVideoFrameBuffer *shared_buffer= nullptr;
 			if (m_requestHandler->get_shared_video_frame_buffer(tracker_id, &shared_buffer) == PSVRResult_Success)
 			{				
 				tracker->opaque_shared_video_frame_buffer= shared_buffer;
@@ -471,20 +471,20 @@ int PSVRClient::get_video_frame_section_count(PSVRTrackerID tracker_id) const
     return section_count;
 }
 
-const unsigned char *PSVRClient::get_video_frame_buffer(PSVRTrackerID tracker_id, PSVRVideoFrameSection section) const
+const unsigned char *PSVRClient::fetch_video_frame_buffer(PSVRTrackerID tracker_id, PSVRVideoFrameSection section)
 {
 	const unsigned char *buffer= nullptr;
 
 	if (IS_VALID_TRACKER_INDEX(tracker_id))
 	{
-		const PSVRTracker *tracker= &m_trackers[tracker_id];
+		PSVRTracker *tracker= &m_trackers[tracker_id];
 
 		if (tracker->opaque_shared_video_frame_buffer != nullptr)
 		{
-			const SharedVideoFrameBuffer *shared_buffer = 
-				reinterpret_cast<const SharedVideoFrameBuffer *>(tracker->opaque_shared_video_frame_buffer);
+			SharedVideoFrameBuffer *shared_buffer = 
+				reinterpret_cast<SharedVideoFrameBuffer *>(tracker->opaque_shared_video_frame_buffer);
 
-			buffer= shared_buffer->getBuffer(section);
+			buffer= shared_buffer->fetchBufferSection(section);
 		}
 	}
 

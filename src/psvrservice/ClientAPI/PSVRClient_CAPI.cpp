@@ -1060,7 +1060,7 @@ PSVRResult PSVR_GetTrackerVideoFrameBuffer(PSVRTrackerID tracker_id, PSVRVideoFr
 
     if (g_psvr_client != nullptr && IS_VALID_TRACKER_INDEX(tracker_id))
     {
-        const unsigned char *buffer= g_psvr_client->get_video_frame_buffer(tracker_id, section_index);
+        const unsigned char *buffer= g_psvr_client->fetch_video_frame_buffer(tracker_id, section_index);
 		if (buffer != nullptr)
 		{
 			*out_buffer= buffer;

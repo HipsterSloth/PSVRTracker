@@ -143,7 +143,7 @@ public:
 		return m_capacity;
 	}
 
-    bool enqueue(t_element_type& input)
+    bool enqueue(const t_element_type& input)
     {
         const size_t head = m_head.load(std::memory_order_relaxed);
 

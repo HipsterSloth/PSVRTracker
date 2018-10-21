@@ -4,6 +4,7 @@
 //-- includes -----
 #include "PSVRClient_CAPI.h"
 #include <atomic>
+#include <mutex>
 
 //-- definitions -----
 enum DeviceCategory
@@ -87,12 +88,11 @@ public:
 
     bool initialize(const char *buffer_name, int width, int height, int stride, int section_count);
     void dispose();
-    void writeVideoFrame(PSVRVideoFrameSection section, const unsigned char *buffer);
-	void finalizeVideoFrameWrite();
+    void writeMonoVideoFrame(const unsigned char *buffer);
+	void writeStereoVideoFrame(const unsigned char *left_buffer, const unsigned char *right_buffer);
     inline int getSectionCount() const { return m_section_count; }
-	inline int getFrameIndex() const { return m_frame_index; } 
-    const unsigned char *getBuffer(PSVRVideoFrameSection section) const;
-    unsigned char *getBufferMutable(PSVRVideoFrameSection section);
+	inline int getFrameIndex() const { return m_read_thread_frame_index; } 
+    const unsigned char *fetchBufferSection(PSVRVideoFrameSection section);
     static size_t computeVideoBufferSize(int section_count, int stride, int height);
 
 private:
@@ -101,8 +101,11 @@ private:
     int m_height;
     int m_stride;
     int m_section_count;
-	unsigned char *m_buffer[2];
-	std::atomic_int m_frame_index;
+	unsigned char *m_write_thread_buffer;
+	unsigned char *m_read_thread_buffer;
+	std::atomic_int m_write_thread_frame_index;
+	int m_read_thread_frame_index;
+	std::mutex m_buffer_mutex;
 };
 
 //-- interface -----
