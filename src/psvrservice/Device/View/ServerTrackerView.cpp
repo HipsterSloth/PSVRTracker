@@ -2,6 +2,7 @@
 #include "ControllerManager.h"
 #include "DeviceEnumerator.h"
 #include "DeviceManager.h"
+#include "ControllerManager.h"
 #include "HMDManager.h"
 #include "ServerControllerView.h"
 #include "ServerTrackerView.h"
@@ -867,9 +868,11 @@ void ServerTrackerView::notifyVideoFrameReceived(const unsigned char *raw_video_
 	// Broadcast new tracking frame to all devices that are optically tracked
 	{
 		DeviceManager *device_manager= DeviceManager::getInstance();
+		ControllerManager *controller_manager = device_manager->getControllerManager();
 		HMDManager *hmd_manager= device_manager->getHMDManager();
 		ControllerManager *controller_manager= device_manager->getControllerManager();
 
+		controller_manager->notifyVideoFrameReceived(this);
 		hmd_manager->notifyVideoFrameReceived(this);
 		controller_manager->notifyVideoFrameReceived(this);
 	}
