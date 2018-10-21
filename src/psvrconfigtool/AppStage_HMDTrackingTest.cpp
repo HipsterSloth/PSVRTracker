@@ -828,7 +828,7 @@ void AppStage_HMDTrackingTest::handle_tracker_start_stream_response(
 
 void AppStage_HMDTrackingTest::handle_all_devices_ready()
 {
-    setState(eMenuState::verifyTrackers);
+    setState(eMenuState::testTracking);
 }
 
 bool AppStage_HMDTrackingTest::does_tracker_see_any_hmd(const PSVRTracker *trackerView)
