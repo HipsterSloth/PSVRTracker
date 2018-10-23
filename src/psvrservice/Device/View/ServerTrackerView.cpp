@@ -1449,13 +1449,11 @@ ServerTrackerView::computeProjectionForControllerInSection(
                 {
                     cv::undistortPoints(convex_contour_f, undistorted_contour,
                                         camera_matrix,
-                                        distortions,
-                                        cv::noArray(),
-                                        camera_matrix);
+                                        distortions);
+					// Note: if we omit the last two arguments, then
+					// undistort_contour points are in 'normalized' space.
+					// i.e., they are relative to their F_PX,F_PY
                 }
-                // Note: if we omit the last two arguments, then
-                // undistort_contour points are in 'normalized' space.
-                // i.e., they are relative to their F_PX,F_PY
                 
                 // Compute the sphere center AND the projected ellipse
                 Eigen::Vector3f sphere_center;
