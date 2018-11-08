@@ -568,7 +568,7 @@ public:
                 cv::ellipse(*bgrShmemBuffer,
                     ell_center,
                     ell_size,
-                    pose_projection.projections[section].shape.ellipse.angle,
+                    360.f - (pose_projection.projections[section].shape.ellipse.angle * k_radians_to_degreees),
                     0, 360, areaColor);
                 cv::drawMarker(*bgrShmemBuffer, ell_center, cv::Scalar(0, 0, 255), 0,
                     (ell_size.height < ell_size.width) ? ell_size.height * 2 : ell_size.width * 2);
@@ -1415,7 +1415,7 @@ ServerTrackerView::computeProjectionForControllerInSection(
     if (bSuccess)
     {
         cv::Matx33f camera_matrix;
-        cv::Matx<float, 5, 1> distortions;
+        cv::Matx81f distortions;
         cv::Matx33d rectification_rotation;
         cv::Matx34d rectification_projection; 
         computeOpenCVCameraIntrinsicMatrix(m_device, section, camera_matrix, distortions);
@@ -1633,7 +1633,7 @@ ServerTrackerView::computeProjectionForHmdInSection(
     if (bSuccess)
     {
         cv::Matx33f camera_matrix;
-        cv::Matx<float, 5, 1> distortions;
+        cv::Matx81f distortions;
         cv::Matx33d rectification_rotation;
         cv::Matx34d rectification_projection; 
         computeOpenCVCameraIntrinsicMatrix(m_device, section, camera_matrix, distortions);
@@ -1914,7 +1914,7 @@ ServerTrackerView::projectTrackerRelativePositions(
 	const std::vector<PSVRVector3f> &objectPositions) const
 {
     cv::Matx33f camera_matrix;
-    cv::Matx<float, 5, 1> distortions;
+    cv::Matx81f distortions;
     computeOpenCVCameraIntrinsicMatrix(m_device, section, camera_matrix, distortions);
     
     // Use the identity transform for tracker relative positions

@@ -166,9 +166,12 @@ typedef struct
 /// See the [OpenCV Docs](http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html) for details
 typedef struct 
 {
-    double k1; ///< Radial Distortion Parameter 1
-    double k2; ///< Radial Distortion Parameter 2
-    double k3; ///< Radial Distortion Parameter 3
+    double k1; ///< Radial Distortion Parameter 1 (r^2 numerator constant)
+    double k2; ///< Radial Distortion Parameter 2 (r^4 numerator constant)
+    double k3; ///< Radial Distortion Parameter 3 (r^6 numerator constant)
+    double k4; ///< Radial Distortion Parameter 4 (r^2 divisor constant)
+    double k5; ///< Radial Distortion Parameter 5 (r^4 divisor constant)
+    double k6; ///< Radial Distortion Parameter 6 (r^6 divisor constant)
     double p1; ///< Tangential Distortion Parameter 1
     double p2; ///< Tangential Distortion Parameter 2
 } PSVRDistortionCoefficients;

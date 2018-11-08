@@ -87,7 +87,7 @@ static const char *k_calibration_pattern_names[] = {
 //-- typedefs -----
 namespace cv
 {
-    typedef Matx<double, 5, 1> Matx51d;
+	typedef Matx<double, 8, 1> Matx81d;
 }
 
 //-- private definitions -----
@@ -171,6 +171,9 @@ public:
         distortion_coeffs(2, 0)= PSVR_distortion_coeffs.p1;
         distortion_coeffs(3, 0)= PSVR_distortion_coeffs.p2;
         distortion_coeffs(4, 0)= PSVR_distortion_coeffs.k3;
+		distortion_coeffs(5, 0)= PSVR_distortion_coeffs.k4;
+		distortion_coeffs(6, 0)= PSVR_distortion_coeffs.k5;
+		distortion_coeffs(7, 0)= PSVR_distortion_coeffs.k6;
 
         // Generate the distortion map that corresponds to the tracker's camera settings
         rebuildDistortionMap();
@@ -384,7 +387,7 @@ public:
     cv::Matx33d intrinsic_matrix;
     cv::Matx33d rectification_rotation;
     cv::Matx34d rectification_projection;
-    cv::Matx51d distortion_coeffs;
+    cv::Matx81d distortion_coeffs;
 
     // Distortion preview
     cv::Mat *distortionMapX;
@@ -579,7 +582,7 @@ public:
 		assert(centers.size() == CIRCLE_COUNT);
     }
 
-    inline PSVRDistortionCoefficients cv_vec5_to_PSVR_distortion(const cv::Matx51d &cv_distortion_coeffs)
+    inline PSVRDistortionCoefficients cv_vec8_to_PSVR_distortion(const cv::Matx81d &cv_distortion_coeffs)
     {
         PSVRDistortionCoefficients distortion_coeffs;
         distortion_coeffs.k1= cv_distortion_coeffs(0, 0);
@@ -587,6 +590,9 @@ public:
         distortion_coeffs.p1= cv_distortion_coeffs(2, 0);
         distortion_coeffs.p2= cv_distortion_coeffs(3, 0);
         distortion_coeffs.k3= cv_distortion_coeffs(4, 0);
+		distortion_coeffs.k4= cv_distortion_coeffs(5, 0);
+		distortion_coeffs.k5= cv_distortion_coeffs(6, 0);
+		distortion_coeffs.k6= cv_distortion_coeffs(7, 0);
 
         return distortion_coeffs;
     }
@@ -643,16 +649,26 @@ public:
         objectPointsList.resize(m_opencv_section_state->imagePointsList.size(), objectPointsList[0]);
             
         // Compute the camera intrinsic matrix and distortion parameters
+		cv::Mat distCoeffsRowVector;
         reprojectionError= 
             cv::calibrateCamera(
                 objectPointsList, 
 				m_opencv_section_state->imagePointsList,
                 cv::Size((int)frameWidth, (int)frameHeight), 
                 m_opencv_section_state->intrinsic_matrix, 
-				m_opencv_section_state->distortion_coeffs, // Output we care about
+				distCoeffsRowVector, // Output we care about
                 cv::noArray(), cv::noArray(), // best fit board poses as rvec/tvec pairs
-                cv::CALIB_FIX_ASPECT_RATIO,
+				cv::CALIB_FIX_ASPECT_RATIO + // The functions considers only fy as a free parameter
+				cv::CALIB_FIX_PRINCIPAL_POINT + // The principal point is not changed during the global optimization
+				cv::CALIB_ZERO_TANGENT_DIST + // Tangential distortion coefficients (p1,p2) are set to zeros and stay zero
+				cv::CALIB_RATIONAL_MODEL + // Coefficients k4, k5, and k6 are enabled
+				cv::CALIB_FIX_K3 + cv::CALIB_FIX_K4 + cv::CALIB_FIX_K5, // radial distortion coefficients k3, k4, & k5 are not changed during the optimization
                 cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, DBL_EPSILON));
+
+		// cv::calibrateCamera() will return all 14 distortion parameters, but we only want the first 8
+		cv::Mat distCoeffsColVector;
+		cv::transpose(distCoeffsRowVector, distCoeffsColVector);
+		m_opencv_section_state->distortion_coeffs= distCoeffsColVector.rowRange(0,8);
 
         // Recompute the distortion mapping (for debug display only)
         m_opencv_section_state->rebuildDistortionMap();
@@ -661,7 +677,7 @@ public:
         async_task_result.camera_matrix= 
             cv_mat33d_to_PSVR_matrix3x3(m_opencv_section_state->intrinsic_matrix);
         async_task_result.distortion_coefficients= 
-            cv_vec5_to_PSVR_distortion(m_opencv_section_state->distortion_coeffs);
+            cv_vec8_to_PSVR_distortion(m_opencv_section_state->distortion_coeffs);
 
         // Signal the main thread that the task is complete
         async_task_completed= true;

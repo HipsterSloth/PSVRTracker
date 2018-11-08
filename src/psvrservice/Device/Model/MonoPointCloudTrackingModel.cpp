@@ -383,7 +383,7 @@ bool MonoPointCloudTrackingModel::getPointCloudProjectionShapeCorrelation(PSVRTr
 //-- private implementation -----
 static void compute_image_point_camera_rays(
 	const cv::Matx33f &intrinsic_matrix,
-	const cv::Matx<float, 5, 1> &dist_coeffs,
+	const cv::Matx81f &dist_coeffs,
 	const PSVRTrackingProjection &projection,
 	std::vector<Eigen::Vector3f> &out_image_point_rays)
 {
@@ -459,7 +459,7 @@ static bool compute_transform_using_best_fit_correspondence(
 	if (bFoundCorrespondences)
 	{
 		cv::Matx33f cameraMatrix;
-		cv::Matx<float, 5, 1> distCoeffs;
+		cv::Matx<float, 8, 1> distCoeffs;
 		computeOpenCVCameraIntrinsicMatrix(
 			tracker_view->getTrackerDevice(),
 			PSVRVideoFrameSection_Primary, 
@@ -519,7 +519,7 @@ static bool compute_predicted_point_correspondences(
 	// Get the camera intrinsic matrix and distortion coefficients from the given tracker
 	// so that we can project estimated 3d points back onto the camera plane for correlation testing
 	cv::Matx33f intrinsic_matrix;
-	cv::Matx<float, 5, 1> dist_coeffs;
+	cv::Matx81f dist_coeffs;
 	computeOpenCVCameraIntrinsicMatrix(
 		tracker_view->getTrackerDevice(),
 		PSVRVideoFrameSection_Primary, 
@@ -748,7 +748,7 @@ static bool compute_brute_force_image_ray_correspondences(
 	// Get the camera intrinsic matrix and distortion coefficients from the given tracker
 	// so that we can project estimated 3d points back onto the camera plane for correlation testing
 	cv::Matx33f intrinsic_matrix;
-	cv::Matx<float, 5, 1> dist_coeffs;
+	cv::Matx81f dist_coeffs;
 	computeOpenCVCameraIntrinsicMatrix(
 		tracker_view->getTrackerDevice(),
 		PSVRVideoFrameSection_Primary, 

@@ -27,18 +27,21 @@ PS3EyeTrackerConfig::PS3EyeTrackerConfig(const std::string &fnamebase)
 	trackerIntrinsics.pixel_width= 640.f;
 	trackerIntrinsics.pixel_height= 480.f;
     trackerIntrinsics.camera_matrix= {
-        554.2563, 0.0, 320.0, 
-        0.0, 554.2563, 240.0,
+        604.1783809256024, 0.0, 320.0, 
+        0.0, 604.1783809256024, 240.0,
         0.0, 0.0, 1.0}; // pixels
     trackerIntrinsics.hfov= 60.0; // degrees
     trackerIntrinsics.vfov= 45.0; // degrees
     trackerIntrinsics.znear= 10.0; // cm
     trackerIntrinsics.zfar= 200.0; // cm
-    trackerIntrinsics.distortion_coefficients.k1= -0.10771770030260086;
-    trackerIntrinsics.distortion_coefficients.k2= 0.1213262677192688;
-    trackerIntrinsics.distortion_coefficients.k3= 0.04875476285815239;
-    trackerIntrinsics.distortion_coefficients.p1= 0.00091733073350042105;
-    trackerIntrinsics.distortion_coefficients.p2= 0.00010589254816295579;
+	trackerIntrinsics.distortion_coefficients.k1= 0.015861621530855057;
+	trackerIntrinsics.distortion_coefficients.k2= 0.09840206266336657;
+	trackerIntrinsics.distortion_coefficients.k3= 0.0;
+	trackerIntrinsics.distortion_coefficients.k4= 0.0;
+	trackerIntrinsics.distortion_coefficients.k5= 0.0;
+	trackerIntrinsics.distortion_coefficients.k6= 0.4512905272272733;
+	trackerIntrinsics.distortion_coefficients.p1= 0.0;
+	trackerIntrinsics.distortion_coefficients.p2= 0.;
 };
 
 const configuru::Config

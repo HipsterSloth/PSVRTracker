@@ -92,7 +92,7 @@ static const char *k_calibration_pattern_names[] = {
 //-- typedefs -----
 namespace cv
 {
-    typedef Matx<double, 5, 1> Matx51d;
+ 	typedef Matx<double, 8, 1> Matx81d;
 }
 
 //-- private definitions -----
@@ -197,6 +197,9 @@ public:
         distortion_coeffs(2, 0)= PSVR_distortion_coeffs.p1;
         distortion_coeffs(3, 0)= PSVR_distortion_coeffs.p2;
         distortion_coeffs(4, 0)= PSVR_distortion_coeffs.k3;
+		distortion_coeffs(5, 0)= PSVR_distortion_coeffs.k4;
+		distortion_coeffs(6, 0)= PSVR_distortion_coeffs.k5;
+		distortion_coeffs(7, 0)= PSVR_distortion_coeffs.k6;
 
         // Generate the distortion map that corresponds to the tracker's camera settings
         rebuildDistortionMap();
@@ -464,7 +467,7 @@ public:
     cv::Matx33d intrinsic_matrix;
     cv::Matx33d rectification_rotation;
     cv::Matx34d rectification_projection;
-    cv::Matx51d distortion_coeffs;
+    cv::Matx81d distortion_coeffs;
 
     // Distortion preview
     cv::Mat *distortionMapX;
@@ -779,7 +782,7 @@ public:
 		assert(centers.size() == CIRCLE_COUNT);
     }
 
-    inline PSVRDistortionCoefficients cv_vec5_to_PSVR_distortion(const cv::Matx51d &cv_distortion_coeffs)
+    inline PSVRDistortionCoefficients cv_vec8_to_PSVR_distortion(const cv::Matx81d &cv_distortion_coeffs)
     {
         PSVRDistortionCoefficients distortion_coeffs;
         distortion_coeffs.k1= cv_distortion_coeffs(0, 0);
@@ -787,6 +790,9 @@ public:
         distortion_coeffs.p1= cv_distortion_coeffs(2, 0);
         distortion_coeffs.p2= cv_distortion_coeffs(3, 0);
         distortion_coeffs.k3= cv_distortion_coeffs(4, 0);
+		distortion_coeffs.k4= cv_distortion_coeffs(5, 0);
+		distortion_coeffs.k5= cv_distortion_coeffs(6, 0);
+		distortion_coeffs.k6= cv_distortion_coeffs(7, 0);
 
         return distortion_coeffs;
     }
@@ -842,6 +848,7 @@ public:
         objectPointsList.resize(m_opencv_section_state[PSVRVideoFrameSection_Left]->imagePointsList.size(), objectPointsList[0]);
             
         // Compute the stereo camera calibration using epipolar geometry
+		cv::Mat leftDistCoeffsRowVector, rightDistCoeffsRowVector;
         cv::stereoCalibrate(
             objectPointsList, 
             m_opencv_section_state[PSVRVideoFrameSection_Left]->imagePointsList,
@@ -855,8 +862,19 @@ public:
             translation_between_cameras,
             essential_matrix,
             fundamental_matrix, 
-            cv::CALIB_FIX_ASPECT_RATIO + cv::CALIB_ZERO_TANGENT_DIST + cv::CALIB_SAME_FOCAL_LENGTH,
+            cv::CALIB_FIX_ASPECT_RATIO +
+            cv::CALIB_ZERO_TANGENT_DIST +
+            cv::CALIB_SAME_FOCAL_LENGTH +
+            cv::CALIB_RATIONAL_MODEL +
+            cv::CALIB_FIX_K3 + cv::CALIB_FIX_K4 + cv::CALIB_FIX_K5,
             cv::TermCriteria(cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, 100, 1e-5));
+
+		// cv::calibrateCamera() will return all 14 distortion parameters, but we only want the first 8
+		cv::Mat leftDistCoeffsColVector, rightDistCoeffsColVector;
+		cv::transpose(leftDistCoeffsRowVector, leftDistCoeffsColVector);
+		cv::transpose(rightDistCoeffsRowVector, rightDistCoeffsColVector);
+		m_opencv_section_state[PSVRVideoFrameSection_Left]->distortion_coeffs= leftDistCoeffsColVector.rowRange(0,8);
+		m_opencv_section_state[PSVRVideoFrameSection_Right]->distortion_coeffs= rightDistCoeffsColVector.rowRange(0,8);
 
         // Calculate the calibration quality
         reprojectionError= computeStereoCalibrationError();
@@ -885,9 +903,9 @@ public:
         async_task_result.right_camera_matrix= 
             cv_mat33d_to_PSVR_matrix3x3(m_opencv_section_state[PSVRVideoFrameSection_Right]->intrinsic_matrix);
         async_task_result.left_distortion_coefficients= 
-            cv_vec5_to_PSVR_distortion(m_opencv_section_state[PSVRVideoFrameSection_Left]->distortion_coeffs);
+            cv_vec8_to_PSVR_distortion(m_opencv_section_state[PSVRVideoFrameSection_Left]->distortion_coeffs);
         async_task_result.right_distortion_coefficients= 
-            cv_vec5_to_PSVR_distortion(m_opencv_section_state[PSVRVideoFrameSection_Right]->distortion_coeffs);
+            cv_vec8_to_PSVR_distortion(m_opencv_section_state[PSVRVideoFrameSection_Right]->distortion_coeffs);
         async_task_result.left_rectification_rotation=
             cv_mat33d_to_PSVR_matrix3x3(m_opencv_section_state[PSVRVideoFrameSection_Left]->rectification_rotation);
         async_task_result.right_rectification_rotation=

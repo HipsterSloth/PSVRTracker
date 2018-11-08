@@ -14,6 +14,8 @@ namespace cv {
 	typedef Matx<float, 3, 3> Matx33f;
 	typedef Matx<double, 3, 4> Matx34d;
 	typedef Matx<double, 3, 3> Matx33d;
+	typedef Matx<float, 8, 1> Matx81f;
+	typedef Matx<double, 8, 1> Matx81d;
 }
 
 // -- interface -----
@@ -24,7 +26,7 @@ void computeOpenCVCameraExtrinsicMatrix(const class ITrackerInterface *tracker_d
 void computeOpenCVCameraIntrinsicMatrix(const class ITrackerInterface *tracker_device,
                                         PSVRVideoFrameSection section,
                                         cv::Matx33f &intrinsicOut,
-                                        cv::Matx<float, 5, 1> &distortionOut);
+                                        cv::Matx81f &distortionOut);
 void extractCameraIntrinsicMatrixParameters(const cv::Matx33f &intrinsic_matrix,
 											float &out_focal_length_x,
 											float &out_focal_length_y,

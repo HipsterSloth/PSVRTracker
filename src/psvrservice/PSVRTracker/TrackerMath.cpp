@@ -45,7 +45,7 @@ void computeOpenCVCameraExtrinsicMatrix(const ITrackerInterface *tracker_device,
 void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
                                         PSVRVideoFrameSection section,
                                         cv::Matx33f &intrinsicOut,
-                                        cv::Matx<float, 5, 1> &distortionOut)
+                                        cv::Matx81f &distortionOut)
 {
     PSVRTrackerIntrinsics tracker_intrinsics;
     tracker_device->getCameraIntrinsics(tracker_intrinsics);
@@ -85,6 +85,9 @@ void computeOpenCVCameraIntrinsicMatrix(const ITrackerInterface *tracker_device,
         distortionOut(2, 0)= (float)distortion_coefficients->p1;
         distortionOut(3, 0)= (float)distortion_coefficients->p2;
         distortionOut(4, 0)= (float)distortion_coefficients->k3;
+        distortionOut(5, 0)= (float)distortion_coefficients->k4;
+        distortionOut(6, 0)= (float)distortion_coefficients->k5;
+        distortionOut(7, 0)= (float)distortion_coefficients->k6;
     }
 }
 

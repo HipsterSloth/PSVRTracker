@@ -210,7 +210,7 @@ void compute_triangulation_from_stereo_position_estimates(
 
 	// Fetch the lens properties of the left and right cameras
 	cv::Matx33f left_intrinsic_matrix, right_intrinsic_matrix;
-	cv::Matx<float, 5, 1> left_distortion_coeffs, right_distortion_coeffs;
+	cv::Matx81f left_distortion_coeffs, right_distortion_coeffs;
 	cv::Matx33d left_rectification_rotation, right_rectification_rotation;
 	cv::Matx34d left_rectification_projection, right_rectification_projection; 
 	computeOpenCVCameraIntrinsicMatrix(

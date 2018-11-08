@@ -197,6 +197,12 @@ void PSVRConfig::writeDistortionCoefficients(
     pt[full_property_name]= coefficients->k2;
     Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k3", coefficients_name);
     pt[full_property_name]= coefficients->k3;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k4", coefficients_name);
+    pt[full_property_name]= coefficients->k4;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k5", coefficients_name);
+    pt[full_property_name]= coefficients->k5;
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k6", coefficients_name);
+    pt[full_property_name]= coefficients->k6;
     Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p1", coefficients_name);
     pt[full_property_name]= coefficients->p1;
     Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p2", coefficients_name);
@@ -217,6 +223,12 @@ void PSVRConfig::readDistortionCoefficients(
     outCoefficients->k2= pt.get_or<double>(full_property_name, defaultCoefficients->k2);
     Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k3", coefficients_name);
     outCoefficients->k3= pt.get_or<double>(full_property_name, defaultCoefficients->k3);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k4", coefficients_name);
+    outCoefficients->k4= pt.get_or<double>(full_property_name, defaultCoefficients->k4);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k5", coefficients_name);
+    outCoefficients->k5= pt.get_or<double>(full_property_name, defaultCoefficients->k5);
+    Utility::format_string(full_property_name, sizeof(full_property_name), "%s.k6", coefficients_name);
+    outCoefficients->k6= pt.get_or<double>(full_property_name, defaultCoefficients->k6);
     Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p1", coefficients_name);
     outCoefficients->p1= pt.get_or<double>(full_property_name, defaultCoefficients->p1);
     Utility::format_string(full_property_name, sizeof(full_property_name), "%s.p2", coefficients_name);
