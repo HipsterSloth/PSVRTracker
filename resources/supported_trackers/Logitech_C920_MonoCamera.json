@@ -18,11 +18,11 @@
 			"zNear":                     10.0,
 			"zFar":                      200.0,
 			"camera_matrix":             [ 500.0331020961153, 0.0, 320.0, 0.0, 500.0331020961153, 240.0, 0.0, 0.0, 1.0 ],
-			"distortion_cofficients.k1": 0.0,
-			"distortion_cofficients.k2": 0.0,
-			"distortion_cofficients.k3": 0.0,
-			"distortion_cofficients.p1": 0.0,
-			"distortion_cofficients.p2": 0.0
+			"distortion.k1":             0.0,
+			"distortion.k2":             0.0,
+			"distortion.k3":             0.0,
+			"distortion.p1":             0.0,
+			"distortion.p2":             0.0
 		}
 	]
 }

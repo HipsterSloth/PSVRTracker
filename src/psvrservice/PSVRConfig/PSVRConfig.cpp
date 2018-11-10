@@ -99,7 +99,7 @@ void PSVRConfig::writeMonoTrackerIntrinsics(
     pt["zFar"]= tracker_intrinsics.zfar;
 
     writeMatrix3d(pt, "camera_matrix", tracker_intrinsics.camera_matrix);
-    writeDistortionCoefficients(pt, "distortion_cofficients", &tracker_intrinsics.distortion_coefficients);
+    writeDistortionCoefficients(pt, "distortion", &tracker_intrinsics.distortion_coefficients);
 }
 
 void PSVRConfig::readMonoTrackerIntrinsics(
@@ -114,10 +114,13 @@ void PSVRConfig::readMonoTrackerIntrinsics(
     tracker_intrinsics.znear = pt.get_or<float>("zNear", 10.f);
     tracker_intrinsics.zfar = pt.get_or<float>("zFar", 200.f);
 
+	PSVRDistortionCoefficients default_distortion_coefficients;
+	memset(&default_distortion_coefficients, 0, sizeof(PSVRDistortionCoefficients));
+
     readMatrix3d(pt, "camera_matrix", tracker_intrinsics.camera_matrix);
-    readDistortionCoefficients(pt, "distortion_cofficients", 
+    readDistortionCoefficients(pt, "distortion", 
         &tracker_intrinsics.distortion_coefficients, 
-        &tracker_intrinsics.distortion_coefficients);
+        &default_distortion_coefficients);
 }
 
 void PSVRConfig::writeStereoTrackerIntrinsics(
@@ -161,15 +164,18 @@ void PSVRConfig::readStereoTrackerIntrinsics(
     tracker_intrinsics.znear = pt.get_or<float>("zNear", 10.f);
     tracker_intrinsics.zfar = pt.get_or<float>("zFar", 200.f);
 
+	PSVRDistortionCoefficients default_distortion_coefficients;
+	memset(&default_distortion_coefficients, 0, sizeof(PSVRDistortionCoefficients));
+
     readMatrix3d(pt, "left_camera_matrix", tracker_intrinsics.left_camera_matrix);
     readMatrix3d(pt, "right_camera_matrix", tracker_intrinsics.right_camera_matrix);
 
     readDistortionCoefficients(pt, "left_distortion_cofficients", 
         &tracker_intrinsics.left_distortion_coefficients, 
-        &tracker_intrinsics.left_distortion_coefficients);
+        &default_distortion_coefficients);
     readDistortionCoefficients(pt, "right_distortion_cofficients", 
         &tracker_intrinsics.right_distortion_coefficients, 
-        &tracker_intrinsics.right_distortion_coefficients);
+        &default_distortion_coefficients);
 
     readMatrix3d(pt, "left_rectification_rotation", tracker_intrinsics.left_rectification_rotation);
     readMatrix3d(pt, "right_rectification_rotation", tracker_intrinsics.right_rectification_rotation);
