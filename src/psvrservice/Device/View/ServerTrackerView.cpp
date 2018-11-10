@@ -30,8 +30,6 @@
 
 #include <algorithm>
 
-#define USE_OPEN_CV_ELLIPSE_FIT
-
 //-- constants ----
 static const int k_min_roi_size= 32;
 
@@ -570,8 +568,23 @@ public:
                     ell_size,
                     360.f - (pose_projection.projections[section].shape.ellipse.angle * k_radians_to_degreees),
                     0, 360, areaColor);
+
                 cv::drawMarker(*bgrShmemBuffer, ell_center, cv::Scalar(0, 0, 255), 0,
                     (ell_size.height < ell_size.width) ? ell_size.height * 2 : ell_size.width * 2);
+
+				#ifdef _DEBUG
+				char distance[32];
+				Utility::format_string(distance, sizeof(distance), "d:%.1fcm", 
+					pose_projection.projections[section].shape.ellipse.source_position.z);
+				cv::putText(*bgrShmemBuffer, 
+							distance,
+							ell_center - cv::Point(0,30),
+							cv::FONT_HERSHEY_COMPLEX_SMALL,
+							1.0, // Scale. 2.0 = 2x bigger
+							cv::Scalar(255,255,255), // Color
+							1, // Thickness
+							CV_AA); // Anti-alias
+				#endif // DEBUG_ELLIPSE_FIT_DISTANCE
             } break;
         case PSVRShape_LightBar:
             {
