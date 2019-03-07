@@ -78,7 +78,7 @@ IF(NOT OpenCV_DIR)
             -DWITH_TIFF:BOOL=OFF
             -DWITH_IPP:BOOL=OFF
 			-DWITH_CUDA:BOOL=OFF
-			-DWITH_MSMF:BOOL=ON
+			-DWITH_MSMF:BOOL=OFF
             -DBUILD_opencv_apps:BOOL=OFF
             -DBUILD_opencv_calib3d:BOOL=ON
             -DBUILD_opencv_flann:BOOL=ON
@@ -99,12 +99,18 @@ IF(NOT OpenCV_DIR)
         add_definitions(-DHAS_OPENCV)
 
         set(OpenCV_DIR ${ROOT_DIR}/deps/local)
-        set(OpenCV_INCLUDE_DIRS ${ROOT_DIR}/deps/local/include )
-        if (${CMAKE_C_SIZEOF_DATA_PTR} EQUAL 8)
-            set(OPENCV_LIBS_DIR ${ROOT_DIR}/deps/local/x64/vc14/staticlib)
-        else()
-            set(OPENCV_LIBS_DIR ${ROOT_DIR}/deps/local/x86/vc14/staticlib)
-        endif()
+        set(OpenCV_INCLUDE_DIRS ${ROOT_DIR}/deps/local/include)
+				
+				string(COMPARE EQUAL "${MSVC_VERSION}" "1900" _vs_14_2015)				
+				if(_vs_14_2015)
+					if (${CMAKE_C_SIZEOF_DATA_PTR} EQUAL 8)
+						set(OPENCV_LIBS_DIR ${ROOT_DIR}/deps/local/x64/vc14/staticlib)
+					else()
+						set(OPENCV_LIBS_DIR ${ROOT_DIR}/deps/local/x86/vc14/staticlib)
+					endif()
+				else()
+					set(OPENCV_LIBS_DIR ${ROOT_DIR}/deps/local/staticlib)
+				endif()				
 
         foreach(__CVLIB core calib3d features2d flann imgproc imgcodecs ml highgui objdetect video videoio)
             set(OpenCV_${__CVLIB}_LIBRARY debug ${OPENCV_LIBS_DIR}/opencv_${__CVLIB}330d.lib optimized ${OPENCV_LIBS_DIR}/opencv_${__CVLIB}330.lib CACHE STRING "" FORCE)
