@@ -1,0 +1,45 @@
+Pinhole camera reference: http://ksimek.github.io/2013/08/13/intrinsic/
+
+http://www.zhopper.narod.ru/mobile/ov7720_ov7221_full.pdf
+3.984mm x 2.952 mm (only use a subset of this area)
+ pixel size: 6.0µm x 6.0µm <- trust this value
+
+http://answers.opencv.org/question/17076/conversion-focal-distance-from-mm-to-pixels/
+If you know the sensor's physical width in mm, then the focal in pixels is:
+
+  focal_length_px = (focal_length_mm / sensor_width_mm) * image_width_px
+  
+  => focal_length_mm= focal_length_px * (sensor_width_mm / image_width_px)
+  => Note: sensor_pixel_size = (sensor_width_mm / image_width_px)
+
+And if you know the horizontal field of view, say in degrees,
+
+  focal_length_px = 0.5 * image_width_px / tan(0.5 * fov_radians)
+
+554.2563px * 0.006px/mm = 3.33 mm
+604.1784px * 0.006px/mm = 3.63 mm
+
+aspect_ratio= image_pixel_height / image_pixel_width
+image_sensor_width_mm = sensor_pixel_size * image_width_px
+focal_length_x_mm = 0.5 * image_sensor_width_mm / tan(0.5 * fov_radians);
+focal_length_y_mm = 0.5 * image_sensor_height_mm / tan(0.5 * fov_radians*aspect_ratio);
+
+https://ipfs.io/ipfs/QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco/wiki/PlayStation_Eye.html
+The horizontal FOV of the PS3 Eye is:
+- 56degrees (red dot) for close up framing
+- 76degrees (blue dot) for long shot framing 
+focal_length_x_mm = 0.5 * (0.006px/mm * 800 diagonal px)/ tan(0.5 * 76degrees) = 3.07mm
+
+https://www.scantips.com/lights/subjectdistance.html
+Object height on sensor (mm) / focal length (f, mm) = Real Object height (feet) / Distance to Object (d, feet)
+
+https://stackoverflow.com/questions/26947325/sensor-size-of-webcam/26947563#26947563
+focal_length_mm / (distance to object in mm) = (object length in pixels) * (pixel size in mm) / (object length in mm)
+
+=> This is also true since focal_length_mm = focal_length_px * pixel size in mm
+focal_length_px / (distance to object in mm) = (object length in pixels) / (object length in mm)
+
+https://www.learnopencv.com/approximate-focal-length-for-webcams-and-cell-phone-cameras/
+The horizontal field of view of many webcams and cell phones is 50 to 70 degrees.
+=> 0.7*image_width_px <= focal_length_px <= image_width_px
+=> Often field of view specs are the diagonal FOV
