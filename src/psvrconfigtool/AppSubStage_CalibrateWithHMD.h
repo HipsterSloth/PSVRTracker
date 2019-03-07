@@ -1,5 +1,5 @@
-#ifndef APP_STAGE_CALIBRATE_WITH_MAT_H
-#define APP_STAGE_CALIBRATE_WITH_MAT_H
+#ifndef APP_STAGE_CALIBRATION_WITH_HMD_H
+#define APP_STAGE_CALIBRATION_WITH_HMD_H
 
 //-- includes -----
 #include "ClientGeometry_CAPI.h"
@@ -9,7 +9,7 @@
 #include <string.h>  // Required for memset in Xcode
 
 //-- definitions -----
-class AppSubStage_CalibrateWithMat
+class AppSubStage_CalibrateWithHMD
 {
 public:
     enum eMenuState
@@ -17,16 +17,16 @@ public:
         invalid,
 
         initial,
-        calibrationStepPlaceController,
-        calibrationStepRecordController,
+        calibrationStepPlaceHMD,
+        calibrationStepRecordHMD,
         calibrationStepComputeTrackerPoses,
 
         calibrateStepSuccess,
         calibrateStepFailed,
     };
 
-    AppSubStage_CalibrateWithMat(class AppStage_ComputeTrackerPoses *parentStage);
-	virtual ~AppSubStage_CalibrateWithMat();
+    AppSubStage_CalibrateWithHMD(class AppStage_ComputeTrackerPoses *parentStage);
+	virtual ~AppSubStage_CalibrateWithHMD();
 
     void enter();
     void exit();
@@ -54,11 +54,11 @@ private:
     bool m_bIsStable;
     bool m_bForceStable;
 
-	std::vector<struct TrackerRelativeControllerPoseStatistics *> m_deviceTrackerPoseStats;
+	std::vector<struct TrackerRelativeHMDPoseStatistics *> m_deviceTrackerPoseStats;
 
     int m_currentPoseStatsIndex;
     int m_sampleLocationIndex;
     bool m_bNeedMoreSamplesAtLocation;
 };
 
-#endif // APP_STAGE_CALIBRATE_WITH_MAT_H
+#endif // APP_STAGE_CALIBRATION_WITH_HMD_H

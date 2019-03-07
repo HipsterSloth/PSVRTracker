@@ -5,7 +5,7 @@
 #include "AppStage.h"
 #include "PSVRClient_CAPI.h"
 
-#include <map>
+#include <vector>
 
 //-- definitions -----
 class AppStage_ComputeTrackerPoses : public AppStage
@@ -13,34 +13,28 @@ class AppStage_ComputeTrackerPoses : public AppStage
 public:
     struct TrackerState
     {
-        int listIndex;
         PSVRTracker *trackerView;
         class TextureAsset *textureAsset;
     };
-    typedef std::map<int, TrackerState> t_tracker_state_map;
-    typedef std::map<int, TrackerState>::iterator t_tracker_state_map_iterator;
-	typedef std::map<int, TrackerState>::const_iterator t_tracker_state_map_iterator_const;
-    typedef std::pair<int, TrackerState> t_id_tracker_state_pair;
+    typedef std::vector<TrackerState> t_tracker_state_list;
+    typedef std::vector<TrackerState>::iterator t_tracker_state_list_iterator;
+	typedef std::vector<TrackerState>::const_iterator t_tracker_state_list_iterator_const;
 
 	struct ControllerState
 	{
-		int listIndex;
 		PSVRTrackingColorType trackingColorType;
 		PSVRController *controllerView;
 	};
-	typedef std::map<int, ControllerState> t_controller_state_map;
-	typedef std::map<int, ControllerState>::iterator t_controller_state_map_iterator;
-	typedef std::pair<int, ControllerState> t_id_controller_state_pair;
+	typedef std::vector<ControllerState> t_controller_state_list;
+	typedef std::vector<ControllerState>::iterator t_controller_state_list_iterator;
 
 	struct HMDState
 	{
-		int listIndex;
 		PSVRTrackingColorType trackingColorType;
 		PSVRHeadMountedDisplay *hmdView;
 	};
-	typedef std::map<int, HMDState> t_hmd_state_map;
-	typedef std::map<int, HMDState>::iterator t_hmd_state_map_iterator;
-	typedef std::pair<int, HMDState> t_id_hmd_state_pair;
+	typedef std::vector<HMDState> t_hmd_state_list;
+	typedef std::vector<HMDState>::iterator t_hmd_state_list_iterator;
 
     AppStage_ComputeTrackerPoses(class App *app);
     ~AppStage_ComputeTrackerPoses();
@@ -52,6 +46,14 @@ public:
 	inline void set_tracker_id(int reqeusted_tracker_id)
 	{
 		m_ShowTrackerVideoId = reqeusted_tracker_id;
+	}
+
+	inline const TrackerState *getRenderTrackerState() const
+	{ 
+		return 
+			(m_renderTrackerListIndex >= 0 && m_renderTrackerListIndex < m_trackerViews.size()) 
+			? &m_trackerViews[m_renderTrackerListIndex]
+			: nullptr;
 	}
 
     virtual void enter() override;
@@ -74,12 +76,22 @@ protected:
 
         verifyTrackers,
 		selectCalibrationMethod,
+
         calibrateWithMat,
+		calibrateWithHMD,
 
         testTracking,
 		showTrackerVideo,
         calibrateStepFailed,
     };
+
+	enum eCalibrationMethod
+	{
+		calibrationMethod_INVALID= -1,
+
+		calibrationMethod_Mat,
+		calibrationMethod_HMD
+	};
 
     void setState(eMenuState newState);
     void onExitState(eMenuState newState);
@@ -96,11 +108,11 @@ protected:
     PSVRHeadMountedDisplay *get_calibration_hmd_view() const;
 
     void request_controller_list();
-    bool request_start_controller_stream(PSVRControllerID ControllerID, int listIndex, PSVRTrackingColorType trackingColorType);
+    bool request_start_controller_stream(PSVRControllerID ControllerID, PSVRTrackingColorType trackingColorType);
     void request_hmd_list();
-    bool request_start_hmd_stream(PSVRHmdID HmdID, int listIndex, PSVRTrackingColorType trackingColorType);
+    bool request_start_hmd_stream(PSVRHmdID HmdID, PSVRTrackingColorType trackingColorType);
     void request_tracker_list();
-    bool request_tracker_start_stream(const PSVRClientTrackerInfo *TrackerInfo, int listIndex);
+    bool request_tracker_start_stream(const PSVRClientTrackerInfo *TrackerInfo);
     void request_set_tracker_pose(const PSVRPosef *pose, PSVRTracker *TrackerView);
 
     void handle_all_devices_ready();
@@ -114,18 +126,19 @@ protected:
 protected:
     eMenuState m_menuState;
 
-    t_tracker_state_map m_trackerViews;
-	t_controller_state_map m_controllerViews;
-	t_hmd_state_map m_hmdViews;
+    t_tracker_state_list m_trackerViews;
+	t_controller_state_list m_controllerViews;
+	t_hmd_state_list m_hmdViews;
 
-    int m_renderTrackerIndex;
-    t_tracker_state_map_iterator m_renderTrackerIter;
+	int m_renderTrackerListIndex;
 
     class AppSubStage_CalibrateWithHMD *m_pCalibrateWithHMD;
     friend class AppSubStage_CalibrateWithHMD;
 
     class AppSubStage_CalibrateWithMat *m_pCalibrateWithMat;
     friend class AppSubStage_CalibrateWithMat;
+
+	eCalibrationMethod m_calibrationMethod;
 
     bool m_bSkipCalibration;
     int m_ShowTrackerVideoId;

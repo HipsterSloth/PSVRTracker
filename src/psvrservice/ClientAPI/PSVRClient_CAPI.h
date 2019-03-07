@@ -17,18 +17,6 @@
 \addtogroup PSVRClient_CAPI 
 @{ 
 */
- 
-// Wrapper Types
-//--------------
-
-/// The ID of a controller in the controller pool
-typedef int PSVRControllerID;
-
-/// The ID of a tracker in the tracker pool
-typedef int PSVRTrackerID;
-
-/// The ID of an HMD in the HMD pool
-typedef int PSVRHmdID;
 
 // Shared Constants
 //-----------------

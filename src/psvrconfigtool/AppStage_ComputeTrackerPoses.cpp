@@ -2,6 +2,7 @@
 #include "AppStage_ComputeTrackerPoses.h"
 #include "AppStage_MainMenu.h"
 #include "AppStage_TrackerSettings.h"
+#include "AppSubStage_CalibrateWithHMD.h"
 #include "AppSubStage_CalibrateWithMat.h"
 #include "App.h"
 #include "AssetManager.h"
@@ -35,8 +36,10 @@ static void drawHMD(const PSVRHeadMountedDisplay *hmdView, const glm::mat4 &tran
 AppStage_ComputeTrackerPoses::AppStage_ComputeTrackerPoses(App *app)
     : AppStage(app)
     , m_menuState(AppStage_ComputeTrackerPoses::inactive)
-    , m_renderTrackerIndex(0)
+    , m_renderTrackerListIndex(0)
+	, m_pCalibrateWithHMD(new AppSubStage_CalibrateWithHMD(this))
     , m_pCalibrateWithMat(new AppSubStage_CalibrateWithMat(this))
+	, m_calibrationMethod(calibrationMethod_INVALID)
     , m_bSkipCalibration(false)
     , m_ShowTrackerVideoId(-1)
     , m_bShowAlignment(false)
@@ -44,7 +47,6 @@ AppStage_ComputeTrackerPoses::AppStage_ComputeTrackerPoses(App *app)
     , m_overrideControllerId(-1)
     , m_overrideHmdId(-1)
 { 
-    m_renderTrackerIter = m_trackerViews.end();
 }
 
 AppStage_ComputeTrackerPoses::~AppStage_ComputeTrackerPoses()
@@ -84,8 +86,10 @@ void AppStage_ComputeTrackerPoses::enterStageAndTestTrackers(App *app, PSVRContr
 
 void AppStage_ComputeTrackerPoses::enter()
 {
+	m_calibrationMethod= calibrationMethod_INVALID;
+
     // Only get the controller list if
-    // A) No specific controller or HMD was requests
+    // A) No specific controller or HMD was requested
     // B) A specific controller was requested
     if ((m_overrideControllerId == -1 && m_overrideHmdId == -1) || 
         m_overrideControllerId != -1)
@@ -115,6 +119,8 @@ void AppStage_ComputeTrackerPoses::enter()
 void AppStage_ComputeTrackerPoses::exit()
 {
     release_devices();
+	m_pCalibrateWithMat->exit();
+	m_pCalibrateWithHMD->exit();
 
     setState(eMenuState::inactive);
 }
@@ -143,6 +149,20 @@ void AppStage_ComputeTrackerPoses::update()
                 setState(AppStage_ComputeTrackerPoses::eMenuState::testTracking);
             }
             else if (m_pCalibrateWithMat->getMenuState() == AppSubStage_CalibrateWithMat::calibrateStepFailed)
+            {
+                setState(AppStage_ComputeTrackerPoses::eMenuState::calibrateStepFailed);
+            }
+        }
+        break;
+    case eMenuState::calibrateWithHMD:
+        {
+            m_pCalibrateWithHMD->update();
+
+            if (m_pCalibrateWithHMD->getMenuState() == AppSubStage_CalibrateWithHMD::calibrateStepSuccess)
+            {
+                setState(AppStage_ComputeTrackerPoses::eMenuState::testTracking);
+            }
+            else if (m_pCalibrateWithHMD->getMenuState() == AppSubStage_CalibrateWithHMD::calibrateStepFailed)
             {
                 setState(AppStage_ComputeTrackerPoses::eMenuState::calibrateStepFailed);
             }
@@ -179,6 +199,9 @@ void AppStage_ComputeTrackerPoses::render()
     case eMenuState::calibrateWithMat:
         m_pCalibrateWithMat->render();
         break;
+    case eMenuState::calibrateWithHMD:
+        m_pCalibrateWithHMD->render();
+        break;
     case eMenuState::testTracking:
         {
             // Draw the chaperone origin axes
@@ -187,9 +210,9 @@ void AppStage_ComputeTrackerPoses::render()
             // Draw the frustum for each tracking camera.
             // The frustums are defined in PSMove tracking space.
             // We need to transform them into chaperone space to display them along side the HMD.
-            for (t_tracker_state_map_iterator tracker_iter = m_trackerViews.begin(); tracker_iter != m_trackerViews.end(); ++tracker_iter)
+            for (t_tracker_state_list_iterator tracker_iter = m_trackerViews.begin(); tracker_iter != m_trackerViews.end(); ++tracker_iter)
             {
-                const PSVRTracker *trackerView = tracker_iter->second.trackerView;
+                const PSVRTracker *trackerView = tracker_iter->trackerView;
                 const int tracker_id= trackerView->tracker_info.tracker_id;
                 const PSVRPosef trackerPose = trackerView->tracker_info.tracker_pose;
                 const glm::mat4 trackerMat4 = PSVR_posef_to_glm_mat4(trackerPose);
@@ -207,10 +230,10 @@ void AppStage_ComputeTrackerPoses::render()
             }
 
             // Draw each controller model
-            for (t_controller_state_map_iterator controller_iter = m_controllerViews.begin(); controller_iter != m_controllerViews.end(); ++controller_iter)
+            for (t_controller_state_list_iterator controller_iter = m_controllerViews.begin(); controller_iter != m_controllerViews.end(); ++controller_iter)
             {
-                const PSVRController *controllerView = controller_iter->second.controllerView;
-                const PSVRTrackingColorType trackingColorType= controller_iter->second.trackingColorType;
+                const PSVRController *controllerView = controller_iter->controllerView;
+                const PSVRTrackingColorType trackingColorType= controller_iter->trackingColorType;
 
                 PSVRPosef controllerPose;
                 PSVRPhysicsData physicsData;
@@ -257,10 +280,10 @@ void AppStage_ComputeTrackerPoses::render()
             }
 
             // Draw each HMD model
-            for (t_hmd_state_map_iterator hmd_iter = m_hmdViews.begin(); hmd_iter != m_hmdViews.end(); ++hmd_iter)
+            for (t_hmd_state_list_iterator hmd_iter = m_hmdViews.begin(); hmd_iter != m_hmdViews.end(); ++hmd_iter)
             {
-                const PSVRHeadMountedDisplay *hmdView = hmd_iter->second.hmdView;
-                const PSVRTrackingColorType trackingColorType= hmd_iter->second.trackingColorType;
+                const PSVRHeadMountedDisplay *hmdView = hmd_iter->hmdView;
+                const PSVRTrackingColorType trackingColorType= hmd_iter->trackingColorType;
 
                 PSVRPosef hmdPose;
                 PSVR_GetHmdPose(hmdView->HmdID, &hmdPose);
@@ -279,6 +302,22 @@ void AppStage_ComputeTrackerPoses::render()
     case eMenuState::showTrackerVideo:
         {
             render_tracker_video();
+
+			// Render the calibration debug state from the point of view
+			// of the currently selected camera
+			if (getRenderTrackerState() != nullptr)
+			{
+				if (m_calibrationMethod == calibrationMethod_Mat)
+				{
+					m_pCalibrateWithMat->drawCalibrationDebug(
+						getRenderTrackerState()->trackerView->tracker_info.tracker_id);
+				}
+				else if (m_calibrationMethod == calibrationMethod_HMD)
+				{
+					m_pCalibrateWithHMD->drawCalibrationDebug(
+						getRenderTrackerState()->trackerView->tracker_info.tracker_id);
+				}
+			}
         } break;
     case eMenuState::calibrateStepFailed:
         break;
@@ -348,7 +387,7 @@ void AppStage_ComputeTrackerPoses::renderUI()
 
             if (m_trackerViews.size() > 1)
             {
-                ImGui::Text("Tracker #%d", m_renderTrackerIndex);
+                ImGui::Text("Tracker #%d", m_renderTrackerListIndex);
 
                 if (ImGui::Button("Previous Tracker"))
                 {
@@ -443,15 +482,31 @@ void AppStage_ComputeTrackerPoses::renderUI()
             ImGui::Text("Select a calibration method");
             ImGui::Separator();
 
-            if (ImGui::Button("Calibration Mat"))
-            {
-                setState(eMenuState::calibrateWithMat);
-            }
+			if (get_calibration_controller_view() != nullptr)
+			{
+				if (ImGui::Button("Use Mat & Controller"))
+				{
+					setState(eMenuState::calibrateWithMat);
+				}
+			}
+
+			if (get_calibration_hmd_view() != nullptr)
+			{
+				if (ImGui::Button("Use HMD"))
+				{
+					setState(eMenuState::calibrateWithMat);
+				}
+			}
 
             ImGui::End();
         } break;
 
     case eMenuState::calibrateWithMat:
+        {
+            m_pCalibrateWithMat->renderUI();
+        } break;
+
+	case eMenuState::calibrateWithHMD:
         {
             m_pCalibrateWithMat->renderUI();
         } break;
@@ -463,9 +518,9 @@ void AppStage_ComputeTrackerPoses::renderUI()
             ImGui::Begin("Test Tracking Pose", nullptr, window_flags);
 
             // display per tracker UI
-            for (t_tracker_state_map_iterator iter = m_trackerViews.begin(); iter != m_trackerViews.end(); ++iter)
+            for (int trackerListIndex= 0; trackerListIndex < m_trackerViews.size(); ++trackerListIndex)
             {
-                const PSVRTracker *trackerView = iter->second.trackerView;
+                const PSVRTracker *trackerView = m_trackerViews[trackerListIndex].trackerView;
 
                 ImGui::PushItemWidth(125.f);
                 if (does_tracker_see_any_device(trackerView))
@@ -485,7 +540,7 @@ void AppStage_ComputeTrackerPoses::renderUI()
                 if (ImGui::Button("Tracker Video") || trackerView->tracker_info.tracker_id == m_ShowTrackerVideoId)
                 {
                     m_ShowTrackerVideoId = -1;
-                    m_renderTrackerIter = iter;
+                    m_renderTrackerListIndex = trackerListIndex;
                     setState(eMenuState::showTrackerVideo);
                 }
                 ImGui::PopID();
@@ -528,7 +583,7 @@ void AppStage_ComputeTrackerPoses::renderUI()
                     go_previous_tracker();
                 }
                 ImGui::SameLine();
-                int TrackerID = m_renderTrackerIter->second.trackerView->tracker_info.tracker_id;
+                int TrackerID = getRenderTrackerState()->trackerView->tracker_info.tracker_id;
                 ImGui::Text("Tracker ID: #%d", TrackerID);
                 m_app->getAppStage<AppStage_TrackerSettings>()->setSelectedTrackerIndex(TrackerID);
                 ImGui::SameLine();
@@ -621,7 +676,8 @@ void AppStage_ComputeTrackerPoses::onExitState(eMenuState newState)
     case eMenuState::selectCalibrationMethod:
         break;
     case eMenuState::calibrateWithMat:
-        m_pCalibrateWithMat->exit();
+        break;
+    case eMenuState::calibrateWithHMD:
         break;
     case eMenuState::testTracking:
         m_app->setCameraType(_cameraFixed);
@@ -646,18 +702,23 @@ void AppStage_ComputeTrackerPoses::onEnterState(eMenuState newState)
     case eMenuState::failedTrackerStartRequest:
         break;
     case eMenuState::verifyTrackers:
-        m_renderTrackerIter = m_trackerViews.begin();
+		m_renderTrackerListIndex= 0;
         break;
     case eMenuState::selectCalibrationMethod:
         break;
     case eMenuState::calibrateWithMat:
+		m_calibrationMethod= calibrationMethod_Mat;
+        m_pCalibrateWithMat->enter();
+        break;
+    case eMenuState::calibrateWithHMD:
+		m_calibrationMethod= calibrationMethod_HMD;
         m_pCalibrateWithMat->enter();
         break;
     case eMenuState::testTracking:
         {
-            for (t_controller_state_map_iterator controller_iter = m_controllerViews.begin(); controller_iter != m_controllerViews.end(); ++controller_iter)
+            for (t_controller_state_list_iterator controller_iter = m_controllerViews.begin(); controller_iter != m_controllerViews.end(); ++controller_iter)
             {
-                PSVRController *controllerView = controller_iter->second.controllerView;
+                PSVRController *controllerView = controller_iter->controllerView;
 
                 switch (controllerView->ControllerType)
                 {
@@ -684,24 +745,23 @@ void AppStage_ComputeTrackerPoses::onEnterState(eMenuState newState)
 
 void AppStage_ComputeTrackerPoses::update_tracker_video()
 {
-    if (m_renderTrackerIter != m_trackerViews.end())
+    if (getRenderTrackerState() != nullptr)
     {
-        const int tracker_id= m_renderTrackerIter->second.trackerView->tracker_info.tracker_id;
+        const int tracker_id= getRenderTrackerState()->trackerView->tracker_info.tracker_id;
 
         const unsigned char *buffer= nullptr;
         if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Primary, &buffer) == PSVRResult_Success)
         {
-            m_renderTrackerIter->second.textureAsset->copyBufferIntoTexture(buffer);
+            getRenderTrackerState()->textureAsset->copyBufferIntoTexture(buffer);
         }
     }
 }
 
 void AppStage_ComputeTrackerPoses::render_tracker_video()
 {
-    if (m_renderTrackerIter != m_trackerViews.end() &&
-        m_renderTrackerIter->second.textureAsset != nullptr)
+    if (getRenderTrackerState() != nullptr)
     {
-        drawFullscreenTexture(m_renderTrackerIter->second.textureAsset->texture_id);
+        drawFullscreenTexture(getRenderTrackerState()->textureAsset->texture_id);
     }
 }
 
@@ -709,19 +769,11 @@ void AppStage_ComputeTrackerPoses::go_next_tracker()
 {
     const int trackerCount = static_cast<int>(m_trackerViews.size());
 
-    if (trackerCount > 1)
-    {
-        m_renderTrackerIndex = (m_renderTrackerIndex + 1) % trackerCount;
-
-        // Find the tracker iterator that corresponds to the render index we want to show
-        for (t_tracker_state_map_iterator iter = m_trackerViews.begin(); iter != m_trackerViews.end(); ++iter)
-        {
-            if (iter->second.listIndex == m_renderTrackerIndex)
-            {
-                m_renderTrackerIter = iter;
-            }
-        }
-    }
+	++m_renderTrackerListIndex;
+	if (m_renderTrackerListIndex >= trackerCount)
+	{
+		m_renderTrackerListIndex= 0;
+	}
 }
 
 void AppStage_ComputeTrackerPoses::go_previous_tracker()
@@ -730,16 +782,7 @@ void AppStage_ComputeTrackerPoses::go_previous_tracker()
 
     if (trackerCount > 1)
     {
-        m_renderTrackerIndex = (m_renderTrackerIndex + trackerCount - 1) % trackerCount;
-
-        // Find the tracker iterator that corresponds to the render index we want to show
-        for (t_tracker_state_map_iterator iter = m_trackerViews.begin(); iter != m_trackerViews.end(); ++iter)
-        {
-            if (iter->second.listIndex == m_renderTrackerIndex)
-            {
-                m_renderTrackerIter = iter;
-            }
-        }
+        m_renderTrackerListIndex = (m_renderTrackerListIndex + trackerCount - 1) % trackerCount;
     }
 }
 
@@ -750,29 +793,29 @@ int AppStage_ComputeTrackerPoses::get_tracker_count() const
 
 int AppStage_ComputeTrackerPoses::get_render_tracker_index() const
 {
-    return m_renderTrackerIndex;
+    return m_renderTrackerListIndex;
 }
 
 PSVRTracker *AppStage_ComputeTrackerPoses::get_render_tracker_view() const
 {
-    return (m_trackerViews.size() > 0) ? m_renderTrackerIter->second.trackerView : nullptr;
+    return (m_trackerViews.size() > 0) ? getRenderTrackerState()->trackerView : nullptr;
 }
 
 PSVRController *AppStage_ComputeTrackerPoses::get_calibration_controller_view() const
 {
-    return (m_controllerViews.size() > 0) ? m_controllerViews.begin()->second.controllerView : nullptr;
+    return (m_controllerViews.size() > 0) ? m_controllerViews.begin()->controllerView : nullptr;
 }
 
 PSVRHeadMountedDisplay *AppStage_ComputeTrackerPoses::get_calibration_hmd_view() const
 {
-    return (m_hmdViews.size() > 0) ? m_hmdViews.begin()->second.hmdView : nullptr;
+    return (m_hmdViews.size() > 0) ? m_hmdViews.begin()->hmdView : nullptr;
 }
 
 void AppStage_ComputeTrackerPoses::release_devices()
 {
-    for (t_controller_state_map_iterator iter = m_controllerViews.begin(); iter != m_controllerViews.end(); ++iter)
+    for (t_controller_state_list_iterator iter = m_controllerViews.begin(); iter != m_controllerViews.end(); ++iter)
     {
-        ControllerState &controllerState = iter->second;
+        ControllerState &controllerState = *iter;
 
         if (controllerState.controllerView != nullptr)
         {
@@ -782,9 +825,9 @@ void AppStage_ComputeTrackerPoses::release_devices()
     }
     m_controllerViews.clear();
 
-    for (t_hmd_state_map_iterator iter = m_hmdViews.begin(); iter != m_hmdViews.end(); ++iter)
+    for (t_hmd_state_list_iterator iter = m_hmdViews.begin(); iter != m_hmdViews.end(); ++iter)
     {
-        HMDState &hmdState = iter->second;
+        HMDState &hmdState = *iter;
 
         if (hmdState.hmdView != nullptr)
         {
@@ -794,9 +837,9 @@ void AppStage_ComputeTrackerPoses::release_devices()
     }
     m_hmdViews.clear();
 
-    for (t_tracker_state_map_iterator iter = m_trackerViews.begin(); iter != m_trackerViews.end(); ++iter)
+    for (t_tracker_state_list_iterator iter = m_trackerViews.begin(); iter != m_trackerViews.end(); ++iter)
     {
-        TrackerState &trackerState = iter->second;
+        TrackerState &trackerState = *iter;
 
         if (trackerState.textureAsset != nullptr)
         {
@@ -814,8 +857,7 @@ void AppStage_ComputeTrackerPoses::release_devices()
     }
     m_trackerViews.clear();
 
-    m_renderTrackerIndex= 0;
-    m_renderTrackerIter = m_trackerViews.end();
+    m_renderTrackerListIndex= 0;
 }
 
 void AppStage_ComputeTrackerPoses::request_exit_to_app_stage(const char *app_stage_name)
@@ -849,7 +891,7 @@ void AppStage_ComputeTrackerPoses::request_controller_list()
 					int trackedControllerId = controller.controller_id;
 					const PSVRTrackingColorType trackingColorType= controller.tracking_color_type;
 
-					if (request_start_controller_stream(trackedControllerId, list_index, trackingColorType))
+					if (request_start_controller_stream(trackedControllerId, trackingColorType))
 					{
 						bStartedAnyControllers = true;
 					}
@@ -859,8 +901,7 @@ void AppStage_ComputeTrackerPoses::request_controller_list()
 		}
 		else
 		{
-			int trackedControllerId = -1;
-			int trackedControllerListIndex = -1;
+			PSVRControllerID trackedControllerId = -1;
 			PSVRTrackingColorType trackingColorType;
 
 			// Start only the selected controller
@@ -872,14 +913,13 @@ void AppStage_ComputeTrackerPoses::request_controller_list()
 				{
 					trackingColorType = controller.tracking_color_type;
 					trackedControllerId = controller.controller_id;
-					trackedControllerListIndex = list_index;
 					break;
 				}
 			}
 
 			if (trackedControllerId != -1)
 			{
-				if (request_start_controller_stream(trackedControllerId, trackedControllerListIndex, trackingColorType))
+				if (request_start_controller_stream(trackedControllerId, trackingColorType))
 				{
 					bStartedAnyControllers = true;
 				}
@@ -909,20 +949,23 @@ void AppStage_ComputeTrackerPoses::request_controller_list()
 
 bool AppStage_ComputeTrackerPoses::request_start_controller_stream(
     PSVRControllerID ControllerID,
-    int listIndex,
     PSVRTrackingColorType trackingColorType)
 {
     ControllerState controllerState;
 
     // Allocate a new controller view
     PSVR_AllocateControllerListener(ControllerID);
-    controllerState.listIndex = listIndex;
     controllerState.controllerView = PSVR_GetController(ControllerID);
     controllerState.trackingColorType = trackingColorType;
 
     // Add the controller to the list of controllers we're monitoring
-    assert(m_controllerViews.find(ControllerID) == m_controllerViews.end());
-    m_controllerViews.insert(t_id_controller_state_pair(ControllerID, controllerState));
+    assert(std::find_if(
+			m_controllerViews.begin(), m_controllerViews.end(), 
+			[ControllerID](const ControllerState &elem)->bool {
+				return elem.controllerView->ControllerID == ControllerID; 
+			})
+			== m_controllerViews.end());
+    m_controllerViews.push_back(controllerState);
 
     unsigned int flags =
         PSVRStreamFlags_includePositionData |
@@ -967,7 +1010,7 @@ void AppStage_ComputeTrackerPoses::request_hmd_list()
                     int trackedHmdId = hmd.hmd_id;
                     const PSVRTrackingColorType trackingColorType= hmd.tracking_color_type;
 
-					if (request_start_hmd_stream(trackedHmdId, list_index, trackingColorType))
+					if (request_start_hmd_stream(trackedHmdId, trackingColorType))
 					{
 						bStartedAnyHMDs= true;
 					}
@@ -976,8 +1019,7 @@ void AppStage_ComputeTrackerPoses::request_hmd_list()
         }
         else
         {
-            int trackedHmdId = -1;
-            int trackedHmdListIndex = -1;
+            PSVRHmdID trackedHmdId = -1;
             PSVRTrackingColorType trackingColorType;
 
             // Start only the selected HMD
@@ -989,14 +1031,13 @@ void AppStage_ComputeTrackerPoses::request_hmd_list()
                 {
                     trackingColorType = hmd.tracking_color_type;
                     trackedHmdId = hmd.hmd_id;
-                    trackedHmdListIndex = list_index;
                     break;
                 }
             }
 
             if (trackedHmdId != -1)
             {
-                bStartedAnyHMDs= request_start_hmd_stream(trackedHmdId, trackedHmdListIndex, trackingColorType);
+                bStartedAnyHMDs= request_start_hmd_stream(trackedHmdId, trackingColorType);
             }
         }
 	}
@@ -1017,20 +1058,23 @@ void AppStage_ComputeTrackerPoses::request_hmd_list()
 
 bool AppStage_ComputeTrackerPoses::request_start_hmd_stream(
     PSVRHmdID HmdID,
-    int listIndex,
     PSVRTrackingColorType trackingColorType)
 {
     HMDState hmdState;
 
     // Allocate a new HMD view
     PSVR_AllocateHmdListener(HmdID);
-    hmdState.listIndex = listIndex;
     hmdState.hmdView = PSVR_GetHmd(HmdID);
     hmdState.trackingColorType = trackingColorType;
 
     // Add the hmd to the list of HMDs we're monitoring
-    assert(m_hmdViews.find(HmdID) == m_hmdViews.end());
-    m_hmdViews.insert(t_id_hmd_state_pair(HmdID, hmdState));
+    assert(std::find_if(
+			m_hmdViews.begin(), m_hmdViews.end(), 
+			[HmdID](const HMDState &elem)->bool {
+				return elem.hmdView->HmdID == HmdID; 
+			})
+			== m_hmdViews.end());
+    m_hmdViews.push_back(hmdState);
 
     unsigned int flags =
         PSVRStreamFlags_includePositionData |
@@ -1055,7 +1099,7 @@ void AppStage_ComputeTrackerPoses::request_tracker_list()
 	{
         for (int tracker_index = 0; tracker_index < tracker_list.count; ++tracker_index)
         {
-			if (request_tracker_start_stream(&tracker_list.trackers[tracker_index], tracker_index))
+			if (request_tracker_start_stream(&tracker_list.trackers[tracker_index]))
 			{
 				bStartedAnyTrackers= true;
 			}
@@ -1073,32 +1117,40 @@ void AppStage_ComputeTrackerPoses::request_tracker_list()
 }
 
 bool AppStage_ComputeTrackerPoses::request_tracker_start_stream(
-    const PSVRClientTrackerInfo *TrackerInfo,
-    int listIndex)
+    const PSVRClientTrackerInfo *TrackerInfo)
 {
     TrackerState trackerState;
 	bool bStartedTracker= false;
 
     // Allocate a new tracker view
     const int tracker_id= TrackerInfo->tracker_id;
-    trackerState.listIndex = listIndex;
     PSVR_AllocateTrackerListener(tracker_id, TrackerInfo);
     trackerState.trackerView = PSVR_GetTracker(tracker_id);
     trackerState.textureAsset = nullptr;
 
     // Add the tracker to the list of trackers we're monitoring
-    assert(m_trackerViews.find(TrackerInfo->tracker_id) == m_trackerViews.end());
-    m_trackerViews.insert(t_id_tracker_state_pair(TrackerInfo->tracker_id, trackerState));
+    assert(std::find_if(
+			m_trackerViews.begin(), m_trackerViews.end(), 
+			[tracker_id](const TrackerState &elem)->bool {
+				return elem.trackerView->tracker_info.tracker_id == tracker_id; 
+			})
+			== m_trackerViews.end());
+    m_trackerViews.push_back(trackerState);
 
     // Request data to start streaming to the tracker
 	if (PSVR_StartTrackerDataStream(TrackerInfo->tracker_id) == PSVRResult_Success)
 	{
         // Get the tracker state associated with the tracker id
-        t_tracker_state_map_iterator trackerStateEntry = m_trackerViews.find(TrackerInfo->tracker_id);
-        assert(trackerStateEntry != m_trackerViews.end());
+        t_tracker_state_list_iterator trackerStateIter = 
+			std::find_if(
+				m_trackerViews.begin(), m_trackerViews.end(), 
+				[TrackerInfo](const TrackerState &elem)->bool {
+					return elem.trackerView->tracker_info.tracker_id == TrackerInfo->tracker_id; 
+				});
+        assert(trackerStateIter != m_trackerViews.end());
 
         // The context holds everything a handler needs to evaluate a response
-        TrackerState &trackerState = trackerStateEntry->second;
+        TrackerState &trackerState = *trackerStateIter;
         PSVRClientTrackerInfo &trackerInfo= trackerState.trackerView->tracker_info;
 
         // Open the shared memory that the video stream is being written to
@@ -1147,9 +1199,9 @@ bool AppStage_ComputeTrackerPoses::does_tracker_see_any_device(const PSVRTracker
 bool AppStage_ComputeTrackerPoses::does_tracker_see_any_controller(const PSVRTracker *trackerView)
 {
     bool bTrackerSeesAnyController = false;
-    for (t_controller_state_map_iterator controller_iter = m_controllerViews.begin(); controller_iter != m_controllerViews.end(); ++controller_iter)
+    for (t_controller_state_list_iterator controller_iter = m_controllerViews.begin(); controller_iter != m_controllerViews.end(); ++controller_iter)
     {
-        const PSVRController *controllerView = controller_iter->second.controllerView;
+        const PSVRController *controllerView = controller_iter->controllerView;
         const int tracker_id= trackerView->tracker_info.tracker_id;
 
         glm::vec3 color;
@@ -1177,9 +1229,9 @@ bool AppStage_ComputeTrackerPoses::does_tracker_see_any_controller(const PSVRTra
 bool AppStage_ComputeTrackerPoses::does_tracker_see_any_hmd(const PSVRTracker *trackerView)
 {
     bool bTrackerSeesAnyHmd = false;
-    for (t_hmd_state_map_iterator hmd_iter = m_hmdViews.begin(); hmd_iter != m_hmdViews.end(); ++hmd_iter)
+    for (t_hmd_state_list_iterator hmd_iter = m_hmdViews.begin(); hmd_iter != m_hmdViews.end(); ++hmd_iter)
     {
-        const PSVRHeadMountedDisplay *hmdView = hmd_iter->second.hmdView;
+        const PSVRHeadMountedDisplay *hmdView = hmd_iter->hmdView;
         const int tracker_id= trackerView->tracker_info.tracker_id;
 
         glm::vec3 color;

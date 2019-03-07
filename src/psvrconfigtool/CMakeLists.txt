@@ -27,7 +27,9 @@ list(APPEND PSVRCONFIGTOOL_REQ_LIBS ${OpenCV_LIBS})
 
 file(GLOB PSVRCONFIGTOOL_APP_STAGE_SRC
     "${CMAKE_CURRENT_LIST_DIR}/AppStage*.cpp"
-	"${CMAKE_CURRENT_LIST_DIR}/AppStage*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/AppStage*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/AppSubStage*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/AppSubStage*.h"
 )
 source_group("AppStages" FILES ${PSVRCONFIGTOOL_APP_STAGE_SRC})
 
@@ -61,6 +63,7 @@ target_link_libraries(PSVRConfigTool ${PSVRCONFIGTOOL_REQ_LIBS})
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 add_dependencies(PSVRConfigTool opencv)
+set_property(TARGET PSVRConfigTool PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PSVR_DEBUG_INSTALL_PATH}/bin")
 ENDIF()
 
 #MacOS OpenCV must be self-built, this links against older std, which is hidden

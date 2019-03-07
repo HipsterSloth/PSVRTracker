@@ -91,8 +91,8 @@ glm::vec3 remapPointIntoSubWindow(
     const glm::vec3 &in_point);
 void drawArrow(const glm::mat4 &transform, const glm::vec3 &start, const glm::vec3 &end, const float headFraction, const glm::vec3 &color);
 void drawTextAtWorldPosition(const glm::mat4 &transform, const glm::vec3 &position, const char *format, ...) RENDERER_PRINTFARGS(3);
-void drawTextAtScreenPosition(const glm::vec3 &screenCoords, const char *format, ...) RENDERER_PRINTFARGS(2);
-void drawZeroTerminatedTextAtScreenPosition(const glm::vec3 &screenCoords, const char *text);
+void drawTextAtScreenPosition(const glm::vec2 &screenCoords, const char *format, ...) RENDERER_PRINTFARGS(2);
+void drawZeroTerminatedTextAtScreenPosition(const glm::vec2 &screenCoords, const char *text);
 void drawFullscreenTexture(const unsigned int texture_id);
 void drawFullscreenStereoTexture(
     const unsigned int left_texture_id, const unsigned int right_texture_id,

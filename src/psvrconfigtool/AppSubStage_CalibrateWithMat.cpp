@@ -53,9 +53,11 @@ static const char *k_sample_location_names[k_mat_sample_location_count] = {
 };
 
 //-- private definitions -----
-struct TrackerRelativePoseStatistics
+struct TrackerRelativeControllerPoseStatistics
 {
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+	PSVRTracker *trackerView;
 
 	// N samples for the current sampling location
 	PSVRVector2f screenSpacePoints[k_mat_calibration_sample_count];
@@ -70,7 +72,7 @@ struct TrackerRelativePoseStatistics
 	float reprojectionError;
 	bool bValidTrackerPose;
 
-	TrackerRelativePoseStatistics()
+	TrackerRelativeControllerPoseStatistics(PSVRTracker *_trackerView) : trackerView(_trackerView)
 	{
 		clearAll();
 	}
@@ -99,7 +101,7 @@ struct TrackerRelativePoseStatistics
 		bValidTrackerPose = false;
 	}
 
-	void addControllerSample(const PSVRTracker *trackerView, const PSVRController *controllerView, const int sampleLocationIndex)
+	void addControllerSample(const PSVRController *controllerView, const int sampleLocationIndex)
 	{
 		const int sampleTrackerID= trackerView->tracker_info.tracker_id;
         int streamTrackerID= -1;
@@ -112,7 +114,7 @@ struct TrackerRelativePoseStatistics
 				controllerView->ControllerID, PRIMARY_PROJECTION_INDEX, &streamTrackerID, &screenSample) == PSVRResult_Success &&
 			PSVR_GetControllerPositionOnTracker(
 				controllerView->ControllerID, &streamTrackerID, &trackerRelativePosition) == PSVRResult_Success &&
-            streamTrackerID == sampleTrackerID)
+			streamTrackerID == sampleTrackerID)
 		{
 			screenSpacePoints[sampleCount] = screenSample;
 			trackerSpacePoints[sampleCount] = PSVR_vector3f_to_eigen_vector3(trackerRelativePosition);
@@ -138,56 +140,17 @@ struct TrackerRelativePoseStatistics
 					// Save the average sample for this tracker at this location
 					avgScreenSpacePointAtLocation[sampleLocationIndex] = avg;
 				}
-			}
-		}
-	}
 
-	void addHmdSample(const PSVRTracker *trackerView, const PSVRHeadMountedDisplay *hmdView, const int sampleLocationIndex)
-	{
-		const int sampleTrackerID= trackerView->tracker_info.tracker_id;
-        int streamTrackerID= -1;
-
-		PSVRVector2f screenSample;
-		PSVRVector3f trackerRelativePosition;
-		
-		if (!getIsComplete() &&
-			PSVR_GetHmdPixelLocationOnTracker(hmdView->HmdID, PRIMARY_PROJECTION_INDEX, &streamTrackerID, &screenSample) == PSVRResult_Success &&
-			PSVR_GetHmdPositionOnTracker(hmdView->HmdID, &streamTrackerID, &trackerRelativePosition) == PSVRResult_Success &&
-            streamTrackerID == sampleTrackerID)
-		{
-			screenSpacePoints[sampleCount] = screenSample;
-			trackerSpacePoints[sampleCount] = PSVR_vector3f_to_eigen_vector3(trackerRelativePosition);
-			++sampleCount;
-
-			if (getIsComplete())
-			{
-				const float N = static_cast<float>(k_mat_calibration_sample_count);
-
-				// Compute the average screen space location
-				{
-					PSVRVector2f avg = {0, 0};
-
-					// Average together all the samples we captured
-					for (int sampleIndex = 0; sampleIndex < k_mat_calibration_sample_count; ++sampleIndex)
-					{
-						const PSVRVector2f &sample = screenSpacePoints[sampleIndex];
-
-						avg = PSVR_Vector2fAdd(&avg, &sample);
-					}
-					avg = PSVR_Vector2fUnsafeScalarDivide(&avg, N);
-
-					// Save the average sample for this tracker at this location
-					avgScreenSpacePointAtLocation[sampleLocationIndex] = avg;
-				}
+				// Compute the average tracker relative location
+				avgTrackerSpacePointAtLocation[sampleLocationIndex]= 
+					eigen_vector3f_compute_mean(trackerSpacePoints, k_mat_calibration_sample_count);
 			}
 		}
 	}
 };
 
 //-- private methods -----
-static bool computeTrackerCameraPose(
-    const PSVRTracker *trackerView,
-    TrackerRelativePoseStatistics &trackerCoregData);
+static bool computeTrackerCameraPose(TrackerRelativeControllerPoseStatistics &trackerCoregData);
 
 //-- public methods -----
 AppSubStage_CalibrateWithMat::AppSubStage_CalibrateWithMat(
@@ -198,28 +161,40 @@ AppSubStage_CalibrateWithMat::AppSubStage_CalibrateWithMat(
 	, m_sampleLocationIndex(0)
     , m_bNeedMoreSamplesAtLocation(false)
 {
-	for (int location_index = 0; location_index < PSVRSERVICE_MAX_TRACKER_COUNT; ++location_index)
-	{
-		m_deviceTrackerPoseStats[location_index] = new TrackerRelativePoseStatistics;
-	}
 }
 
 AppSubStage_CalibrateWithMat::~AppSubStage_CalibrateWithMat()
 {
-	for (int location_index = 0; location_index < PSVRSERVICE_MAX_TRACKER_COUNT; ++location_index)
-	{
-		delete m_deviceTrackerPoseStats[location_index];
-	}
 }
 
 void AppSubStage_CalibrateWithMat::enter()
 {
+	for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
+	{
+		delete stats;
+	}
+	m_deviceTrackerPoseStats.clear();
+
+    for (AppStage_ComputeTrackerPoses::t_tracker_state_list_iterator iter = m_parentStage->m_trackerViews.begin();
+        iter != m_parentStage->m_trackerViews.end(); 
+        ++iter)
+	{
+		m_deviceTrackerPoseStats.push_back(
+			new TrackerRelativeControllerPoseStatistics(iter->trackerView));
+	}
+
     setState(AppSubStage_CalibrateWithMat::eMenuState::initial);
 }
 
 void AppSubStage_CalibrateWithMat::exit()
 {
     setState(AppSubStage_CalibrateWithMat::eMenuState::initial);
+
+	for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
+	{
+		delete stats;
+	}
+	m_deviceTrackerPoseStats.clear();
 }
 
 void AppSubStage_CalibrateWithMat::update()
@@ -232,11 +207,6 @@ void AppSubStage_CalibrateWithMat::update()
             {
                 // Go immediately to the initial place controller stage
                 setState(AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController);
-            }
-            else if (m_parentStage->get_calibration_hmd_view() != nullptr)
-            {
-                // Go immediately to the initial place HMD stage
-                setState(AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD);
             }
             else
             {
@@ -292,26 +262,26 @@ void AppSubStage_CalibrateWithMat::update()
             {
                 m_bNeedMoreSamplesAtLocation= false;
 
-                for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                    iter != m_parentStage->m_trackerViews.end(); 
-                    ++iter)
+                if (m_deviceTrackerPoseStats[m_currentPoseStatsIndex]->getIsComplete())
                 {
-                    const int trackerIndex = iter->second.listIndex;
-                    const PSVRTracker *trackerView = iter->second.trackerView;
+					TrackerRelativeControllerPoseStatistics *nextTrackerStats= nullptr;
 
-                    if (m_deviceTrackerPoseStats[trackerIndex]->getIsComplete())
+                    if ((m_currentPoseStatsIndex+1) < m_deviceTrackerPoseStats.size())
                     {
-                        if (trackerView->tracker_info.tracker_id == m_sampleTrackerId)
-                        {
-                            m_sampleTrackerId= (m_sampleTrackerId + 1) % m_parentStage->m_trackerViews.size();
+						nextTrackerStats= m_deviceTrackerPoseStats[++m_currentPoseStatsIndex];
+                    }
 
-                            PSVR_SetControllerDataStreamTrackerIndex(ControllerView->ControllerID, m_sampleTrackerId);
-                        }
-                    }
-                    else
-                    {
-                        m_bNeedMoreSamplesAtLocation = true;
-                    }
+					if (nextTrackerStats != nullptr)
+					{
+						PSVR_SetControllerDataStreamTrackerIndex(
+							ControllerView->ControllerID, 
+							nextTrackerStats->trackerView->tracker_info.tracker_id);
+						m_bNeedMoreSamplesAtLocation= true;
+					}
+                }
+                else
+                {
+                    m_bNeedMoreSamplesAtLocation = true;
                 }
             }
 
@@ -320,20 +290,14 @@ void AppSubStage_CalibrateWithMat::update()
                 // Only record samples when the controller is stable
                 if ((bCanBeStable && bIsStable) || m_bForceStable)
                 {
-                    for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                        iter != m_parentStage->m_trackerViews.end();
-                        ++iter)
+					TrackerRelativeControllerPoseStatistics *stats= m_deviceTrackerPoseStats[m_currentPoseStatsIndex];
+
+					bool bIsTracking= false;
+					bool bCanBeTracked= PSVR_GetIsControllerTracking(ControllerView->ControllerID, &bIsTracking) == PSVRResult_Success;
+
+                    if (bCanBeTracked && bIsTracking)
                     {
-                        const int trackerIndex = iter->second.listIndex;
-                        const PSVRTracker *trackerView = iter->second.trackerView;
-
-						bool bIsTracking= false;
-						bool bCanBeTracked= PSVR_GetIsControllerTracking(ControllerView->ControllerID, &bIsTracking) == PSVRResult_Success;
-
-                        if (bCanBeTracked && bIsTracking)
-                        {
-							m_deviceTrackerPoseStats[trackerIndex]->addControllerSample(trackerView, ControllerView, m_sampleLocationIndex);
-                        }
+						stats->addControllerSample(ControllerView, m_sampleLocationIndex);
                     }
                 }
                 else
@@ -367,159 +331,23 @@ void AppSubStage_CalibrateWithMat::update()
             // Poll the next video frame from the tracker rendering
             m_parentStage->update_tracker_video();
         } break;
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD:
-        {
-            const PSVRHeadMountedDisplay *HmdView= m_parentStage->get_calibration_hmd_view();
-
-			bool bIsStable= false;
-			bool bCanBeStable= PSVR_GetIsHmdStable(HmdView->HmdID, &bIsStable) == PSVRResult_Success;
-
-            if ((bCanBeStable && bIsStable) || m_bForceStable)
-            {
-                std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
-
-                if (m_bIsStable)
-                {
-                    std::chrono::duration<double, std::milli> stableDuration = now - m_stableStartTime;
-
-                    if (stableDuration.count() >= k_stabilize_wait_time_ms)
-                    {
-                        setState(AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordHMD);
-                    }
-                }
-                else
-                {
-                    m_bIsStable = true;
-                    m_stableStartTime = now;
-                }
-            }
-            else
-            {
-                if (m_bIsStable)
-                {
-                    m_bIsStable = false;
-                }
-            }
-
-            // Poll the next video frame from the tracker rendering
-            m_parentStage->update_tracker_video();
-        } break;
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordHMD:
-        {
-            const PSVRHeadMountedDisplay *HmdView= m_parentStage->get_calibration_hmd_view();
-
-			bool bIsStable= false;
-			bool bCanBeStable= PSVR_GetIsHmdStable(HmdView->HmdID, &bIsStable) == PSVRResult_Success;
-
-            // See if any tracker needs more samples
-            if (m_bNeedMoreSamplesAtLocation)
-            {
-                m_bNeedMoreSamplesAtLocation = false;
-
-                for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                    iter != m_parentStage->m_trackerViews.end(); 
-                    ++iter)
-                {
-                    const int trackerIndex = iter->second.listIndex;
-                    const PSVRTracker *trackerView = iter->second.trackerView;
-
-                    if (m_deviceTrackerPoseStats[trackerIndex]->getIsComplete())
-                    {
-                        if (trackerView->tracker_info.tracker_id == m_sampleTrackerId)
-                        {
-                            m_sampleTrackerId= (m_sampleTrackerId + 1) % m_parentStage->m_trackerViews.size();
-
-                            PSVR_SetHmdDataStreamTrackerIndex(HmdView->HmdID, m_sampleTrackerId);
-                        }
-                    }
-                    else
-                    {
-                        m_bNeedMoreSamplesAtLocation = true;
-                    }
-                }
-            }
-
-            if (m_bNeedMoreSamplesAtLocation)
-            {
-                // Only record samples when the controller is stable
-                if ((bCanBeStable && bIsStable) || m_bForceStable)
-                {
-                    for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                        iter != m_parentStage->m_trackerViews.end();
-                        ++iter)
-                    {
-                        const int trackerIndex = iter->second.listIndex;
-                        const PSVRTracker *trackerView = iter->second.trackerView;
-
-						bool bIsTracking= false;
-						bool bCanBeTracked= PSVR_GetIsHmdTracking(HmdView->HmdID, &bIsTracking) == PSVRResult_Success;
-
-                        if (bCanBeTracked && bIsTracking)
-                        {
-							m_deviceTrackerPoseStats[trackerIndex]->addHmdSample(trackerView, HmdView, m_sampleLocationIndex);
-                        }
-                    }
-                }
-                else
-                {
-                    // Whoops! The HMD got moved.
-                    // Reset the sample count at this location for all trackers and wait for it 
-                    setState(AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD);
-                }
-            }
-            else
-            {
-                // If we have completed sampling at this location, wait until the HMD is picked up
-                if (!bIsStable)
-                {
-                    // Move on to next sample location
-                    ++m_sampleLocationIndex;
-
-                    if (m_sampleLocationIndex < k_mat_sample_location_count)
-                    {
-                        // If there are more sample locations
-                        // wait until the controller stabilizes at the new location
-                        setState(AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD);
-                    }
-                    else
-                    {
-                        setState(AppSubStage_CalibrateWithMat::eMenuState::calibrationStepComputeTrackerPoses);
-                    }
-                }
-            }
-
-            // Poll the next video frame from the tracker rendering
-            m_parentStage->update_tracker_video();
-        }
-        break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepComputeTrackerPoses:
         {
             bool bSuccess = true;
 
             // Compute and the pose transform for each tracker
-            for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                bSuccess && iter != m_parentStage->m_trackerViews.end();
-                ++iter)
+			for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
             {
-                const int trackerIndex = iter->second.listIndex;
-                const PSVRTracker *trackerView = iter->second.trackerView;
-                TrackerRelativePoseStatistics &trackerSampleData = *m_deviceTrackerPoseStats[trackerIndex];
-
-                bSuccess&= computeTrackerCameraPose(trackerView, trackerSampleData);
+                bSuccess&= computeTrackerCameraPose(*stats);
             }
 
             if (bSuccess)
             {
                 // Update the poses on each local tracker view and notify the service of the new pose
-                for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                    bSuccess && iter != m_parentStage->m_trackerViews.end();
-                    ++iter)
+                for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
                 {
-                    const int trackerIndex = iter->second.listIndex;
-                    const TrackerRelativePoseStatistics &trackerSampleData = *m_deviceTrackerPoseStats[trackerIndex];
-                    const PSVRPosef trackerPose = trackerSampleData.trackerPose;
-
-                    PSVRTracker *trackerView = iter->second.trackerView;
+                    const PSVRPosef trackerPose = stats->trackerPose;
+                    PSVRTracker *trackerView = stats->trackerView;
 
                     m_parentStage->request_set_tracker_pose(&trackerPose, trackerView);
                 }
@@ -551,8 +379,6 @@ void AppSubStage_CalibrateWithMat::render()
         break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordHMD:
         {
             // Draw the video from the PoV of the current tracker
             m_parentStage->render_tracker_video();
@@ -586,7 +412,6 @@ void AppSubStage_CalibrateWithMat::renderUI()
     case AppSubStage_CalibrateWithMat::eMenuState::initial:
         break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD:
         {
             ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_panel_width / 2.f, 20.f));
             ImGui::SetNextWindowSize(ImVec2(k_panel_width, 130));
@@ -651,22 +476,13 @@ void AppSubStage_CalibrateWithMat::renderUI()
             ImGui::End();
         } break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordHMD:
         {
             ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_panel_width / 2.f, 20.f));
             ImGui::SetNextWindowSize(ImVec2(k_panel_width, 200));
             ImGui::Begin(k_window_title, nullptr, window_flags);
 
-            if (m_menuState == AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController)
-            {
-                ImGui::Text("Recording Controller samples at location #%d (%s)",
-                    m_sampleLocationIndex + 1, k_sample_location_names[m_sampleLocationIndex]);
-            }
-            else
-            {
-                ImGui::Text("Recording HMD samples at location #%d (%s)",
-                    m_sampleLocationIndex + 1, k_sample_location_names[m_sampleLocationIndex]);
-            }
+            ImGui::Text("Recording Controller samples at location #%d (%s)",
+                m_sampleLocationIndex + 1, k_sample_location_names[m_sampleLocationIndex]);
 
             bool bAnyTrackersSampling = false;
             for (int tracker_index = 0; tracker_index < m_parentStage->get_tracker_count(); ++tracker_index)
@@ -686,14 +502,7 @@ void AppSubStage_CalibrateWithMat::renderUI()
 
             if (!bAnyTrackersSampling)
             {
-                if (m_menuState == AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController)
-                {
-                    ImGui::Text("Location sampling complete. Please pick up the controller.");
-                }
-                else
-                {
-                    ImGui::Text("Location sampling complete. Please pick up the HMD.");
-                }
+                ImGui::Text("Location sampling complete. Please pick up the controller.");
             }
 
             ImGui::Separator();
@@ -729,6 +538,28 @@ void AppSubStage_CalibrateWithMat::renderUI()
     }
 }
 
+void AppSubStage_CalibrateWithMat::drawCalibrationDebug(PSVRTrackerID tracker_id)
+{
+	for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
+	{
+		if (stats->trackerView->tracker_info.tracker_id == tracker_id)
+		{
+			for (int location = 0; location < k_mat_sample_location_count; ++location)
+			{
+				const PSVRVector2f &screenPos= stats->avgScreenSpacePointAtLocation[location];
+				const Eigen::Vector3f &trackerRelPos= stats->avgTrackerSpacePointAtLocation[location];
+
+				const glm::vec2 glmScreenCoords(screenPos.x, screenPos.y);
+				drawTextAtScreenPosition(glmScreenCoords, "[%.1f, %.1f, %.1f]", 
+					trackerRelPos.x(), trackerRelPos.y(), trackerRelPos.z());
+
+			}
+
+			break;
+		}
+	}
+}
+
 //-- private methods -----
 void AppSubStage_CalibrateWithMat::setState(
     AppSubStage_CalibrateWithMat::eMenuState newState)
@@ -750,8 +581,6 @@ void AppSubStage_CalibrateWithMat::onExitState(
     case AppSubStage_CalibrateWithMat::eMenuState::initial:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordHMD:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepComputeTrackerPoses:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrateStepSuccess:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrateStepFailed:
@@ -768,55 +597,33 @@ void AppSubStage_CalibrateWithMat::onEnterState(
     {
     case AppSubStage_CalibrateWithMat::eMenuState::initial:
         {
-            for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                iter != m_parentStage->m_trackerViews.end();
-                ++iter)
+			for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
             {
-                const int trackerIndex = iter->second.listIndex;
-
-                m_deviceTrackerPoseStats[trackerIndex]->clearAll();
+                stats->clearAll();
             }
 
             m_sampleLocationIndex = 0;
             m_bIsStable = false;
             m_bForceStable = false;
-            m_sampleTrackerId= 0;
+            m_currentPoseStatsIndex= 0;
         }
         break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD:
         {
-            for (AppStage_ComputeTrackerPoses::t_tracker_state_map_iterator iter = m_parentStage->m_trackerViews.begin();
-                iter != m_parentStage->m_trackerViews.end();
-                ++iter)
+			for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
             {
-                const int trackerIndex = iter->second.listIndex;
-
-                m_deviceTrackerPoseStats[trackerIndex]->clearLastSampleBatch();
+                stats->clearLastSampleBatch();
             }
 
             m_bIsStable = false;
             m_bForceStable= false;
             m_bNeedMoreSamplesAtLocation= true;
-            m_sampleTrackerId= 0;
+            m_currentPoseStatsIndex= 0;
 
             // Start off getting getting projection data from tracker 0
-            if (newState == AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController)
-            {
-                const PSVRController *ControllerView= m_parentStage->get_calibration_controller_view();
-
-                PSVR_SetControllerDataStreamTrackerIndex(ControllerView->ControllerID, 0);
-            }
-            else if (newState == AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceHMD)
-            {
-                const PSVRHeadMountedDisplay *HmdView= m_parentStage->get_calibration_hmd_view();
-
-                PSVR_SetHmdDataStreamTrackerIndex(HmdView->HmdID, 0);
-            }
+            PSVR_SetControllerDataStreamTrackerIndex(m_parentStage->get_calibration_controller_view()->ControllerID, 0);
         } break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController:
-    case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordHMD:
-        break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepComputeTrackerPoses:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrateStepSuccess:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrateStepFailed:
@@ -829,9 +636,10 @@ void AppSubStage_CalibrateWithMat::onEnterState(
 //-- math helper functions -----
 static bool
 computeTrackerCameraPose(
-    const PSVRTracker *trackerView,
-    TrackerRelativePoseStatistics &trackerCoregData)
+    TrackerRelativeControllerPoseStatistics &trackerCoregData)
 {
+	const PSVRTracker *trackerView= trackerCoregData.trackerView;
+
 	//###HipsterSloth $TODO: This probably isn't correct for stereo cameras
 
     // Get the pixel width and height of the tracker image

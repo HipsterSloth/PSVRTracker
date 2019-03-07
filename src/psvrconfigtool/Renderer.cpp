@@ -477,11 +477,11 @@ void drawTextAtWorldPosition(
     text[sizeof(text)-1] = 0;
     va_end(args);
 
-    drawZeroTerminatedTextAtScreenPosition(screenCoords, text);
+    drawZeroTerminatedTextAtScreenPosition(glm::vec2(screenCoords.x, screenCoords.y), text);
 }
 
 void drawTextAtScreenPosition(
-    const glm::vec3 &screenCoords,
+    const glm::vec2 &screenCoords,
     const char *format,
     ...)
 {
@@ -497,7 +497,7 @@ void drawTextAtScreenPosition(
 }
 
 void drawZeroTerminatedTextAtScreenPosition(
-    const glm::vec3 &initialScreenCoords, 
+    const glm::vec2 &initialScreenCoords, 
     const char *text)
 {
     assert(Renderer::getIsRenderingStage());
@@ -507,7 +507,7 @@ void drawZeroTerminatedTextAtScreenPosition(
 
     const int screenWidth= static_cast<int>(ImGui::GetIO().DisplaySize.x);
     const int screenHeight= static_cast<int>(ImGui::GetIO().DisplaySize.y);
-    glm::vec3 screenCoords= initialScreenCoords;
+    glm::vec2 screenCoords= initialScreenCoords;
     const float initial_x= initialScreenCoords.x;
 
     // Save a back up of the projection matrix and replace with an orthographic projection,

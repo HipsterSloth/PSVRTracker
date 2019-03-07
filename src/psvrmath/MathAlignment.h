@@ -129,6 +129,7 @@ eigen_alignment_fit_focal_cone_to_sphere(
 // Compute the weighted average of multiple quaternions
 // * All weights will be renormalized against the total weight
 // * All input weights must be >= 0
+// * NULL weights means to weight all quaternions equally
 bool
 eigen_quaternion_compute_normalized_weighted_average(
     const Eigen::Quaternionf *quaternions,

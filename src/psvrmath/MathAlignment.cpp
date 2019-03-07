@@ -689,7 +689,6 @@ eigen_alignment_fit_focal_cone_to_sphere(
     }
 }
 
-
 bool
 eigen_quaternion_compute_normalized_weighted_average(
     const Eigen::Quaternionf *quaternions,
@@ -718,30 +717,36 @@ eigen_quaternion_compute_normalized_weighted_average(
     else if (count > 2)
     {
         // http://stackoverflow.com/questions/12374087/average-of-multiple-quaternions
-        Eigen::MatrixXf q(4, count);
-        Eigen::MatrixXf q_transpose(count, 4);
+		// Paper: https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
+        Eigen::MatrixXd q(4, count);
+        Eigen::MatrixXd q_transpose(count, 4);
 
-        float total_weight= 0.f;
+        double total_weight= 0.f;
 		if (weights != nullptr)
 		{
 			for (int index = 0; index < count; ++index)
 			{
 				assert(weights[index] >= 0);
-				total_weight += weights[index];
+				total_weight += (double)weights[index];
 			}
+		}
+		else
+		{
+			// Weight for each element is 1.0
+			total_weight= (double)count;
 		}
 
         for (int index = 0; index < count; ++index)
         {
 			// Normalize the weights against the total weight
-            const Eigen::Quaternionf &sample = quaternions[index];
-			const float weight = (weights != nullptr) ? weights[index] : 0.f;
-            const float normalized_weight= safe_divide_with_default(weight, total_weight, 1.f);
+            const Eigen::Quaterniond &sample = quaternions[index].cast<double>();
+			const double weight = (weights != nullptr) ? (double)weights[index] : 1.0;
+            const double normalized_weight= weight / total_weight;
 
-            const float w= sample.w() * normalized_weight;
-            const float x= sample.x() * normalized_weight;
-            const float y= sample.y() * normalized_weight;
-            const float z= sample.z() * normalized_weight;
+            const double w= sample.w() * normalized_weight;
+            const double x= sample.x() * normalized_weight;
+            const double y= sample.y() * normalized_weight;
+            const double z= sample.z() * normalized_weight;
 
             q(0, index) = w;
             q(1, index) = x;
@@ -754,9 +759,9 @@ eigen_quaternion_compute_normalized_weighted_average(
             q_transpose(index, 3) = z;
         }
 
-        Eigen::Matrix4f M= q*q_transpose;
+        Eigen::Matrix4d M= q*q_transpose;
 
-        Eigen::EigenSolver<Eigen::Matrix4f> eigsolv(M);
+        Eigen::EigenSolver<Eigen::Matrix4d> eigsolv(M);
         if (eigsolv.info() == Eigen::Success)
         {
             int largest_row = 0;
@@ -770,11 +775,11 @@ eigen_quaternion_compute_normalized_weighted_average(
                 }                
             }
 
-            Eigen::Vector4f largest_eigenvector = eigsolv.eigenvectors().col(largest_row).real();
-            float w= largest_eigenvector(0);
-            float x= largest_eigenvector(1);
-            float y= largest_eigenvector(2);
-            float z= largest_eigenvector(3);
+            Eigen::Vector4d largest_eigenvector = eigsolv.eigenvectors().col(largest_row).real();
+            float w= (float)largest_eigenvector(0);
+            float x= (float)largest_eigenvector(1);
+            float y= (float)largest_eigenvector(2);
+            float z= (float)largest_eigenvector(3);
 
             *out_result= Eigen::Quaternionf(w, x, y, z).normalized();
             success= true;
