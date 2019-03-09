@@ -1199,13 +1199,6 @@ PSVRResult PSVR_GetHmdPosition(PSVRHmdID hmd_id, PSVRVector3f *out_position)
 
 				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
             } break;
-        case PSVRHmd_Virtual:
-            {
-				PSVRVirtualHMD State= hmd->HmdState.VirtualHMDState;
-				*out_position = State.Pose.Position;
-
-				result= State.bIsPositionValid ? PSVRResult_Success : PSVRResult_Error;
-            } break;
         }
     }
 
@@ -1229,13 +1222,6 @@ PSVRResult PSVR_GetHmdPose(PSVRHmdID hmd_id, PSVRPosef *out_pose)
 				*out_pose = State.Pose;
 
 				result= (State.bIsOrientationValid && State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
-            } break;
-        case PSVRHmd_Virtual:
-            {
-				PSVRVirtualHMD State= hmd->HmdState.VirtualHMDState;
-				*out_pose = State.Pose;
-
-				result= (State.bIsPositionValid) ? PSVRResult_Success : PSVRResult_Error;
             } break;
         }
     }
@@ -1299,11 +1285,6 @@ PSVRResult PSVR_GetIsHmdTracking(PSVRHmdID hmd_id, bool *out_is_tracking)
 				*out_is_tracking = hmd->HmdState.MorpheusState.bIsCurrentlyTracking;
 				result= PSVRResult_Success;
             } break;
-        case PSVRHmd_Virtual:
-            {
-				*out_is_tracking = hmd->HmdState.VirtualHMDState.bIsCurrentlyTracking;
-				result= PSVRResult_Success;
-            } break;
         }
     }
 
@@ -1324,10 +1305,6 @@ PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProje
         case PSVRHmd_Morpheus:
             {
 				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
-            } break;
-        case PSVRHmd_Virtual:
-            {
-				trackerData= &hmd->HmdState.VirtualHMDState.RawTrackerData;
             } break;
         }
 
@@ -1360,10 +1337,6 @@ PSVRResult PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrac
         case PSVRHmd_Morpheus:
             {
 				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
-            } break;
-        case PSVRHmd_Virtual:
-            {
-				trackerData= &hmd->HmdState.VirtualHMDState.RawTrackerData;
             } break;
         }
 
@@ -1427,11 +1400,6 @@ PSVRResult PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *outRa
         case PSVRHmd_Morpheus:
             {
 				*outRawTrackerData= hmd->HmdState.MorpheusState.RawTrackerData;
-				result= PSVRResult_Success;
-            } break;
-        case PSVRHmd_Virtual:
-            {
-				*outRawTrackerData= hmd->HmdState.VirtualHMDState.RawTrackerData;
 				result= PSVRResult_Success;
             } break;
         }
@@ -1551,18 +1519,6 @@ PSVRResult PSVR_SetHmdPredictionTime(PSVRHmdID hmd_id, float prediction_time)
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
 		result= g_psvr_service->getRequestHandler()->set_hmd_prediction_time(hmd_id, prediction_time);
-    }
-
-    return result;
-}
-
-PSVRResult PSVR_SetHmdTrackingColorID(PSVRHmdID hmd_id, PSVRTrackingColorType tracking_color_type)
-{
-    PSVRResult result= PSVRResult_Error;
-
-    if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
-    {
-		result= g_psvr_service->getRequestHandler()->set_hmd_led_tracking_color(hmd_id, tracking_color_type);
     }
 
     return result;

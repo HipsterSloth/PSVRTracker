@@ -840,14 +840,6 @@ bool AppStage_HMDTrackingTest::does_tracker_see_any_hmd(const PSVRTracker *track
                  (1 << tracker_id)) > 0;
             break;
         }
-        else if (hmdView->HmdType == PSVRHmd_Virtual &&
-                 hmdView->HmdState.VirtualHMDState.bIsCurrentlyTracking)
-        {
-            bTrackerSeesAnyHmd= 
-                (hmdView->HmdState.VirtualHMDState.RawTrackerData.ValidTrackerBitmask | 
-                 (1 << tracker_id)) > 0;
-            break;
-        }
     }
 
     return bTrackerSeesAnyHmd;
@@ -889,9 +881,6 @@ static void drawHMD(
     {
     case PSVRHmd_Morpheus:
         drawMorpheusModel(transform, glm::vec3(1.f, 1.f, 1.f));
-        break;
-    case PSVRHmd_Virtual:
-        drawVirtualHMDModel(transform, bulb_color);
         break;
     }
 }

@@ -20,7 +20,6 @@
 // -- globals -----
 USBDeviceFilter g_supported_hmd_infos[MAX_HMD_TYPE_INDEX] = {
     { 0x054c, 0x09af }, // Sony Morpheus
-    { 0x0000, 0x0000 }, // VirtualHMD
 };
 
 // -- HMDHidDeviceEnumerator -----
@@ -66,8 +65,7 @@ bool HidHMDDeviceEnumerator::next()
 	{
 		m_deviceType = static_cast<CommonSensorState::eDeviceType>(m_deviceType + 1);
 
-		if (GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_HMD_TYPE_INDEX && 
-            m_deviceType != CommonSensorState::VirtualHMD)
+		if (GET_DEVICE_TYPE_INDEX(m_deviceType) < MAX_HMD_TYPE_INDEX)
 		{
 			build_interface_list();
 

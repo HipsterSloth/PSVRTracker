@@ -5,7 +5,6 @@
 #include "MathTypeConversion.h"
 #include "MathAlignment.h"
 #include "MorpheusHMD.h"
-#include "VirtualHMD.h"
 #include "CompoundPoseFilter.h"
 #include "KalmanPoseFilter.h"
 #include "PoseFilterInterface.h"
@@ -32,8 +31,6 @@ static IPoseFilter *pose_filter_factory(
 
 static void init_filters_for_morpheus_hmd(
     const MorpheusHMD *morpheusHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
-static void init_filters_for_virtual_hmd(
-    const VirtualHMD *virtualHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter);
 
 static void post_imu_filter_packets_for_morpheus_hmd(
     const MorpheusHMD *morpheusHMD, const MorpheusHMDSensorState *morpheusHMDState,
@@ -42,12 +39,6 @@ static void post_imu_filter_packets_for_morpheus_hmd(
 	t_hmd_pose_sensor_queue *pose_filter_queue);
 static void post_optical_filter_packet_for_morpheus_hmd(
     const MorpheusHMD *morpheusHMD,
-	const int tracker_id,
-    const t_high_resolution_timepoint now,
-    const HMDOpticalPoseEstimation *poseEstimation,
-	t_hmd_pose_sensor_queue *pose_filter_queue);
-static void post_optical_filter_packet_for_virtual_hmd(
-    const VirtualHMD *virtualHMD,
 	const int tracker_id,
     const t_high_resolution_timepoint now,
     const HMDOpticalPoseEstimation *poseEstimation,
@@ -117,42 +108,6 @@ bool ServerHMDView::allocate_device_interface(const class DeviceEnumerator *enum
             }
 
         } break;
-    case CommonSensorState::VirtualHMD:
-        {
-            m_device = new VirtualHMD();
-			m_device->setHMDListener(this);
-
-            m_pose_filter = nullptr; // no pose filter until the device is opened
-
-            PSVRTrackingShape tracking_shape;
-            m_device->getTrackingShape(tracking_shape);
-
-			m_lastIMUSensorPacket= nullptr;
-
-			m_sharedFilteredPose= new AtomicObject<ShapeTimestampedPose>;
-            m_shape_tracking_models = new IShapeTrackingModel *[TrackerManager::k_max_devices]; 
-            m_optical_pose_estimations = new HMDOpticalPoseEstimation[TrackerManager::k_max_devices];
-			m_lastOpticalSensorPacket = new PoseSensorPacket[TrackerManager::k_max_devices];
-            for (int tracker_index = 0; tracker_index < TrackerManager::k_max_devices; ++tracker_index)
-            {
-                m_optical_pose_estimations[tracker_index].clear();
-				m_lastOpticalSensorPacket[tracker_index].clear();
-
-                switch (tracking_shape.shape_type)
-                {
-                case PSVRTrackingShape_PointCloud:
-                    m_shape_tracking_models[tracker_index] = new PointCloudTrackingModel();
-                    break;
-                case PSVRTrackingShape_Sphere:
-                    m_shape_tracking_models[tracker_index] = new SphereTrackingModel();
-                    break;
-                case PSVRTrackingShape_LightBar:
-                    assert(false && "Lightbar tracking shape not yet implemented");
-                    break;
-                }
-                m_shape_tracking_models[tracker_index]->init(&tracking_shape);
-            }
-        } break;
     default:
         break;
     }
@@ -219,7 +174,6 @@ bool ServerHMDView::open(const class DeviceEnumerator *enumerator)
         switch (device->getDeviceType())
         {
         case CommonSensorState::Morpheus:
-        case CommonSensorState::VirtualHMD:
             {
                 // Create a pose filter based on the HMD type
                 resetPoseFilter();
@@ -301,12 +255,6 @@ void ServerHMDView::resetPoseFilter()
             const MorpheusHMD *morpheusHMD = this->castCheckedConst<MorpheusHMD>();
 
             init_filters_for_morpheus_hmd(morpheusHMD, &m_pose_filter_space, &m_pose_filter);
-        } break;
-    case CommonSensorState::VirtualHMD:
-        {
-            const VirtualHMD *virtualHMD = this->castCheckedConst<VirtualHMD>();
-
-            init_filters_for_virtual_hmd(virtualHMD, &m_pose_filter_space, &m_pose_filter);
         } break;
     default:
         break;
@@ -440,18 +388,6 @@ void ServerHMDView::notifyTrackerDataReceived(ServerTrackerView* tracker)
 				// Only update the position filter when tracking is enabled
 				post_optical_filter_packet_for_morpheus_hmd(
 					morpheusHMD,
-					tracker_id,
-					now,
-					&tracker_pose_estimate_ref,
-					&m_PoseSensorOpticalPacketQueue);
-			} break;
-		case CommonSensorState::VirtualHMD:
-			{
-				const VirtualHMD *virtualHMD = this->castCheckedConst<VirtualHMD>();
-
-				// Only update the position filter when tracking is enabled
-				post_optical_filter_packet_for_virtual_hmd(
-					virtualHMD,
 					tracker_id,
 					now,
 					&tracker_pose_estimate_ref,
@@ -717,11 +653,6 @@ ServerHMDView::getConfigIdentifier() const
         {
             identifier = "hmd_morpheus";
         }
-        else if (m_device->getDeviceType() == CommonSensorState::VirtualHMD)
-        {
-            // THe "USB device path" for a Virtual HMD is actually just the Virtual HMD identifier, i.e. "VirtualHMD_0"
-            identifier = "hmd_"+m_device->getUSBDevicePath();
-        }
         else
         {
             identifier = "hmd_unknown";
@@ -778,9 +709,6 @@ void ServerHMDView::set_tracking_enabled_internal(bool bEnabled)
         {
         case CommonSensorState::Morpheus:
             castChecked<MorpheusHMD>()->setTrackingEnabled(bEnabled);
-            break;
-        case CommonSensorState::VirtualHMD:
-            castChecked<VirtualHMD>()->setTrackingEnabled(bEnabled);
             break;
         default:
             assert(0 && "unreachable");
@@ -865,10 +793,6 @@ void ServerHMDView::generate_hmd_data_frame_for_stream(
         {
             generate_morpheus_hmd_data_frame_for_stream(hmd_view, stream_info, data_frame);
         } break;
-    case CommonSensorState::VirtualHMD:
-        {
-            generate_virtual_hmd_data_frame_for_stream(hmd_view, stream_info, data_frame);
-        } break;
     default:
         assert(0 && "Unhandled HMD type");
     }
@@ -932,55 +856,6 @@ init_filters_for_morpheus_hmd(
         constants);
 }
 
-static void init_filters_for_virtual_hmd(
-    const VirtualHMD *virtualHMD, PoseFilterSpace **out_pose_filter_space, IPoseFilter **out_pose_filter)
-{
-    const VirtualHMDConfig *hmd_config = virtualHMD->getConfig();
-
-    // Setup the space the pose filter operates in
-    PoseFilterSpace *pose_filter_space = new PoseFilterSpace();
-    pose_filter_space->setIdentityGravity(Eigen::Vector3f(0.f, 1.f, 0.f));
-    pose_filter_space->setIdentityMagnetometer(Eigen::Vector3f::Zero());
-    pose_filter_space->setCalibrationTransform(*k_eigen_identity_pose_upright);
-    pose_filter_space->setSensorTransform(*k_eigen_sensor_transform_identity);
-
-    // Copy the pose filter constants from the controller config
-    PoseFilterConstants constants;
-    constants.clear();
-
-    virtualHMD->getTrackingShape(constants.shape);
-
-    constants.orientation_constants.gravity_calibration_direction = Eigen::Vector3f::Zero();
-    constants.orientation_constants.accelerometer_variance = Eigen::Vector3f::Zero();
-    constants.position_constants.accelerometer_drift = Eigen::Vector3f::Zero();
-    constants.orientation_constants.magnetometer_calibration_direction = Eigen::Vector3f::Zero();
-    constants.orientation_constants.gyro_drift = Eigen::Vector3f::Zero();
-    constants.orientation_constants.gyro_variance = Eigen::Vector3f::Zero();
-    constants.orientation_constants.mean_update_time_delta = 0.f;
-    constants.orientation_constants.orientation_variance_curve.A = 0.f;
-    constants.orientation_constants.orientation_variance_curve.B = 0.f;
-    constants.orientation_constants.orientation_variance_curve.MaxValue = 0.f;
-    constants.orientation_constants.magnetometer_variance = Eigen::Vector3f::Zero();
-    constants.orientation_constants.magnetometer_drift = Eigen::Vector3f::Zero();
-
-    constants.position_constants.gravity_calibration_direction = pose_filter_space->getGravityCalibrationDirection();
-    constants.position_constants.accelerometer_variance = Eigen::Vector3f::Zero();
-    constants.position_constants.accelerometer_drift = Eigen::Vector3f::Zero();
-    constants.position_constants.accelerometer_noise_radius = 0.f; // TODO
-    constants.position_constants.max_velocity = hmd_config->max_velocity;
-    constants.position_constants.mean_update_time_delta = hmd_config->mean_update_time_delta;
-    constants.position_constants.position_variance_curve.A = hmd_config->position_variance_exp_fit_a;
-    constants.position_constants.position_variance_curve.B = hmd_config->position_variance_exp_fit_b;
-    constants.position_constants.position_variance_curve.MaxValue = 1.f;
-
-    *out_pose_filter_space = pose_filter_space;
-    *out_pose_filter = pose_filter_factory(
-        CommonSensorState::eDeviceType::VirtualHMD,
-        hmd_config->position_filter_type,
-        hmd_config->orientation_filter_type,
-        constants);
-}
-
 static IPoseFilter *
 pose_filter_factory(
     const CommonSensorState::eDeviceType deviceType,
@@ -999,12 +874,6 @@ pose_filter_factory(
         case CommonSensorState::Morpheus:
             {
                 KalmanPoseFilterMorpheus *kalman_filter = new KalmanPoseFilterMorpheus();
-                kalman_filter->init(constants);
-                filter= kalman_filter;
-            } break;
-        case CommonSensorState::VirtualHMD:
-            {
-                KalmanPoseFilterPointCloud *kalman_filter = new KalmanPoseFilterPointCloud();
                 kalman_filter->init(constants);
                 filter= kalman_filter;
             } break;
@@ -1045,7 +914,6 @@ pose_filter_factory(
             switch (deviceType)
             {
             case CommonSensorState::Morpheus:
-            case CommonSensorState::VirtualHMD:
                 position_filter_enum = PositionFilterTypeLowPassIMU;
                 break;
             default:
@@ -1085,9 +953,6 @@ pose_filter_factory(
             {
             case CommonSensorState::Morpheus:
                 orientation_filter_enum = OrientationFilterTypeComplementaryOpticalARG;
-                break;
-            case CommonSensorState::VirtualHMD:
-                orientation_filter_enum = OrientationFilterTypePassThru;
                 break;
             default:
                 assert(0 && "unreachable");
@@ -1182,43 +1047,6 @@ post_optical_filter_packet_for_morpheus_hmd(
     }
 
 	pose_sensor_queue->enqueue(sensor_packet);
-}
-
-static void
-post_optical_filter_packet_for_virtual_hmd(
-    const VirtualHMD *virtualHMD,
-	const int tracker_id,
-    const t_high_resolution_timepoint now,
-    const HMDOpticalPoseEstimation *pose_estimation,
-	t_hmd_pose_sensor_queue *pose_sensor_queue)
-{
-    const VirtualHMDConfig *config = virtualHMD->getConfig();
-
-    PoseSensorPacket sensor_packet;
-
-	sensor_packet.clear();
-	sensor_packet.timestamp= now;
-	sensor_packet.tracker_id= tracker_id;
-
-    if (pose_estimation->bOrientationValid)
-    {
-		sensor_packet.tracker_relative_orientation= 
-			pose_estimation->tracker_relative_orientation;
-        sensor_packet.optical_orientation =
-			PSVR_quatf_to_eigen_quaternionf(pose_estimation->world_relative_orientation);
-    }
-
-    if (pose_estimation->bCurrentlyTracking)
-    {
-		sensor_packet.tracker_relative_position_cm= 
-			pose_estimation->tracker_relative_position_cm;
-        sensor_packet.optical_tracking_shape_cm= pose_estimation->world_relative_shape;
-        sensor_packet.optical_position_cm =
-            PSVR_vector3f_to_eigen_vector3(pose_estimation->world_relative_position_cm);
-        sensor_packet.optical_tracking_projection= pose_estimation->projection;
-    }
-
-    pose_sensor_queue->enqueue(sensor_packet);
 }
 
 static void generate_morpheus_hmd_data_frame_for_stream(
@@ -1322,84 +1150,4 @@ static void generate_morpheus_hmd_data_frame_for_stream(
     }
 
     hmd_data_frame->hmd_type= PSVRHmd_Morpheus;
-}
-
-static void generate_virtual_hmd_data_frame_for_stream(
-    const ServerHMDView *hmd_view,
-    const HMDStreamInfo *stream_info,
-    DeviceOutputDataFrame &data_frame)
-{
-    const VirtualHMD *virtual_hmd = hmd_view->castCheckedConst<VirtualHMD>();
-    const VirtualHMDConfig *virtual_hmd_config = virtual_hmd->getConfig();
-    const IPoseFilter *pose_filter = hmd_view->getPoseFilter();
-    const PSVRPosef hmd_pose = hmd_view->getFilteredPose();
-
-    HMDOutputDataPacket *hmd_data_frame = &data_frame.device.hmd_data_packet;
-    PSVRVirtualHMD *virtual_hmd_data_frame = &hmd_data_frame->hmd_state.virtual_hmd_state;
-
-    virtual_hmd_data_frame->bIsCurrentlyTracking= hmd_view->getIsCurrentlyTracking();
-    virtual_hmd_data_frame->bIsTrackingEnabled= hmd_view->getIsTrackingEnabled();
-    virtual_hmd_data_frame->bIsOrientationValid= pose_filter->getIsStateValid();
-    virtual_hmd_data_frame->bIsPositionValid= pose_filter->getIsStateValid();
-
-    virtual_hmd_data_frame->Pose.Orientation= hmd_pose.Orientation;
-
-    if (stream_info->include_position_data)
-    {
-        virtual_hmd_data_frame->Pose.Position= hmd_pose.Position;
-    }
-    else
-    {
-        virtual_hmd_data_frame->Pose.Position= *k_PSVR_float_vector3_zero;
-    }
-
-    // If requested, get the raw sensor data for the hmd
-    if (stream_info->include_physics_data)
-    {
-        virtual_hmd_data_frame->PhysicsData= hmd_view->getFilteredPhysics();
-    }
-
-    // If requested, get the raw tracker data for the controller
-    if (stream_info->include_raw_tracker_data)
-    {
-        PSVRRawTrackerData *raw_tracker_data = &virtual_hmd_data_frame->RawTrackerData;
-        int selectedTrackerId= stream_info->selected_tracker_index;
-        unsigned int validTrackerBitmask= 0;
-
-        for (int trackerId = 0; trackerId < TrackerManager::k_max_devices; ++trackerId)
-        {
-			const PoseSensorPacket *optical_sensor_packet = hmd_view->getLastOpticalSensorPacket(trackerId);
-
-            if (optical_sensor_packet != nullptr && hmd_view->getIsTrackedByTracker(trackerId))
-            {
-                validTrackerBitmask&= (1 << trackerId);
-
-                if (trackerId == selectedTrackerId)
-                {
-                    const ServerTrackerViewPtr tracker_view = 
-                        DeviceManager::getInstance()->getTrackerViewPtr(trackerId);
-					const int projection_count= optical_sensor_packet->optical_tracking_projection.projection_count;
-
-                    raw_tracker_data->TrackerID= trackerId;
-                    raw_tracker_data->RelativePositionCm= optical_sensor_packet->tracker_relative_position_cm;
-                    raw_tracker_data->RelativeOrientation= optical_sensor_packet->tracker_relative_orientation;
-                    raw_tracker_data->TrackingProjection= optical_sensor_packet->optical_tracking_projection;
-					raw_tracker_data->WorldRelativeShape= optical_sensor_packet->optical_tracking_shape_cm;
-
-                    for (int projection_index = 0; projection_index < projection_count; ++projection_index)
-                    {
-                        // Project the 3d camera position back onto the tracker screen
-                        raw_tracker_data->ScreenLocations[projection_index] =
-                            tracker_view->projectTrackerRelativePosition(
-                                (PSVRVideoFrameSection)projection_index,
-                                &optical_sensor_packet->tracker_relative_position_cm);
-                    }
-                }
-            }
-        }
-
-        raw_tracker_data->ValidTrackerBitmask= validTrackerBitmask;
-    }
-
-    hmd_data_frame->hmd_type= PSVRHmd_Virtual;
 }

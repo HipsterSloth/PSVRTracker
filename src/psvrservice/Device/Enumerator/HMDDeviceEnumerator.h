@@ -10,7 +10,6 @@ public:
 	{
 		CommunicationType_INVALID= -1,
 		CommunicationType_HID,
-		CommunicationType_VIRTUAL,
 		CommunicationType_ALL
 	};
 
@@ -25,7 +24,6 @@ public:
 	int get_product_id() const override;
 	eAPIType get_api_type() const;
 	const class HidHMDDeviceEnumerator *get_hid_hmd_enumerator() const;
-	const class VirtualHMDDeviceEnumerator *get_virtual_hmd_enumerator() const;
 
 private:
 	eAPIType api_type;

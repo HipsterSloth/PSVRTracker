@@ -274,8 +274,5 @@ static void drawHMD(PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform)
     case PSVRHmd_Morpheus:
         drawMorpheusModel(transform, glm::vec3(1.f, 1.f, 1.f));
         break;
-    case PSVRHmd_Virtual:
-        drawVirtualHMDModel(transform, glm::vec3(1.f, 1.f, 1.f));
-        break;
     }
 }

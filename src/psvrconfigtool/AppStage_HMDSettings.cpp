@@ -117,11 +117,6 @@ void AppStage_HMDSettings::render()
                     glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(2.f, 2.f, 2.f));
                     drawMorpheusModel(scale3, glm::vec3(1.f, 1.f, 1.f));
                 } break;
-            case PSVRHmd_Virtual:
-                {
-                    glm::mat4 scale3 = glm::scale(glm::mat4(1.f), glm::vec3(2.f, 2.f, 2.f));
-                    drawVirtualHMDModel(scale3, bulb_color);
-                } break;
             default:
                 assert(0 && "Unreachable");
             }
@@ -179,45 +174,9 @@ void AppStage_HMDSettings::renderUI()
             }
             
             // Combo box selection for hmd tracking color
-            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Virtual)
+            if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
             {
-                int newTrackingColorType = hmdInfo.hmd_info.tracking_color_type;
-
-                ImGui::PushItemWidth(195);
-                if (ImGui::Combo("Tracking Color", &newTrackingColorType, "Magenta\0Cyan\0Yellow\0Red\0Green\0Blue\0\0"))
-                {
-                    hmdInfo.hmd_info.tracking_color_type = static_cast<PSVRTrackingColorType>(newTrackingColorType);
-
-                    PSVR_SetHmdTrackingColorID(hmdInfo.hmd_info.hmd_id, hmdInfo.hmd_info.tracking_color_type);
-
-                    // Re-request the controller list since the tracking colors could changed for other controllers
-                    request_hmd_list();
-                }
-                ImGui::PopItemWidth();
-            }
-            else if (hmdInfo.hmd_info.hmd_type == PSVRHmd_Morpheus)
-            {
-                switch (hmdInfo.hmd_info.tracking_color_type)
-                {
-                case PSVRTrackingColorType_Magenta:
-                    ImGui::BulletText("Tracking Color: Magenta");
-                    break;
-                case PSVRTrackingColorType_Cyan:
-                    ImGui::BulletText("Tracking Color: Cyan");
-                    break;
-                case PSVRTrackingColorType_Yellow:
-                    ImGui::BulletText("Tracking Color: Yellow");
-                    break;
-                case PSVRTrackingColorType_Red:
-                    ImGui::BulletText("Tracking Color: Red");
-                    break;
-                case PSVRTrackingColorType_Green:
-                    ImGui::BulletText("Tracking Color: Green");
-                    break;
-                case PSVRTrackingColorType_Blue:
-                    ImGui::BulletText("Tracking Color: Blue");
-                    break;
-                }
+                ImGui::BulletText("Tracking Color: Blue");
             }
 
             ImGui::BulletText("HMD ID: %d", hmdInfo.hmd_info.hmd_id);
@@ -228,10 +187,6 @@ void AppStage_HMDSettings::renderUI()
                 {
                     ImGui::BulletText("HMD Type: Morpheus");
                     ImGui::TextWrapped("Device Path: %s", hmdInfo.hmd_info.device_path);
-                } break;
-            case PSVRHmd_Virtual:
-                {
-                    ImGui::BulletText("HMD Type: VirtualHMD");
                 } break;
             default:
                 assert(0 && "Unreachable");

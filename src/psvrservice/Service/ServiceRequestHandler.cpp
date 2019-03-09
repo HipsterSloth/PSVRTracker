@@ -21,7 +21,6 @@
 #include "TrackerManager.h"
 #include "TrackerCapabilitiesConfig.h"
 #include "Utility.h"
-#include "VirtualHMD.h"
 
 #include <cassert>
 
@@ -1352,17 +1351,6 @@ PSVRResult ServiceRequestHandler::get_hmd_list(
 					strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
                 }
                 break;
-            case CommonSensorState::VirtualHMD:
-                {
-                    const VirtualHMD *virtualHMD= hmd_view->castCheckedConst<VirtualHMD>();
-                    const VirtualHMDConfig *config= virtualHMD->getConfig();
-
-                    hmd_info->hmd_type= PSVRHmd_Virtual;
-                    hmd_info->prediction_time= config->prediction_time;
-                    strncpy(hmd_info->orientation_filter, config->orientation_filter_type.c_str(), sizeof(hmd_info->orientation_filter));
-                    strncpy(hmd_info->position_filter, config->position_filter_type.c_str(), sizeof(hmd_info->position_filter));
-                }
-                break;
             default:
                 assert(0 && "Unhandled tracker type");
             }
@@ -1488,47 +1476,6 @@ PSVRResult ServiceRequestHandler::stop_hmd_data_stream(
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_hmd_led_tracking_color(
-    const PSVRHmdID hmd_id,
-	const PSVRTrackingColorType new_color_id)
-{
-	PSVRResult result= PSVRResult_Error;
-
-    ServerHMDViewPtr HmdView = m_deviceManager->getHMDViewPtr(hmd_id);
-
-    if (HmdView && 
-        HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
-    {
-        const PSVRTrackingColorType oldColorID = HmdView->getTrackingColorID();
-
-        if (new_color_id != oldColorID)
-        {
-            // Give up control of our existing tracking color
-            if (oldColorID != PSVRTrackingColorType_INVALID)
-            {
-                m_deviceManager->m_tracker_manager->freeTrackingColorID(oldColorID);
-            }
-
-            // Take the color from any other controller that might have it
-            if (m_deviceManager->m_tracker_manager->claimTrackingColorID(HmdView.get(), new_color_id))
-            {
-                // Assign the new color to ourselves
-                HmdView->setTrackingColorID(new_color_id);
-                result= PSVRResult_Success;
-            }
-            else
-            {
-                if (oldColorID != PSVRTrackingColorType_INVALID)
-                {
-                    m_deviceManager->m_tracker_manager->claimTrackingColorID(HmdView.get(), oldColorID);
-                }
-            }
-        }
-    }
-		
-	return result;
-}
-
 PSVRResult ServiceRequestHandler::set_hmd_accelerometer_calibration(
     const PSVRHmdID hmd_id,
 	const PSVRVector3f &measured_g,
@@ -1619,21 +1566,6 @@ PSVRResult ServiceRequestHandler::set_hmd_orientation_filter(
 
             result= PSVRResult_Success;
         }
-        else if (HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
-        {
-            VirtualHMD *hmd = HmdView->castChecked<VirtualHMD>();
-            VirtualHMDConfig *config = hmd->getConfigMutable();
-
-            if (config->orientation_filter_type != orientation_filter)
-            {
-                config->orientation_filter_type = orientation_filter;
-                config->save();
-
-                HmdView->resetPoseFilter();
-            }
-
-            result= PSVRResult_Success;
-        }
     }
 		
 	return result;
@@ -1664,21 +1596,6 @@ PSVRResult ServiceRequestHandler::set_hmd_position_filter(
 
             result= PSVRResult_Success;
         }
-        else if (HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
-        {
-            VirtualHMD *hmd = HmdView->castChecked<VirtualHMD>();
-            VirtualHMDConfig *config = hmd->getConfigMutable();
-
-            if (config->position_filter_type != position_filter)
-            {
-                config->position_filter_type = position_filter;
-                config->save();
-
-                HmdView->resetPoseFilter();
-            }
-
-            result= PSVRResult_Success;
-        }
     }
 		
 	return result;
@@ -1698,19 +1615,6 @@ PSVRResult ServiceRequestHandler::set_hmd_prediction_time(
         {
             MorpheusHMD *hmd = HmdView->castChecked<MorpheusHMD>();
             MorpheusHMDConfig *config = hmd->getConfigMutable();
-
-            if (config->prediction_time != hmd_prediction_time)
-            {
-                config->prediction_time = hmd_prediction_time;
-                config->save();
-            }
-
-            result= PSVRResult_Success;
-        }
-        else if (HmdView->getHMDDeviceType() == CommonSensorState::VirtualHMD)
-        {
-            VirtualHMD *hmd = HmdView->castChecked<VirtualHMD>();
-            VirtualHMDConfig *config = hmd->getConfigMutable();
 
             if (config->prediction_time != hmd_prediction_time)
             {

@@ -742,9 +742,6 @@ static void applyHmdDataFrame(
         case PSVRHmd_Morpheus:
             hmd->HmdState.MorpheusState= hmd_packet.hmd_state.morpheus_state;
             break;
-        case PSVRHmd_Virtual:
-            hmd->HmdState.VirtualHMDState= hmd_packet.hmd_state.virtual_hmd_state;
-            break;            
         default:
             break;
     }

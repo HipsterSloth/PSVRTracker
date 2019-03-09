@@ -66,8 +66,6 @@ source_group("Device\\Model" FILES ${PSVR_DEVICE_MODEL_SRC})
 file(GLOB PSVR_HMD_SRC
     "${CMAKE_CURRENT_LIST_DIR}/MorpheusHMD/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/MorpheusHMD/*.h"
-    "${CMAKE_CURRENT_LIST_DIR}/VirtualHMD/*.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/VirtualHMD/*.h"
 )
 source_group("HMD" FILES ${PSVR_HMD_SRC})
 
@@ -151,7 +149,6 @@ list(APPEND PSVR_SERVICE_INCL_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/PSVRTracker/PSEye
     ${CMAKE_CURRENT_LIST_DIR}/Service
 	${CMAKE_CURRENT_LIST_DIR}/Utils
-    ${CMAKE_CURRENT_LIST_DIR}/VirtualHMD
 	${CMAKE_CURRENT_LIST_DIR}/WMFTracker
 )
 

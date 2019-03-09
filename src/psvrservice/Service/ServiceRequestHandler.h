@@ -210,7 +210,6 @@ public:
 	PSVRResult get_hmd_tracking_shape(PSVRHmdID hmd_id, PSVRTrackingShape *out_shape);
     PSVRResult start_hmd_data_stream(const PSVRHmdID hmd_id, unsigned int data_stream_flags);
     PSVRResult stop_hmd_data_stream(const PSVRHmdID hmd_id);
-    PSVRResult set_hmd_led_tracking_color(const PSVRHmdID hmd_id, const PSVRTrackingColorType new_color_id);
     PSVRResult set_hmd_accelerometer_calibration(
         const PSVRHmdID hmd_id, const PSVRVector3f &measured_g, const float raw_variance);
     PSVRResult set_hmd_gyroscope_calibration(

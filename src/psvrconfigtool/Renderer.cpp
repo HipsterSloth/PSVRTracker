@@ -1573,12 +1573,6 @@ void drawMorpheusModel(const glm::mat4 &transform, const glm::vec3 &color)
     glBindTexture(GL_TEXTURE_2D, 0); 
 }
 
-void drawVirtualHMDModel(const glm::mat4 &transform, const glm::vec3 &color)
-{
-    //###HipsterSloth $TODO Draw virtual HMD model
-    drawMorpheusModel(transform, color);
-}
-
 // -- IMGUI Callbacks -----
 static const char* ImGui_ImplSdl_GetClipboardText(void* user_data)
 {

@@ -392,19 +392,6 @@ typedef struct
     PSVRRawTrackerData            RawTrackerData;
 } PSVRMorpheus;
 
-/// Virtual HMD State in HMD Pool Entry
-typedef struct
-{
-    bool                         bIsTrackingEnabled;
-    bool                         bIsCurrentlyTracking;
-    bool                         bIsOrientationValid;
-    bool                         bIsPositionValid;
-    
-    PSVRPosef                     Pose;
-    PSVRPhysicsData               PhysicsData;
-    PSVRRawTrackerData            RawTrackerData;
-} PSVRVirtualHMD;
-
 /// HMD Pool Entry
 typedef struct
 {
@@ -413,7 +400,6 @@ typedef struct
     union
     {
         PSVRMorpheus  MorpheusState;
-        PSVRVirtualHMD VirtualHMDState;
     }               HmdState;
     bool            bValid;
     int             OutputSequenceNum;
@@ -1426,13 +1412,6 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdOrientationFilter(PSVRHmdID hmd_id, 
 	\return PSVRResult_RequestSent on success or PSVRResult_Error if the hmd was invalid
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdPredictionTime(PSVRHmdID hmd_id, float prediction_time);
-
-/** \brief Sets the assigned tracking color for the given HMD (only blue allowed for Morpheus)
-	\param hmd_id The ID of the HMD whose position filter we want to set
-    \param tracking_color_type The tracking color to use for this HMD
-	\return PSVRResult_RequestSent on success or PSVRResult_Error if the color was invalid
- */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetHmdTrackingColorID(PSVRHmdID HmdID, PSVRTrackingColorType tracking_color_type);
 
 /** 
 @} 

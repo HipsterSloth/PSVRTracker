@@ -5,7 +5,6 @@
 #include "PSVRClient_CAPI.h"
 #include "ServerHMDView.h"
 #include "ServerDeviceView.h"
-#include "VirtualHMDDeviceEnumerator.h"
 
 //-- methods -----
 //-- Tracker Manager Config -----
@@ -13,7 +12,6 @@ const int HMDManagerConfig::CONFIG_VERSION = 1;
 
 HMDManagerConfig::HMDManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
-    , virtual_hmd_count(0)
 {
 
 };
@@ -22,8 +20,7 @@ const configuru::Config
 HMDManagerConfig::writeToJSON()
 {
     configuru::Config pt{
-        {"version", HMDManagerConfig::CONFIG_VERSION},
-        {"virtual_hmd_count", virtual_hmd_count}
+        {"version", HMDManagerConfig::CONFIG_VERSION}
     };
 
     return pt;
@@ -36,7 +33,6 @@ HMDManagerConfig::readFromJSON(const configuru::Config &pt)
 
     if (version == HMDManagerConfig::CONFIG_VERSION)
     {
-        virtual_hmd_count = pt.get_or<int>("virtual_hmd_count", 0);
     }
     else
     {
@@ -64,10 +60,6 @@ HMDManager::startup()
 
         // Save back out the config in case there were updated defaults
         cfg.save();
-
-        // Copy the virtual controller count into the Virtual controller enumerator static variable.
-        // This breaks the dependency between the Controller Manager and the enumerator.
-        VirtualHMDDeviceEnumerator::virtual_hmd_count= cfg.virtual_hmd_count;
 
         success = true;
     }

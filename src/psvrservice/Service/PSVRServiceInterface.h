@@ -43,7 +43,6 @@ struct HMDOutputDataPacket
     union
     {
         PSVRMorpheus  morpheus_state;
-        PSVRVirtualHMD virtual_hmd_state;
     }               hmd_state;
     bool            is_valid;
     int             output_sequence_num;
