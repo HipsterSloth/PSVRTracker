@@ -56,7 +56,6 @@ public:
         : PSVRConfig(fnamebase)
 		, is_valid(false)
 		, version(CONFIG_VERSION)
-		, disable_command_interface(true)
 		, position_filter_type("LowPassOptical")
 		, orientation_filter_type("MadgwickARG")
 		, raw_accelerometer_variance(4.74999979e-03f)
@@ -112,9 +111,6 @@ public:
 
     bool is_valid;
     long version;
-
-	// Flag to disable usage of the command usb interface if other apps want to
-	bool disable_command_interface;
 
 	// The type of position filter to use
 	std::string position_filter_type;

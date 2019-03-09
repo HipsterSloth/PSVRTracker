@@ -285,7 +285,6 @@ MorpheusHMDConfig::writeToJSON()
     configuru::Config pt{
 	    {"is_valid", is_valid},
 	    {"version", MorpheusHMDConfig::CONFIG_VERSION},
-	    {"disable_command_interface", disable_command_interface},
 	    {"Calibration.Accel.X.k", accelerometer_gain.x},
 	    {"Calibration.Accel.Y.k", accelerometer_gain.y},
 	    {"Calibration.Accel.Z.k", accelerometer_gain.z},
@@ -328,8 +327,6 @@ MorpheusHMDConfig::readFromJSON(const configuru::Config &pt)
     if (version == MorpheusHMDConfig::CONFIG_VERSION)
     {
 		is_valid = pt.get_or<bool>("is_valid", false);
-
-		disable_command_interface= pt.get_or<bool>("disable_command_interface", disable_command_interface);
 
 		prediction_time = pt.get_or<float>("prediction_time", 0.f);
 		poll_timeout_ms = pt.get_or<long>("poll_timeout_ms", poll_timeout_ms);
@@ -509,22 +506,7 @@ bool MorpheusHMD::open(
 			m_sensorProcessor->start(USBContext->sensor_device_handle, m_hmdListener);
 		}
 
-		// Open the command interface using libusb.
-		// NOTE: Ideally we would use one usb library for both interfaces, but there are some complications.
-		// A) The command interface uses the bulk transfer endpoint and HIDApi doesn't support that endpoint.
-		// B) In Windows, libusb doesn't handle a high frequency of requests coming from two different threads well.
-		// In this case, PS3EyeDriver is constantly sending bulk transfer requests in its own thread to get video frames.
-		// If we started sending control transfer requests for the sensor data in the main thread at the same time
-		// it can lead to a crash. It shouldn't, but this was a problem previously setting video feed properties
-		// from the color config tool while a video feed was running.
-		if (!cfg.disable_command_interface)
-		{
-			morpheus_open_usb_device(USBContext);
-		}
-		else
-		{
-			PSVR_LOG_WARNING("MorpheusHMD::open") << "Morpheus command interface is flagged as DISABLED.";
-		}
+		morpheus_open_usb_device(USBContext);
 
         if (getIsOpen())  // Controller was opened and has an index
         {
@@ -626,8 +608,7 @@ MorpheusHMD::getUSBDevicePath() const
 bool
 MorpheusHMD::getIsOpen() const
 {
-    return USBContext->sensor_device_handle != nullptr && 
-		(USBContext->usb_device_handle != k_invalid_usb_device_handle || cfg.disable_command_interface);
+    return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != k_invalid_usb_device_handle;
 }
 
 #if 0
