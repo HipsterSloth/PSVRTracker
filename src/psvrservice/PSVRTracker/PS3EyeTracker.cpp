@@ -119,43 +119,50 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
 
 		// Fetch the camera capabilities
 		m_capabilities= usb_tracker_enumerator->getTrackerCapabilities();
+        if (m_capabilities != nullptr)
+        {
+		    // If no mode is specified, then default to the first mode
+		    if (m_cfg.current_mode == "")
+		    {
+			    m_cfg.current_mode= m_capabilities->supportedModes[0].modeName;
+		    }
 
-		// If no mode is specified, then default to the first mode
-		if (m_cfg.current_mode == "")
-		{
-			m_cfg.current_mode= m_capabilities->supportedModes[0].modeName;
-		}
+		    // Find the camera mode by name
+		    m_currentMode= m_capabilities->findCameraMode(m_cfg.current_mode);
+		    if (m_currentMode != nullptr)
+		    {
+			    // Copy the tracker intrinsics over from the capabilities
+			    m_cfg.trackerIntrinsics= m_currentMode->intrinsics.intrinsics.mono;
 
-		// Find the camera mode by name
-		m_currentMode= m_capabilities->findCameraMode(m_cfg.current_mode);
-		if (m_currentMode != nullptr)
-		{
-			// Copy the tracker intrinsics over from the capabilities
-			m_cfg.trackerIntrinsics= m_currentMode->intrinsics.intrinsics.mono;
+			    // Attempt to find a compatible video mode
+			    ePS3EyeVideoMode desiredVideoMode= 
+				    PS3EyeVideoDevice::findBestVideoMode(
+					    (unsigned int)m_currentMode->bufferPixelWidth,
+					    (unsigned int)m_currentMode->bufferPixelHeight,
+					    (unsigned int)m_currentMode->frameRate);
 
-			// Attempt to find a compatible video mode
-			ePS3EyeVideoMode desiredVideoMode= 
-				PS3EyeVideoDevice::findBestVideoMode(
-					(unsigned int)m_currentMode->bufferPixelWidth,
-					(unsigned int)m_currentMode->bufferPixelHeight,
-					(unsigned int)m_currentMode->frameRate);
+			    if (desiredVideoMode != PS3EyeVideoMode_INVALID)
+			    {
+				    m_videoDevice = new PS3EyeVideoDevice(usb_tracker_enumerator->get_usb_device_enumerator());
 
-			if (desiredVideoMode != PS3EyeVideoMode_INVALID)
-			{
-				m_videoDevice = new PS3EyeVideoDevice(usb_tracker_enumerator->get_usb_device_enumerator());
+				    if (m_videoDevice->open(
+						    desiredVideoMode,
+						    m_cfg, 
+						    m_listener))
+				    {
+					    bSuccess = true;
+				    }
+			    }
+		    }
 
-				if (m_videoDevice->open(
-						desiredVideoMode,
-						m_cfg, 
-						m_listener))
-				{
-					bSuccess = true;
-				}
-			}
-		}
-
-		// Save the config back out again in case defaults changed
-        m_cfg.save();
+		    // Save the config back out again in case defaults changed
+            m_cfg.save();
+        }
+        else
+        {
+            PSVR_LOG_ERROR("PS3EyeTracker::open") << "Unable to PS3EyeTracker(" << cur_dev_path << "). Unable to get tracker capabilities.";
+            bSuccess= false;
+        }
     }
     
     if (!bSuccess)

@@ -158,44 +158,51 @@ bool WMFMonoTracker::open(const DeviceEnumerator *enumerator)
 
 		// Fetch the camera capabilities
 		m_capabilities= wmf_enumerator->getTrackerCapabilities();
+        if (m_capabilities != nullptr)
+        {
+		    // If no mode is specified, then default to the first mode
+		    if (m_cfg.current_mode == "")
+		    {
+			    m_cfg.current_mode= m_capabilities->supportedModes[0].modeName;
+		    }
 
-		// If no mode is specified, then default to the first mode
-		if (m_cfg.current_mode == "")
-		{
-			m_cfg.current_mode= m_capabilities->supportedModes[0].modeName;
-		}
+		    // Find the camera mode by name
+		    m_currentMode= m_capabilities->findCameraMode(m_cfg.current_mode);
+		    if (m_currentMode != nullptr)
+		    {
+			    // Copy the tracker intrinsics over from the capabilities
+			    m_cfg.tracker_intrinsics= m_currentMode->intrinsics.intrinsics.mono;
 
-		// Find the camera mode by name
-		m_currentMode= m_capabilities->findCameraMode(m_cfg.current_mode);
-		if (m_currentMode != nullptr)
-		{
-			// Copy the tracker intrinsics over from the capabilities
-			m_cfg.tracker_intrinsics= m_currentMode->intrinsics.intrinsics.mono;
+			    // Attempt to find a compatible WMF video format
+			    std::string mfvideoformat= std::string("MFVideoFormat_")+m_currentMode->bufferFormat;
+			    int desiredFormatIndex= 
+				    wmf_enumerator->get_device_info()->findBestDeviceFormatIndex(
+					    (unsigned int)m_currentMode->bufferPixelWidth,
+					    (unsigned int)m_currentMode->bufferPixelHeight,
+					    (unsigned int)m_currentMode->frameRate,
+					    mfvideoformat.c_str());
 
-			// Attempt to find a compatible WMF video format
-			std::string mfvideoformat= std::string("MFVideoFormat_")+m_currentMode->bufferFormat;
-			int desiredFormatIndex= 
-				wmf_enumerator->get_device_info()->findBestDeviceFormatIndex(
-					(unsigned int)m_currentMode->bufferPixelWidth,
-					(unsigned int)m_currentMode->bufferPixelHeight,
-					(unsigned int)m_currentMode->frameRate,
-					mfvideoformat.c_str());
+			    if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
+			    {
+				    m_videoDevice = 
+					    new WMFVideoDevice(
+						    wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
 
-			if (desiredFormatIndex != INVALID_DEVICE_FORMAT_INDEX)
-			{
-				m_videoDevice = 
-					new WMFVideoDevice(
-						wmf_enumerator->get_device_index(), *wmf_enumerator->get_device_info());
+				    if (m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener))
+				    {
+					    bSuccess = true;
+				    }
+			    }
+		    }
 
-				if (m_videoDevice->open(desiredFormatIndex, m_cfg, m_listener))
-				{
-					bSuccess = true;
-				}
-			}
-		}
-
-		// Save the config back out again in case defaults changed
-        m_cfg.save();
+		    // Save the config back out again in case defaults changed
+            m_cfg.save();
+        }
+        else
+        {
+            PSVR_LOG_ERROR("PS3EyeTracker::open") << "Unable to WMFMonoTracker(" << cur_dev_path << "). Unable to get tracker capabilities.";
+            bSuccess= false;
+        }
     }
     
     if (!bSuccess)

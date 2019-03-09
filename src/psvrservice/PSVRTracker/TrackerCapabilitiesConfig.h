@@ -61,7 +61,7 @@ public:
 class TrackerCapabilitiesSet
 {
 public:
-	void reloadSupportedTrackerCapabilities();
+	bool reloadSupportedTrackerCapabilities();
 	bool supportsTracker(unsigned short vendor_id, unsigned short product_id) const;
 	CommonSensorState::eDeviceType findTrackerType(unsigned short vendor_id, unsigned short product_id) const;
 	const TrackerCapabilitiesConfig *getTrackerCapabilities(unsigned short vendor_id, unsigned short product_id) const;

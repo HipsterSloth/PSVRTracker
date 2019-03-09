@@ -146,7 +146,11 @@ TrackerManager::startup()
         cfg.save();
 
 		// Fetch the config files for all the trackers we support
-		m_supportedTrackers->reloadSupportedTrackerCapabilities();
+        if (!m_supportedTrackers->reloadSupportedTrackerCapabilities())
+        {
+            PSVR_LOG_ERROR("TrackerManager::startup") << "Failed to load any tracker capability files!";
+            return false;
+        }
 
         // The PS4 camera needs firmware uploaded first before it will show up as a connected device
         uploadFirmwareToAllPS4Cameras(

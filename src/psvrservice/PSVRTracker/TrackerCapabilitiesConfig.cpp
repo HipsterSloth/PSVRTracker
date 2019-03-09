@@ -167,7 +167,7 @@ void TrackerCapabilitiesConfig::getAvailableTrackerModes(std::vector<std::string
 	}
 }
 
-void TrackerCapabilitiesSet::reloadSupportedTrackerCapabilities()
+bool TrackerCapabilitiesSet::reloadSupportedTrackerCapabilities()
 {
 	std::string capability_directory= Utility::get_resource_directory() + std::string("\\supported_trackers\\");
 	std::string search_path= capability_directory + std::string("*.json");
@@ -186,6 +186,8 @@ void TrackerCapabilitiesSet::reloadSupportedTrackerCapabilities()
 			m_supportedTrackers.push_back(config);
 		}
 	}
+
+    return m_supportedTrackers.size() > 0;
 }
 
 bool TrackerCapabilitiesSet::supportsTracker(
