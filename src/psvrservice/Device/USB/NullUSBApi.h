@@ -35,19 +35,19 @@ public:
 	eUSBResultCode submit_interrupt_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
 	eUSBResultCode submit_control_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
     eUSBResultCode submit_bulk_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
-	IUSBBulkTransferBundle *allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_BulkTransferBundle *request) override;
+	IUSBTransferBundle *allocate_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_TransferBundle *request) override;
 
 	bool get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const override;
 	bool get_usb_device_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 	bool get_usb_device_port_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 };
 
-class NullUSBBulkTransferBundle : public IUSBBulkTransferBundle
+class NullUSBTransferBundle : public IUSBTransferBundle
 {
 public:
-    NullUSBBulkTransferBundle(
+    NullUSBTransferBundle(
         const USBDeviceState *device_state,
-		const struct USBRequestPayload_BulkTransferBundle *request);
+		const struct USBRequestPayload_TransferBundle *request);
 
     // Interface
     bool initialize() override;
@@ -55,12 +55,12 @@ public:
     void cancelTransfers() override;
 
     // Accessors
-	const USBRequestPayload_BulkTransferBundle &getTransferRequest() const override;
+	const USBRequestPayload_TransferBundle &getTransferRequest() const override;
 	t_usb_device_handle getUSBDeviceHandle() const override;
 	int getActiveTransferCount() const override;
 
 private:
-    USBRequestPayload_BulkTransferBundle m_request;
+    USBRequestPayload_TransferBundle m_request;
 };
 
 #endif // USB_API_INTERFACE_H

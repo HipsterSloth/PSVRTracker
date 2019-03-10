@@ -111,8 +111,8 @@ enum eUSBTransferRequestType
 	_USBRequestType_InterruptTransfer,
     _USBRequestType_ControlTransfer,
     _USBRequestType_BulkTransfer,
-    _USBRequestType_StartBulkTransferBundle,
-    _USBRequestType_CancelBulkTransferBundle,
+    _USBRequestType_StartTransferBundle,
+    _USBRequestType_CancelTransferBundle,
 	_USBRequestType_ComplexTransfer,
 };
 
@@ -121,7 +121,7 @@ enum eUSBTransferResultType
 	_USBResultType_InterruptTransfer,
     _USBResultType_ControlTransfer,
     _USBResultType_BulkTransfer,
-    _USBResultType_BulkTransferBundle,
+    _USBResultType_TransferBundle,
 	_USBResultType_ComplexTransfer
 };
 
@@ -188,17 +188,25 @@ struct USBRequestPayload_BulkTransfer
 	{}
 };
 
-struct USBRequestPayload_BulkTransferBundle
+enum eUSBTransferBundleType
+{
+	_USBTransferBundleType_Interrupt,
+    _USBTransferBundleType_Bulk,
+};
+
+struct USBRequestPayload_TransferBundle
 {
     t_usb_device_handle usb_device_handle;
+    eUSBTransferBundleType transfer_type;
     int transfer_packet_size;
     int in_flight_transfer_packet_count;
     usb_bulk_transfer_cb_fn on_data_callback;
     void *transfer_callback_userdata;
     bool bAutoResubmit;
 
-	USBRequestPayload_BulkTransferBundle()
+	USBRequestPayload_TransferBundle()
 		: usb_device_handle(k_invalid_usb_device_handle)
+        , transfer_type(_USBTransferBundleType_Bulk)
 		, transfer_packet_size(0)
 		, in_flight_transfer_packet_count(0)
 		, on_data_callback(nullptr)
@@ -207,11 +215,11 @@ struct USBRequestPayload_BulkTransferBundle
 	{}
 };
 
-struct USBRequestPayload_CancelBulkTransferBundle
+struct USBRequestPayload_CancelTransferBundle
 {
     t_usb_device_handle usb_device_handle;
 
-	USBRequestPayload_CancelBulkTransferBundle()
+	USBRequestPayload_CancelTransferBundle()
 		: usb_device_handle(k_invalid_usb_device_handle)
 	{}
 };
@@ -232,8 +240,8 @@ union USBRequestPayload
 	USBRequestPayload_InterruptTransfer interrupt_transfer;
     USBRequestPayload_ControlTransfer control_transfer;
     USBRequestPayload_BulkTransfer bulk_transfer;
-    USBRequestPayload_BulkTransferBundle start_bulk_transfer_bundle;
-    USBRequestPayload_CancelBulkTransferBundle cancel_bulk_transfer_bundle;
+    USBRequestPayload_TransferBundle start_transfer_bundle;
+    USBRequestPayload_CancelTransferBundle cancel_transfer_bundle;
 	USBRequestPayload_ComplexTransfer complex_transfer;
 
 	USBRequestPayload() {
@@ -277,11 +285,11 @@ struct USBTransferRequest
 		case _USBRequestType_BulkTransfer:
 			payload.bulk_transfer= USBRequestPayload_BulkTransfer();
 			break;
-		case _USBRequestType_StartBulkTransferBundle:
-			payload.start_bulk_transfer_bundle= USBRequestPayload_BulkTransferBundle();
+		case _USBRequestType_StartTransferBundle:
+			payload.start_transfer_bundle= USBRequestPayload_TransferBundle();
 			break;
-		case _USBRequestType_CancelBulkTransferBundle:
-			payload.cancel_bulk_transfer_bundle= USBRequestPayload_CancelBulkTransferBundle();
+		case _USBRequestType_CancelTransferBundle:
+			payload.cancel_transfer_bundle= USBRequestPayload_CancelTransferBundle();
 			break;
 		case _USBRequestType_ComplexTransfer:
 			payload.complex_transfer= USBRequestPayload_ComplexTransfer();
@@ -305,11 +313,11 @@ struct USBTransferRequest
 		case _USBRequestType_BulkTransfer:
 			payload.bulk_transfer= request.payload.bulk_transfer;
 			break;
-		case _USBRequestType_StartBulkTransferBundle:
-			payload.start_bulk_transfer_bundle= request.payload.start_bulk_transfer_bundle;
+		case _USBRequestType_StartTransferBundle:
+			payload.start_transfer_bundle= request.payload.start_transfer_bundle;
 			break;
-		case _USBRequestType_CancelBulkTransferBundle:
-			payload.cancel_bulk_transfer_bundle= request.payload.cancel_bulk_transfer_bundle;
+		case _USBRequestType_CancelTransferBundle:
+			payload.cancel_transfer_bundle= request.payload.cancel_transfer_bundle;
 			break;
 		case _USBRequestType_ComplexTransfer:
 			payload.complex_transfer= request.payload.complex_transfer;

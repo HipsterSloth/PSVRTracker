@@ -106,9 +106,9 @@ eUSBResultCode NullUSBApi::submit_bulk_transfer(
 	return _USBResultCode_InvalidAPI;
 }
 
-IUSBBulkTransferBundle *NullUSBApi::allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_BulkTransferBundle *request)
+IUSBTransferBundle *NullUSBApi::allocate_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_TransferBundle *request)
 {
-	return new NullUSBBulkTransferBundle(device_state, request);
+	return new NullUSBTransferBundle(device_state, request);
 }
 
 bool NullUSBApi::get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const
@@ -127,39 +127,39 @@ bool NullUSBApi::get_usb_device_port_path(USBDeviceState* device_state, char *ou
 }
 
 //-- NullUSBBulkTransferBundle -----
-NullUSBBulkTransferBundle::NullUSBBulkTransferBundle(
+NullUSBTransferBundle::NullUSBTransferBundle(
 	const USBDeviceState *device_state,
-	const struct USBRequestPayload_BulkTransferBundle *request)
-	: IUSBBulkTransferBundle(device_state, request)
+	const struct USBRequestPayload_TransferBundle *request)
+	: IUSBTransferBundle(device_state, request)
 	, m_request(*request)
 {
 }
 
-bool NullUSBBulkTransferBundle::initialize()
+bool NullUSBTransferBundle::initialize()
 {
 	return true;
 }
 
-bool NullUSBBulkTransferBundle::startTransfers()
+bool NullUSBTransferBundle::startTransfers()
 {
 	return true;
 }
 
-void NullUSBBulkTransferBundle::cancelTransfers()
+void NullUSBTransferBundle::cancelTransfers()
 {
 }
 
-const USBRequestPayload_BulkTransferBundle &NullUSBBulkTransferBundle::getTransferRequest() const
+const USBRequestPayload_TransferBundle &NullUSBTransferBundle::getTransferRequest() const
 {
 	return m_request;
 }
 
-t_usb_device_handle NullUSBBulkTransferBundle::getUSBDeviceHandle() const
+t_usb_device_handle NullUSBTransferBundle::getUSBDeviceHandle() const
 {
 	return m_request.usb_device_handle;
 }
 
-int NullUSBBulkTransferBundle::getActiveTransferCount() const
+int NullUSBTransferBundle::getActiveTransferCount() const
 {
 	return 0;
 }

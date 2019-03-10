@@ -106,18 +106,18 @@ public:
 	virtual eUSBResultCode submit_interrupt_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestStateOnHeap) = 0;
 	virtual eUSBResultCode submit_control_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestStateOnHeap) = 0;
     virtual eUSBResultCode submit_bulk_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestStateOnHeap) = 0;
-	virtual class IUSBBulkTransferBundle *allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_BulkTransferBundle *request) = 0;
+	virtual class IUSBTransferBundle *allocate_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_TransferBundle *request) = 0;
 
 	virtual bool get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const = 0;
 	virtual bool get_usb_device_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const = 0;
 	virtual bool get_usb_device_port_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const = 0;
 };
 
-class IUSBBulkTransferBundle
+class IUSBTransferBundle
 {
 public:
-	IUSBBulkTransferBundle(const USBDeviceState *device_state, const struct USBRequestPayload_BulkTransferBundle *request) {}
-	virtual ~IUSBBulkTransferBundle() {}
+	IUSBTransferBundle(const USBDeviceState *device_state, const struct USBRequestPayload_TransferBundle *request) {}
+	virtual ~IUSBTransferBundle() {}
 
 	// Interface
 	virtual bool initialize() = 0;
@@ -125,7 +125,7 @@ public:
 	virtual void cancelTransfers() = 0;
 
 	// Accessors
-	virtual const USBRequestPayload_BulkTransferBundle &getTransferRequest() const = 0;
+	virtual const USBRequestPayload_TransferBundle &getTransferRequest() const = 0;
 	virtual t_usb_device_handle getUSBDeviceHandle() const = 0;
 	virtual int getActiveTransferCount() const = 0;
 };

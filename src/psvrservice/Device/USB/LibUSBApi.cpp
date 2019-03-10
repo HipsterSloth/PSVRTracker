@@ -1,6 +1,6 @@
 //-- includes -----
 #include "LibUSBApi.h"
-#include "LibUSBBulkTransferBundle.h"
+#include "LibUSBTransferBundle.h"
 #include "Logger.h"
 #include "Utility.h"
 #include "USBDeviceFilter.h"
@@ -15,17 +15,6 @@
 #endif
 #include "libusb.h"
 
-//-- definitions -----
-struct APIContext
-{
-	libusb_context* lib_usb_context;
-};
-
-struct LibUSBDeviceEnumerator : USBDeviceEnumerator
-{
-	libusb_device **device_list;
-};
-
 //-- private methods -----
 static void LIBUSB_CALL interrupt_transfer_cb(struct libusb_transfer *transfer);
 static void LIBUSB_CALL control_transfer_cb(struct libusb_transfer *transfer);
@@ -34,10 +23,159 @@ static void LIBUSB_CALL bulk_transfer_cb(struct libusb_transfer *transfer);
 static bool libusb_device_get_path(libusb_device *dev, char *outBuffer, size_t bufferSize);
 static bool libusb_device_get_port_path(libusb_device *dev, char *outBuffer, size_t bufferSize);
 
+//-- definitions -----
+class LibUSBDeviceInterfaceState
+{
+public:
+    LibUSBDeviceInterfaceState(struct libusb_device_handle *device_handle)
+        : m_deviceHandle(device_handle)
+        , m_claimedInterfaceBitmask(0)
+    {
+    }
+
+    inline struct libusb_device_handle *getLibUSBDeviceHandle() const { return m_deviceHandle; }
+
+    inline void markInterfaceClaimed(int interfaceIndex)
+    {
+        m_claimedInterfaceBitmask|= (1 << interfaceIndex);
+    }
+
+    inline bool hasInterfaceClaimed(int interfaceIndex)
+    {
+        return (m_claimedInterfaceBitmask & (1 << interfaceIndex)) > 0;
+    }
+
+    inline bool hasAnyInterfaceClaimed()
+    {
+        return m_claimedInterfaceBitmask > 0;
+    }
+
+    inline void clearInterfaceClaimed(int interfaceIndex)
+    {
+        m_claimedInterfaceBitmask&= ~(1 << interfaceIndex);
+    }
+
+protected:
+	struct libusb_device_handle *m_deviceHandle;
+	int m_claimedInterfaceBitmask;
+};
+typedef std::map<struct libusb_device *, LibUSBDeviceInterfaceState *> t_libusb_device_interface_map;
+typedef std::map<struct libusb_device *, LibUSBDeviceInterfaceState *>::iterator t_libusb_device_interface_map_iterator;
+typedef std::pair<struct libusb_device *, LibUSBDeviceInterfaceState *> t_libusb_device_interface_pair;
+
+class LibUSBAPIContext
+{
+public:
+	libusb_context* lib_usb_context;
+    t_libusb_device_interface_map device_interface_map; 
+
+public:
+    struct libusb_device_handle *open_usb_device_interface(
+        struct libusb_device * device, 
+        int interface_index,
+        int configuration_index,
+        bool reset_device)
+    {
+        struct libusb_device_handle *device_handle= nullptr;
+        LibUSBDeviceInterfaceState *device_interface_state= nullptr;
+
+        t_libusb_device_interface_map_iterator iter = device_interface_map.find(device);
+        if (iter == device_interface_map.end())
+        {
+		    libusb_ref_device(device);
+
+		    int res = libusb_open(device, &device_handle);
+		    if (res == LIBUSB_SUCCESS)
+		    {
+                if (reset_device)
+                {
+	                libusb_reset_device(device_handle);
+                }
+
+                if (configuration_index >= 0)
+                {
+	                libusb_set_configuration(device_handle, configuration_index);
+                }
+
+                // Create a new device/interface mapping entry
+                device_interface_state= new LibUSBDeviceInterfaceState(device_handle);
+                device_interface_map.insert(t_libusb_device_interface_pair(device, device_interface_state));
+
+                char devicePath[256];
+                if (libusb_device_get_path(device, devicePath, sizeof(devicePath)))
+                {
+                    PSVR_LOG_INFO("USBAsyncRequestManager::openUSBDevice") << "Successfully opened device " << devicePath;
+                }
+		    }
+		    else
+		    {
+			    PSVR_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to open USB device: " << libusb_error_name(res);
+		    }
+        }
+        else
+        {
+            device_interface_state= iter->second;
+            device_handle= device_interface_state->getLibUSBDeviceHandle();
+        }
+
+        if (device_handle != nullptr)
+        {
+		    int res = libusb_claim_interface(device_handle, interface_index);
+		    if (res == 0)
+		    {
+			    device_interface_state->markInterfaceClaimed(interface_index);
+		    }
+		    else
+		    {
+			    PSVR_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to claim USB device: " << libusb_error_name(res);
+		    }
+        }
+
+        return device_handle;
+    }
+
+    void close_usb_device_interface(t_usb_device_handle public_handle, struct libusb_device * device, int interface_index)
+    {
+        if (device == nullptr)
+            return;
+
+        t_libusb_device_interface_map_iterator iter = device_interface_map.find(device);
+        if (iter != device_interface_map.end())
+        {
+            LibUSBDeviceInterfaceState *device_interface_state= iter->second;
+
+            if (device_interface_state->hasInterfaceClaimed(interface_index))
+            {
+			    PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Released USB interface on handle " << public_handle.unique_id;
+			    libusb_release_interface(device_interface_state->getLibUSBDeviceHandle(), interface_index);
+                device_interface_state->clearInterfaceClaimed(interface_index);
+
+                // See if there are no more claimed interfaces
+                if (!device_interface_state->hasAnyInterfaceClaimed())
+                {
+                    // Close the usb device
+			        PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Close USB device on handle " << public_handle.unique_id;
+			        libusb_close(device_interface_state->getLibUSBDeviceHandle());
+			        libusb_unref_device(device);
+
+                    // Remove the entry from the device/interface map
+                    delete device_interface_state;
+                    device_interface_map.erase(iter);
+                }
+            }
+        }
+    }
+};
+
+struct LibUSBDeviceEnumerator : USBDeviceEnumerator
+{
+	libusb_device **device_list;
+};
+
 //-- public interface -----
 LibUSBApi::LibUSBApi() : IUSBApi()
 {
-	m_apiContext = new APIContext;
+	m_apiContext = new LibUSBAPIContext;
 }
 
 LibUSBApi::~LibUSBApi()
@@ -204,49 +342,19 @@ USBDeviceState *LibUSBApi::open_usb_device(
 
 	if (device_enumerator_is_valid(enumerator))
 	{
-		bool bOpened = false;
-		
-		libusb_device_state = new LibUSBDeviceState;
-		libusb_device_state->clear();
+        struct libusb_device *device = libusb_enumerator->device_list[libusb_enumerator->device_index];
+        struct libusb_device_handle *device_handle= 
+            m_apiContext->open_usb_device_interface(
+                device, interface_index, configuration_index, reset_device);
 
-		libusb_device_state->device = libusb_enumerator->device_list[libusb_enumerator->device_index];
-		libusb_ref_device(libusb_device_state->device);
-
-		int res = libusb_open(libusb_device_state->device, &libusb_device_state->device_handle);
-		if (res == LIBUSB_SUCCESS)
+		if (device_handle != nullptr)
 		{
-            if (reset_device)
-            {
-	            libusb_reset_device(libusb_device_state->device_handle);
-            }
+		    libusb_device_state = new LibUSBDeviceState;
+		    libusb_device_state->clear();
 
-            if (configuration_index >= 0)
-            {
-	            libusb_set_configuration(libusb_device_state->device_handle, configuration_index);
-            }
-
-			res = libusb_claim_interface(libusb_device_state->device_handle, interface_index);
-			if (res == 0)
-			{
-				libusb_device_state->claimed_interface_index= interface_index;
-				bOpened = true;
-
-				PSVR_LOG_INFO("USBAsyncRequestManager::openUSBDevice") << "Successfully opened device " << libusb_device_state->public_handle.unique_id;
-			}
-			else
-			{
-				PSVR_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to claim USB device: " << libusb_error_name(res);
-			}
-		}
-		else
-		{
-			PSVR_LOG_ERROR("USBAsyncRequestManager::openUSBDevice") << "Failed to open USB device: " << libusb_error_name(res);
-		}
-
-		if (!bOpened)
-		{
-			close_usb_device(libusb_device_state);
-			libusb_device_state= nullptr;
+		    libusb_device_state->device = device;
+            libusb_device_state->device_handle= device_handle;
+		    libusb_device_state->claimed_interface_index= interface_index;
 		}
 	}
 
@@ -259,25 +367,10 @@ void LibUSBApi::close_usb_device(USBDeviceState* device_state)
 	{
 		LibUSBDeviceState *libusb_device_state = static_cast<LibUSBDeviceState *>(device_state);
 
-		if (libusb_device_state->claimed_interface_index != -1)
-		{
-			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Released USB interface on handle " << libusb_device_state->public_handle.unique_id;
-			libusb_release_interface(libusb_device_state->device_handle, libusb_device_state->claimed_interface_index);
-			libusb_device_state->claimed_interface_index = -1;
-		}
-
-		if (libusb_device_state->device_handle != nullptr)
-		{
-			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Close USB device on handle " << libusb_device_state->public_handle.unique_id;
-			libusb_close(libusb_device_state->device_handle);
-			libusb_device_state->device_handle = nullptr;
-		}
-
-		if (libusb_device_state->device != nullptr)
-		{
-			libusb_unref_device(libusb_device_state->device);
-			libusb_device_state->device = nullptr;
-		}
+        m_apiContext->close_usb_device_interface(
+            libusb_device_state->public_handle, 
+            libusb_device_state->device, 
+            libusb_device_state->claimed_interface_index);
 
 		delete libusb_device_state;
 	}
@@ -801,9 +894,9 @@ static void LIBUSB_CALL bulk_transfer_cb(struct libusb_transfer *transfer)
 	libusb_free_transfer(transfer);
 }
 
-IUSBBulkTransferBundle *LibUSBApi::allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_BulkTransferBundle *request)
+IUSBTransferBundle *LibUSBApi::allocate_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_TransferBundle *request)
 {
-	return new LibUSBBulkTransferBundle(device_state, request);
+	return new LibUSBTransferBundle(device_state, request);
 }
 
 bool LibUSBApi::get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const

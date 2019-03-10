@@ -3,7 +3,8 @@
 #include "DeviceInterface.h"
 #include "DeviceManager.h"
 #include "HMDDeviceEnumerator.h"
-#include "HidHMDDeviceEnumerator.h"
+#include "HMDHidDeviceEnumerator.h"
+#include "HMDUsbDeviceEnumerator.h"
 #include "MathUtility.h"
 #include "Logger.h"
 #include "Utility.h"
@@ -69,12 +70,16 @@ public:
 	std::string device_identifier;
 
 	// HIDApi state
-    std::string sensor_device_path;
-	hid_device *sensor_device_handle;
-	
-	// USB state
-    std::string usb_device_path;
-	t_usb_device_handle usb_device_handle;
+    std::string sensor_hid_path;
+	hid_device *sensor_hid_handle;
+
+	// Sensor Interface USB state
+    std::string sensor_usb_device_path;
+	t_usb_device_handle sensor_usb_device_handle;
+
+	// Command Interface USB state
+    std::string command_usb_device_path;
+	t_usb_device_handle command_usb_device_handle;
 
     MorpheusUSBContext()
     {
@@ -84,10 +89,12 @@ public:
     void Reset()
     {
 		device_identifier = "";
-        sensor_device_path = "";
-		sensor_device_handle = nullptr;
-        usb_device_path= "";
-        usb_device_handle= k_invalid_usb_device_handle;
+        sensor_hid_path = "";
+		sensor_hid_handle = nullptr;
+        sensor_usb_device_path= "";
+        sensor_usb_device_handle= k_invalid_usb_device_handle;
+        command_usb_device_path= "";
+        command_usb_device_handle= k_invalid_usb_device_handle;
     }
 };
 
@@ -175,10 +182,17 @@ struct MorpheusCommand
 };
 #pragma pack()
 
-class MorpheusSensorProcessor : public WorkerThread
+class IMorpheusSensorProcessor
 {
 public:
-	MorpheusSensorProcessor(const MorpheusHMDConfig &cfg) 
+    virtual void start(class MorpheusUSBContext *USBContext, IHMDListener *hmd_listener) = 0;
+    virtual void stop() = 0;
+};
+
+class MorpheusHIDSensorProcessor : public WorkerThread, public IMorpheusSensorProcessor
+{
+public:
+	MorpheusHIDSensorProcessor(const MorpheusHMDConfig &cfg) 
 		: WorkerThread("MorpheusSensorProcessor")
 		, m_cfg(cfg)
 		, m_hidDevice(nullptr)
@@ -188,22 +202,22 @@ public:
 		m_rawHIDPacket = new MorpheusSensorData;
 	}
 
-	~MorpheusSensorProcessor()
+	virtual ~MorpheusHIDSensorProcessor()
 	{
 		delete m_rawHIDPacket;
 	}
 
-    void start(hid_device *in_hid_device, IHMDListener *hmd_listener)
+    void start(class MorpheusUSBContext *USBContext, IHMDListener *hmd_listener) override
     {
 		if (!hasThreadStarted())
 		{
-			m_hidDevice= in_hid_device;
+			m_hidDevice= USBContext->sensor_hid_handle;
 			m_hmdListener= hmd_listener;
 			WorkerThread::startThread();
 		}
     }
 
-	void stop()
+	void stop() override
 	{
 		WorkerThread::stopThread();
 	}
@@ -262,9 +276,101 @@ protected:
     struct MorpheusSensorData *m_rawHIDPacket;                        // Buffer to hold most recent MorpheusAPI tracking state
 };
 
+class MorpheusUSBSensorProcessor : public IMorpheusSensorProcessor
+{
+public:
+	MorpheusUSBSensorProcessor(const MorpheusHMDConfig &cfg) 
+		: m_cfg(cfg)
+		, m_usbDeviceHandle(k_invalid_usb_device_handle)
+        , m_hmdListener(nullptr)
+        , m_bStartedStream(false)
+		, m_nextPollSequenceNumber(0)
+	{
+	}
+
+    void start(class MorpheusUSBContext *USBContext, IHMDListener *hmd_listener) override
+    {
+        if (!m_bStartedStream)
+        {
+		    m_usbDeviceHandle= USBContext->sensor_usb_device_handle;
+		    m_hmdListener= hmd_listener;
+
+		    // Send a request to the USBDeviceManager to start a interrupr transfer stream for sensor data.
+		    // This will spin up a thread in the USB manager for reading the incoming USB packets.
+		    // The usbInterruptTransferCallback_usbThread() callback will be executed on the usb worker thread.
+		    USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_StartTransferBundle);
+		    request.payload.start_transfer_bundle.usb_device_handle= m_usbDeviceHandle;
+            request.payload.start_transfer_bundle.transfer_type= _USBTransferBundleType_Interrupt;
+		    request.payload.start_transfer_bundle.bAutoResubmit= true;
+		    request.payload.start_transfer_bundle.in_flight_transfer_packet_count= 1;
+		    request.payload.start_transfer_bundle.transfer_packet_size= sizeof(MorpheusSensorData);
+		    request.payload.start_transfer_bundle.on_data_callback= usbInterruptTransferCallback_usbThread;
+		    request.payload.start_transfer_bundle.transfer_callback_userdata= this;
+
+		    USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
+		    PSVR_LOG_INFO("MorpheusUSBSensorProcessor::start - transfer bundle start result: ") << usb_device_get_error_string(result.payload.bulk_transfer_bundle.result_code); 
+		    if (result.result_type == eUSBTransferRequestType::_USBRequestType_StartTransferBundle)
+		    {
+			    m_bStartedStream= true;
+		    }
+        }
+    }
+
+	void stop() override
+	{
+        if (m_bStartedStream)
+        {
+		    // Send a request to the USBDeviceManager to stop the interrupt transfer stream for sensor data
+		    USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_CancelTransferBundle);
+		    request.payload.cancel_transfer_bundle.usb_device_handle= m_usbDeviceHandle;
+
+		    // This will block until the processing USB packet processing thread exits
+		    USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
+		    assert(result.result_type == eUSBTransferResultType::_USBResultType_TransferBundle);
+		    PSVR_LOG_INFO("MorpheusUSBSensorProcessor::stop - transfer bundle stop result: ") << usb_device_get_error_string(result.payload.bulk_transfer_bundle.result_code); 
+
+            m_bStartedStream= false;
+        }
+	}
+
+protected:
+    static void usbInterruptTransferCallback_usbThread(unsigned char *packet_data, int packet_length, void *userdata)
+    {
+        MorpheusUSBSensorProcessor *processor= reinterpret_cast<MorpheusUSBSensorProcessor *>(userdata);
+
+        if (packet_length >= sizeof(MorpheusSensorData))
+        {
+            processor->onNewSensorData_usbThread(reinterpret_cast<struct MorpheusSensorData *>(packet_data));
+        }
+    }
+
+    void onNewSensorData_usbThread(struct MorpheusSensorData *m_rawUSBPacket)
+    {
+		MorpheusHMDSensorState newState;
+
+		// Increment the sequence for every new polling packet
+		newState.PollSequenceNumber = m_nextPollSequenceNumber;
+		++m_nextPollSequenceNumber;
+
+		// Processes the IMU data
+		newState.parse_data_input(&m_cfg, m_rawUSBPacket);
+
+		m_hmdListener->notifySensorDataReceived(&newState);
+    }
+
+    // Multithreaded state
+	const MorpheusHMDConfig m_cfg;
+	t_usb_device_handle m_usbDeviceHandle;
+	IHMDListener *m_hmdListener;
+    bool m_bStartedStream;
+
+    // Worker thread state
+    int m_nextPollSequenceNumber;
+};
+
 // -- private methods
-static bool morpheus_open_usb_device(MorpheusUSBContext *morpheus_context);
-static void morpheus_close_usb_device(MorpheusUSBContext *morpheus_context);
+static bool morpheus_open_usb_command_interface(MorpheusUSBContext *morpheus_context, USBDeviceEnumerator* usb_device_enumerator);
+static void morpheus_close_usb_command_interface(MorpheusUSBContext *morpheus_context);
 static bool morpheus_enable_tracking(MorpheusUSBContext *morpheus_context);
 static bool morpheus_set_headset_power(MorpheusUSBContext *morpheus_context, bool bIsOn);
 static bool morpheus_set_led_brightness(MorpheusUSBContext *morpheus_context, unsigned short led_bitmask, unsigned char intensity);
@@ -443,7 +549,7 @@ MorpheusHMD::MorpheusHMD()
 {
     USBContext = new MorpheusUSBContext;
     InData = new MorpheusSensorData;
-	m_sensorProcessor = new MorpheusSensorProcessor(cfg);
+	m_sensorProcessor = nullptr;
 }
 
 MorpheusHMD::~MorpheusHMD()
@@ -453,14 +559,18 @@ MorpheusHMD::~MorpheusHMD()
         PSVR_LOG_ERROR("~MorpheusHMD") << "HMD deleted without calling close() first!";
     }
 
-	delete m_sensorProcessor;
+    if (m_sensorProcessor != nullptr)
+    {
+    	delete m_sensorProcessor;
+    }
+
     delete InData;
     delete USBContext;
 }
 
 bool MorpheusHMD::open()
 {
-    HMDDeviceEnumerator enumerator(HMDDeviceEnumerator::CommunicationType_HID);
+    HMDDeviceEnumerator enumerator(HMDDeviceEnumerator::CommunicationType_ALL);
     bool success = false;
 
     if (enumerator.is_valid())
@@ -494,23 +604,51 @@ bool MorpheusHMD::open(
 
 		USBContext->device_identifier = cur_dev_path;
 
-		// Open the sensor interface using HIDAPI
-		USBContext->sensor_device_path = pEnum->get_hid_hmd_enumerator()->get_interface_path(MORPHEUS_SENSOR_INTERFACE);
-		USBContext->sensor_device_handle = hid_open_path(USBContext->sensor_device_path.c_str());
-		if (USBContext->sensor_device_handle != nullptr)
-		{
-			// Perform blocking reads in the IMU thread
-			hid_set_nonblocking(USBContext->sensor_device_handle, 0);
-
-			// Start the HID packet processing thread
-			m_sensorProcessor->start(USBContext->sensor_device_handle, m_hmdListener);
-		}
-
-		morpheus_open_usb_device(USBContext);
-
-        if (getIsOpen())  // Controller was opened and has an index
+        // If the enumerator found a HID driver for the USB sensor interface, use that API
+        if (pEnum->get_api_type() == HMDDeviceEnumerator::CommunicationType_HID)
         {
-			if (USBContext->usb_device_handle != k_invalid_usb_device_handle)
+		    // Open the sensor interface using HIDAPI
+		    USBContext->sensor_hid_path = pEnum->get_hmd_hid_enumerator()->get_hid_interface_path();
+		    USBContext->sensor_hid_handle = hid_open_path(USBContext->sensor_hid_path.c_str());
+		    if (USBContext->sensor_hid_handle != nullptr)
+		    {
+			    // Perform blocking reads in the IMU thread
+			    hid_set_nonblocking(USBContext->sensor_hid_handle, 0);
+
+                // Open the command interface to the morpheus
+                if (morpheus_open_usb_command_interface(USBContext, nullptr))
+                {
+                    // Start the HID packet processing thread
+                    m_sensorProcessor = new MorpheusHIDSensorProcessor(cfg);
+                    m_sensorProcessor->start(USBContext, m_hmdListener);
+                }
+		    }
+        }
+        // Otherwise fall back to using interrupt transfers over USB for the sensor data
+        else if (pEnum->get_api_type() == HMDDeviceEnumerator::CommunicationType_USB)
+        {             
+            USBContext->sensor_usb_device_path= pEnum->get_hmd_usb_enumerator()->get_path();
+            USBContext->sensor_usb_device_handle= usb_device_open(
+                pEnum->get_hmd_usb_enumerator()->get_usb_device_enumerator(), 
+                MORPHEUS_SENSOR_INTERFACE);
+
+            if (USBContext->sensor_usb_device_handle != k_invalid_usb_device_handle)
+            {
+                // Open the command interface to the morpheus
+                if (morpheus_open_usb_command_interface(
+                    USBContext,
+                    pEnum->get_hmd_usb_enumerator()->get_usb_device_enumerator()))
+                {
+                    // Start the HID packet processing thread
+                    m_sensorProcessor = new MorpheusUSBSensorProcessor(cfg);
+                    m_sensorProcessor->start(USBContext, m_hmdListener);
+                }
+            }
+        }
+
+        if (getIsOpen())
+        {
+			if (USBContext->command_usb_device_handle != k_invalid_usb_device_handle)
 			{
 				if (morpheus_set_headset_power(USBContext, true))
 				{
@@ -542,22 +680,34 @@ bool MorpheusHMD::open(
 
 void MorpheusHMD::close()
 {
-    if (USBContext->sensor_device_handle != nullptr || USBContext->usb_device_handle != k_invalid_usb_device_handle)
+    if (USBContext->sensor_hid_handle != nullptr || 
+        USBContext->sensor_usb_device_handle != k_invalid_usb_device_handle ||
+        USBContext->command_usb_device_handle != k_invalid_usb_device_handle)
     {
-		if (USBContext->sensor_device_handle != nullptr)
+		if (USBContext->sensor_hid_handle != nullptr)
 		{
 			// halt the HID packet processing thread
 			m_sensorProcessor->stop();
 
-			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD sensor interface(" << USBContext->sensor_device_path << ")";
-			hid_close(USBContext->sensor_device_handle);
+			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD sensor HID interface(" << USBContext->sensor_hid_path << ")";
+			hid_close(USBContext->sensor_hid_handle);
 		}
 
-		if (USBContext->usb_device_handle != k_invalid_usb_device_handle)
+		if (USBContext->sensor_usb_device_handle != k_invalid_usb_device_handle)
+		{
+			// halt the HID packet processing thread
+			m_sensorProcessor->stop();
+
+            PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD sensor USB interface(" << USBContext->sensor_usb_device_path << ")";
+		    usb_device_close(USBContext->sensor_usb_device_handle);
+		    USBContext->sensor_usb_device_handle = k_invalid_usb_device_handle;
+		}
+
+		if (USBContext->command_usb_device_handle != k_invalid_usb_device_handle)
 		{
 			PSVR_LOG_INFO("MorpheusHMD::close") << "Closing MorpheusHMD command interface";
 			morpheus_set_headset_power(USBContext, false);
-			morpheus_close_usb_device(USBContext);
+			morpheus_close_usb_command_interface(USBContext);
 		}
 
         USBContext->Reset();
@@ -593,94 +743,19 @@ MorpheusHMD::matchesDeviceEnumerator(const DeviceEnumerator *enumerator) const
     return matches;
 }
 
-//bool
-//MorpheusHMD::getIsReadyToPoll() const
-//{
-//    return (getIsOpen());
-//}
-
 std::string
 MorpheusHMD::getUSBDevicePath() const
 {
-    return USBContext->sensor_device_path;
+    return USBContext->sensor_hid_path;
 }
 
 bool
 MorpheusHMD::getIsOpen() const
 {
-    return USBContext->sensor_device_handle != nullptr && USBContext->usb_device_handle != k_invalid_usb_device_handle;
+    return 
+        (USBContext->sensor_hid_handle != nullptr  || USBContext->sensor_usb_device_handle != k_invalid_usb_device_handle) && 
+        USBContext->command_usb_device_handle != k_invalid_usb_device_handle;
 }
-
-#if 0
-IDeviceInterface::ePollResult
-MorpheusHMD::poll()
-{
-	IHMDInterface::ePollResult result = IHMDInterface::_PollResultFailure;
-
-	if (getIsOpen())
-	{
-		static const int k_max_iterations = 32;
-
-		for (int iteration = 0; iteration < k_max_iterations; ++iteration)
-		{
-			// Attempt to read the next update packet from the controller
-			int res = hid_read(USBContext->sensor_device_handle, (unsigned char*)InData, sizeof(MorpheusSensorData));
-
-			if (res == 0)
-			{
-				// Device still in valid state
-				result = (iteration == 0)
-					? IHMDInterface::_PollResultSuccessNoData
-					: IHMDInterface::_PollResultSuccessNewData;
-
-				// No more data available. Stop iterating.
-				break;
-			}
-			else if (res < 0)
-			{
-				char hidapi_err_mbs[256];
-				bool valid_error_mesg = 
-					Utility::convert_wcs_to_mbs(hid_error(USBContext->sensor_device_handle), hidapi_err_mbs, sizeof(hidapi_err_mbs));
-
-				// Device no longer in valid state.
-				if (valid_error_mesg)
-				{
-					PSVR_LOG_ERROR("PSVRController::readDataIn") << "HID ERROR: " << hidapi_err_mbs;
-				}
-				result = IHMDInterface::_PollResultFailure;
-
-				// No more data available. Stop iterating.
-				break;
-			}
-			else
-			{
-				// New data available. Keep iterating.
-				result = IHMDInterface::_PollResultSuccessNewData;
-			}
-
-			// https://github.com/hrl7/node-psvr/blob/master/lib/psvr.js
-			MorpheusHMDSensorState newState;
-
-			// Increment the sequence for every new polling packet
-			newState.PollSequenceNumber = NextPollSequenceNumber;
-			++NextPollSequenceNumber;
-
-			// Processes the IMU data
-			newState.parse_data_input(&cfg, InData);
-
-			// Make room for new entry if at the max queue size
-			if (HMDStates.size() >= MORPHEUS_HMD_STATE_BUFFER_MAX)
-			{
-				HMDStates.erase(HMDStates.begin(), HMDStates.begin() + HMDStates.size() - MORPHEUS_HMD_STATE_BUFFER_MAX);
-			}
-
-			HMDStates.push_back(newState);
-		}
-	}
-
-	return result;
-}
-#endif 
 
 void
 MorpheusHMD::getTrackingShape(PSVRTrackingShape &outTrackingShape) const
@@ -741,7 +816,7 @@ MorpheusHMD::setHMDListener(IHMDListener *listener)
 
 void MorpheusHMD::setTrackingEnabled(bool bEnable)
 {
-	if (USBContext->usb_device_handle != k_invalid_usb_device_handle)
+	if (USBContext->command_usb_device_handle != k_invalid_usb_device_handle)
 	{
 		if (!bIsTracking && bEnable)
 		{
@@ -758,31 +833,42 @@ void MorpheusHMD::setTrackingEnabled(bool bEnable)
 }
 
 //-- private morpheus commands ---
-static bool morpheus_open_usb_device(
-	MorpheusUSBContext *morpheus_context)
+static bool morpheus_open_usb_command_interface(
+	MorpheusUSBContext *morpheus_context,
+    USBDeviceEnumerator* usb_device_enumerator)
 {
-	bool bSuccess = false;
+	bool bSuccess = true;
 
-    USBDeviceEnumerator* usb_device_enumerator= usb_device_enumerator_allocate();
+    USBDeviceEnumerator* local_usb_device_enumerator= nullptr;
 
-    if (usb_device_enumerator != nullptr)
+    // If an enumerator to a valid USB device wasn't provided,
+    // go ahead and create a local one now
+    if (usb_device_enumerator == nullptr)
     {
-        while (!bSuccess && usb_device_enumerator_is_valid(usb_device_enumerator))
+        local_usb_device_enumerator= usb_device_enumerator_allocate();
+        usb_device_enumerator= local_usb_device_enumerator;
+
+        bSuccess = false;
+
+        if (usb_device_enumerator != nullptr)
         {
-            USBDeviceFilter deviceInfo;
-            if (usb_device_enumerator_get_filter(usb_device_enumerator, deviceInfo) &&
-                deviceInfo.vendor_id == MORPHEUS_VENDOR_ID &&
-                deviceInfo.product_id == MORPHEUS_PRODUCT_ID &&
-                (deviceInfo.interface_mask & (1 << MORPHEUS_COMMAND_INTERFACE)) > 0)
+            while (!bSuccess && usb_device_enumerator_is_valid(usb_device_enumerator))
             {
-                bSuccess= true;
-                break;
-            }
-            else
-            {
-                usb_device_enumerator_next(usb_device_enumerator);
-            }
-        }        
+                USBDeviceFilter deviceInfo;
+                if (usb_device_enumerator_get_filter(usb_device_enumerator, deviceInfo) &&
+                    deviceInfo.vendor_id == MORPHEUS_VENDOR_ID &&
+                    deviceInfo.product_id == MORPHEUS_PRODUCT_ID &&
+                    (deviceInfo.interface_mask & (1 << MORPHEUS_COMMAND_INTERFACE)) > 0)
+                {
+                    bSuccess= true;
+                    break;
+                }
+                else
+                {
+                    usb_device_enumerator_next(usb_device_enumerator);
+                }
+            }        
+        }
     }
 
     if (bSuccess)
@@ -795,10 +881,10 @@ static bool morpheus_open_usb_device(
             char szPathBuffer[512];
             if (usb_device_enumerator_get_path(usb_device_enumerator, szPathBuffer, sizeof(szPathBuffer)))
             {
-                morpheus_context->usb_device_path = szPathBuffer;
+                morpheus_context->command_usb_device_path = szPathBuffer;
             }
 
-		    morpheus_context->usb_device_handle = usb_device_handle;
+		    morpheus_context->command_usb_device_handle = usb_device_handle;
 	    }
 	    else
 	    {
@@ -810,22 +896,22 @@ static bool morpheus_open_usb_device(
         PSVR_LOG_ERROR("morpeus_open_usb_device") << "  Failed to find Morpheus USB command interface (VID:0x054c, PID: 0x09af, Interface: 5)";
     }
 
-    if (usb_device_enumerator != nullptr)
+    if (local_usb_device_enumerator != nullptr)
     {
-        usb_device_enumerator_free(usb_device_enumerator);
+        usb_device_enumerator_free(local_usb_device_enumerator);
     }
 
 	return bSuccess;
 }
 
-static void morpheus_close_usb_device(
+static void morpheus_close_usb_command_interface(
 	MorpheusUSBContext *morpheus_context)
 {
-	if (morpheus_context->usb_device_handle != k_invalid_usb_device_handle)
+	if (morpheus_context->command_usb_device_handle != k_invalid_usb_device_handle)
 	{
-		PSVR_LOG_INFO("morpheus_close_usb_device") << "Closing PSNaviController(" << morpheus_context->usb_device_path << ")";
-		usb_device_close(morpheus_context->usb_device_handle);
-		morpheus_context->usb_device_handle = k_invalid_usb_device_handle;
+		PSVR_LOG_INFO("morpheus_close_usb_device") << "Closing PSNaviController(" << morpheus_context->command_usb_device_path << ")";
+		usb_device_close(morpheus_context->command_usb_device_handle);
+		morpheus_context->command_usb_device_handle = k_invalid_usb_device_handle;
 	}
 }
 
@@ -928,7 +1014,7 @@ static bool morpheus_send_command(
 {
     bool bSuccess= false;
 
-	if (morpheus_context->usb_device_handle != k_invalid_usb_device_handle)
+	if (morpheus_context->command_usb_device_handle != k_invalid_usb_device_handle)
 	{
 		//###HipsterSloth $TODO Don't hard code the endpoint address.
 		// We should instead specify a direction (IN or OUT)
@@ -948,7 +1034,7 @@ static bool morpheus_send_command(
 	    transfer_request.request_type = _USBRequestType_InterruptTransfer;
 
 	    USBRequestPayload_InterruptTransfer &interrupt_transfer = transfer_request.payload.interrupt_transfer;
-	    interrupt_transfer.usb_device_handle = morpheus_context->usb_device_handle;
+	    interrupt_transfer.usb_device_handle = morpheus_context->command_usb_device_handle;
 	    interrupt_transfer.endpoint = endpointAddress;
 	    interrupt_transfer.length = static_cast<unsigned int>(command_length);
 	    interrupt_transfer.timeout = INTERRUPT_TRANSFER_TIMEOUT;

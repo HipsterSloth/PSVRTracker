@@ -4,7 +4,7 @@
 #include "USBDeviceRequest.h"
 #include "USBDeviceManager.h"
 #include "WinUSBApi.h"
-#include "WinUSBBulkTransferBundle.h"
+#include "WinUSBTransferBundle.h"
 
 #define ANSI
 #define WIN32_LEAN_AND_MEAN
@@ -127,18 +127,18 @@ struct WinUSBDeviceInfo
 	}
 };
 
-struct WinUSBAsyncBulkTransfer
+struct WinUSBAsyncTransfer
 {
 	void* device_handle;
 	void* interface_handle;
-	unsigned char bulk_endpoint;
+	unsigned char transfer_endpoint;
     unsigned char *buffer;
     ULONG buffer_size;
     OVERLAPPED overlapped;
     ULONG transferred_bytes;
-	t_winusb_bulk_transfer_callback callback;
+	t_winusb_transfer_callback callback;
 	void *user_data;
-	eWinusbBulkTransferStatus transfer_status;
+	eWinusbTransferStatus transfer_status;
 };
 
 struct WinUSBDeviceEnumerator : USBDeviceEnumerator
@@ -381,12 +381,12 @@ void WinUSBApi::poll()
 {
 	// Poll the state of all pending async bulk transfers.
 	// Remove any transfer that has completed.
-	auto iter= m_pendingAsyncBulkTransfers.begin();
-	while (iter != m_pendingAsyncBulkTransfers.end())
+	auto iter= m_pendingAsyncTransfers.begin();
+	while (iter != m_pendingAsyncTransfers.end())
 	{
-		if (winusbPollAsyncBulkTransfer(*iter) != WINUSB_TRANSFER_PENDING)
+		if (winusbPollAsyncTransfer(*iter) != WINUSB_TRANSFER_PENDING)
 		{
-			iter= m_pendingAsyncBulkTransfers.erase(iter);
+			iter= m_pendingAsyncTransfers.erase(iter);
 		}
 		else
 		{
@@ -1014,9 +1014,9 @@ eUSBResultCode WinUSBApi::submit_bulk_transfer(
     return result.payload.bulk_transfer.result_code;
 }
 
-IUSBBulkTransferBundle *WinUSBApi::allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_BulkTransferBundle *request)
+IUSBTransferBundle *WinUSBApi::allocate_transfer_bundle(const USBDeviceState *device_state, const USBRequestPayload_TransferBundle *request)
 {
-	return new WinUSBBulkTransferBundle(device_state, request);
+	return new WinUSBTransferBundle(device_state, request);
 }
 
 bool WinUSBApi::get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const
@@ -1072,37 +1072,37 @@ bool WinUSBApi::get_usb_device_port_path(USBDeviceState* device_state, char *out
 	return bSuccess;
 }
 
-WinUSBAsyncBulkTransfer *WinUSBApi::winusbAllocateAsyncBulkTransfer()
+WinUSBAsyncTransfer *WinUSBApi::winusbAllocateAsyncTransfer()
 {
-	WinUSBAsyncBulkTransfer *transfer= new WinUSBAsyncBulkTransfer;
+	WinUSBAsyncTransfer *transfer= new WinUSBAsyncTransfer;
 	
-	memset(transfer, 0, sizeof(WinUSBAsyncBulkTransfer));
+	memset(transfer, 0, sizeof(WinUSBAsyncTransfer));
 	transfer->overlapped.hEvent= INVALID_HANDLE_VALUE;
 
 	return transfer;
 }
 
-bool WinUSBApi::winusbSetupAsyncBulkTransfer(
+bool WinUSBApi::winusbSetupAsyncTransfer(
 	void *device_handle,
 	void *interface_handle,
-	const unsigned char bulk_endpoint,
+	const unsigned char transfer_endpoint,
 	unsigned char *transfer_buffer,
 	const size_t transfer_buffer_size,
-	t_winusb_bulk_transfer_callback transfer_callback_function,
+	t_winusb_transfer_callback transfer_callback_function,
 	void *user_data,
-	WinUSBAsyncBulkTransfer *transfer)
+	WinUSBAsyncTransfer *transfer)
 {
 	bool bSuccess= true;
 
-	memset(transfer, 0, sizeof(WinUSBAsyncBulkTransfer));
+	memset(transfer, 0, sizeof(WinUSBAsyncTransfer));
 	transfer->device_handle= device_handle;
 	transfer->interface_handle= interface_handle;
-	transfer->bulk_endpoint= bulk_endpoint;
+	transfer->transfer_endpoint= transfer_endpoint;
 	transfer->buffer= transfer_buffer;
 	transfer->buffer_size= (ULONG)transfer_buffer_size;
 	transfer->callback= transfer_callback_function;
 	transfer->user_data= user_data;
-	transfer->transfer_status= eWinusbBulkTransferStatus::WINUSB_TRANSFER_PENDING;
+	transfer->transfer_status= eWinusbTransferStatus::WINUSB_TRANSFER_PENDING;
 
 	transfer->overlapped.hEvent = CreateEvent(NULL, false, false, NULL);
     if (transfer->overlapped.hEvent == nullptr)
@@ -1114,7 +1114,7 @@ bool WinUSBApi::winusbSetupAsyncBulkTransfer(
 	return bSuccess;
 }
 
-void WinUSBApi::winusbFreeAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
+void WinUSBApi::winusbFreeAsyncTransfer(struct WinUSBAsyncTransfer *transfer)
 {
 	if (transfer != nullptr)
 	{
@@ -1135,11 +1135,11 @@ void WinUSBApi::winusbFreeAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tran
 	}
 }
 
-bool WinUSBApi::winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
+bool WinUSBApi::winusbSubmitAsyncTransfer(struct WinUSBAsyncTransfer *transfer)
 {
     bool bSuccess = WinUsb_ReadPipe(
         transfer->interface_handle,
-        transfer->bulk_endpoint,
+        transfer->transfer_endpoint,
         transfer->buffer,
         transfer->buffer_size,
         &transfer->transferred_bytes,
@@ -1189,22 +1189,22 @@ bool WinUSBApi::winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tr
 	else
 	{
 		// Check the state of the transfer again in poll()
-		if (std::find(m_pendingAsyncBulkTransfers.begin(), m_pendingAsyncBulkTransfers.end(), transfer) == m_pendingAsyncBulkTransfers.end())
+		if (std::find(m_pendingAsyncTransfers.begin(), m_pendingAsyncTransfers.end(), transfer) == m_pendingAsyncTransfers.end())
 		{
-			m_pendingAsyncBulkTransfers.push_back(transfer);
+			m_pendingAsyncTransfers.push_back(transfer);
 		}
 	}
 
 	return bSuccess;
 }
 
-bool WinUSBApi::winusbCancelAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer)
+bool WinUSBApi::winusbCancelAsyncTransfer(struct WinUSBAsyncTransfer *transfer)
 {
 	bool bSuccess= false;
 
     if (transfer != nullptr)
     {
-		bSuccess = WinUsb_AbortPipe(transfer->interface_handle, transfer->bulk_endpoint) == TRUE;
+		bSuccess = WinUsb_AbortPipe(transfer->interface_handle, transfer->transfer_endpoint) == TRUE;
 
 		if (!bSuccess)
 		{
@@ -1217,7 +1217,7 @@ bool WinUSBApi::winusbCancelAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *tr
     return bSuccess;
 }
 
-eWinusbBulkTransferStatus WinUSBApi::winusbPollAsyncBulkTransfer(WinUSBAsyncBulkTransfer *transfer)
+eWinusbTransferStatus WinUSBApi::winusbPollAsyncTransfer(WinUSBAsyncTransfer *transfer)
 {
     assert(transfer != NULL);
 

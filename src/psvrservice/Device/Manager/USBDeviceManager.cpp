@@ -2,7 +2,7 @@
 #include "USBApiInterface.h"
 #include "USBDeviceManager.h"
 #include "USBDeviceFilter.h"
-#include "LibUSBBulkTransferBundle.h"
+#include "LibUSBTransferBundle.h"
 #include "LibUSBApi.h"
 #include "NullUSBApi.h"
 #include "WinUSBApi.h"
@@ -387,20 +387,20 @@ protected:
 			result.payload.control_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
 			result.payload.control_transfer.usb_device_handle= request.payload.bulk_transfer.usb_device_handle;
 			break;
-		case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
-			result.result_type= _USBResultType_BulkTransferBundle;
+		case eUSBTransferRequestType::_USBRequestType_StartTransferBundle:
+			result.result_type= _USBResultType_TransferBundle;
 			result.payload.bulk_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-			result.payload.bulk_transfer.usb_device_handle= request.payload.start_bulk_transfer_bundle.usb_device_handle;
+			result.payload.bulk_transfer.usb_device_handle= request.payload.start_transfer_bundle.usb_device_handle;
 			break;
-		case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
-			result.result_type= _USBResultType_BulkTransferBundle;
+		case eUSBTransferRequestType::_USBRequestType_CancelTransferBundle:
+			result.result_type= _USBResultType_TransferBundle;
 			result.payload.bulk_transfer_bundle.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-			result.payload.bulk_transfer_bundle.usb_device_handle= request.payload.cancel_bulk_transfer_bundle.usb_device_handle;
+			result.payload.bulk_transfer_bundle.usb_device_handle= request.payload.cancel_transfer_bundle.usb_device_handle;
 			break;
 		case eUSBTransferRequestType::_USBRequestType_ComplexTransfer:
 			result.result_type= _USBResultType_ComplexTransfer;
 			result.payload.complex_transfer.result_code= eUSBResultCode::_USBResultCode_SubmitFailed;
-			result.payload.complex_transfer.usb_device_handle= request.payload.cancel_bulk_transfer_bundle.usb_device_handle;
+			result.payload.complex_transfer.usb_device_handle= request.payload.cancel_transfer_bundle.usb_device_handle;
 			break;
 		}
 			
@@ -455,19 +455,19 @@ protected:
         case eUSBTransferRequestType::_USBRequestType_BulkTransfer:
             handleBulkTransferRequest(requestState);
             break;
-        case eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle:
-            handleStartBulkTransferRequest(requestState);
+        case eUSBTransferRequestType::_USBRequestType_StartTransferBundle:
+            handleStartTransferBundleRequest(requestState);
             break;
-        case eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle:
-            handleCancelBulkTransferRequest(requestState);
+        case eUSBTransferRequestType::_USBRequestType_CancelTransferBundle:
+            handleCancelTransferBundleRequest(requestState);
             break;
         }
     }
 
 	void pollUsbApi()
 	{
-        if (m_active_bulk_transfer_bundles.size() > 0 || 
-            m_canceled_bulk_transfer_bundles.size() > 0 ||
+        if (m_active_transfer_bundles.size() > 0 || 
+            m_canceled_transfer_bundles.size() > 0 ||
 			m_active_bulk_transfers > 0 ||
             m_active_control_transfers > 0 ||
 			m_active_interrupt_transfers > 0)
@@ -505,18 +505,18 @@ protected:
         while (request_queue.pop());
 
         // Cancel all active transfers
-        while (m_active_bulk_transfer_bundles.size() > 0)
+        while (m_active_transfer_bundles.size() > 0)
         {
-            IUSBBulkTransferBundle *bundle= m_active_bulk_transfer_bundles.back();
-            m_active_bulk_transfer_bundles.pop_back();
+            IUSBTransferBundle *bundle= m_active_transfer_bundles.back();
+            m_active_transfer_bundles.pop_back();
             bundle->cancelTransfers();
-            m_canceled_bulk_transfer_bundles.push_back(bundle);
+            m_canceled_transfer_bundles.push_back(bundle);
         }
 
         // Wait for the canceled bulk transfers and control transfers to exit
 		const int k_max_cleanup_poll_attempts= 100;
 		int cleanup_attempts= 0;
-        while ((m_canceled_bulk_transfer_bundles.size() > 0 || m_active_control_transfers > 0 || m_active_interrupt_transfers > 0) &&
+        while ((m_canceled_transfer_bundles.size() > 0 || m_active_control_transfers > 0 || m_active_interrupt_transfers > 0) &&
 				cleanup_attempts < k_max_cleanup_poll_attempts)
         {
             for (int api= 0; api < _USBApiType_COUNT; ++api)
@@ -530,7 +530,7 @@ protected:
 			++cleanup_attempts;
         }
 
-		if (m_canceled_bulk_transfer_bundles.size() > 0)
+		if (m_canceled_transfer_bundles.size() > 0)
 		{
 			cleanupCanceledRequests(true);
 		}
@@ -549,14 +549,14 @@ protected:
 
     void cleanupCanceledRequests(bool bForceCleanup)
     {
-		auto it = m_canceled_bulk_transfer_bundles.begin();
-        while (it != m_canceled_bulk_transfer_bundles.end())
+		auto it = m_canceled_transfer_bundles.begin();
+        while (it != m_canceled_transfer_bundles.end())
         {
-            IUSBBulkTransferBundle *bundle = *it;
+            IUSBTransferBundle *bundle = *it;
 
             if (bundle->getActiveTransferCount() == 0 || bForceCleanup)
             {
-                it= m_canceled_bulk_transfer_bundles.erase(it);
+                it= m_canceled_transfer_bundles.erase(it);
                 delete bundle;
             }
 			else
@@ -736,9 +736,9 @@ protected:
 		}
 	}
 
-    void handleStartBulkTransferRequest(const USBTransferRequestState &requestState)
+    void handleStartTransferBundleRequest(const USBTransferRequestState &requestState)
     {
-        const USBRequestPayload_BulkTransferBundle &request= requestState.request.payload.start_bulk_transfer_bundle;
+        const USBRequestPayload_TransferBundle &request= requestState.request.payload.start_transfer_bundle;
 
 		t_usb_device_map_iterator iter = m_device_state_map.find(request.usb_device_handle);
 		USBDeviceState *state = iter->second;
@@ -750,15 +750,15 @@ protected:
         {
             // Only start a bulk transfer if the device doesn't have one going already
             auto it = std::find_if(
-                m_active_bulk_transfer_bundles.begin(),
-                m_active_bulk_transfer_bundles.end(),
-                [&request](const IUSBBulkTransferBundle *bundle) {
+                m_active_transfer_bundles.begin(),
+                m_active_transfer_bundles.end(),
+                [&request](const IUSBTransferBundle *bundle) {
                     return bundle->getUSBDeviceHandle().unique_id == request.usb_device_handle.unique_id;
             });
 
-            if (it == m_active_bulk_transfer_bundles.end())
+            if (it == m_active_transfer_bundles.end())
             {
-                IUSBBulkTransferBundle *bundle = m_usb_apis[request.usb_device_handle.api_type]->allocate_bulk_transfer_bundle(state, &requestState.request.payload.start_bulk_transfer_bundle);
+                IUSBTransferBundle *bundle = m_usb_apis[request.usb_device_handle.api_type]->allocate_transfer_bundle(state, &requestState.request.payload.start_transfer_bundle);
 
                 // Allocate and initialize the bulk transfers
                 if (bundle->initialize())
@@ -767,7 +767,7 @@ protected:
                     if (bundle->startTransfers())
                     {
                         // Success! Add the bundle to the list of active bundles
-                        m_active_bulk_transfer_bundles.push_back(bundle);
+                        m_active_transfer_bundles.push_back(bundle);
                         result_code = _USBResultCode_Started;
                     }
                     else
@@ -778,7 +778,7 @@ protected:
                             // If any transfers started we have to cancel the ones that started
                             // and wait for the cancellation request to complete.
                             bundle->cancelTransfers();
-                            m_canceled_bulk_transfer_bundles.push_back(bundle);
+                            m_canceled_transfer_bundles.push_back(bundle);
                         }
                         else
                         {
@@ -810,7 +810,7 @@ protected:
         {
             USBTransferResult result;
 
-            result.result_type = _USBResultType_BulkTransferBundle;
+            result.result_type = _USBResultType_TransferBundle;
             result.payload.bulk_transfer.usb_device_handle= request.usb_device_handle;
             result.payload.bulk_transfer.result_code = result_code;
 
@@ -818,9 +818,9 @@ protected:
         }
     }
 
-    void handleCancelBulkTransferRequest(const USBTransferRequestState &requestState)
+    void handleCancelTransferBundleRequest(const USBTransferRequestState &requestState)
     {
-        const USBRequestPayload_CancelBulkTransferBundle &request= requestState.request.payload.cancel_bulk_transfer_bundle;
+        const USBRequestPayload_CancelTransferBundle &request= requestState.request.payload.cancel_transfer_bundle;
 
 		t_usb_device_map_iterator iter = m_device_state_map.find(request.usb_device_handle);
 
@@ -831,26 +831,26 @@ protected:
 			USBDeviceState *state = iter->second;
 
 			auto it = std::find_if(
-                m_active_bulk_transfer_bundles.begin(),
-                m_active_bulk_transfer_bundles.end(),
-                [&request](const IUSBBulkTransferBundle *bundle) {
+                m_active_transfer_bundles.begin(),
+                m_active_transfer_bundles.end(),
+                [&request](const IUSBTransferBundle *bundle) {
                     return bundle->getUSBDeviceHandle().unique_id == request.usb_device_handle.unique_id;
                 });
 
-            if (it != m_active_bulk_transfer_bundles.end())
+            if (it != m_active_transfer_bundles.end())
             {
-                IUSBBulkTransferBundle *bundle = *it;
+                IUSBTransferBundle *bundle = *it;
 
                 // Tell the bundle to cancel all active transfers.
                 // This is an asynchronous operation.
                 bundle->cancelTransfers();
 
                 // Remove the bundle from the list of active transfers
-                m_active_bulk_transfer_bundles.erase(it);
+                m_active_transfer_bundles.erase(it);
 
                 // Put the bundle on the list of canceled transfers.
                 // The bundle will get cleaned up once all active transfers are done.
-                m_canceled_bulk_transfer_bundles.push_back(bundle);
+                m_canceled_transfer_bundles.push_back(bundle);
 
                 result_code = _USBResultCode_Canceled;
             }
@@ -868,7 +868,7 @@ protected:
         {
             USBTransferResult result;
 
-            result.result_type = _USBResultType_BulkTransferBundle;
+            result.result_type = _USBResultType_TransferBundle;
             result.payload.bulk_transfer.usb_device_handle = request.usb_device_handle;
             result.payload.bulk_transfer.result_code = result_code;
 
@@ -959,8 +959,8 @@ private:
     moodycamel::ReaderWriterQueue<USBTransferResultState, 128> result_queue;
 
     // Worker thread state
-    std::vector<IUSBBulkTransferBundle *> m_active_bulk_transfer_bundles;
-    std::vector<IUSBBulkTransferBundle *> m_canceled_bulk_transfer_bundles;
+    std::vector<IUSBTransferBundle *> m_active_transfer_bundles;
+    std::vector<IUSBTransferBundle *> m_canceled_transfer_bundles;
     int m_active_control_transfers;
 	int m_active_interrupt_transfers;
     int m_active_bulk_transfers;

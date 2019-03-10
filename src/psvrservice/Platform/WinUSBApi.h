@@ -4,7 +4,7 @@
 #include "USBApiInterface.h"
 #include "USBDeviceRequest.h"
 
-enum eWinusbBulkTransferStatus 
+enum eWinusbTransferStatus 
 {
 	WINUSB_TRANSFER_PENDING,
 
@@ -31,7 +31,7 @@ enum eWinusbBulkTransferStatus
 	WINUSB_TRANSFER_OVERFLOW,
 };
 
-typedef std::function<void(struct WinUSBAsyncBulkTransfer *, eWinusbBulkTransferStatus, unsigned char *, size_t, void *)> t_winusb_bulk_transfer_callback;
+typedef std::function<void(struct WinUSBAsyncTransfer *, eWinusbTransferStatus, unsigned char *, size_t, void *)> t_winusb_transfer_callback;
 
 struct WinUSBDeviceState : USBDeviceState
 {
@@ -106,31 +106,31 @@ public:
 	eUSBResultCode submit_interrupt_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
 	eUSBResultCode submit_control_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
     eUSBResultCode submit_bulk_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
-	IUSBBulkTransferBundle *allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_BulkTransferBundle *request) override;
+	IUSBTransferBundle *allocate_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_TransferBundle *request) override;
 
 	bool get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const override;
 	bool get_usb_device_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 	bool get_usb_device_port_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 
 	// WinUSBApi
-	struct WinUSBAsyncBulkTransfer * winusbAllocateAsyncBulkTransfer();
-	bool winusbSetupAsyncBulkTransfer(
+	struct WinUSBAsyncTransfer * winusbAllocateAsyncTransfer();
+	bool winusbSetupAsyncTransfer(
 		void * device_handle,
 		void * interface_handle,
 		const unsigned char bulk_endpoint,
 		unsigned char *transfer_buffer,
 		const size_t transfer_packet_size,
-		t_winusb_bulk_transfer_callback transfer_callback_function,
+		t_winusb_transfer_callback transfer_callback_function,
 		void *userdata,
-		struct WinUSBAsyncBulkTransfer *transfer);
-	void winusbFreeAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer);
-	bool winusbSubmitAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer);
-	bool winusbCancelAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer);
+		struct WinUSBAsyncTransfer *transfer);
+	void winusbFreeAsyncTransfer(struct WinUSBAsyncTransfer *transfer);
+	bool winusbSubmitAsyncTransfer(struct WinUSBAsyncTransfer *transfer);
+	bool winusbCancelAsyncTransfer(struct WinUSBAsyncTransfer *transfer);
 
 private:
-	std::vector<struct WinUSBAsyncBulkTransfer *> m_pendingAsyncBulkTransfers;
+	std::vector<struct WinUSBAsyncTransfer *> m_pendingAsyncTransfers;
 
-	eWinusbBulkTransferStatus winusbPollAsyncBulkTransfer(struct WinUSBAsyncBulkTransfer *transfer);
+	eWinusbTransferStatus winusbPollAsyncTransfer(struct WinUSBAsyncTransfer *transfer);
 };
 
 #endif // WIN_USB_API_H

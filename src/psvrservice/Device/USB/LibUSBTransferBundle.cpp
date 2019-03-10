@@ -1,5 +1,5 @@
 //-- includes -----
-#include "LibUSBBulkTransferBundle.h"
+#include "LibUSBTransferBundle.h"
 #include "LibUSBApi.h"
 #include "Logger.h"
 #include "Utility.h"
@@ -18,13 +18,14 @@
 static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_transfer);
 
 //-- implementation -----
-LibUSBBulkTransferBundle::LibUSBBulkTransferBundle(
+LibUSBTransferBundle::LibUSBTransferBundle(
 	const USBDeviceState *state,
-	const USBRequestPayload_BulkTransferBundle *request)
-    : IUSBBulkTransferBundle(state, request)
+	const USBRequestPayload_TransferBundle *request)
+    : IUSBTransferBundle(state, request)
 	, m_request(*request)
     , m_device(static_cast<const LibUSBDeviceState *>(state)->device)
     , m_device_handle(static_cast<const LibUSBDeviceState *>(state)->device_handle)
+    , m_interface_index(static_cast<const LibUSBDeviceState *>(state)->claimed_interface_index)
     , m_active_transfer_count(0)
     , m_is_canceled(false)
     , transfer_buffer(nullptr)
@@ -32,7 +33,7 @@ LibUSBBulkTransferBundle::LibUSBBulkTransferBundle(
 	
 }
 
-LibUSBBulkTransferBundle::~LibUSBBulkTransferBundle()
+LibUSBTransferBundle::~LibUSBTransferBundle()
 {
     dispose();
 
@@ -42,17 +43,17 @@ LibUSBBulkTransferBundle::~LibUSBBulkTransferBundle()
     }
 }
 
-bool LibUSBBulkTransferBundle::initialize()
+bool LibUSBTransferBundle::initialize()
 {
     bool bSuccess = (m_active_transfer_count == 0);
-    uint8_t bulk_endpoint = 0;
+    uint8_t endpoint_address = 0;
 
     // Find the bulk transfer endpoint          
     if (bSuccess)
     {
-        if (find_bulk_transfer_endpoint(m_device, bulk_endpoint))
+        if (find_transfer_endpoint(m_request.transfer_type, m_device, m_interface_index, endpoint_address))
         {
-            libusb_clear_halt(m_device_handle, bulk_endpoint);
+            libusb_clear_halt(m_device_handle, endpoint_address);
         }
         else
         {
@@ -63,8 +64,8 @@ bool LibUSBBulkTransferBundle::initialize()
     // Allocate the transfer buffer
     if (bSuccess)
     {
-        bulk_transfer_requests.resize(m_request.in_flight_transfer_packet_count);
-		std::fill(bulk_transfer_requests.begin(), bulk_transfer_requests.end(), nullptr);
+        transfer_requests.resize(m_request.in_flight_transfer_packet_count);
+		std::fill(transfer_requests.begin(), transfer_requests.end(), nullptr);
 
         // Allocate the transfer buffer that the requests write data into
         size_t xfer_buffer_size = m_request.in_flight_transfer_packet_count * m_request.transfer_packet_size;
@@ -85,19 +86,38 @@ bool LibUSBBulkTransferBundle::initialize()
     {
         for (int transfer_index = 0; transfer_index < m_request.in_flight_transfer_packet_count; ++transfer_index)
         {
-            bulk_transfer_requests[transfer_index] = libusb_alloc_transfer(0);
+            transfer_requests[transfer_index] = libusb_alloc_transfer(0);
 
-            if (bulk_transfer_requests[transfer_index] != nullptr)
+            if (transfer_requests[transfer_index] != nullptr)
             {
-                libusb_fill_bulk_transfer(
-                    bulk_transfer_requests[transfer_index],
-                    m_device_handle,
-                    bulk_endpoint,
-                    transfer_buffer + transfer_index*m_request.transfer_packet_size,
-                    m_request.transfer_packet_size,
-                    transfer_callback_function,
-                    reinterpret_cast<void*>(this),
-                    0);
+                if (m_request.transfer_type == _USBTransferBundleType_Bulk)
+                {
+                    libusb_fill_bulk_transfer(
+                        transfer_requests[transfer_index],
+                        m_device_handle,
+                        endpoint_address,
+                        transfer_buffer + transfer_index*m_request.transfer_packet_size,
+                        m_request.transfer_packet_size,
+                        transfer_callback_function,
+                        reinterpret_cast<void*>(this),
+                        0);
+                }
+                else if (m_request.transfer_type == _USBTransferBundleType_Interrupt)
+                {
+                    libusb_fill_interrupt_transfer(
+	                    transfer_requests[transfer_index], 
+                        m_device_handle,
+	                    endpoint_address, 
+                        transfer_buffer + transfer_index*m_request.transfer_packet_size, 
+                        m_request.transfer_packet_size,
+	                    transfer_callback_function, 
+                        reinterpret_cast<void*>(this),
+                        0);
+                }
+                else
+                {
+                    bSuccess = false;
+                }
             }
             else
             {
@@ -109,17 +129,17 @@ bool LibUSBBulkTransferBundle::initialize()
     return bSuccess;
 }
 
-void LibUSBBulkTransferBundle::dispose()
+void LibUSBTransferBundle::dispose()
 {
     assert(m_active_transfer_count == 0);
 
     for (int transfer_index = 0;
-        transfer_index < m_request.in_flight_transfer_packet_count;
+        transfer_index < transfer_requests.size();
         ++transfer_index)
     {
-        if (bulk_transfer_requests[transfer_index] != nullptr)
+        if (transfer_requests[transfer_index] != nullptr)
         {
-            libusb_free_transfer(bulk_transfer_requests[transfer_index]);
+            libusb_free_transfer(transfer_requests[transfer_index]);
         }
     }
 
@@ -129,10 +149,10 @@ void LibUSBBulkTransferBundle::dispose()
         transfer_buffer = nullptr;
     }
 
-	bulk_transfer_requests.clear();
+	transfer_requests.clear();
 }
 
-bool LibUSBBulkTransferBundle::startTransfers()
+bool LibUSBTransferBundle::startTransfers()
 {
     bool bSuccess = (m_active_transfer_count == 0 && !m_is_canceled);
 
@@ -141,9 +161,9 @@ bool LibUSBBulkTransferBundle::startTransfers()
     {
         for (int transfer_index = 0; transfer_index < m_request.in_flight_transfer_packet_count; ++transfer_index)
         {
-            libusb_transfer *bulk_transfer = bulk_transfer_requests[transfer_index];
+            libusb_transfer *transfer = transfer_requests[transfer_index];
 
-            if (libusb_submit_transfer(bulk_transfer) == 0)
+            if (libusb_submit_transfer(transfer) == 0)
             {
                 ++m_active_transfer_count;
             }
@@ -158,7 +178,7 @@ bool LibUSBBulkTransferBundle::startTransfers()
     return bSuccess;
 }
 
-void LibUSBBulkTransferBundle::notifyActiveTransfersDecremented()
+void LibUSBTransferBundle::notifyActiveTransfersDecremented()
 {
     assert(m_active_transfer_count > 0);
     --m_active_transfer_count;
@@ -166,13 +186,12 @@ void LibUSBBulkTransferBundle::notifyActiveTransfersDecremented()
 
 static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_transfer)
 {
-    LibUSBBulkTransferBundle *bundle = reinterpret_cast<LibUSBBulkTransferBundle*>(bulk_transfer->user_data);
+    LibUSBTransferBundle *bundle = reinterpret_cast<LibUSBTransferBundle*>(bulk_transfer->user_data);
     const auto &request = bundle->getTransferRequest();
     enum libusb_transfer_status status = bulk_transfer->status;
 
     if (status == LIBUSB_TRANSFER_COMPLETED)
     {
-
         // NOTE: This callback is getting executed on the worker thread!
         // It should not:
         // 1) Do any expensive work
@@ -203,7 +222,7 @@ static void LIBUSB_CALL transfer_callback_function(struct libusb_transfer *bulk_
     }
 }
 
-void LibUSBBulkTransferBundle::cancelTransfers()
+void LibUSBTransferBundle::cancelTransfers()
 {
     if (!m_is_canceled)
     {
@@ -211,7 +230,7 @@ void LibUSBBulkTransferBundle::cancelTransfers()
             transfer_index < m_request.in_flight_transfer_packet_count;
             ++transfer_index)
         {
-            libusb_transfer* bulk_transfer = bulk_transfer_requests[transfer_index];
+            libusb_transfer* bulk_transfer = transfer_requests[transfer_index];
 
             assert(bulk_transfer != nullptr);
             libusb_cancel_transfer(bulk_transfer);
@@ -223,7 +242,11 @@ void LibUSBBulkTransferBundle::cancelTransfers()
 
 // Search for an input transfer endpoint in the endpoint descriptor
 // of the device interfaces alt_settings
-bool LibUSBBulkTransferBundle::find_bulk_transfer_endpoint(struct libusb_device *device, uint8_t &out_endpoint_addr)
+bool LibUSBTransferBundle::find_transfer_endpoint(
+    eUSBTransferBundleType bundle_type, 
+    struct libusb_device *device, 
+    int interface_index,
+    uint8_t &out_endpoint_addr)
 {
     bool bSuccess = false;
     libusb_config_descriptor *config = nullptr;
@@ -238,7 +261,7 @@ bool LibUSBBulkTransferBundle::find_bulk_transfer_endpoint(struct libusb_device 
         {
             const libusb_interface_descriptor *test_altsetting = config->interface[i].altsetting;
 
-            if (test_altsetting[0].bInterfaceNumber == 0)
+            if (test_altsetting[0].bInterfaceNumber == interface_index)
             {
                 altsetting = test_altsetting;
                 break;
@@ -251,12 +274,23 @@ bool LibUSBBulkTransferBundle::find_bulk_transfer_endpoint(struct libusb_device 
             {
                 const libusb_endpoint_descriptor *endpoint_desc = &altsetting->endpoint[i];
 
-                if ((endpoint_desc->bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) == LIBUSB_TRANSFER_TYPE_BULK
-                    && endpoint_desc->wMaxPacketSize != 0)
+                if (endpoint_desc->wMaxPacketSize != 0)
                 {
-                    out_endpoint_addr = endpoint_desc->bEndpointAddress;
-                    bSuccess = true;
-                    break;
+                    if (bundle_type == _USBTransferBundleType_Bulk &&
+                        (endpoint_desc->bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) == LIBUSB_TRANSFER_TYPE_BULK)
+                    {
+                        out_endpoint_addr = endpoint_desc->bEndpointAddress;
+                        bSuccess = true;
+                        break;
+                    }
+                    else if (bundle_type == _USBTransferBundleType_Interrupt &&
+                        (endpoint_desc->bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) == LIBUSB_TRANSFER_TYPE_INTERRUPT)
+                    {
+                        out_endpoint_addr = endpoint_desc->bEndpointAddress;
+                        bSuccess = true;
+                        break;
+                    }
+
                 }
             }
         }
@@ -268,17 +302,17 @@ bool LibUSBBulkTransferBundle::find_bulk_transfer_endpoint(struct libusb_device 
 }
 
 // Accessors
-const USBRequestPayload_BulkTransferBundle &LibUSBBulkTransferBundle::getTransferRequest() const
+const USBRequestPayload_TransferBundle &LibUSBTransferBundle::getTransferRequest() const
 {
 	return m_request;
 }
 
-t_usb_device_handle LibUSBBulkTransferBundle::getUSBDeviceHandle() const
+t_usb_device_handle LibUSBTransferBundle::getUSBDeviceHandle() const
 {
 	return m_request.usb_device_handle;
 }
 
-int LibUSBBulkTransferBundle::getActiveTransferCount() const
+int LibUSBTransferBundle::getActiveTransferCount() const
 {
 	return m_active_transfer_count;
 }

@@ -9,13 +9,13 @@
 
 //-- definitions -----
 /// Internal class used to manage a set of libusb bulk transfer packets.
-class LibUSBBulkTransferBundle : public IUSBBulkTransferBundle
+class LibUSBTransferBundle : public IUSBTransferBundle
 {
 public:
-    LibUSBBulkTransferBundle(
+    LibUSBTransferBundle(
         const USBDeviceState *device_state,
-		const struct USBRequestPayload_BulkTransferBundle *request);
-    virtual ~LibUSBBulkTransferBundle();
+		const struct USBRequestPayload_TransferBundle *request);
+    virtual ~LibUSBTransferBundle();
 
     // Interface
     bool initialize() override;
@@ -26,26 +26,31 @@ public:
     void notifyActiveTransfersDecremented();
 
     // Accessors
-	const USBRequestPayload_BulkTransferBundle &getTransferRequest() const override;
+	const USBRequestPayload_TransferBundle &getTransferRequest() const override;
 	t_usb_device_handle getUSBDeviceHandle() const override;
 	int getActiveTransferCount() const override;
 
     // Helpers
     // Search for an input transfer endpoint in the endpoint descriptor
     // of the device interfaces alt_settings
-    static bool find_bulk_transfer_endpoint(struct libusb_device *device, unsigned char &out_endpoint_addr);
+    static bool find_transfer_endpoint(
+        eUSBTransferBundleType bundle_type, 
+        struct libusb_device *device, 
+        int interface_index, 
+        unsigned char &out_endpoint_addr);
 
 protected:
     void dispose();
 
 private:
-    USBRequestPayload_BulkTransferBundle m_request;
+    USBRequestPayload_TransferBundle m_request;
     struct libusb_device *m_device;
     struct libusb_device_handle *m_device_handle;
+    int m_interface_index;
 
     int m_active_transfer_count;
     bool m_is_canceled;
-    std::vector<struct libusb_transfer*> bulk_transfer_requests;
+    std::vector<struct libusb_transfer*> transfer_requests;
     unsigned char* transfer_buffer;
 };
 

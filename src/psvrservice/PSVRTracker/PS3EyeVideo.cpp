@@ -618,17 +618,18 @@ public:
 		// Send a request to the USBDeviceManager to start a bulk transfer stream for video frames.
 		// This will spin up a thread in the USB manager for reading the incoming USB packets.
 		// The usbBulkTransferCallback_workerThread() callback will be executed on this thread.
-		USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle);
-		request.payload.start_bulk_transfer_bundle.usb_device_handle= usb_device_handle;
-		request.payload.start_bulk_transfer_bundle.bAutoResubmit= true;
-		request.payload.start_bulk_transfer_bundle.in_flight_transfer_packet_count= NUM_TRANSFERS;
-		request.payload.start_bulk_transfer_bundle.transfer_packet_size= TRANSFER_SIZE;
-		request.payload.start_bulk_transfer_bundle.on_data_callback= usbBulkTransferCallback_usbThread;
-		request.payload.start_bulk_transfer_bundle.transfer_callback_userdata= this;
+		USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_StartTransferBundle);
+		request.payload.start_transfer_bundle.usb_device_handle= usb_device_handle;
+        request.payload.start_transfer_bundle.transfer_type= _USBTransferBundleType_Bulk;
+		request.payload.start_transfer_bundle.bAutoResubmit= true;
+		request.payload.start_transfer_bundle.in_flight_transfer_packet_count= NUM_TRANSFERS;
+		request.payload.start_transfer_bundle.transfer_packet_size= TRANSFER_SIZE;
+		request.payload.start_transfer_bundle.on_data_callback= usbBulkTransferCallback_usbThread;
+		request.payload.start_transfer_bundle.transfer_callback_userdata= this;
 
 		USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
 		log_usb_result_code("startUSBBulkTransfer", result.payload.bulk_transfer_bundle.result_code); 
-		if (result.result_type == eUSBTransferRequestType::_USBRequestType_StartBulkTransferBundle)
+		if (result.result_type == eUSBTransferRequestType::_USBRequestType_StartTransferBundle)
 		{
 			// Start decompressing the incoming video frames
 			m_frameProcessorThread->startThread();
@@ -641,12 +642,12 @@ public:
 	void stopUSBBulkTransfer(t_usb_device_handle usb_device_handle)
 	{
 		// Send a request to the USBDeviceManager to stop the bulk transfer stream for video frames
-		USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_CancelBulkTransferBundle);
-		request.payload.cancel_bulk_transfer_bundle.usb_device_handle= usb_device_handle;
+		USBTransferRequest request(eUSBTransferRequestType::_USBRequestType_CancelTransferBundle);
+		request.payload.cancel_transfer_bundle.usb_device_handle= usb_device_handle;
 
 		// This will block until the processing USB packet processing thread exits
 		USBTransferResult result= usb_device_submit_transfer_request_blocking(request);
-		assert(result.result_type == eUSBTransferResultType::_USBResultType_BulkTransferBundle);
+		assert(result.result_type == eUSBTransferResultType::_USBResultType_TransferBundle);
 		log_usb_result_code("stopUSBBulkTransfer", result.payload.bulk_transfer_bundle.result_code);
 
 		// Block until the frame processor halts itself

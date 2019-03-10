@@ -271,7 +271,7 @@ private:
     int NextPollSequenceNumber;
     struct MorpheusSensorData *InData;                        // Buffer to hold most recent MorpheusAPI tracking state
 
-	class MorpheusSensorProcessor* m_sensorProcessor;
+	class IMorpheusSensorProcessor* m_sensorProcessor;
 	IHMDListener* m_hmdListener;
 
 	bool bIsTracking;

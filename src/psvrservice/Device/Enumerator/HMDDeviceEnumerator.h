@@ -9,7 +9,8 @@ public:
 	enum eAPIType
 	{
 		CommunicationType_INVALID= -1,
-		CommunicationType_HID,
+        CommunicationType_HID,
+		CommunicationType_USB,
 		CommunicationType_ALL
 	};
 
@@ -23,13 +24,15 @@ public:
 	int get_vendor_id() const override;
 	int get_product_id() const override;
 	eAPIType get_api_type() const;
-	const class HidHMDDeviceEnumerator *get_hid_hmd_enumerator() const;
+	const class HMDHidDeviceEnumerator *get_hmd_hid_enumerator() const;
+    const class HMDUsbDeviceEnumerator *get_hmd_usb_enumerator() const;
 
 private:
-	eAPIType api_type;
-	DeviceEnumerator **enumerators;
-	int enumerator_count;
-	int enumerator_index;
+	eAPIType m_apiType;
+	DeviceEnumerator **m_enumerators;
+	int m_enumeratorCount;
+	int m_enumeratorIndex;
+    bool m_foundAnyValidHMD;
 };
 
 #endif // HMD_DEVICE_ENUMERATOR_H

@@ -51,14 +51,14 @@ public:
 	eUSBResultCode submit_interrupt_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
 	eUSBResultCode submit_control_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestState) override;
     eUSBResultCode submit_bulk_transfer(const USBDeviceState* device_state, const struct USBTransferRequestState *requestStateOnHeap) override;
-	IUSBBulkTransferBundle *allocate_bulk_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_BulkTransferBundle *request) override;
+	IUSBTransferBundle *allocate_transfer_bundle(const USBDeviceState *device_state, const struct USBRequestPayload_TransferBundle *request) override;
 
 	bool get_usb_device_filter(const USBDeviceState* device_state, struct USBDeviceFilter *outDeviceInfo) const override;
 	bool get_usb_device_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 	bool get_usb_device_port_path(USBDeviceState* device_state, char *outBuffer, size_t bufferSize) const override;
 
 private:
-	struct APIContext *m_apiContext;
+	class LibUSBAPIContext *m_apiContext;
 };
 
 #endif // USB_API_INTERFACE_H

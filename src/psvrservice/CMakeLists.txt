@@ -87,8 +87,8 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         ${CMAKE_CURRENT_LIST_DIR}/Platform/PlatformDeviceAPIWin32.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBApi.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBApi.h
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBBulkTransferBundle.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBBulkTransferBundle.h)
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBTransferBundle.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Platform/WinUSBTransferBundle.h)
 ENDIF()
 source_group("Platform" FILES ${PSVR_PLATFORM_SRC})
 file(GLOB SERVICE_SRC
