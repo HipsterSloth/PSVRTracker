@@ -790,7 +790,7 @@ static bool morpheus_open_usb_device(
 	    const t_usb_device_handle usb_device_handle = usb_device_open(usb_device_enumerator, MORPHEUS_COMMAND_INTERFACE);
 	    if (usb_device_handle != k_invalid_usb_device_handle)
 	    {
-		    PSVR_LOG_INFO("morpeus_open_usb_devicen") << "  Successfully opened USB handle " << usb_device_handle;
+		    PSVR_LOG_INFO("morpeus_open_usb_devicen") << "  Successfully opened USB handle " << usb_device_handle.unique_id;
 
             char szPathBuffer[512];
             if (usb_device_enumerator_get_path(usb_device_enumerator, szPathBuffer, sizeof(szPathBuffer)))
@@ -802,7 +802,7 @@ static bool morpheus_open_usb_device(
 	    }
 	    else
 	    {
-		    PSVR_LOG_ERROR("morpeus_open_usb_device") << "  Failed to open USB handle " << usb_device_handle;
+		    PSVR_LOG_ERROR("morpeus_open_usb_device") << "  Failed to open USB handle " << usb_device_handle.unique_id;
 	    }
     }
     else

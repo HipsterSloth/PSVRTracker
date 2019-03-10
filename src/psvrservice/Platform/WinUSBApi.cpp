@@ -148,6 +148,7 @@ public:
 	{
 		buildUSBDeviceList();
 
+        api_type= _USBApiType_WinUSB;
 		USBDeviceEnumerator::device_index= -1;
 		next();
 	}

@@ -9,8 +9,8 @@ class NullUSBApi : public IUSBApi
 public:
 	NullUSBApi();
 
-	eUSBApiType getRuntimeUSBApiType() const override { return _USBApiType_NullUSB; }
-	static eUSBApiType getStaticUSBApiType() { return _USBApiType_NullUSB; }
+	eUSBApiType getRuntimeUSBApiType() const override { return _USBApiType_WinUSB; }
+	static eUSBApiType getStaticUSBApiType() { return _USBApiType_WinUSB; }
 
 	bool startup() override;
 	void poll() override;

@@ -18,7 +18,6 @@ public:
     virtual void readFromJSON(const configuru::Config &pt);
 
     long version;
-	std::string usb_api_name;
 	bool enable_usb_transfers;
 };
 
@@ -39,12 +38,12 @@ public:
         return m_implementation_ptr;
     }
 
-	static IUSBApi *getUSBApiInterface();
+	static IUSBApi *getUSBApiInterface(eUSBApiType api);
 
 	template <class t_usb_api>
 	static t_usb_api *getTypedUSBApiInterface()
 	{
-		IUSBApi *api= getUSBApiInterface();
+		IUSBApi *api= getUSBApiInterface(t_usb_api::getStaticUSBApiType());
 		assert(api->getRuntimeUSBApiType() == t_usb_api::getStaticUSBApiType());
 
 		return static_cast<t_usb_api *>(api);
@@ -68,7 +67,7 @@ private:
 };
 
 // -- Device Enumeration ----
-struct USBDeviceEnumerator* usb_device_enumerator_allocate();
+struct USBDeviceEnumerator* usb_device_enumerator_allocate(eUSBApiType api=_USBApiType_LibUSB);
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator);
 bool usb_device_enumerator_get_filter(struct USBDeviceEnumerator* enumerator, USBDeviceFilter &outDeviceInfo);
 void usb_device_enumerator_next(struct USBDeviceEnumerator* enumerator);

@@ -32,6 +32,7 @@ USBDeviceEnumerator* NullUSBApi::device_enumerator_create()
 {
 	USBDeviceEnumerator *nullusb_enumerator = new USBDeviceEnumerator;
 	memset(nullusb_enumerator, 0, sizeof(USBDeviceEnumerator));
+    nullusb_enumerator->api_type= _USBApiType_WinUSB;
 
 	return nullusb_enumerator;
 }

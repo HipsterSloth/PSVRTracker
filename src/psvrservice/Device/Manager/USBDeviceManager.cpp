@@ -34,7 +34,6 @@ const int USBManagerConfig::CONFIG_VERSION = 1;
 USBManagerConfig::USBManagerConfig(const std::string &fnamebase)
     : PSVRConfig(fnamebase)
 {
-	usb_api_name= k_libusb_api_name;
 	enable_usb_transfers= true;
 };
 
@@ -43,7 +42,6 @@ USBManagerConfig::writeToJSON()
 {
     configuru::Config pt{
         {"version", USBManagerConfig::CONFIG_VERSION},
-	    {"usb_api", usb_api_name},
 	    {"enable_usb_transfers", enable_usb_transfers}
     };
 
@@ -57,7 +55,6 @@ USBManagerConfig::readFromJSON(const configuru::Config &pt)
 
     if (version == USBManagerConfig::CONFIG_VERSION)
     {
-		usb_api_name = pt.get_or<std::string>("usb_api", usb_api_name);
 		enable_usb_transfers = pt.get_or<bool>("enable_usb_transfers", enable_usb_transfers);
     }
     else
@@ -74,9 +71,7 @@ class USBDeviceManagerImpl
 {
 public:
     USBDeviceManagerImpl()
-        : m_api_type(_USBApiType_INVALID)
-		, m_usb_api(nullptr)
-        , m_exit_signaled({ false })
+        : m_exit_signaled({ false })
 		, m_active_bulk_transfers(0)
         , m_active_control_transfers(0)
 		, m_active_interrupt_transfers(0)
@@ -84,83 +79,48 @@ public:
         , m_thread_started(false)
 		, m_next_usb_device_handle(0)
     {
-
+        m_usb_apis = new IUSBApi*[_USBApiType_COUNT];
+        m_usb_apis[_USBApiType_LibUSB]= new LibUSBApi;
+        #ifdef _WIN32
+        m_usb_apis[_USBApiType_WinUSB]= new WinUSBApi;
+        #else       
+        m_usb_apis[_USBApiType_WinUSB]= new NullUSBApi;
+        #endif _WIN32
     }
 
     virtual ~USBDeviceManagerImpl()
     {
+        for (int api= 0; api < _USBApiType_COUNT; ++api)
+        {
+            delete m_usb_apis[api];
+        }
+        delete[] m_usb_apis;
     }
 
     // -- System ----
     bool startup(USBManagerConfig &cfg)
     {
-        bool bSuccess= false;
+        bool bSuccess= true;
 
 		m_transfers_enabled= cfg.enable_usb_transfers;
 
-		if (m_usb_api == nullptr)
-		{
-			if (cfg.usb_api_name == k_nullusb_api_name)
-			{
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Requested NullUSBApi";
-				m_api_type= _USBApiType_NullUSB;
-			}
-			else if (cfg.usb_api_name == k_libusb_api_name)
-			{
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Requested LibUSBApi";
-				m_api_type= _USBApiType_LibUSB;
-			}
-			else if (cfg.usb_api_name == k_winusb_api_name)
-			{
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Requested WinUSBApi";
-				m_api_type= _USBApiType_WinUSB;
-			}
-			else
-			{
-				PSVR_LOG_WARNING("USBAsyncRequestManager::startup") << "Requested unknown usb_api: \'" << cfg.usb_api_name << "\'. Defaulting to " << k_libusb_api_name;
-				m_api_type= _USBApiType_LibUSB;
-			}
-
-			switch (m_api_type)
-			{
-			case _USBApiType_NullUSB:
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating NullUSBApi";
-				m_usb_api = new NullUSBApi;
-				break;
-			case _USBApiType_LibUSB:
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi";
-				m_usb_api = new LibUSBApi;
-				break;
-			case _USBApiType_WinUSB:
-#ifdef _WIN32
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating WinUSBApi";
-				m_usb_api = new WinUSBApi;
-#else
-				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Creating LibUSBApi (WinUSBApi not available on this platform)";
-				m_usb_api = new LibUSBApi;
-#endif
-				break;
-			default:
-				assert(0 && "unreachable");
-				break;
-			}
-
-			if (m_usb_api != nullptr && m_usb_api->startup())
+        for (int api= 0; api < _USBApiType_COUNT; ++api)
+        {
+			if (m_usb_apis[api]->startup())
 			{
 				PSVR_LOG_INFO("USBAsyncRequestManager::startup") << "Initialized USB API";
-				startWorkerThread();
-				bSuccess= true;
 			}
 			else
 			{
 				PSVR_LOG_ERROR("USBAsyncRequestManager::startup") << "Failed to initialize USB API";
+                bSuccess= false;
 			}
-		}
-		else
-		{
-			PSVR_LOG_WARNING("USBAsyncRequestManager::startup") << "USB API aready initialized";
-			bSuccess= true;
-		}
+        }
+
+        if (bSuccess)
+        {
+		    startWorkerThread();
+        }
 
         return bSuccess;
     }
@@ -194,16 +154,8 @@ public:
 			requestProcessingTeardown();
 		}
 
-        if (m_usb_api != nullptr)
-        {
-            // Unref any libusb devices
-            freeDeviceStateList();
-
-            // Free the usb context
-			delete m_usb_api;
-            m_usb_api= nullptr;
-			m_api_type = _USBApiType_INVALID;
-        }
+        // Unref any libusb devices
+        freeDeviceStateList();
     }
 
     // -- Device Actions ----
@@ -215,12 +167,12 @@ public:
     {
 		t_usb_device_handle handle= k_invalid_usb_device_handle;
 
-		USBDeviceState *state = m_usb_api->open_usb_device(enumerator, interface_index, configuration_index, reset_device);
+		USBDeviceState *state = m_usb_apis[enumerator->api_type]->open_usb_device(enumerator, interface_index, configuration_index, reset_device);
 
         if (state != nullptr)
         {
-			handle = m_next_usb_device_handle;
-			state->public_handle = m_next_usb_device_handle;
+            handle = {enumerator->api_type, m_next_usb_device_handle};
+			state->public_handle = handle;
 			++m_next_usb_device_handle;
 
 			m_device_state_map.insert(t_handle_usb_device_pair(state->public_handle, state));
@@ -238,13 +190,13 @@ public:
 			USBDeviceState *usb_device_state= iter->second;
 
 			m_device_state_map.erase(iter);
-			m_usb_api->close_usb_device(usb_device_state);
+			m_usb_apis[handle.api_type]->close_usb_device(usb_device_state);
 		}
     }
 
 	bool canUSBDeviceBeOpened(struct USBDeviceEnumerator* enumerator, char *outReason, size_t bufferSize)
 	{
-		return m_usb_api->can_usb_device_be_opened(enumerator, outReason, bufferSize);
+		return m_usb_apis[enumerator->api_type]->can_usb_device_be_opened(enumerator, outReason, bufferSize);
 	}
 
     bool getIsUSBDeviceOpen(t_usb_device_handle handle) const
@@ -326,8 +278,8 @@ public:
     }
 
 	// -- accessors ----
-	inline const IUSBApi *getUSBApiConst() const { return m_usb_api; }
-	inline IUSBApi *getUSBApi() { return m_usb_api; }
+	inline const IUSBApi *getUSBApiConst(eUSBApiType apiType) const { return m_usb_apis[apiType]; }
+	inline IUSBApi *getUSBApi(eUSBApiType apiType) { return m_usb_apis[apiType]; }
 
 	bool getUsbDeviceFilter(t_usb_device_handle handle, USBDeviceFilter &outDeviceInfo)
 	{
@@ -336,7 +288,7 @@ public:
 
 		if (iter != m_device_state_map.end())
 		{
-			bSuccess= m_usb_api->get_usb_device_filter(iter->second, &outDeviceInfo);
+			bSuccess= m_usb_apis[handle.api_type]->get_usb_device_filter(iter->second, &outDeviceInfo);
 		}
 
 		return bSuccess;
@@ -349,7 +301,7 @@ public:
 
 		if (iter != m_device_state_map.end())
 		{
-			bSuccess = m_usb_api->get_usb_device_path(iter->second, outBuffer, bufferSize);
+			bSuccess = m_usb_apis[handle.api_type]->get_usb_device_path(iter->second, outBuffer, bufferSize);
 		}
 
 		return bSuccess;
@@ -362,7 +314,7 @@ public:
 
 		if (iter != m_device_state_map.end())
 		{
-			bSuccess = m_usb_api->get_usb_device_port_path(iter->second, outBuffer, bufferSize);
+			bSuccess = m_usb_apis[handle.api_type]->get_usb_device_port_path(iter->second, outBuffer, bufferSize);
 		}
 
 		return bSuccess;
@@ -524,7 +476,10 @@ protected:
 			// Otherwise just poll once.
             do
             {
-				m_usb_api->poll();
+                for (int api= 0; api < _USBApiType_COUNT; ++api)
+                {
+				    m_usb_apis[api]->poll();
+                }
             } while (m_active_bulk_transfers > 0 || m_active_control_transfers > 0 || m_active_interrupt_transfers > 0);
 
             // Cleanup any requests that no longer have any pending cancellations
@@ -564,7 +519,10 @@ protected:
         while ((m_canceled_bulk_transfer_bundles.size() > 0 || m_active_control_transfers > 0 || m_active_interrupt_transfers > 0) &&
 				cleanup_attempts < k_max_cleanup_poll_attempts)
         {
-			m_usb_api->poll();
+            for (int api= 0; api < _USBApiType_COUNT; ++api)
+            {
+				m_usb_apis[api]->poll();
+            }
 
             // Cleanup any requests that no longer have any pending cancellations
             cleanupCanceledRequests(false);
@@ -639,7 +597,7 @@ protected:
 
 		if (state != nullptr)
 		{
-			result_code= m_usb_api->submit_interrupt_transfer(state, &requestState);
+			result_code= m_usb_apis[request.usb_device_handle.api_type]->submit_interrupt_transfer(state, &requestState);
 			if (result_code != _USBResultCode_Started && result_code != _USBResultCode_Completed)
 			{
 				bSuccess = false;
@@ -695,7 +653,7 @@ protected:
 
 		if (state != nullptr)
 		{
-			result_code = m_usb_api->submit_control_transfer(state, &requestState);
+			result_code = m_usb_apis[request.usb_device_handle.api_type]->submit_control_transfer(state, &requestState);
 			if (result_code != _USBResultCode_Started && result_code != _USBResultCode_Completed)
 			{
                 bSuccess = false;
@@ -752,7 +710,7 @@ protected:
 
 		if (state != nullptr)
 		{
-			result_code= m_usb_api->submit_bulk_transfer(state, &requestState);
+			result_code= m_usb_apis[request.usb_device_handle.api_type]->submit_bulk_transfer(state, &requestState);
 			if (result_code != _USBResultCode_Started && result_code != _USBResultCode_Completed)
 			{
 				bSuccess = false;
@@ -795,12 +753,12 @@ protected:
                 m_active_bulk_transfer_bundles.begin(),
                 m_active_bulk_transfer_bundles.end(),
                 [&request](const IUSBBulkTransferBundle *bundle) {
-                    return bundle->getUSBDeviceHandle() == request.usb_device_handle;
+                    return bundle->getUSBDeviceHandle().unique_id == request.usb_device_handle.unique_id;
             });
 
             if (it == m_active_bulk_transfer_bundles.end())
             {
-                IUSBBulkTransferBundle *bundle = m_usb_api->allocate_bulk_transfer_bundle(state, &requestState.request.payload.start_bulk_transfer_bundle);
+                IUSBBulkTransferBundle *bundle = m_usb_apis[request.usb_device_handle.api_type]->allocate_bulk_transfer_bundle(state, &requestState.request.payload.start_bulk_transfer_bundle);
 
                 // Allocate and initialize the bulk transfers
                 if (bundle->initialize())
@@ -876,7 +834,7 @@ protected:
                 m_active_bulk_transfer_bundles.begin(),
                 m_active_bulk_transfer_bundles.end(),
                 [&request](const IUSBBulkTransferBundle *bundle) {
-                    return bundle->getUSBDeviceHandle() == request.usb_device_handle;
+                    return bundle->getUSBDeviceHandle().unique_id == request.usb_device_handle.unique_id;
                 });
 
             if (it != m_active_bulk_transfer_bundles.end())
@@ -986,7 +944,7 @@ protected:
     {
         for (auto it = m_device_state_map.begin(); it != m_device_state_map.end(); ++it)
         {
-            m_usb_api->close_usb_device(it->second);
+            m_usb_apis[it->first.api_type]->close_usb_device(it->second);
         }
 
 		m_device_state_map.clear();
@@ -994,8 +952,7 @@ protected:
 
 private:
     // Multithreaded state
-	eUSBApiType m_api_type;
-	IUSBApi *m_usb_api;
+	IUSBApi **m_usb_apis;
     bool m_bUseMultithreading;
     std::atomic_bool m_exit_signaled;
     moodycamel::ReaderWriterQueue<USBTransferRequestState, 128> request_queue;
@@ -1014,7 +971,7 @@ private:
     std::thread m_worker_thread;
     std::vector<USBDeviceFilter> m_device_whitelist;
 	t_usb_device_map m_device_state_map;
-	t_usb_device_handle m_next_usb_device_handle;
+	short m_next_usb_device_handle;
 };
 
 //-- public interface -----
@@ -1044,9 +1001,9 @@ USBDeviceManager::~USBDeviceManager()
     }
 }
 
-IUSBApi *USBDeviceManager::getUSBApiInterface()
+IUSBApi *USBDeviceManager::getUSBApiInterface(eUSBApiType api)
 {
-	return USBDeviceManager::getInstance()->m_implementation_ptr->getUSBApi();
+	return USBDeviceManager::getInstance()->m_implementation_ptr->getUSBApi(api);
 }
 
 bool USBDeviceManager::startup()
@@ -1067,44 +1024,44 @@ void USBDeviceManager::shutdown()
 }
 
 // -- Device Enumeration ----
-USBDeviceEnumerator* usb_device_enumerator_allocate()
+USBDeviceEnumerator* usb_device_enumerator_allocate(eUSBApiType api)
 {
-	return USBDeviceManager::getUSBApiInterface()->device_enumerator_create();
+	return USBDeviceManager::getUSBApiInterface(api)->device_enumerator_create();
 }
 
 bool usb_device_enumerator_is_valid(struct USBDeviceEnumerator* enumerator)
 {
-	return USBDeviceManager::getUSBApiInterface()->device_enumerator_is_valid(enumerator);
+	return USBDeviceManager::getUSBApiInterface(enumerator->api_type)->device_enumerator_is_valid(enumerator);
 }
 
 bool usb_device_enumerator_get_filter(struct USBDeviceEnumerator* enumerator, USBDeviceFilter &outDeviceInfo)
 {
-	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_filter(enumerator, &outDeviceInfo);
+	return USBDeviceManager::getUSBApiInterface(enumerator->api_type)->device_enumerator_get_filter(enumerator, &outDeviceInfo);
 }
 
 void usb_device_enumerator_next(struct USBDeviceEnumerator* enumerator)
 {
-	USBDeviceManager::getUSBApiInterface()->device_enumerator_next(enumerator);
+	USBDeviceManager::getUSBApiInterface(enumerator->api_type)->device_enumerator_next(enumerator);
 }
 
 void usb_device_enumerator_free(struct USBDeviceEnumerator* enumerator)
 {
-	USBDeviceManager::getUSBApiInterface()->device_enumerator_dispose(enumerator);
+	USBDeviceManager::getUSBApiInterface(enumerator->api_type)->device_enumerator_dispose(enumerator);
 }
 
 bool usb_device_enumerator_get_path(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize)
 {
-	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_path(enumerator, outBuffer, bufferSize);
+	return USBDeviceManager::getUSBApiInterface(enumerator->api_type)->device_enumerator_get_path(enumerator, outBuffer, bufferSize);
 }
 
 bool usb_device_enumerator_get_unique_identifier(struct USBDeviceEnumerator* enumerator, char *outBuffer, size_t bufferSize)
 {
-	return USBDeviceManager::getUSBApiInterface()->device_enumerator_get_unique_identifier(enumerator, outBuffer, bufferSize);
+	return USBDeviceManager::getUSBApiInterface(enumerator->api_type)->device_enumerator_get_unique_identifier(enumerator, outBuffer, bufferSize);
 }
 
 eUSBApiType usb_device_enumerator_get_driver_type(struct USBDeviceEnumerator* enumerator)
 {
-	return USBDeviceManager::getUSBApiInterface()->getRuntimeUSBApiType();
+	return USBDeviceManager::getUSBApiInterface(enumerator->api_type)->getRuntimeUSBApiType();
 }
 
 // -- Device Actions ----

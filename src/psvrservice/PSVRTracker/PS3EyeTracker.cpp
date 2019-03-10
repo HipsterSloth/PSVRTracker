@@ -103,7 +103,6 @@ bool PS3EyeTracker::open(const DeviceEnumerator *enumerator)
 		case _USBApiType_LibUSB:
 			m_DriverType= ITrackerInterface::Libusb;
 			break;
-		case _USBApiType_NullUSB:
 		case _USBApiType_WinUSB:
 			m_DriverType= ITrackerInterface::Winusb;
 			break;

@@ -25,19 +25,29 @@ enum eUSBResultCode
 	_USBResultCode_InvalidAPI
 };
 
-enum eUSBApiType
+enum eUSBApiType : short
 {
 	_USBApiType_INVALID= -1,
 
-	_USBApiType_NullUSB,
 	_USBApiType_LibUSB,
 	_USBApiType_WinUSB,
+
+    _USBApiType_COUNT
 };
 
 
 //-- typedefs -----
-typedef int t_usb_device_handle;
-const t_usb_device_handle k_invalid_usb_device_handle = -1;
+struct t_usb_device_handle
+{
+    eUSBApiType api_type;
+    short unique_id;
+
+    inline bool operator < (const t_usb_device_handle &other) const { return unique_id < other.unique_id; }
+    inline bool operator > (const t_usb_device_handle &other) const { return unique_id > other.unique_id; }
+    inline bool operator == (const t_usb_device_handle &other) const { return unique_id == other.unique_id; }
+    inline bool operator != (const t_usb_device_handle &other) const { return unique_id != other.unique_id; }
+};
+const t_usb_device_handle k_invalid_usb_device_handle = {_USBApiType_INVALID, -1};
 
 //-- macros -----
 //#define DEBUG_USB
@@ -50,6 +60,7 @@ const t_usb_device_handle k_invalid_usb_device_handle = -1;
 //-- definitions -----
 struct USBDeviceEnumerator
 {
+    eUSBApiType api_type;
 	int device_index;
 };
 

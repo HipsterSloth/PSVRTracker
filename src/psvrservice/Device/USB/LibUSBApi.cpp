@@ -77,6 +77,8 @@ USBDeviceEnumerator* LibUSBApi::device_enumerator_create()
 	LibUSBDeviceEnumerator *libusb_enumerator = new LibUSBDeviceEnumerator;
 	memset(libusb_enumerator, 0, sizeof(LibUSBDeviceEnumerator));
 
+    libusb_enumerator->api_type= _USBApiType_LibUSB;
+
 	if (libusb_get_device_list(m_apiContext->lib_usb_context, &libusb_enumerator->device_list) < 0)
 	{
 		PSVR_LOG_INFO("usb_enumerate") << "Unable to fetch device list.";
@@ -229,7 +231,7 @@ USBDeviceState *LibUSBApi::open_usb_device(
 				libusb_device_state->claimed_interface_index= interface_index;
 				bOpened = true;
 
-				PSVR_LOG_INFO("USBAsyncRequestManager::openUSBDevice") << "Successfully opened device " << libusb_device_state->public_handle;
+				PSVR_LOG_INFO("USBAsyncRequestManager::openUSBDevice") << "Successfully opened device " << libusb_device_state->public_handle.unique_id;
 			}
 			else
 			{
@@ -259,14 +261,14 @@ void LibUSBApi::close_usb_device(USBDeviceState* device_state)
 
 		if (libusb_device_state->claimed_interface_index != -1)
 		{
-			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Released USB interface on handle " << libusb_device_state->public_handle;
+			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Released USB interface on handle " << libusb_device_state->public_handle.unique_id;
 			libusb_release_interface(libusb_device_state->device_handle, libusb_device_state->claimed_interface_index);
 			libusb_device_state->claimed_interface_index = -1;
 		}
 
 		if (libusb_device_state->device_handle != nullptr)
 		{
-			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Close USB device on handle " << libusb_device_state->public_handle;
+			PSVR_LOG_INFO("USBAsyncRequestManager::closeUSBDevice") << "Close USB device on handle " << libusb_device_state->public_handle.unique_id;
 			libusb_close(libusb_device_state->device_handle);
 			libusb_device_state->device_handle = nullptr;
 		}
