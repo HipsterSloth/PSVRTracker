@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientGeometry_CAPI.cpp">
+      <Filter>ClientAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient_CAPI.cpp">
+      <Filter>ClientAPI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient_export.h">
+      <Filter>ClientAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientColor_CAPI.h">
+      <Filter>ClientAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientConstants.h">
+      <Filter>ClientAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientGeometry_CAPI.h">
+      <Filter>ClientAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient_CAPI.h">
+      <Filter>ClientAPI</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ClientAPI">
+      <UniqueIdentifier>{93032ACD-2600-368C-B077-202D4E04ED6E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

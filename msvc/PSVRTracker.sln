@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26430.16
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PSVRConfigTool", "src\psvrconfigtool\PSVRConfigTool.vcxproj", "{A687A5B8-D875-3483-8300-12D507593EBF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{A2E04F83-F84B-4FD9-B902-CB7428A008BB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_camera", "src\tests\test_camera.vcxproj", "{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unit_test_suite", "src\tests\unit_test_suite.vcxproj", "{5FC75805-2DF6-3E37-8F00-A7E872266B98}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PSVRMath", "src\psvrmath\PSVRMath.vcxproj", "{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PSVRService", "src\psvrservice\PSVRService.vcxproj", "{B4FE20AE-21BE-3FAC-828F-D51782626C75}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PSVRService_static", "src\psvrservice\PSVRService_static.vcxproj", "{33B0178A-14B7-3C3F-B30C-DC384E14909A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A687A5B8-D875-3483-8300-12D507593EBF}.Debug|x64.ActiveCfg = Debug|x64
+		{A687A5B8-D875-3483-8300-12D507593EBF}.Debug|x64.Build.0 = Debug|x64
+		{A687A5B8-D875-3483-8300-12D507593EBF}.Release|x64.ActiveCfg = Release|x64
+		{A687A5B8-D875-3483-8300-12D507593EBF}.Release|x64.Build.0 = Release|x64
+		{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82}.Debug|x64.ActiveCfg = Debug|x64
+		{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82}.Debug|x64.Build.0 = Debug|x64
+		{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82}.Release|x64.ActiveCfg = Release|x64
+		{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82}.Release|x64.Build.0 = Release|x64
+		{5FC75805-2DF6-3E37-8F00-A7E872266B98}.Debug|x64.ActiveCfg = Debug|x64
+		{5FC75805-2DF6-3E37-8F00-A7E872266B98}.Debug|x64.Build.0 = Debug|x64
+		{5FC75805-2DF6-3E37-8F00-A7E872266B98}.Release|x64.ActiveCfg = Release|x64
+		{5FC75805-2DF6-3E37-8F00-A7E872266B98}.Release|x64.Build.0 = Release|x64
+		{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}.Debug|x64.ActiveCfg = Debug|x64
+		{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}.Debug|x64.Build.0 = Debug|x64
+		{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}.Release|x64.ActiveCfg = Release|x64
+		{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}.Release|x64.Build.0 = Release|x64
+		{B4FE20AE-21BE-3FAC-828F-D51782626C75}.Debug|x64.ActiveCfg = Debug|x64
+		{B4FE20AE-21BE-3FAC-828F-D51782626C75}.Debug|x64.Build.0 = Debug|x64
+		{B4FE20AE-21BE-3FAC-828F-D51782626C75}.Release|x64.ActiveCfg = Release|x64
+		{B4FE20AE-21BE-3FAC-828F-D51782626C75}.Release|x64.Build.0 = Release|x64
+		{33B0178A-14B7-3C3F-B30C-DC384E14909A}.Debug|x64.ActiveCfg = Debug|x64
+		{33B0178A-14B7-3C3F-B30C-DC384E14909A}.Debug|x64.Build.0 = Debug|x64
+		{33B0178A-14B7-3C3F-B30C-DC384E14909A}.Release|x64.ActiveCfg = Release|x64
+		{33B0178A-14B7-3C3F-B30C-DC384E14909A}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82} = {A2E04F83-F84B-4FD9-B902-CB7428A008BB}
+		{5FC75805-2DF6-3E37-8F00-A7E872266B98} = {A2E04F83-F84B-4FD9-B902-CB7428A008BB}
+	EndGlobalSection
+EndGlobal
