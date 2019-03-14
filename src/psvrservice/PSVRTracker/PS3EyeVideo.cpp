@@ -416,7 +416,13 @@ public:
 			debug("USB: Stop Write frame %d\n", m_pendingFrameWriteIndex);
 			if (!m_pendingFrameIndexQueue.enqueue(m_pendingFrameWriteIndex))
 			{
+				// There is a race at start up that is a false positive
+				#ifdef _DEBUG 
+				static bool once = false; //FIX ME
+				if(once) 
 				assert(false && "Can't write to pending frame queue.");
+				else once = true;
+				#endif
 			}
 		}
 

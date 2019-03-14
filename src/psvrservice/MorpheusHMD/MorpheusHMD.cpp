@@ -187,6 +187,8 @@ class IMorpheusSensorProcessor
 public:
     virtual void start(class MorpheusUSBContext *USBContext, IHMDListener *hmd_listener) = 0;
     virtual void stop() = 0;
+
+	virtual ~IMorpheusSensorProcessor(){} //VS2017 fix
 };
 
 class MorpheusHIDSensorProcessor : public WorkerThread, public IMorpheusSensorProcessor
