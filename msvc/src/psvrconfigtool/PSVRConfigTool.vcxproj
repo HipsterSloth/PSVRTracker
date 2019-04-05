@@ -40,14 +40,14 @@
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\dist\Win64\Debug\bin\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\build\src\PSVRConfigTool.dir\Debug\</IntDir>
-    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/dist/Win64/Debug/bin</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\dist\Win64\Debug\bin\</LocalDebuggerWorkingDirectory>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSVRConfigTool</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\dist\Win64\Release\bin\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\build\src\PSVRConfigTool.dir\Release\</IntDir>
-    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/dist/Win64/Debug/bin</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\dist\Win64\Debug\bin\</LocalDebuggerWorkingDirectory>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSVRConfigTool</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
@@ -73,10 +73,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\stb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\imgui;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\SDL2\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen..\..\..\src\psvrconfigtool\..\..\src\psvrmath;..\..\..\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\stb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\imgui;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\SDL2\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen..\..\..\src\psvrconfigtool\..\..\src\psvrmath;..\..\..\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -86,24 +86,20 @@
     <PostBuildEvent>
       <Message>
       </Message>
-      <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrconfigtool/assets" "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/Debug/assets"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
+      <Command>XCOPY "$(SolutionDir)..\src\psvrconfigtool\assets" "$(SolutionDir)..\dist\Win64\Debug\bin\assets\" /Y /S
+XCOPY "$(SolutionDir)..\resources" "$(SolutionDir)..\dist\Win64\Debug\bin\resources\" /Y /S
+echo F|XCOPY "$(SolutionDir)..\thirdparty\SDL2\build\Release\SDL2.dll" "$(SolutionDir)..\dist\Win64\Debug\bin\SDL2.dll" /Y /F
+echo F|XCOPY "$(SolutionDir)..\thirdparty\libusb\x64\Release\dll\libusb-1.0.dll" "$(SolutionDir)..\dist\Win64\Debug\bin\libusb-1.0.dll" /Y /F
+echo F|XCOPY "$(SolutionDir)..\deps\opencv\build\x64\vc15\bin\opencv_world343d.dll" "$(SolutionDir)..\dist\Win64\Debug\bin\opencv_world343d.dll" /Y /F</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\..\build\src\psvrmath\Debug\PSVRMath.lib;..\..\..\build\src\psvrservice\Debug\PSVRService.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2main.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2.lib;..\..\..\thirdparty\libusb\x64\Debug\lib\libusb-1.0.lib;imm32.lib;version.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_core330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_calib3d330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_features2d330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_flann330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_imgproc330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_imgcodecs330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_ml330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_highgui330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_objdetect330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_video330d.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_videoio330d.lib;..\..\..\deps\local\x64\vc15\staticlib\libjpegd.lib;..\..\..\deps\local\x64\vc15\staticlib\libpngd.lib;..\..\..\deps\local\x64\vc15\staticlib\libwebpd.lib;..\..\..\deps\local\x64\vc15\staticlib\zlibd.lib;..\..\..\deps\local\x64\vc15\staticlib\ittnotifyd.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\..\build\src\psvrmath\Debug\PSVRMath.lib;..\..\..\build\src\psvrservice\Debug\PSVRService.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2main.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2.lib;..\..\..\thirdparty\libusb\x64\Debug\lib\libusb-1.0.lib;imm32.lib;version.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343d.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <ImportLibrary>C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/Debug/PSVRConfigTool.lib</ImportLibrary>
-      <ProgramDataBaseFile>C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/Debug/PSVRConfigTool.pdb</ProgramDataBaseFile>
+      <ImportLibrary>../../../build/src/psvrconfigtool/Debug/PSVRConfigTool.lib</ImportLibrary>
+      <ProgramDataBaseFile>../../../build/src/psvrconfigtool/Debug/PSVRConfigTool.pdb</ProgramDataBaseFile>
       <SubSystem>Console</SubSystem>
       <Version>
       </Version>
@@ -132,10 +128,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;HAS_OPENCV;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\stb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\imgui;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\SDL2\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\stb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\..\..\thirdparty\imgui;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\SDL2\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -145,24 +141,20 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>
       </Message>
-      <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrconfigtool/assets" "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/Release/assets"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
+      <Command>XCOPY "$(SolutionDir)..\src\psvrconfigtool\assets" "$(SolutionDir)..\dist\Win64\Release\bin\assets\" /Y /S
+XCOPY "$(SolutionDir)..\resources" "$(SolutionDir)..\dist\Win64\Release\bin\resources\" /Y /S
+echo F|XCOPY "$(SolutionDir)..\thirdparty\SDL2\build\Release\SDL2.dll" "$(SolutionDir)..\dist\Win64\Release\bin\SDL2.dll" /Y /F
+echo F|XCOPY "$(SolutionDir)..\thirdparty\libusb\x64\Release\dll\libusb-1.0.dll" "$(SolutionDir)..\dist\Win64\Release\bin\libusb-1.0.dll" /Y /F
+echo F|XCOPY "$(SolutionDir)..\deps\opencv\build\x64\vc15\bin\opencv_world343d.dll" "$(SolutionDir)..\dist\Win64\Release\bin\opencv_world343.dll" /Y /F</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\..\build\src\psvrmath\Release\PSVRMath.lib;..\..\..\build\src\psvrservice\Release\PSVRService.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2main.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2.lib;..\..\..\thirdparty\libusb\x64\Release\lib\libusb-1.0.lib;imm32.lib;version.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_core330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_calib3d330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_features2d330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_flann330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_imgproc330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_imgcodecs330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_ml330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_highgui330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_objdetect330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_video330.lib;..\..\..\deps\local\x64\vc15\staticlib\opencv_videoio330.lib;..\..\..\deps\local\x64\vc15\staticlib\libjpeg.lib;..\..\..\deps\local\x64\vc15\staticlib\libpng.lib;..\..\..\deps\local\x64\vc15\staticlib\libwebp.lib;..\..\..\deps\local\x64\vc15\staticlib\zlib.lib;..\..\..\deps\local\x64\vc15\staticlib\ittnotify.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\..\build\src\psvrmath\Release\PSVRMath.lib;..\..\..\build\src\psvrservice\Release\PSVRService.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2main.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2.lib;..\..\..\thirdparty\libusb\x64\Release\lib\libusb-1.0.lib;imm32.lib;version.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <ImportLibrary>C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/Release/PSVRConfigTool.lib</ImportLibrary>
-      <ProgramDataBaseFile>C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/Release/PSVRConfigTool.pdb</ProgramDataBaseFile>
+      <ImportLibrary>../../../build/src/psvrconfigtool/Release/PSVRConfigTool.lib</ImportLibrary>
+      <ProgramDataBaseFile>../../../build/src/psvrconfigtool/Release/PSVRConfigTool.pdb</ProgramDataBaseFile>
       <SubSystem>Console</SubSystem>
       <Version>
       </Version>
@@ -172,98 +164,67 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\CMakeLists.txt">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrconfigtool/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-HC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk" "-BC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build" --check-stamp-file "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/CMakeFiles/generate.stamp"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrconfigtool/CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrconfigtool\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrconfigtool/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-HC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk" "-BC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build" --check-stamp-file "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrconfigtool/CMakeFiles/generate.stamp"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrconfigtool/CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrconfigtool\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-    </CustomBuild>
+    <ClInclude Include="..\..\..\src\psvrconfigtool\App.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_AccelerometerCalibration.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_ColorCalibration.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_ComputeTrackerPoses.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_ControllerSettings.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDAccelerometerTest.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDGyroscopeTest.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDSettings.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDTrackingTest.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_MainMenu.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_MonoCalibration.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_StereoCalibration.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_TrackerSettings.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_TrackerTest.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithMat.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AssetManager.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\Camera.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\Logger.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\Renderer.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\UIConstants.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\ds4body_3dmodel.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\ds4lightbar_3dmodel.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\morpheus_3dmodel.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\ps3eye_3dmodel.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\psmovebody_3dmodel.h" />
+    <ClInclude Include="..\..\..\src\psvrconfigtool\psmovebulb_3dmodel.h" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\App.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_AccelerometerCalibration.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_ColorCalibration.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_ComputeTrackerPoses.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_ControllerSettings.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDAccelerometerTest.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDGyroscopeTest.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDSettings.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDTrackingTest.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_MainMenu.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_MonoCalibration.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_StereoCalibration.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_TrackerSettings.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_TrackerTest.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithMat.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AssetManager.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\Camera.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\PSVRTracker.cpp" />
+    <ClCompile Include="..\..\..\src\psvrconfigtool\Renderer.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\MathTypeConversion.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\MathTypeConversion.cpp" />
+    <ClCompile Include="..\..\..\thirdparty\imgui\imgui.cpp" />
+    <ClCompile Include="..\..\..\thirdparty\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\..\..\thirdparty\imgui\imgui_draw.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\App.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_AccelerometerCalibration.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ColorCalibration.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ComputeTrackerPoses.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ControllerSettings.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDAccelerometerTest.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDGyroscopeTest.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDSettings.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDTrackingTest.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MainMenu.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MonoCalibration.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_StereoCalibration.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerSettings.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerTest.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithMat.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AssetManager.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Camera.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Logger.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Renderer.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\UIConstants.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\ds4body_3dmodel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\ds4lightbar_3dmodel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\morpheus_3dmodel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\ps3eye_3dmodel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\psmovebody_3dmodel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\psmovebulb_3dmodel.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\App.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_AccelerometerCalibration.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ColorCalibration.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ComputeTrackerPoses.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ControllerSettings.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDAccelerometerTest.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDGyroscopeTest.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDSettings.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDTrackingTest.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MainMenu.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MonoCalibration.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_StereoCalibration.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerSettings.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerTest.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithMat.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AssetManager.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Camera.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\PSVRTracker.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Renderer.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\MathTypeConversion.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\MathTypeConversion.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\imgui\imgui.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\imgui\imgui_demo.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\imgui\imgui_draw.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath\PSVRMath.vcxproj">
+    <ProjectReference Include="..\..\..\msvc\src\psvrmath\PSVRMath.vcxproj">
       <Project>{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}</Project>
       <Name>PSVRMath</Name>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrservice\PSVRService.vcxproj">
-      <Project>{B4FE20AE-21BE-3FAC-828F-D51782626C75}</Project>
-      <Name>PSVRService</Name>
+    <ProjectReference Include="..\psvrservice\PSVRService.vcxproj">
+      <Project>{b4fe20ae-21be-3fac-828f-d51782626c75}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

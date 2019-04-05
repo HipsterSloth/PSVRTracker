@@ -1,23 +1,20 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\tests\test_camera.cpp">
+    <ClCompile Include="..\..\..\src\tests\test_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.cpp">
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientConstants.h">
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\ClientConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.h">
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\tests\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">

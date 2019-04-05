@@ -1,170 +1,167 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\App.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\App.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_AccelerometerCalibration.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_AccelerometerCalibration.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ColorCalibration.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_ColorCalibration.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ComputeTrackerPoses.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_ComputeTrackerPoses.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ControllerSettings.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_ControllerSettings.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDAccelerometerTest.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDAccelerometerTest.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDGyroscopeTest.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDGyroscopeTest.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDSettings.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDSettings.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDTrackingTest.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_HMDTrackingTest.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MainMenu.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_MainMenu.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MonoCalibration.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_MonoCalibration.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_StereoCalibration.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_StereoCalibration.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerSettings.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_TrackerSettings.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerTest.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppStage_TrackerTest.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithMat.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithMat.cpp">
       <Filter>AppStages</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AssetManager.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\AssetManager.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Camera.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\Camera.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\PSVRTracker.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\PSVRTracker.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Renderer.cpp">
+    <ClCompile Include="..\..\..\src\psvrconfigtool\Renderer.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\MathTypeConversion.cpp">
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\MathTypeConversion.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\imgui\imgui.cpp">
+    <ClCompile Include="..\..\..\thirdparty\imgui\imgui.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\imgui\imgui_demo.cpp">
+    <ClCompile Include="..\..\..\thirdparty\imgui\imgui_demo.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\imgui\imgui_draw.cpp">
+    <ClCompile Include="..\..\..\thirdparty\imgui\imgui_draw.cpp">
       <Filter>AppCore</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\App.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\App.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_AccelerometerCalibration.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_AccelerometerCalibration.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ColorCalibration.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_ColorCalibration.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ComputeTrackerPoses.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_ComputeTrackerPoses.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_ControllerSettings.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_ControllerSettings.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDAccelerometerTest.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDAccelerometerTest.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDGyroscopeTest.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDGyroscopeTest.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDSettings.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDSettings.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_HMDTrackingTest.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_HMDTrackingTest.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MainMenu.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_MainMenu.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_MonoCalibration.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_MonoCalibration.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_StereoCalibration.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_StereoCalibration.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerSettings.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_TrackerSettings.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppStage_TrackerTest.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppStage_TrackerTest.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithHMD.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AppSubStage_CalibrateWithMat.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AppSubStage_CalibrateWithMat.h">
       <Filter>AppStages</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\AssetManager.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\AssetManager.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Camera.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\Camera.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Logger.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\Logger.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\Renderer.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\Renderer.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\UIConstants.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\UIConstants.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\ds4body_3dmodel.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\ds4body_3dmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\ds4lightbar_3dmodel.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\ds4lightbar_3dmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\morpheus_3dmodel.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\morpheus_3dmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\ps3eye_3dmodel.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\ps3eye_3dmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\psmovebody_3dmodel.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\psmovebody_3dmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\psmovebulb_3dmodel.h">
+    <ClInclude Include="..\..\..\src\psvrconfigtool\psmovebulb_3dmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\MathTypeConversion.h">
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\MathTypeConversion.h">
       <Filter>AppCore</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrconfigtool\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

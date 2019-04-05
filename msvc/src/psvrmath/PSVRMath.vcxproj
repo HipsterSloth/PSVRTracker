@@ -67,10 +67,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;BUILDING_STATIC_LIBRARY;HAS_OPENCV;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories))</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -83,7 +83,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\thirdparty\glm;..\..\..\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /bigobj -fPIC</AdditionalOptions>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -101,10 +101,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;BUILDING_STATIC_LIBRARY;HAS_OPENCV;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -116,44 +116,14 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\CMakeLists.txt">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrmath/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-HC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk" "-BC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build" --check-stamp-file "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrmath/CMakeFiles/generate.stamp"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrmath/CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrmath/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-HC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk" "-BC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build" --check-stamp-file "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrmath/CMakeFiles/generate.stamp"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrmath/CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathAlignment.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathEigen.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathGLM.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathUtility.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathAlignment.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathEigen.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathGLM.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\MathUtility.h" />
+    <ClCompile Include="..\..\..\src\psvrmath\MathAlignment.cpp" />
+    <ClCompile Include="..\..\..\src\psvrmath\MathEigen.cpp" />
+    <ClCompile Include="..\..\..\src\psvrmath\MathGLM.cpp" />
+    <ClCompile Include="..\..\..\src\psvrmath\MathUtility.cpp" />
+    <ClInclude Include="..\..\..\src\psvrmath\MathAlignment.h" />
+    <ClInclude Include="..\..\..\src\psvrmath\MathEigen.h" />
+    <ClInclude Include="..\..\..\src\psvrmath\MathGLM.h" />
+    <ClInclude Include="..\..\..\src\psvrmath\MathUtility.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.26430.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PSVRConfigTool", "src\psvrconfigtool\PSVRConfigTool.vcxproj", "{A687A5B8-D875-3483-8300-12D507593EBF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B4FE20AE-21BE-3FAC-828F-D51782626C75} = {B4FE20AE-21BE-3FAC-828F-D51782626C75}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{A2E04F83-F84B-4FD9-B902-CB7428A008BB}"
 EndProject
@@ -54,5 +57,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{7D9D1CAF-F845-3C5D-B965-EB5A6B26AF82} = {A2E04F83-F84B-4FD9-B902-CB7428A008BB}
 		{5FC75805-2DF6-3E37-8F00-A7E872266B98} = {A2E04F83-F84B-4FD9-B902-CB7428A008BB}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8F9A63D6-3058-40E8-8D6F-254AD0B593A4}
 	EndGlobalSection
 EndGlobal

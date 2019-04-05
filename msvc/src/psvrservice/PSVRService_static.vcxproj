@@ -67,10 +67,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;PSVRService_STATIC;PSVRSERVICE_CPP_API;PSVRClient_EXPORTS;HAS_OPENCV;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Interface;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\DualShock4;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\MorpheusHMD;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSMoveController;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRConfig;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\Configuru;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\lockfreequeue;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\kalman\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\hidapi\hidapi;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\libusb\libusb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\deps\local\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Interface;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\DualShock4;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\MorpheusHMD;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSMoveController;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRConfig;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\Configuru;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\lockfreequeue;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\kalman\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\hidapi\hidapi;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\libusb\libusb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\deps\local\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -101,10 +101,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;PSVRService_STATIC;PSVRSERVICE_CPP_API;PSVRClient_EXPORTS;HAS_OPENCV;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Interface;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\DualShock4;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\MorpheusHMD;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSMoveController;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRConfig;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\Configuru;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\lockfreequeue;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\kalman\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\hidapi\hidapi;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\libusb\libusb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\deps\local\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Interface;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\DualShock4;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\MorpheusHMD;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSMoveController;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRConfig;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\Configuru;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\lockfreequeue;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\eigen;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\kalman\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\hidapi\hidapi;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\libusb\libusb;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\deps\local\include;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrmath\..\..\thirdparty\glm;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\deps\local\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\build\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -116,192 +116,158 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\CMakeLists.txt">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrservice/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-HC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk" "-BC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build" --check-stamp-file "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrservice/CMakeFiles/generate.stamp"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrservice/CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrservice\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrservice/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" "-HC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk" "-BC:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build" --check-stamp-file "C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/build/src/psvrservice/CMakeFiles/generate.stamp"
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:/Users/Michael/Sword of Moonlight/PSVR/PSVRTracker/trunk/src/psvrservice/CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\CMakeLists.txt;C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrservice\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientGeometry_CAPI.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient_CAPI.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientColor_CAPI.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientConstants.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\ClientGeometry_CAPI.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient_CAPI.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\ClientAPI\PSVRClient_export.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRConfig\PSVRConfig.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRConfig\PSVRConfig.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSMoveController\PSMoveController.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSMoveController\PSMoveController.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\DualShock4\DualShock4Controller.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\DualShock4\DualShock4Controller.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\ControllerDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\ControllerHidDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\HMDDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\HMDHidDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\HMDUsbDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\TrackerDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\TrackerUSBDeviceEnumerator.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\WMFCameraEnumerator.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\ControllerDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\ControllerHidDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\DeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\HMDDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\HMDHidDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\HMDUsbDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\TrackerDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\TrackerUSBDeviceEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Enumerator\WMFCameraEnumerator.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Interface\DeviceInterface.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Interface\DevicePlatformInterface.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\ControllerManager.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\DeviceManager.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\DeviceTypeManager.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\HMDManager.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\TrackerManager.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\USBDeviceManager.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\ControllerManager.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\DeviceManager.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\DeviceTypeManager.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\HMDManager.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\TrackerManager.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Manager\USBDeviceManager.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\MonoPointCloudTrackingModel.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\PointCloudTrackingModel.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\SphereTrackingModel.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\StereoPointCloudTrackingModel.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\TrackingModelMath.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\MonoPointCloudTrackingModel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\PointCloudTrackingModel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\ShapeTrackingModelInterface.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\SphereTrackingModel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\StereoPointCloudTrackingModel.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\Model\TrackingModelMath.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\LibUSBApi.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\LibUSBTransferBundle.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\NullUSBApi.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\USBDeviceFilter.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\LibUSBApi.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\LibUSBTransferBundle.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\NullUSBApi.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\USBApiInterface.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\USBDeviceFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\USB\USBDeviceRequest.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerControllerView.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerDeviceView.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerHMDView.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerTrackerView.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerControllerView.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerDeviceView.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerHMDView.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Device\View\ServerTrackerView.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\MorpheusHMD\MorpheusHMD.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\MorpheusHMD\MorpheusHMD.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\CompoundPoseFilter.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\KalmanOrientationFilter.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\KalmanPoseFilter.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\KalmanPositionFilter.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\OrientationFilter.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\PoseFilterInterface.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\PositionFilter.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\CompoundPoseFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\KalmanOrientationFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\KalmanPoseFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\KalmanPositionFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\OrientationFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\PoseFilterInterface.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Filter\PositionFilter.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\BluetoothQueries.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\BluetoothRequests.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\BluetoothRequests.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\BluetoothRequestsWin32.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\BluetoothQueriesWin32.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\PlatformDeviceAPIWin32.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\PlatformDeviceAPIWin32.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\WinUSBApi.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\WinUSBApi.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\WinUSBTransferBundle.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Platform\WinUSBTransferBundle.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\PSVRService.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\PSVRServiceInterface.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\ServiceRequestHandler.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\PSVRService.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\PSVRServiceInterface.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\ServiceRequestHandler.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Service\ServiceVersion.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\CommonTrackerConfig.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PS3EyeConfig.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PS3EyeTracker.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PS3EyeVideo.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\TrackerCapabilitiesConfig.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\TrackerMath.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\CommonTrackerConfig.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PS3EyeConfig.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PS3EyeTracker.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PS3EyeVideo.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\TrackerCapabilitiesConfig.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\TrackerMath.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFConfig.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFMonoTracker.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFStereoTracker.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFVideo.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFConfig.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFMonoTracker.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFStereoTracker.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\WMFTracker\WMFVideo.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\AtomicPrimitives.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\Logger.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\MathTypeConversion.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\Utility.cpp" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\WorkerThread.cpp" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\AlignedMemory.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\AtomicPrimitives.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\Logger.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\MathTypeConversion.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\StackContainer.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\Utility.h" />
-    <ClInclude Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\src\psvrservice\Utils\WorkerThread.h" />
-    <ClCompile Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\thirdparty\hidapi\windows\hid.c">
+    <ClCompile Include="..\..\..\src\psvrservice\ClientAPI\ClientGeometry_CAPI.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\ClientAPI\PSVRClient.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\ClientAPI\PSVRClient_CAPI.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\ClientColor_CAPI.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\ClientConstants.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\ClientGeometry_CAPI.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\PSVRClient.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\PSVRClient_CAPI.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\ClientAPI\PSVRClient_export.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRConfig\PSVRConfig.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRConfig\PSVRConfig.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSMoveController\PSMoveController.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSMoveController\PSMoveController.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\DualShock4\DualShock4Controller.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\DualShock4\DualShock4Controller.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\ControllerDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\ControllerHidDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\HMDDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\HMDHidDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\HMDUsbDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\TrackerDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\TrackerUSBDeviceEnumerator.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Enumerator\WMFCameraEnumerator.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\ControllerDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\ControllerHidDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\DeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\HMDDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\HMDHidDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\HMDUsbDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\TrackerDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\TrackerUSBDeviceEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Enumerator\WMFCameraEnumerator.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Interface\DeviceInterface.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Interface\DevicePlatformInterface.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Manager\ControllerManager.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Manager\DeviceManager.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Manager\DeviceTypeManager.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Manager\HMDManager.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Manager\TrackerManager.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Manager\USBDeviceManager.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Manager\ControllerManager.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Manager\DeviceManager.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Manager\DeviceTypeManager.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Manager\HMDManager.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Manager\TrackerManager.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Manager\USBDeviceManager.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Model\MonoPointCloudTrackingModel.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Model\PointCloudTrackingModel.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Model\SphereTrackingModel.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Model\StereoPointCloudTrackingModel.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\Model\TrackingModelMath.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Model\MonoPointCloudTrackingModel.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Model\PointCloudTrackingModel.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Model\ShapeTrackingModelInterface.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Model\SphereTrackingModel.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Model\StereoPointCloudTrackingModel.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\Model\TrackingModelMath.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\USB\LibUSBApi.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\USB\LibUSBTransferBundle.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\USB\NullUSBApi.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\USB\USBDeviceFilter.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\USB\LibUSBApi.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\USB\LibUSBTransferBundle.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\USB\NullUSBApi.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\USB\USBApiInterface.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\USB\USBDeviceFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\USB\USBDeviceRequest.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\View\ServerControllerView.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\View\ServerDeviceView.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\View\ServerHMDView.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Device\View\ServerTrackerView.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\View\ServerControllerView.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\View\ServerDeviceView.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\View\ServerHMDView.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Device\View\ServerTrackerView.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\MorpheusHMD\MorpheusHMD.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\MorpheusHMD\MorpheusHMD.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\CompoundPoseFilter.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\KalmanOrientationFilter.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\KalmanPoseFilter.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\KalmanPositionFilter.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\OrientationFilter.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\PoseFilterInterface.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Filter\PositionFilter.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\CompoundPoseFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\KalmanOrientationFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\KalmanPoseFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\KalmanPositionFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\OrientationFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\PoseFilterInterface.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Filter\PositionFilter.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Platform\BluetoothQueries.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Platform\BluetoothRequests.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Platform\BluetoothRequests.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Platform\BluetoothRequestsWin32.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Platform\BluetoothQueriesWin32.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Platform\PlatformDeviceAPIWin32.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Platform\PlatformDeviceAPIWin32.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Platform\WinUSBApi.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Platform\WinUSBApi.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Platform\WinUSBTransferBundle.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Platform\WinUSBTransferBundle.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Service\PSVRService.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Service\PSVRServiceInterface.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Service\ServiceRequestHandler.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Service\PSVRService.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Service\PSVRServiceInterface.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Service\ServiceRequestHandler.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Service\ServiceVersion.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\CommonTrackerConfig.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\PS3EyeConfig.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\PS3EyeTracker.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\PS3EyeVideo.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\TrackerCapabilitiesConfig.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\TrackerMath.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\CommonTrackerConfig.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\PS3EyeConfig.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\PS3EyeTracker.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\PS3EyeVideo.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\TrackerCapabilitiesConfig.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\TrackerMath.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\PSVRTracker\PSEye\PSEyeVideoCapture.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\WMFTracker\WMFConfig.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\WMFTracker\WMFMonoTracker.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\WMFTracker\WMFStereoTracker.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\WMFTracker\WMFVideo.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\WMFTracker\WMFConfig.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\WMFTracker\WMFMonoTracker.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\WMFTracker\WMFStereoTracker.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\WMFTracker\WMFVideo.h" />
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\AtomicPrimitives.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\Logger.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\MathTypeConversion.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\Utility.cpp" />
+    <ClCompile Include="..\..\..\src\psvrservice\Utils\WorkerThread.cpp" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\AlignedMemory.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\AtomicPrimitives.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\Logger.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\MathTypeConversion.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\StackContainer.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\Utility.h" />
+    <ClInclude Include="..\..\..\src\psvrservice\Utils\WorkerThread.h" />
+    <ClCompile Include="..\..\..\thirdparty\hidapi\windows\hid.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\src\psvrmath\PSVRMath.vcxproj">
+    <ProjectReference Include="..\..\..\build\src\psvrmath\PSVRMath.vcxproj">
       <Project>{7B274003-BC68-36D4-BE0A-C9DAC2D77BFF}</Project>
       <Name>PSVRMath</Name>
-    </ProjectReference>
-    <ProjectReference Include="C:\Users\Michael\Sword of Moonlight\PSVR\PSVRTracker\trunk\build\opencv.vcxproj">
-      <Project>{97777E78-1835-3CBE-A14A-6AFDF967AE52}</Project>
-      <Name>opencv</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
