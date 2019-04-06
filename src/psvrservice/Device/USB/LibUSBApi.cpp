@@ -636,7 +636,6 @@ eUSBResultCode LibUSBApi::submit_control_transfer(
 			control_transfer_cb,
 			requestStateOnHeap,
 			request.timeout);
-		transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
 
 		libusb_result = libusb_submit_transfer(transfer);
 		if (libusb_result == LIBUSB_SUCCESS)
@@ -654,7 +653,11 @@ eUSBResultCode LibUSBApi::submit_control_transfer(
 	{
 		if (transfer != nullptr)
 		{
-            // This will free the buffer since LIBUSB_TRANSFER_FREE_BUFFER is set on the transfer
+            if (transfer->buffer)
+            {
+                free(transfer->buffer);
+                transfer->buffer = nullptr;
+            }
 			libusb_free_transfer(transfer);
 		}
         else if (buffer != nullptr)
@@ -742,6 +745,11 @@ static void LIBUSB_CALL control_transfer_cb(struct libusb_transfer *transfer)
 	delete requestStateOnHeap;
 
 	// Free the libusb allocated transfer
+    if (transfer->buffer)
+    {
+        free(transfer->buffer);
+        transfer->buffer = nullptr;
+    }
 	libusb_free_transfer(transfer);
 }
 
