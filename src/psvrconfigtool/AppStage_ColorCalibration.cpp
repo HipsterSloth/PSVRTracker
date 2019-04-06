@@ -71,15 +71,22 @@ public:
             GL_BGR, // buffer format
             nullptr);
 
-        bgrBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
-        hsvBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
-        gsLowerBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC1);
-        gsUpperBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC1);
-        maskedBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
+        cpuScratchBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
+        bgrBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC3);
+        hsvBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC3);
+        gsLowerBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC1);
+        gsUpperBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC1);
+        maskedBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC3);
     }
 
     virtual ~VideoBufferState()
     {
+        if (cpuScratchBuffer != nullptr)
+        {
+            delete cpuScratchBuffer;
+            cpuScratchBuffer = nullptr;
+        }
+
         if (maskedBuffer != nullptr)
         {
             delete maskedBuffer;
@@ -118,11 +125,12 @@ public:
     }
 
     TextureAsset *videoTexture;
-    cv::Mat *bgrBuffer; // source video frame
-    cv::Mat *hsvBuffer; // source frame converted to HSV color space
-    cv::Mat *gsLowerBuffer; // HSV image clamped by HSV range into grayscale mask
-    cv::Mat *gsUpperBuffer; // HSV image clamped by HSV range into grayscale mask
-    cv::Mat *maskedBuffer; // bgr image ANDed together with grayscale mask
+    cv::Mat *cpuScratchBuffer; // source video frame
+    cv::UMat *bgrBuffer; // source video frame
+    cv::UMat *hsvBuffer; // source frame converted to HSV color space
+    cv::UMat *gsLowerBuffer; // HSV image clamped by HSV range into grayscale mask
+    cv::UMat *gsUpperBuffer; // HSV image clamped by HSV range into grayscale mask
+    cv::UMat *maskedBuffer; // bgr image ANDed together with grayscale mask
 };
 
 //-- public methods -----
@@ -353,13 +361,13 @@ void AppStage_ColorCalibration::update()
             switch (m_videoDisplayMode)
             {
             case AppStage_ColorCalibration::mode_bgr:
-                display_buffer = m_video_buffer_state->bgrBuffer->data;
+                m_video_buffer_state->bgrBuffer->copyTo(*m_video_buffer_state->cpuScratchBuffer);
                 break;
             case AppStage_ColorCalibration::mode_hsv:
-                display_buffer = m_video_buffer_state->hsvBuffer->data;
+                m_video_buffer_state->hsvBuffer->copyTo(*m_video_buffer_state->cpuScratchBuffer);
                 break;
             case AppStage_ColorCalibration::mode_masked:
-                display_buffer = m_video_buffer_state->maskedBuffer->data;
+                m_video_buffer_state->maskedBuffer->copyTo(*m_video_buffer_state->cpuScratchBuffer);
                 break;
             default:
                 assert(0 && "unreachable");
@@ -367,6 +375,7 @@ void AppStage_ColorCalibration::update()
             }
 
             // Display the selected buffer
+            display_buffer = m_video_buffer_state->cpuScratchBuffer->data;
             m_video_buffer_state->videoTexture->copyBufferIntoTexture(display_buffer);
         }
     }
@@ -531,7 +540,9 @@ void AppStage_ColorCalibration::renderUI()
             ImVec2 dispSize = ImGui::GetIO().DisplaySize;
             int img_x = (static_cast<int>(mousePos.x) * m_video_buffer_state->hsvBuffer->cols) / static_cast<int>(dispSize.x);
             int img_y = (static_cast<int>(mousePos.y) * m_video_buffer_state->hsvBuffer->rows) / static_cast<int>(dispSize.y);
-            cv::Vec< unsigned char, 3 > hsv_pixel = m_video_buffer_state->hsvBuffer->at<cv::Vec< unsigned char, 3 >>(cv::Point(img_x, img_y));
+
+            m_video_buffer_state->hsvBuffer->copyTo(*m_video_buffer_state->cpuScratchBuffer);
+            cv::Vec< unsigned char, 3 > hsv_pixel = m_video_buffer_state->cpuScratchBuffer->at<cv::Vec< unsigned char, 3 >>(cv::Point(img_x, img_y));
 
             PSVR_HSVColorRange preset = getColorPreset();
             preset.hue_range.center = hsv_pixel[0];
@@ -923,7 +934,9 @@ void AppStage_ColorCalibration::renderUI()
         ImVec2 dispSize = ImGui::GetIO().DisplaySize;
         int img_x = (static_cast<int>(mousePos.x) * m_video_buffer_state->hsvBuffer->cols) / static_cast<int>(dispSize.x);
         int img_y = (static_cast<int>(mousePos.y) * m_video_buffer_state->hsvBuffer->rows) / static_cast<int>(dispSize.y);
-        cv::Vec< unsigned char, 3 > hsv_pixel = m_video_buffer_state->hsvBuffer->at<cv::Vec< unsigned char, 3 >>(cv::Point(img_x, img_y));
+
+        m_video_buffer_state->hsvBuffer->copyTo(*m_video_buffer_state->cpuScratchBuffer);
+        cv::Vec< unsigned char, 3 > hsv_pixel = m_video_buffer_state->cpuScratchBuffer->at<cv::Vec< unsigned char, 3 >>(cv::Point(img_x, img_y));
 
         request_set_controller_tracking_color(m_masterControllerView, new_color);
 

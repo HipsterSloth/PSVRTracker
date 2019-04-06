@@ -14,6 +14,8 @@
 #include "USBDeviceManager.h"
 #include "Utility.h"
 
+#include "opencv2/core/ocl.hpp"
+
 #include <fstream>
 
 #ifdef _MSC_VER
@@ -163,6 +165,51 @@ TrackerManager::startup()
         for (int color_index = 0; color_index < PSVRTrackingColorType_MaxColorTypes; ++color_index)
         {
             m_available_color_ids.push_back(static_cast<PSVRTrackingColorType>(color_index));
+        }
+
+        // Test for OpenCL availability
+        cv::ocl::Context ctx = cv::ocl::Context::getDefault();
+        if (ctx.ptr())
+        {
+            cv::ocl::Device device = cv::ocl::Device::getDefault();
+
+            const char *DeviceType = "Unknown";
+            switch (device.type())
+            {
+            case cv::ocl::Device::TYPE_DEFAULT:
+                DeviceType = "DEFAULT";
+                break;
+            case cv::ocl::Device::TYPE_CPU:
+                DeviceType = "CPU";
+                break;
+            case cv::ocl::Device::TYPE_GPU:
+                DeviceType = "GPU";
+                break;
+            case cv::ocl::Device::TYPE_ACCELERATOR:
+                DeviceType = "ACCELERATOR";
+                break;
+            case cv::ocl::Device::TYPE_DGPU:
+                DeviceType = "DGPU";
+                break;
+            case cv::ocl::Device::TYPE_IGPU:
+                DeviceType = "IGPU";
+                break;
+            case cv::ocl::Device::TYPE_ALL:
+                DeviceType = "ALL";
+                break;
+            }
+
+            PSVR_LOG_INFO("OpenCL") << "Device Name: " << device.name();
+            PSVR_LOG_INFO("OpenCL") << "Device Type: " << DeviceType;
+            PSVR_LOG_INFO("OpenCL") << "Device Vendor: " << device.vendorName();
+            PSVR_LOG_INFO("OpenCL") << "Device Version: " << device.version();
+            PSVR_LOG_INFO("OpenCL") << "OpenCL Version: " << device.OpenCLVersion();
+            PSVR_LOG_INFO("OpenCL") << "Has Kernel Compiler: " << (device.compilerAvailable() ? "YES" : "NO");
+            PSVR_LOG_INFO("OpenCL") << "Has Kernel Linker: " << (device.linkerAvailable() ? "YES" : "NO");
+        }
+        else
+        {
+            PSVR_LOG_ERROR("TrackerManager::startup") << "OpenCL is not available";
         }
     }
 

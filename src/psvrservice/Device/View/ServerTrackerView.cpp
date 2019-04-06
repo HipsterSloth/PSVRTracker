@@ -231,19 +231,19 @@ public:
 		srcBufferHeight= mode->bufferPixelHeight;
         device->getVideoFrameDimensions(&frameWidth, &frameHeight, nullptr);
 
-        bgrBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
+        bgrBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC3);
         bgrShmemBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
-        hsvBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
-        gsLowerBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC1);
-        gsUpperBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC1);
-        maskedBuffer = new cv::Mat(frameHeight, frameWidth, CV_8UC3);
+        hsvBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC3);
+        gsLowerBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC1);
+        gsUpperBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC1);
+        maskedBuffer = new cv::UMat(frameHeight, frameWidth, CV_8UC3);
         
-        const TrackerManagerConfig &cfg= DeviceManager::getInstance()->m_tracker_manager->getConfig();
-        if (cfg.use_bgr_to_hsv_lookup_table)
-        {
-            bgr2hsv = OpenCVBGRToHSVMapper::allocate();
-        }
-        else
+        //const TrackerManagerConfig &cfg= DeviceManager::getInstance()->m_tracker_manager->getConfig();
+        //if (cfg.use_bgr_to_hsv_lookup_table)
+        //{
+        //    bgr2hsv = OpenCVBGRToHSVMapper::allocate();
+        //}
+        //else
         {
             bgr2hsv = nullptr;
         }
@@ -325,11 +325,11 @@ public:
     void updateHsvBuffer()
     {
         // Convert the video buffer to the HSV color space
-        if (bgr2hsv != nullptr)
-        {
-            bgr2hsv->cvtColor(bgrROI, hsvROI);
-        }
-        else
+        //if (bgr2hsv != nullptr)
+        //{
+        //    bgr2hsv->cvtColor(bgrROI, hsvROI);
+        //}
+        //else
         {
             cv::cvtColor(bgrROI, hsvROI, cv::COLOR_BGR2HSV);
         }
@@ -365,10 +365,10 @@ public:
         //Create the ROI matrices.
         //It's not a full copy, so this isn't too slow.
         //adjustROI is probably slightly faster but I ran into trouble with it.
-        bgrROI = cv::Mat(*bgrBuffer, ROI);
-        hsvROI = cv::Mat(*hsvBuffer, ROI);
-        gsLowerROI = cv::Mat(*gsLowerBuffer, ROI);
-        gsUpperROI = cv::Mat(*gsUpperBuffer, ROI);
+        bgrROI = cv::UMat(*bgrBuffer, ROI);
+        hsvROI = cv::UMat(*hsvBuffer, ROI);
+        gsLowerROI = cv::UMat(*gsLowerBuffer, ROI);
+        gsUpperROI = cv::UMat(*gsUpperBuffer, ROI);
         
         updateHsvBuffer();
         
@@ -659,16 +659,16 @@ public:
     int frameWidth;
     int frameHeight;
 
-    cv::Mat *bgrBuffer; // source video frame
+    cv::UMat *bgrBuffer; // source video frame
     cv::Mat *bgrShmemBuffer; //Frame onto which we draw debug lines, and transmit via shared mem.
-    cv::Mat bgrROI;
-    cv::Mat *hsvBuffer; // source frame converted to HSV color space
-    cv::Mat hsvROI;
-    cv::Mat *gsLowerBuffer; // HSV image clamped by HSV range into grayscale mask
-    cv::Mat gsLowerROI;
-    cv::Mat *gsUpperBuffer; // HSV image clamped by HSV range into grayscale mask
-    cv::Mat gsUpperROI;
-    cv::Mat *maskedBuffer; // bgr image ANDed together with grayscale mask
+    cv::UMat bgrROI;
+    cv::UMat *hsvBuffer; // source frame converted to HSV color space
+    cv::UMat hsvROI;
+    cv::UMat *gsLowerBuffer; // HSV image clamped by HSV range into grayscale mask
+    cv::UMat gsLowerROI;
+    cv::UMat *gsUpperBuffer; // HSV image clamped by HSV range into grayscale mask
+    cv::UMat gsUpperROI;
+    cv::UMat *maskedBuffer; // bgr image ANDed together with grayscale mask
     OpenCVBGRToHSVMapper *bgr2hsv; // Used to convert an rgb image to an hsv image
 };
 
