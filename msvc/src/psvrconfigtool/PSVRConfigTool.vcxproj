@@ -145,7 +145,7 @@ echo F|XCOPY "$(SolutionDir)..\deps\opencv\build\x64\vc15\bin\opencv_world343d.d
 XCOPY "$(SolutionDir)..\resources" "$(SolutionDir)..\dist\Win64\Release\bin\resources\" /Y /S
 echo F|XCOPY "$(SolutionDir)..\thirdparty\SDL2\build\Release\SDL2.dll" "$(SolutionDir)..\dist\Win64\Release\bin\SDL2.dll" /Y /F
 echo F|XCOPY "$(SolutionDir)..\thirdparty\libusb\x64\Release\dll\libusb-1.0.dll" "$(SolutionDir)..\dist\Win64\Release\bin\libusb-1.0.dll" /Y /F
-echo F|XCOPY "$(SolutionDir)..\deps\opencv\build\x64\vc15\bin\opencv_world343d.dll" "$(SolutionDir)..\dist\Win64\Release\bin\opencv_world343.dll" /Y /F</Command>
+echo F|XCOPY "$(SolutionDir)..\deps\opencv\build\x64\vc15\bin\opencv_world343.dll" "$(SolutionDir)..\dist\Win64\Release\bin\opencv_world343.dll" /Y /F</Command>
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>..\..\..\build\src\psvrmath\Release\PSVRMath.lib;..\..\..\build\src\psvrservice\Release\PSVRService.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2main.lib;..\..\..\thirdparty\SDL2\build\Release\SDL2.lib;..\..\..\thirdparty\libusb\x64\Release\lib\libusb-1.0.lib;imm32.lib;version.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
