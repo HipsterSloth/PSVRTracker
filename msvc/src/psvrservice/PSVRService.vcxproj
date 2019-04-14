@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -69,18 +69,6 @@
       <PreprocessorDefinitions>WIN32;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR="Debug";PSVRService_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR=\"Debug\";PSVRService_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
-      <HeaderFileName>%(Filename).h</HeaderFileName>
-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
-    </Midl>
     <PostBuildEvent>
       <Message>
       </Message>
@@ -120,18 +108,6 @@
       <DebugInformationFormat>
       </DebugInformationFormat>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;HAS_OPENCV;CMAKE_INTDIR=\"Release\";PSVRService_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Device\Enumerator;..\..\..\src\psvrservice\Device\Interface;..\..\..\src\psvrservice\Device\Manager;..\..\..\src\psvrservice\Device\Model;..\..\..\src\psvrservice\Device\USB;..\..\..\src\psvrservice\Device\View;..\..\..\src\psvrservice\DualShock4;..\..\..\src\psvrservice\Filter;..\..\..\src\psvrservice\MorpheusHMD;..\..\..\src\psvrservice\Platform;..\..\..\src\psvrservice\PSMoveController;..\..\..\src\psvrservice\PSVRConfig;..\..\..\src\psvrservice\PSVRTracker;..\..\..\src\psvrservice\PSVRTracker\PSEye;..\..\..\src\psvrservice\Service;..\..\..\src\psvrservice\Utils;..\..\..\src\psvrservice\WMFTracker;..\..\..\thirdparty\Configuru;..\..\..\thirdparty\lockfreequeue;..\..\..\thirdparty\eigen;..\..\..\thirdparty\kalman\include;..\..\..\thirdparty\hidapi\hidapi;..\..\..\thirdparty\libusb\libusb;..\..\..\src\psvrmath;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
-      <HeaderFileName>%(Filename).h</HeaderFileName>
-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
-    </Midl>
     <PostBuildEvent>
       <Message>
       </Message>
