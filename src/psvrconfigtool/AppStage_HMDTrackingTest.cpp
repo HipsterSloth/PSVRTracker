@@ -81,7 +81,7 @@ void AppStage_HMDTrackingTest::update()
         break;
     case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
-	case eMenuState::failedTrackerListRequest: //filling in
+    case eMenuState::failedTrackerListRequest:
     case eMenuState::failedTrackerStartRequest:
         break;
     case eMenuState::testTracking:
