@@ -1190,14 +1190,15 @@ namespace MorpheusUDP_PSVRToolbox_status
 	_(PacketSequence)
 	_(VoltageReference)
 	_(VoltageValue)
-	//Note: configuru converts these into std:map objects.
+	//Note: configuru converts these into std:map objects
 	//{"LinearAcceleration1",{"X",-0.0224609375},{"Y",-0.198242188},{"Z",0.959960938}},
 	//{"AngularAcceleration1",{"X",-0.00425650924},{"Y",-0.00106412731},{"Z",-0.007448891}},
 	//{"LinearAcceleration2",{"X",-0.015625},{"Y",-0.198242188},{"Z",0.9589844}},
 	//{"AngularAcceleration2",{"X",-0.00106412731},{"Y",0.00212825462},{"Z",0.0}},
 	//{"Pose",{"X",-0.000336476718},{"Y",0.00708646653},{"Z",-0.0353542566},{"W",0.9993495},{"IsIdentity",false}},
 	//{"Orientation",{"X",3.140419},{"Y",0.0141403927},{"Z",-0.0707333162}},
-	_(A)_(B)_(C)_(D)_(E)_(F)_(G)_(H)_(I)
+	//Note: These aren't the LED lights
+	//_(A)_(B)_(C)_(D)_(E)_(F)_(G)_(H)_(I)
 	#undef _
 	static int fill(char(&buf)[1024])
 	{
@@ -1292,7 +1293,7 @@ namespace MorpheusUDP_PSVRToolbox_command
 
 			unsigned char cc[4] = {}; //Mic Volume?
 
-			for(;*c;c++) if(*c>='A'&&*c<='Z')
+			for(c+=p->second;*c;c++) if(*c>='A'&&*c<='Z')
 			{
 				int i = *c;
 
@@ -1319,14 +1320,14 @@ namespace MorpheusUDP_PSVRToolbox_command
 			if(s==11&&!memcmp(c,"LedSettings",s))
 			{
 				unsigned char i['I'-'A'+1] = {};
-				//Note: PSVRToolbox fails to report I.
-				for(char a='A';a<='I';a++) if(c=strchr(c,a))
+				const char *cc = c; cc+=p->second;
+				for(int a='A';a<='I';a++) if(c=strchr(cc,a))
 				{
 					while(*c==','||*c=='"'||*c==' ') c++;
 
 					i[a-'A'] = 0xFF&strtoul(c,(char**)&c,10);
 				}
-				else break;
+				else continue;
 
 				morpheus_set_led_brightness(mc,i,async);
 			}
@@ -1494,6 +1495,16 @@ MorpheusUDP::~MorpheusUDP()
 		PacketSequence = st2->sequence;
 		VoltageReference = st2->unk5; //iffy
 		VoltageValue = st2->unk6; //iffy
+		
+		/*Note: These aren't the LED lights
+		A = st2->unk4[0];
+		B = st2->unk4[1];
+		C = st2->unk4[2];
+		D = st2->unk7[1];
+		E = st2->unk4[2];
+		F = st2->unk4[3];
+		G = st2->unk4[4];
+		H = st2->unk4[5];*/
 	}
 	int len = MorpheusUDP_PSVRToolbox_status::fill(json);
 
