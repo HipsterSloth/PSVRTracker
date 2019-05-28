@@ -1106,43 +1106,39 @@ static void generate_morpheus_hmd_data_frame_for_stream(
         // If requested, get the raw tracker data for the controller
         if (stream_info->include_raw_tracker_data)
         {
-            PSVRRawTrackerData *raw_tracker_data = &morpheus_data_frame->RawTrackerData;
-            int selectedTrackerId= stream_info->selected_tracker_index;
             unsigned int validTrackerBitmask= 0;
 
             for (int trackerId = 0; trackerId < TrackerManager::k_max_devices; ++trackerId)
             {
 				const PoseSensorPacket *optical_sensor_packet = hmd_view->getLastOpticalSensorPacket(trackerId);
+                PSVRRawTrackerData *raw_tracker_data = &morpheus_data_frame->RawTrackerData[trackerId];
 
                 if (optical_sensor_packet != nullptr && hmd_view->getIsTrackedByTracker(trackerId))
                 {
                     validTrackerBitmask&= (1 << trackerId);
 
-                    if (trackerId == selectedTrackerId)
+                    const ServerTrackerViewPtr tracker_view = 
+                        DeviceManager::getInstance()->getTrackerViewPtr(trackerId);
+                    const int projection_count= optical_sensor_packet->optical_tracking_projection.projection_count;
+
+                    raw_tracker_data->TrackerID= trackerId;
+                    raw_tracker_data->RelativePositionCm= optical_sensor_packet->tracker_relative_position_cm;
+                    raw_tracker_data->RelativeOrientation= optical_sensor_packet->tracker_relative_orientation;
+                    raw_tracker_data->TrackingProjection= optical_sensor_packet->optical_tracking_projection;
+					raw_tracker_data->WorldRelativeShape= optical_sensor_packet->optical_tracking_shape_cm;
+
+                    for (int projection_index = 0; projection_index < projection_count; ++projection_index)
                     {
-                        const ServerTrackerViewPtr tracker_view = 
-                            DeviceManager::getInstance()->getTrackerViewPtr(trackerId);
-                        const int projection_count= optical_sensor_packet->optical_tracking_projection.projection_count;
-
-                        raw_tracker_data->TrackerID= trackerId;
-                        raw_tracker_data->RelativePositionCm= optical_sensor_packet->tracker_relative_position_cm;
-                        raw_tracker_data->RelativeOrientation= optical_sensor_packet->tracker_relative_orientation;
-                        raw_tracker_data->TrackingProjection= optical_sensor_packet->optical_tracking_projection;
-						raw_tracker_data->WorldRelativeShape= optical_sensor_packet->optical_tracking_shape_cm;
-
-                        for (int projection_index = 0; projection_index < projection_count; ++projection_index)
-                        {
-                            // Project the 3d camera position back onto the tracker screen
-                            raw_tracker_data->ScreenLocations[projection_index] =
-                                tracker_view->projectTrackerRelativePosition(
-                                    (PSVRVideoFrameSection)projection_index, 
-                                    &optical_sensor_packet->tracker_relative_position_cm);
-                        }
+                        // Project the 3d camera position back onto the tracker screen
+                        raw_tracker_data->ScreenLocations[projection_index] =
+                            tracker_view->projectTrackerRelativePosition(
+                                (PSVRVideoFrameSection)projection_index, 
+                                &optical_sensor_packet->tracker_relative_position_cm);
                     }
                 }
             }
 
-            raw_tracker_data->ValidTrackerBitmask= validTrackerBitmask;
+            morpheus_data_frame->ValidTrackerBitmask= validTrackerBitmask;
         }
     }
 

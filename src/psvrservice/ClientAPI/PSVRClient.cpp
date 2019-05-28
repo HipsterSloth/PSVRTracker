@@ -86,7 +86,7 @@ bool PSVRClient::startup(
 
 	PSVR_LOG_INFO("PSVRClient") << "Successfully initialized PSVRClient";
 
-	memset(m_controllers, 0, sizeof(PSVRTracker)*PSVRSERVICE_MAX_CONTROLLER_COUNT);
+	memset(m_controllers, 0, sizeof(PSVRController)*PSVRSERVICE_MAX_CONTROLLER_COUNT);
 	for (PSVRControllerID controller_id= 0; controller_id < PSVRSERVICE_MAX_CONTROLLER_COUNT; ++controller_id)    
 	{
 		m_controllers[controller_id].ControllerID= controller_id;

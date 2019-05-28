@@ -20,7 +20,6 @@ struct ControllerStreamInfo
     bool led_override_active;
 	bool disable_roi;
     int last_data_input_sequence_number;
-    int selected_tracker_index;
 
     inline void Clear()
     {
@@ -32,7 +31,6 @@ struct ControllerStreamInfo
         led_override_active = false;
 		disable_roi = false;
 		last_data_input_sequence_number = -1;
-        selected_tracker_index = 0;
     }
 };
 
@@ -56,17 +54,15 @@ struct HMDStreamInfo
 	bool include_calibrated_sensor_data;
 	bool include_raw_tracker_data;
 	bool disable_roi;
-    int selected_tracker_index;
 
     inline void Clear()
     {
-		include_position_data = false;
-		include_physics_data = false;
-		include_raw_sensor_data = false;
-		include_calibrated_sensor_data = false;
-		include_raw_tracker_data = false;
-		disable_roi = false;
-        selected_tracker_index = 0;
+        include_position_data = false;
+        include_physics_data = false;
+        include_raw_sensor_data = false;
+        include_calibrated_sensor_data = false;
+        include_raw_tracker_data = false;
+        disable_roi = false;
     }
 };
 
@@ -163,7 +159,6 @@ public:
     PSVRResult stop_controller_data_stream(PSVRControllerID controller_id);
     PSVRResult set_led_tracking_color(PSVRControllerID controller_id, PSVRTrackingColorType tracking_color);
     PSVRResult reset_orientation(PSVRControllerID controller_id, const PSVRQuatf& q_pose);
-    PSVRResult set_controller_data_stream_tracker_index(PSVRControllerID controller_id, PSVRTrackerID tracker_id);
 	PSVRResult set_controller_hand(PSVRControllerID controller_id, PSVRControllerHand controller_hand);
 	PSVRResult set_controller_accelerometer_calibration(PSVRControllerID controller_id, float noise_radius, float noise_variance);
 	PSVRResult set_controller_gyroscope_calibration(PSVRControllerID controller_id, float drift, float variance, const char *gain_setting);
@@ -217,7 +212,6 @@ public:
     PSVRResult set_hmd_orientation_filter(const PSVRHmdID hmd_id, const std::string orientation_filter);
     PSVRResult set_hmd_position_filter(const PSVRHmdID hmd_id, const std::string position_filter);
     PSVRResult set_hmd_prediction_time(const PSVRHmdID hmd_id, const float hmd_prediction_time);
-    PSVRResult set_hmd_data_stream_tracker_index(const PSVRTrackerID tracker_id, const PSVRHmdID hmd_id);
 	
 	// -- general requests -----
     PSVRResult get_service_version(char *out_version_string, size_t max_version_string);		

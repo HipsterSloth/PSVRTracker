@@ -16,7 +16,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
 
-//-- statics ----
+//-- statics ----__
 const char *AppStage_TrackerSettings::APP_STAGE_NAME= "CameraSettings";
 
 //-- public methods -----

@@ -146,8 +146,6 @@ typedef struct
     PSVRTrackingProjection   TrackingProjection;
 	/// World relative estimated tracking shape
 	PSVRTrackingShape        WorldRelativeShape;
-	/// A bitmask of the trackers with valid projections
-    unsigned int            ValidTrackerBitmask;
 } PSVRRawTrackerData;
 
 /// Radial and tangential lens distortion coefficients computed during lens lens calibration
@@ -389,7 +387,8 @@ typedef struct
     PSVRPhysicsData               PhysicsData;
     PSVRMorpheusRawSensorData     RawSensorData;
     PSVRMorpheusCalibratedSensorData CalibratedSensorData;
-    PSVRRawTrackerData            RawTrackerData;
+    PSVRRawTrackerData            RawTrackerData[PSVRSERVICE_MAX_TRACKER_COUNT];
+    unsigned int                  ValidTrackerBitmask;
 } PSVRMorpheus;
 
 /// HMD Pool Entry
@@ -458,7 +457,8 @@ typedef struct
     PSVRPhysicsData               PhysicsData;
     PSVRPSMoveRawSensorData          RawSensorData;
     PSVRPSMoveCalibratedSensorData   CalibratedSensorData;
-    PSVRRawTrackerData            RawTrackerData;
+    PSVRRawTrackerData            RawTrackerData[PSVRSERVICE_MAX_TRACKER_COUNT];
+    unsigned int                  ValidTrackerBitmask;
     
     PSVRButtonState               TriangleButton;
     PSVRButtonState               CircleButton;
@@ -524,7 +524,8 @@ typedef struct
     PSVRPhysicsData               PhysicsData;
     PSVRDS4RawSensorData           RawSensorData;
     PSVRDS4CalibratedSensorData    CalibratedSensorData;
-    PSVRRawTrackerData            RawTrackerData;
+    PSVRRawTrackerData            RawTrackerData[PSVRSERVICE_MAX_TRACKER_COUNT];
+    unsigned int                  ValidTrackerBitmask;
     
     PSVRButtonState               DPadUpButton;
     PSVRButtonState               DPadDownButton;
@@ -846,16 +847,6 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerLEDTrackingColor(PSVRControll
  */
 PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_ResetControllerOrientation(PSVRControllerID controller_id, const PSVRQuatf *q_pose);
 
-/** \brief Requests setting the selected tracker index for a controller
-	This request is used to set the selected tracker index on a controller data stream
-    when the data stream has tracking projection data active. The projection data is
-    only provided for the selected tracker.
-	\param controller_id The ID of the controller whose data stream we want to modify
-    \param tracker_id The ID of the tracker we want to assign as the active tracker
-	\return PSVRResult_RequestSent on success or PSVRResult_Error if there was no valid connection
- */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_SetControllerDataStreamTrackerIndex(PSVRControllerID controller_id, PSVRTrackerID tracker_id);
-
 /** \brief Requests setting the hand assigned to a controller
 	This request is used to set the suggested hand for a controller.
 	Hand information is used by external APIs and not by PSVRService.
@@ -958,21 +949,20 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetIsControllerTracking(PSVRControllerID c
 	\param controller_id The controller id to get the tracking projection location
 	\param projection_index The index of the left or right projection (for stereo trackers) or 0 for mono trackers
 	\param tracker_id The tracker id of the tracker that has the controller projection we care about.
-	\param[out] out_tracker_id The id of the tracker this projection is for
 	\param[out] out_location The center pixel location of the controller projection on the tracker.
 	\return PSVRResult_Success if controller has a valid projection on the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPixelLocationOnTracker(PSVRControllerID controller_id, PSVRTrackingProjectionCount projection_index, PSVRTrackerID *out_tracker_id, PSVRVector2f *out_location);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPixelLocationOnTracker(PSVRControllerID controller_id, PSVRTrackerID tracker_id, PSVRTrackingProjectionCount projection_index, PSVRVector2f *out_location);
 
 /** \brief Helper function for getting the tracker relative 3d position of the controller.
 	Each tracking camera can compute a estimate of the controllers 3d position relative to the tracker.
 	This method gets the 3d centroid of the tracking light in tracker relative coordinates.
 	\param controller_id The controller id to get the tracking position for.
-	\param[out] out_tracker_id The id of the tracker this projection is for
+	\param tracker_id The id of the tracker this projection is for
 	\param[out] out_position Tracker relative centroid position of controller in cm.
 	\return PSVRResult_Success if controller has a valid position relative to the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, PSVRTrackerID *out_tracker_id, PSVRVector3f *outPosition);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, PSVRTrackerID tracker_id, PSVRVector3f *outPosition);
 
 /** \brief Helper function for getting the tracker relative 3d orientation of the controller.
 	Each tracking camera can compute a estimate of the controllers 3d position relative to the tracker.
@@ -982,7 +972,7 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerPositionOnTracker(PSVRControl
 	\param[out] out_orientation Tracker relative centroid orientation of controller.
 	\return PSVRResult_Success if controller has a valid optical orientation relative to the tracker (PSVRove can't, DS4 can).
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerOrientationOnTracker(PSVRControllerID controller_id, PSVRTrackerID *out_tracker_id, PSVRQuatf *outOrientation);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetControllerOrientationOnTracker(PSVRControllerID controller_id, PSVRTrackerID tracker_id, PSVRQuatf *outOrientation);
 
 /** \brief Helper function for getting the tracker relative projection of a controller
 	Each tracking camera can have a projection of the controller.
@@ -1297,7 +1287,7 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetIsHmdTracking(PSVRHmdID hmd_id, bool *o
 	\param[out] out_location The center pixel location of the HMD projection on the tracker.
 	\return PSVRResult_Success if HMD has a valid projection on the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProjectionCount projection_index, PSVRTrackerID *out_tracker_id, PSVRVector2f *out_location);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRTrackingProjectionCount projection_index, PSVRVector2f *out_location);
 
 /** \brief Helper function for getting the tracker relative 3d position of the HMD.
 	Each tracking camera can compute a estimate of the HMD's 3d position relative to the tracker.
@@ -1307,7 +1297,7 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd
 	\param[out] out_position Tracker relative centroid position of the HMD in cm.
 	\return PSVRResult_Success if the HMD has a valid position relative to the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *out_tracker_id, PSVRVector3f *out_position);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRVector3f *out_position);
 
 /** \brief Helper function for getting the tracker relative 3d orientation of the HMD
 	Each tracking camera can compute a estimate of an HMDs 3d position relative to the tracker.
@@ -1317,7 +1307,7 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, 
 	\param[out] out_orientation Tracker relative centroid orientation of the HMD.
 	\return PSVRResult_Success if HMD has a valid optical orientation relative to the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *out_tracker_id, PSVRQuatf *out_orientation);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRQuatf *out_orientation);
 
 /** \brief Helper function for getting raw tracker projection state of an HMD
 	Each tracking camera can have a projection of the HMD.
@@ -1326,7 +1316,7 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_i
 	\param[out] out_raw_tracker_data The full set of tracker projection state for the given HMD.
 	\return PSVRResult_Success if HMD has a valid projection on the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *out_raw_tracker_data);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRRawTrackerData *out_raw_tracker_data);
 
 /** \brief Helper function for getting the tracker relative projection of an HMD
 	Each tracking camera can have a projection of the HMD.
@@ -1336,7 +1326,7 @@ PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSV
 	\param[out] out_projection The tracking projection shape of the HMD.
 	\return PSVRResult_Success if HMD has a valid projection on the tracker.
  */
-PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *out_tracker_id, PSVRTrackingProjection *out_projection);
+PSVR_PUBLIC_FUNCTION(PSVRResult) PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRTrackingProjection *out_projection);
 
 /** \brief Helper function for getting the tracking shape geometry of an HMD
 	An HMDs tracking geometry gets projected onto each tracker.

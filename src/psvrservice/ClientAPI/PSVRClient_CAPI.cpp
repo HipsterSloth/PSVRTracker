@@ -272,18 +272,6 @@ PSVRResult PSVR_ResetControllerOrientation(PSVRControllerID controller_id, const
     return result_code;
 }
 
-PSVRResult PSVR_SetControllerDataStreamTrackerIndex(PSVRControllerID controller_id, PSVRTrackerID tracker_id)
-{
-    PSVRResult result_code= PSVRResult_Error;
-
-    if (g_psvr_service != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
-    {
-		result_code= g_psvr_service->getRequestHandler()->set_controller_data_stream_tracker_index(controller_id, tracker_id);
-    }
-
-    return result_code;
-}
-
 PSVRResult PSVR_SetControllerHand(PSVRControllerID controller_id, PSVRControllerHand hand)
 {
     PSVRResult result_code= PSVRResult_Error;
@@ -650,14 +638,13 @@ PSVRResult PSVR_GetIsControllerTracking(PSVRControllerID controller_id, bool *ou
 
 PSVRResult PSVR_GetControllerPixelLocationOnTracker(
 	PSVRControllerID controller_id, 
-	PSVRTrackingProjectionCount projection_index, 
-	PSVRTrackerID *outTrackerId, 
+    PSVRTrackerID tracker_id,
+    PSVRTrackingProjectionCount projection_index,
 	PSVRVector2f *outLocation)
 {
-	assert(outTrackerId);
 	assert(outLocation);
 
-    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -665,16 +652,15 @@ PSVRResult PSVR_GetControllerPixelLocationOnTracker(
         switch (controller->ControllerType)
         {
         case PSVRController_Move:
-			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData[tracker_id];
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData[tracker_id];
             break;
         }
 
 		if (trackerData != nullptr)
 		{
-            *outTrackerId = trackerData->TrackerID;
 			*outLocation = trackerData->ScreenLocations[projection_index];
 			return PSVRResult_Success;
 		}
@@ -683,12 +669,11 @@ PSVRResult PSVR_GetControllerPixelLocationOnTracker(
     return PSVRResult_Error;
 }
 
-PSVRResult PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, PSVRTrackerID *outTrackerId, PSVRVector3f *outPosition)
+PSVRResult PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, PSVRTrackerID tracker_id, PSVRVector3f *outPosition)
 {
-    assert(outTrackerId);
 	assert(outPosition);
 
-    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -696,16 +681,15 @@ PSVRResult PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, P
         switch (controller->ControllerType)
         {
         case PSVRController_Move:
-			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData[tracker_id];
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData[tracker_id];
             break;
         }
 
 		if (trackerData != nullptr)
 		{
-            *outTrackerId = trackerData->TrackerID;
 			*outPosition = trackerData->RelativePositionCm;
 			return PSVRResult_Success;
         }
@@ -716,13 +700,12 @@ PSVRResult PSVR_GetControllerPositionOnTracker(PSVRControllerID controller_id, P
 
 PSVRResult PSVR_GetControllerOrientationOnTracker(
 	PSVRControllerID controller_id,
-	PSVRTrackerID *outTrackerId,
+    PSVRTrackerID tracker_id,
 	PSVRQuatf *outOrientation)
 {
-    assert(outTrackerId);
 	assert(outOrientation);
 
-    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -730,16 +713,15 @@ PSVRResult PSVR_GetControllerOrientationOnTracker(
         switch (controller->ControllerType)
         {
         case PSVRController_Move:
-			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData[tracker_id];
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData[tracker_id];
             break;
         }
 
 		if (trackerData != nullptr)
 		{
-            *outTrackerId = trackerData->TrackerID;
 			*outOrientation = trackerData->RelativeOrientation;
 			return PSVRResult_Success;
         }
@@ -750,13 +732,12 @@ PSVRResult PSVR_GetControllerOrientationOnTracker(
 
 PSVRResult PSVR_GetControllerProjectionOnTracker(
 	PSVRControllerID controller_id, 
-	PSVRTrackerID *outTrackerId, 
+    PSVRTrackerID tracker_id,
 	PSVRTrackingProjection *outProjection)
 {
-    assert(outTrackerId);
 	assert(outProjection);
 
-    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id))
+    if (g_psvr_client != nullptr && IS_VALID_CONTROLLER_INDEX(controller_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRController *controller= g_psvr_client->get_controller_view(controller_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -764,16 +745,15 @@ PSVRResult PSVR_GetControllerProjectionOnTracker(
         switch (controller->ControllerType)
         {
         case PSVRController_Move:
-			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData;
+			trackerData= &controller->ControllerState.PSMoveState.RawTrackerData[tracker_id];
             break;
         case PSVRController_DualShock4:
-			trackerData= &controller->ControllerState.DS4State.RawTrackerData;
+			trackerData= &controller->ControllerState.DS4State.RawTrackerData[tracker_id];
             break;
         }
 
 		if (trackerData != nullptr)
 		{
-            *outTrackerId = trackerData->TrackerID;
 			*outProjection = trackerData->TrackingProjection;
 			return PSVRResult_Success;
         }
@@ -1304,11 +1284,11 @@ PSVRResult PSVR_GetIsHmdTracking(PSVRHmdID hmd_id, bool *out_is_tracking)
     return result;
 }
 
-PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProjectionCount projection_index, PSVRTrackerID *outTrackerId, PSVRVector2f *outLocation)
+PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRTrackingProjectionCount projection_index, PSVRVector2f *outLocation)
 {
 	PSVRResult result= PSVRResult_Error;
 	
-    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -1317,14 +1297,12 @@ PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProje
         {
         case PSVRHmd_Morpheus:
             {
-				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
+				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData[tracker_id];
             } break;
         }
 
 		if (trackerData != nullptr)
 		{
-            if (outTrackerId)
-                *outTrackerId = trackerData->TrackerID;
             if (outLocation)            
                 *outLocation = trackerData->ScreenLocations[projection_index];
 			result= PSVRResult_Success;
@@ -1334,13 +1312,12 @@ PSVRResult PSVR_GetHmdPixelLocationOnTracker(PSVRHmdID hmd_id, PSVRTrackingProje
     return result;
 }
 
-PSVRResult PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRVector3f *outPosition)
+PSVRResult PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRVector3f *outPosition)
 {
 	assert(outPosition);
-    assert(outTrackerId);
 	PSVRResult result= PSVRResult_Error;
 
-    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -1349,13 +1326,12 @@ PSVRResult PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrac
         {
         case PSVRHmd_Morpheus:
             {
-				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
+				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData[tracker_id];
             } break;
         }
 
 		if (trackerData != nullptr)
 		{
-            *outTrackerId = trackerData->TrackerID;
 			*outPosition = trackerData->RelativePositionCm;
 			result= PSVRResult_Success;
         }
@@ -1364,13 +1340,12 @@ PSVRResult PSVR_GetHmdPositionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrac
     return result;
 }
 
-PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRQuatf *outOrientation)
+PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRQuatf *outOrientation)
 {
 	assert(outOrientation);
-    assert(outTrackerId);
 	PSVRResult result= PSVRResult_Error;
 
-    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -1379,7 +1354,7 @@ PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outT
         {
         case PSVRHmd_Morpheus:
             {
-				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData;
+				trackerData= &hmd->HmdState.MorpheusState.RawTrackerData[tracker_id];
             } break;
         case PSVRHmd_Virtual:
             {
@@ -1389,7 +1364,6 @@ PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outT
 
 		if (trackerData != nullptr)
 		{
-            *outTrackerId = trackerData->TrackerID;
 			*outOrientation = trackerData->RelativeOrientation;
 			result= PSVRResult_Success;
         }
@@ -1398,12 +1372,12 @@ PSVRResult PSVR_GetHmdOrientationOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outT
     return result;
 }
 
-PSVRResult PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *outRawTrackerData)
+PSVRResult PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRRawTrackerData *outRawTrackerData)
 {
 	assert(outRawTrackerData);
 	PSVRResult result= PSVRResult_Error;
 
-    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id))
+    if (g_psvr_client != nullptr && IS_VALID_HMD_INDEX(hmd_id) && IS_VALID_TRACKER_INDEX(tracker_id))
     {
         PSVRHeadMountedDisplay *hmd= g_psvr_client->get_hmd_view(hmd_id);
 		PSVRRawTrackerData *trackerData= nullptr;
@@ -1412,7 +1386,7 @@ PSVRResult PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *outRa
         {
         case PSVRHmd_Morpheus:
             {
-				*outRawTrackerData= hmd->HmdState.MorpheusState.RawTrackerData;
+				*outRawTrackerData= hmd->HmdState.MorpheusState.RawTrackerData[tracker_id];
 				result= PSVRResult_Success;
             } break;
         }
@@ -1421,17 +1395,15 @@ PSVRResult PSVR_GetHmdRawTrackerData(PSVRHmdID hmd_id, PSVRRawTrackerData *outRa
     return result;
 }
 
-PSVRResult PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID *outTrackerId, PSVRTrackingProjection *outProjection)
+PSVRResult PSVR_GetHmdProjectionOnTracker(PSVRHmdID hmd_id, PSVRTrackerID tracker_id, PSVRTrackingProjection *outProjection)
 {
 	assert(outProjection);
-    assert(outTrackerId);
 
 	PSVRRawTrackerData rawTrackerData;
-	PSVRResult result= PSVR_GetHmdRawTrackerData(hmd_id, &rawTrackerData);
+	PSVRResult result= PSVR_GetHmdRawTrackerData(hmd_id, tracker_id, &rawTrackerData);
 
     if (result == PSVRResult_Success)
     {
-        *outTrackerId= rawTrackerData.TrackerID;
 		*outProjection = rawTrackerData.TrackingProjection;
 	}
 
@@ -1482,20 +1454,6 @@ PSVRResult PSVR_StopHmdDataStream(PSVRHmdID hmd_id)
     if (g_psvr_service != nullptr && IS_VALID_HMD_INDEX(hmd_id))
     {
 		result= g_psvr_service->getRequestHandler()->stop_hmd_data_stream(hmd_id);
-    }
-
-    return result;
-}
-
-PSVRResult PSVR_SetHmdDataStreamTrackerIndex(PSVRHmdID hmd_id, PSVRTrackerID tracker_id)
-{
-    PSVRResult result= PSVRResult_Error;
-
-    if (g_psvr_service != nullptr && 
-        IS_VALID_HMD_INDEX(hmd_id) &&
-        IS_VALID_TRACKER_INDEX(tracker_id))
-    {
-		result= g_psvr_service->getRequestHandler()->set_hmd_data_stream_tracker_index(hmd_id, tracker_id);
     }
 
     return result;

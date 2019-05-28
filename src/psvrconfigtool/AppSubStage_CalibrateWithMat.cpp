@@ -103,18 +103,16 @@ struct TrackerRelativeControllerPoseStatistics
 
 	void addControllerSample(const PSVRController *controllerView, const int sampleLocationIndex)
 	{
-		const int sampleTrackerID= trackerView->tracker_info.tracker_id;
-        int streamTrackerID= -1;
+		const int trackerID= trackerView->tracker_info.tracker_id;
 
 		PSVRVector2f screenSample;
 		PSVRVector3f trackerRelativePosition;
 		
 		if (!getIsComplete() &&
 			PSVR_GetControllerPixelLocationOnTracker(
-				controllerView->ControllerID, PRIMARY_PROJECTION_INDEX, &streamTrackerID, &screenSample) == PSVRResult_Success &&
+				controllerView->ControllerID, trackerID, PRIMARY_PROJECTION_INDEX, &screenSample) == PSVRResult_Success &&
 			PSVR_GetControllerPositionOnTracker(
-				controllerView->ControllerID, &streamTrackerID, &trackerRelativePosition) == PSVRResult_Success &&
-			streamTrackerID == sampleTrackerID)
+                controllerView->ControllerID, trackerID, &trackerRelativePosition))
 		{
 			screenSpacePoints[sampleCount] = screenSample;
 			trackerSpacePoints[sampleCount] = PSVR_vector3f_to_eigen_vector3(trackerRelativePosition);
@@ -262,26 +260,13 @@ void AppSubStage_CalibrateWithMat::update()
             {
                 m_bNeedMoreSamplesAtLocation= false;
 
-                if (m_deviceTrackerPoseStats[m_currentPoseStatsIndex]->getIsComplete())
+                for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
                 {
-					TrackerRelativeControllerPoseStatistics *nextTrackerStats= nullptr;
-
-                    if ((m_currentPoseStatsIndex+1) < m_deviceTrackerPoseStats.size())
+                    if (!stats->getIsComplete())
                     {
-						nextTrackerStats= m_deviceTrackerPoseStats[++m_currentPoseStatsIndex];
+                        m_bNeedMoreSamplesAtLocation = true;
+                        break;
                     }
-
-					if (nextTrackerStats != nullptr)
-					{
-						PSVR_SetControllerDataStreamTrackerIndex(
-							ControllerView->ControllerID, 
-							nextTrackerStats->trackerView->tracker_info.tracker_id);
-						m_bNeedMoreSamplesAtLocation= true;
-					}
-                }
-                else
-                {
-                    m_bNeedMoreSamplesAtLocation = true;
                 }
             }
 
@@ -290,14 +275,15 @@ void AppSubStage_CalibrateWithMat::update()
                 // Only record samples when the controller is stable
                 if ((bCanBeStable && bIsStable) || m_bForceStable)
                 {
-					TrackerRelativeControllerPoseStatistics *stats= m_deviceTrackerPoseStats[m_currentPoseStatsIndex];
-
-					bool bIsTracking= false;
-					bool bCanBeTracked= PSVR_GetIsControllerTracking(ControllerView->ControllerID, &bIsTracking) == PSVRResult_Success;
-
-                    if (bCanBeTracked && bIsTracking)
+                    for (TrackerRelativeControllerPoseStatistics *stats : m_deviceTrackerPoseStats)
                     {
-						stats->addControllerSample(ControllerView, m_sampleLocationIndex);
+                        bool bIsTracking = false;
+                        bool bCanBeTracked = PSVR_GetIsControllerTracking(ControllerView->ControllerID, &bIsTracking) == PSVRResult_Success;
+
+                        if (bCanBeTracked && bIsTracking)
+                        {
+                            stats->addControllerSample(ControllerView, m_sampleLocationIndex);
+                        }
                     }
                 }
                 else
@@ -605,7 +591,6 @@ void AppSubStage_CalibrateWithMat::onEnterState(
             m_sampleLocationIndex = 0;
             m_bIsStable = false;
             m_bForceStable = false;
-            m_currentPoseStatsIndex= 0;
         }
         break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepPlaceController:
@@ -618,10 +603,6 @@ void AppSubStage_CalibrateWithMat::onEnterState(
             m_bIsStable = false;
             m_bForceStable= false;
             m_bNeedMoreSamplesAtLocation= true;
-            m_currentPoseStatsIndex= 0;
-
-            // Start off getting getting projection data from tracker 0
-            PSVR_SetControllerDataStreamTrackerIndex(m_parentStage->get_calibration_controller_view()->ControllerID, 0);
         } break;
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepRecordController:
     case AppSubStage_CalibrateWithMat::eMenuState::calibrationStepComputeTrackerPoses:
@@ -672,14 +653,14 @@ computeTrackerCameraPose(
     // See: https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
     const PSVRDistortionCoefficients &distort_coeffs= mono_intrinsics.distortion_coefficients;
     cv::Mat cvDistCoeffs(8, 1, cv::DataType<float>::type);
-    cvDistCoeffs.at<float>(0) = distort_coeffs.k1;
-    cvDistCoeffs.at<float>(1) = distort_coeffs.k2;
-    cvDistCoeffs.at<float>(2) = distort_coeffs.p1;
-    cvDistCoeffs.at<float>(3) = distort_coeffs.p2;
-    cvDistCoeffs.at<float>(4) = distort_coeffs.k3;
-    cvDistCoeffs.at<float>(5) = distort_coeffs.k4;
-    cvDistCoeffs.at<float>(6) = distort_coeffs.k5;
-    cvDistCoeffs.at<float>(7) = distort_coeffs.k6;
+    cvDistCoeffs.at<float>(0) = (float)distort_coeffs.k1;
+    cvDistCoeffs.at<float>(1) = (float)distort_coeffs.k2;
+    cvDistCoeffs.at<float>(2) = (float)distort_coeffs.p1;
+    cvDistCoeffs.at<float>(3) = (float)distort_coeffs.p2;
+    cvDistCoeffs.at<float>(4) = (float)distort_coeffs.k3;
+    cvDistCoeffs.at<float>(5) = (float)distort_coeffs.k4;
+    cvDistCoeffs.at<float>(6) = (float)distort_coeffs.k5;
+    cvDistCoeffs.at<float>(7) = (float)distort_coeffs.k6;
 
     // Solve the Project N-Point problem:
     // Given a set of 3D points and their corresponding 2D pixel projections,

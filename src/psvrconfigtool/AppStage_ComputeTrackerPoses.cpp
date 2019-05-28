@@ -979,9 +979,6 @@ bool AppStage_ComputeTrackerPoses::request_start_controller_stream(
         flags|= PSVRStreamFlags_disableROI;
     }
 
-    // Start off getting getting projection data from tracker 0
-    PSVR_SetControllerDataStreamTrackerIndex(controllerState.controllerView->ControllerID, 0);
-
     // Start receiving data from the controller
 	return PSVR_StartControllerDataStream(controllerState.controllerView->ControllerID, flags) == PSVRResult_Success;
 
@@ -1079,9 +1076,6 @@ bool AppStage_ComputeTrackerPoses::request_start_hmd_stream(
     unsigned int flags =
         PSVRStreamFlags_includePositionData |
         PSVRStreamFlags_includeRawTrackerData;
-
-    // Start off getting getting projection data from tracker 0
-    PSVR_SetHmdDataStreamTrackerIndex(hmdState.hmdView->HmdID, 0);
 
     // Start receiving data from the controller
 	return PSVR_StartHmdDataStream(hmdState.hmdView->HmdID, flags) == PSVRResult_Success;
@@ -1209,7 +1203,7 @@ bool AppStage_ComputeTrackerPoses::does_tracker_see_any_controller(const PSVRTra
             controllerView->ControllerState.PSMoveState.bIsCurrentlyTracking)
         {
             bTrackerSeesAnyController= 
-                (controllerView->ControllerState.PSMoveState.RawTrackerData.ValidTrackerBitmask | 
+                (controllerView->ControllerState.PSMoveState.ValidTrackerBitmask | 
                  (1 << tracker_id)) > 0;
             break;
         }
@@ -1217,7 +1211,7 @@ bool AppStage_ComputeTrackerPoses::does_tracker_see_any_controller(const PSVRTra
                  controllerView->ControllerState.DS4State.bIsCurrentlyTracking)
         {
             bTrackerSeesAnyController= 
-                (controllerView->ControllerState.DS4State.RawTrackerData.ValidTrackerBitmask | 
+                (controllerView->ControllerState.DS4State.ValidTrackerBitmask | 
                  (1 << tracker_id)) > 0;
             break;
         }
@@ -1239,7 +1233,7 @@ bool AppStage_ComputeTrackerPoses::does_tracker_see_any_hmd(const PSVRTracker *t
             hmdView->HmdState.MorpheusState.bIsCurrentlyTracking)
         {
             bTrackerSeesAnyHmd= 
-                (hmdView->HmdState.MorpheusState.RawTrackerData.ValidTrackerBitmask | 
+                (hmdView->HmdState.MorpheusState.ValidTrackerBitmask | 
                  (1 << tracker_id)) > 0;
             break;
         }

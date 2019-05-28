@@ -1254,10 +1254,7 @@ static void generate_psmove_data_frame_for_stream(
         // If requested, get the raw tracker data for the controller
         if (stream_info->include_raw_tracker_data)
         {
-            PSVRRawTrackerData *raw_tracker_data = &psmove_data_frame->RawTrackerData;
-            int selectedTrackerId= stream_info->selected_tracker_index;
-
-			raw_tracker_data->ValidTrackerBitmask= 0;
+            psmove_data_frame->ValidTrackerBitmask= 0;
 
             for (int trackerId = 0; trackerId < TrackerManager::k_max_devices; ++trackerId)
             {
@@ -1266,51 +1263,49 @@ static void generate_psmove_data_frame_for_stream(
 
                 if (optical_packet != nullptr && controller_view->getIsTrackedByTracker(trackerId))
                 {
-                    raw_tracker_data->ValidTrackerBitmask&= (1 << trackerId);
+                    PSVRRawTrackerData *raw_tracker_data = &psmove_data_frame->RawTrackerData[trackerId];
 
-                    if (trackerId == selectedTrackerId)
+					const PSVRVector3f trackerRelativePosition=
+						eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
+                    const ServerTrackerViewPtr tracker_view = 
+						DeviceManager::getInstance()->getTrackerViewPtr(trackerId);
+
+                    // Use the center of the ellipse projection as our "screen location"
+					if (tracker_view->getIsStereoCamera())
                     {
-						const PSVRVector3f trackerRelativePosition=
-							eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
-                        const ServerTrackerViewPtr tracker_view = 
-							DeviceManager::getInstance()->getTrackerViewPtr(selectedTrackerId);
+                        const PSVRTrackingProjectionData &left_projection_data=
+                            optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Left];
+                        const PSVRTrackingProjectionData &right_projection_data =
+                            optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Right];
 
-                        // Use the center of the ellipse projection as our "screen location"
-						if (tracker_view->getIsStereoCamera())
-                        {
-                            const PSVRTrackingProjectionData &left_projection_data=
-                                optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Left];
-                            const PSVRTrackingProjectionData &right_projection_data =
-                                optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Right];
-
-                            raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Left] =
-                                left_projection_data.shape.ellipse.center;
-							raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Right]= 
-                                right_projection_data.shape.ellipse.center;
-                        }
-						else
-						{
-                            const PSVRTrackingProjectionData &mono_projection_data =
-                                optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Primary];
-
-                            raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Primary]=
-                                mono_projection_data.shape.ellipse.center;
-						}
-
-                        // Add the tracker relative 3d position
-						raw_tracker_data->RelativePositionCm= 
-							eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
-						raw_tracker_data->RelativeOrientation=
-							eigen_quaternionf_to_PSVR_quatf(optical_packet->optical_orientation);
-
-                        // Add the tracker relative projection shapes
-						raw_tracker_data->TrackingProjection= optical_packet->optical_tracking_projection;
-
-						// Add the world relative tracking shape
-						raw_tracker_data->WorldRelativeShape= optical_packet->optical_tracking_shape_cm;
-
-                        raw_tracker_data->TrackerID= selectedTrackerId;
+                        raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Left] =
+                            left_projection_data.shape.ellipse.center;
+						raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Right]= 
+                            right_projection_data.shape.ellipse.center;
                     }
+					else
+					{
+                        const PSVRTrackingProjectionData &mono_projection_data =
+                            optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Primary];
+
+                        raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Primary]=
+                            mono_projection_data.shape.ellipse.center;
+					}
+
+                    // Add the tracker relative 3d position
+					raw_tracker_data->RelativePositionCm= 
+						eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
+					raw_tracker_data->RelativeOrientation=
+						eigen_quaternionf_to_PSVR_quatf(optical_packet->optical_orientation);
+
+                    // Add the tracker relative projection shapes
+					raw_tracker_data->TrackingProjection= optical_packet->optical_tracking_projection;
+
+					// Add the world relative tracking shape
+					raw_tracker_data->WorldRelativeShape= optical_packet->optical_tracking_shape_cm;
+
+                    raw_tracker_data->TrackerID= trackerId;
+                    psmove_data_frame->ValidTrackerBitmask &= (1 << trackerId);
                 }
             }
         }
@@ -1437,10 +1432,7 @@ static void generate_psdualshock4_data_frame_for_stream(
         // If requested, get the raw tracker data for the controller
         if (stream_info->include_raw_tracker_data)
         {
-            PSVRRawTrackerData *raw_tracker_data = &ds4_data_frame->RawTrackerData;
-            int selectedTrackerId= stream_info->selected_tracker_index;
-
-			raw_tracker_data->ValidTrackerBitmask= 0;
+            ds4_data_frame->ValidTrackerBitmask= 0;
 
             for (int trackerId = 0; trackerId < TrackerManager::k_max_devices; ++trackerId)
             {
@@ -1449,46 +1441,44 @@ static void generate_psdualshock4_data_frame_for_stream(
 
                 if (optical_packet != nullptr && controller_view->getIsTrackedByTracker(trackerId))
                 {
-                    raw_tracker_data->ValidTrackerBitmask&= (1 << trackerId);
+                    PSVRRawTrackerData *raw_tracker_data = &ds4_data_frame->RawTrackerData[trackerId];
 
-                    if (trackerId == selectedTrackerId)
+					const PSVRVector3f trackerRelativePosition=
+						eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
+                    const ServerTrackerViewPtr tracker_view = 
+						DeviceManager::getInstance()->getTrackerViewPtr(trackerId);
+
+                    // Project the 3d camera position back onto the tracker screen
+					if (tracker_view->getIsStereoCamera())
                     {
-						const PSVRVector3f trackerRelativePosition=
-							eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
-                        const ServerTrackerViewPtr tracker_view = 
-							DeviceManager::getInstance()->getTrackerViewPtr(selectedTrackerId);
-
-                        // Project the 3d camera position back onto the tracker screen
-						if (tracker_view->getIsStereoCamera())
-                        {
-							raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Left]= 
-                                tracker_view->projectTrackerRelativePosition(
-									PSVRVideoFrameSection_Left, &trackerRelativePosition);
-							raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Right]= 
-                                tracker_view->projectTrackerRelativePosition(
-									PSVRVideoFrameSection_Right, &trackerRelativePosition);
-                        }
-						else
-						{
-							raw_tracker_data->ScreenLocations[0]= 
-                                tracker_view->projectTrackerRelativePosition(
-									PSVRVideoFrameSection_Primary, &trackerRelativePosition);
-						}
-
-                        // Add the tracker relative 3d position
-						raw_tracker_data->RelativePositionCm= 
-							eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
-						raw_tracker_data->RelativeOrientation=
-							eigen_quaternionf_to_PSVR_quatf(optical_packet->optical_orientation);
-
-                        // Add the tracker relative projection shapes
-						raw_tracker_data->TrackingProjection= optical_packet->optical_tracking_projection;
-
-						// Add the world relative tracking shape
-						raw_tracker_data->WorldRelativeShape= optical_packet->optical_tracking_shape_cm;
-
-                        raw_tracker_data->TrackerID= selectedTrackerId;
+						raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Left]= 
+                            tracker_view->projectTrackerRelativePosition(
+								PSVRVideoFrameSection_Left, &trackerRelativePosition);
+						raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Right]= 
+                            tracker_view->projectTrackerRelativePosition(
+								PSVRVideoFrameSection_Right, &trackerRelativePosition);
                     }
+					else
+					{
+						raw_tracker_data->ScreenLocations[0]= 
+                            tracker_view->projectTrackerRelativePosition(
+								PSVRVideoFrameSection_Primary, &trackerRelativePosition);
+					}
+
+                    // Add the tracker relative 3d position
+					raw_tracker_data->RelativePositionCm= 
+						eigen_vector3f_to_PSVR_vector3f(optical_packet->optical_position_cm);
+					raw_tracker_data->RelativeOrientation=
+						eigen_quaternionf_to_PSVR_quatf(optical_packet->optical_orientation);
+
+                    // Add the tracker relative projection shapes
+					raw_tracker_data->TrackingProjection= optical_packet->optical_tracking_projection;
+
+					// Add the world relative tracking shape
+					raw_tracker_data->WorldRelativeShape= optical_packet->optical_tracking_shape_cm;
+
+                    raw_tracker_data->TrackerID = trackerId;
+                    ds4_data_frame->ValidTrackerBitmask &= (1 << trackerId);
                 }
             }
         }

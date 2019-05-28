@@ -74,17 +74,15 @@ struct TrackerRelativeHMDPoseStatistics
 	void addHmdSample(const PSVRHeadMountedDisplay *hmd)
 	{
 		const int sampleTrackerID= trackerView->tracker_info.tracker_id;
-        int streamTrackerID= -1;
 
 		PSVRQuatf trackerRelativeOrientation;
 		PSVRVector3f trackerRelativePosition;
 		
 		if (!getIsComplete() &&
 			PSVR_GetHmdOrientationOnTracker(
-				hmd->HmdID, &streamTrackerID, &trackerRelativeOrientation) == PSVRResult_Success &&
+				hmd->HmdID, sampleTrackerID, &trackerRelativeOrientation) == PSVRResult_Success &&
 			PSVR_GetHmdPositionOnTracker(
-				hmd->HmdID, &streamTrackerID, &trackerRelativePosition) == PSVRResult_Success &&
-			streamTrackerID == sampleTrackerID)
+				hmd->HmdID, sampleTrackerID, &trackerRelativePosition) == PSVRResult_Success)
 		{
 			hmdPositionSamples[sampleCount]= PSVR_vector3f_to_eigen_vector3(trackerRelativePosition);
 			hmdOrientationSamples[sampleCount]= PSVR_quatf_to_eigen_quaternionf(trackerRelativeOrientation);
@@ -233,26 +231,13 @@ void AppSubStage_CalibrateWithHMD::update()
             {
                 m_bNeedMoreSamplesAtLocation= false;
 
-                if (m_deviceTrackerPoseStats[m_currentPoseStatsIndex]->getIsComplete())
+                for (TrackerRelativeHMDPoseStatistics *stats : m_deviceTrackerPoseStats)
                 {
-					TrackerRelativeHMDPoseStatistics *nextTrackerStats= nullptr;
-
-                    if (m_currentPoseStatsIndex < m_deviceTrackerPoseStats.size())
+                    if (!stats->getIsComplete())
                     {
-						nextTrackerStats= m_deviceTrackerPoseStats[++m_currentPoseStatsIndex];
+                        m_bNeedMoreSamplesAtLocation = true;
+                        break;
                     }
-
-					if (nextTrackerStats != nullptr)
-					{
-						PSVR_SetHmdDataStreamTrackerIndex(
-							HmdView->HmdID, 
-							nextTrackerStats->trackerView->tracker_info.tracker_id);
-						m_bNeedMoreSamplesAtLocation= true;
-					}
-                }
-                else
-                {
-                    m_bNeedMoreSamplesAtLocation = true;
                 }
             }
 
@@ -552,9 +537,6 @@ void AppSubStage_CalibrateWithHMD::onEnterState(
             m_bForceStable= false;
             m_bNeedMoreSamplesAtLocation= true;
             m_currentPoseStatsIndex= 0;
-
-            // Start off getting getting projection data from tracker 0
-            PSVR_SetHmdDataStreamTrackerIndex(m_parentStage->get_calibration_hmd_view()->HmdID, 0);
         } break;
     case AppSubStage_CalibrateWithHMD::eMenuState::calibrationStepRecordHMD:
         break;

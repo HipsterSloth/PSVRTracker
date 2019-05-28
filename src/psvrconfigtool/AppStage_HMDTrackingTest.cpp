@@ -25,6 +25,9 @@ const char *AppStage_HMDTrackingTest::APP_STAGE_NAME = "HMDTrackingTest";
 static const glm::vec3 k_hmd_frustum_color = glm::vec3(1.f, 0.788f, 0.055f);
 static const glm::vec3 k_PSVRove_frustum_color = glm::vec3(0.1f, 0.7f, 0.3f);
 static const glm::vec3 k_PSVRove_frustum_color_no_track = glm::vec3(1.0f, 0.f, 0.f);
+static const glm::vec3 k_PSVRove_LED_color = glm::vec3(0.0f, 0.5f, 1.0f);
+static const glm::vec3 k_PSVRove_LED_color_no_track = glm::vec3(1.0f, 0.f, 0.f);
+
 
 //-- private methods -----
 static void drawHMD(const PSVRHeadMountedDisplay *hmdView, const glm::mat4 &transform, const PSVRTrackingColorType trackingColorType);
@@ -33,8 +36,8 @@ static void drawHMD(const PSVRHeadMountedDisplay *hmdView, const glm::mat4 &tran
 AppStage_HMDTrackingTest::AppStage_HMDTrackingTest(App *app)
     : AppStage(app)
     , m_menuState(AppStage_HMDTrackingTest::inactive)
-    , m_pendingTrackerStartCount(0)
-    , m_overrideTrackerId(-1)
+    , m_renderTrackerListIndex(-1)
+    , m_ShowTrackerVideoId(-1)
     , m_bShowAlignment(false)
     , m_AlignmentOffset(0.f)
     , m_overrideHmdId(-1)
@@ -56,7 +59,13 @@ void AppStage_HMDTrackingTest::enter()
     // -> hmd start request
     // -> tracker list request
     // -> tracker start request
-    request_hmd_list();
+    if (setup_hmd())
+    {
+        if (setup_trackers())
+        {
+            setState(eMenuState::testTracking);
+        }
+    }
 
     m_app->setCameraType(_cameraOrbit);
 }
@@ -73,11 +82,6 @@ void AppStage_HMDTrackingTest::update()
     switch (m_menuState)
     {
     case eMenuState::inactive:
-        break;
-    case eMenuState::pendingHmdListRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
         break;
     case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
@@ -97,7 +101,7 @@ void AppStage_HMDTrackingTest::update()
 void compute_opencv_camera_intrinsic_matrix(PSVRTrackerID tracker_id,
 	                                    PSVRVideoFrameSection section,
                                         cv::Matx33f &intrinsicOut,
-                                        cv::Matx<float, 5, 1> &distortionOut)
+                                        cv::Matx<float, 8, 1> &distortionOut)
 {
 	PSVRTrackerIntrinsics tracker_intrinsics;
 	PSVR_GetTrackerIntrinsics(tracker_id, &tracker_intrinsics);
@@ -137,15 +141,20 @@ void compute_opencv_camera_intrinsic_matrix(PSVRTrackerID tracker_id,
         distortionOut(2, 0)= (float)distortion_coefficients->p1;
         distortionOut(3, 0)= (float)distortion_coefficients->p2;
         distortionOut(4, 0)= (float)distortion_coefficients->k3;
+        distortionOut(5, 0) = (float)distortion_coefficients->k4;
+        distortionOut(6, 0) = (float)distortion_coefficients->k5;
+        distortionOut(7, 0) = (float)distortion_coefficients->k6;
     }
 }
 
 static void draw_image_point_camera_lines(
 	PSVRTrackerID tracker_id,
-	const PSVRTrackingProjection &projection)
+	const PSVRTrackingProjection &projection,
+    const glm::mat4 &trackerMat4,
+    const glm::vec3 &color)
 {
 	cv::Matx33f intrinsic_matrix;
-	cv::Matx<float, 5, 1> dist_coeffs;
+	cv::Matx<float, 8, 1> dist_coeffs;
 	compute_opencv_camera_intrinsic_matrix(tracker_id, PSVRVideoFrameSection_Primary, intrinsic_matrix, dist_coeffs);
 
 	// Extract the focal lengths and principal point from the intrinsic matrix
@@ -180,7 +189,7 @@ static void draw_image_point_camera_lines(
 		});
 
 	drawLineList3d(
-		glm::mat4(1), glm::vec3(1.f, 0.f, 0.f), 
+        trackerMat4, color,
 		(float *)out_image_point_rays.data(), 
 		(int)out_image_point_rays.size());
 }
@@ -190,11 +199,6 @@ void AppStage_HMDTrackingTest::render()
     switch (m_menuState)
     {
     case eMenuState::inactive:
-        break;
-    case eMenuState::pendingHmdListRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
         break;
     case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
@@ -208,17 +212,18 @@ void AppStage_HMDTrackingTest::render()
 
             // Draw the frustum for each tracking camera.
             // The frustums are defined in PSVRove tracking space.
-            // We need to transform them into chaperone space to display them along side the HMD.
+            // We need to transform them into chaperon space to display them along side the HMD.
+            for (const TrackerState &trackerState : m_trackerList)
             {
-                const int tracker_id= m_trackerView->tracker_info.tracker_id;
-                const PSVRPosef trackerPose = m_trackerView->tracker_info.tracker_pose;
+                const int tracker_id= trackerState.trackerView->tracker_info.tracker_id;
+                const PSVRPosef trackerPose = trackerState.trackerView->tracker_info.tracker_pose;
                 const glm::mat4 trackerMat4 = PSVR_posef_to_glm_mat4(trackerPose);
 
                 PSVRFrustum frustum;
                 PSVR_GetTrackerFrustum(tracker_id, &frustum);
 
                 // use color depending on tracking status
-                glm::vec3 color= does_tracker_see_any_hmd(m_trackerView) ? k_PSVRove_frustum_color : k_PSVRove_frustum_color_no_track;
+                glm::vec3 color= does_tracker_see_any_hmd(trackerState.trackerView) ? k_PSVRove_frustum_color : k_PSVRove_frustum_color_no_track;
 
                 drawTextAtWorldPosition(glm::mat4(1.f), PSVR_vector3f_to_glm_vec3(trackerPose.Position), "#%d", tracker_id);
                 drawTransformedFrustum(glm::mat4(1.f), &frustum, color);
@@ -244,12 +249,21 @@ void AppStage_HMDTrackingTest::render()
                 drawHMD(hmdView, hmdMat4, trackingColorType);
                 drawTransformedAxes(hmdMat4, 10.f);
 
-				PSVRRawTrackerData rawTrackerData;
-				if (PSVR_GetHmdRawTrackerData(hmdView->HmdID, &rawTrackerData) == PSVRResult_Success)
-				{
-					drawTrackingShape(&rawTrackerData.WorldRelativeShape, glm::vec3(1.f, 1.f, 0.f));
-					draw_image_point_camera_lines(rawTrackerData.TrackerID, rawTrackerData.TrackingProjection);
-				}
+                for (const TrackerState &trackerState : m_trackerList)
+                {
+                    PSVRRawTrackerData rawTrackerData;
+                    int trackerId = trackerState.trackerView->tracker_info.tracker_id;
+                    const PSVRPosef trackerPose = trackerState.trackerView->tracker_info.tracker_pose;
+                    const glm::mat4 trackerMat4 = PSVR_posef_to_glm_mat4(trackerPose);
+
+                    if (PSVR_GetHmdRawTrackerData(hmdView->HmdID, trackerId, &rawTrackerData) == PSVRResult_Success)
+                    {
+                        glm::vec3 color = does_tracker_see_any_hmd(trackerState.trackerView) ? k_PSVRove_LED_color : k_PSVRove_LED_color_no_track;
+
+                        drawTrackingShape(&rawTrackerData.WorldRelativeShape, color);
+                        draw_image_point_camera_lines(rawTrackerData.TrackerID, rawTrackerData.TrackingProjection, trackerMat4, color);
+                    }
+                }
             }
         } break;
     case eMenuState::showTrackerVideo:
@@ -276,25 +290,6 @@ void AppStage_HMDTrackingTest::renderUI()
     {
     case eMenuState::inactive:
         break;
-
-    case eMenuState::pendingHmdListRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
-        {
-            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2.f - k_panel_width / 2.f, 20.f));
-            ImGui::SetNextWindowSize(ImVec2(k_panel_width, 80));
-            ImGui::Begin(k_window_title, nullptr, window_flags);
-
-            ImGui::Text("Pending device initialization...");
-
-            if (ImGui::Button("Return to Tracker Settings"))
-            {
-                request_exit_to_app_stage(AppStage_TrackerSettings::APP_STAGE_NAME);
-            }
-
-            ImGui::End();
-        } break;
 
     case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
@@ -341,25 +336,29 @@ void AppStage_HMDTrackingTest::renderUI()
             ImGui::Begin("Test Tracking Pose", nullptr, window_flags);
 
             // display per tracker UI
+            for (const TrackerState &trackerState : m_trackerList)
             {
+                PSVRTracker *trackerView= trackerState.trackerView;
+
                 ImGui::PushItemWidth(125.f);
-                if (does_tracker_see_any_hmd(m_trackerView))
+                if (does_tracker_see_any_hmd(trackerView))
                 {
-                    ImGui::Text("Tracker #%d: OK", m_trackerView->tracker_info.tracker_id);
+                    ImGui::Text("Tracker #%d: OK", trackerView->tracker_info.tracker_id);
                 }
                 else 
                 {
-                    ImGui::Text("Tracker #%d: FAIL", m_trackerView->tracker_info.tracker_id);
+                    ImGui::Text("Tracker #%d: FAIL", trackerView->tracker_info.tracker_id);
                 }
                 ImGui::PopItemWidth();
 
                 ImGui::SameLine();
 
                 ImGui::PushItemWidth(100.f);
-                ImGui::PushID(m_trackerView->tracker_info.tracker_id);
-                if (ImGui::Button("Tracker Video") || m_trackerView->tracker_info.tracker_id == m_overrideTrackerId)
+                ImGui::PushID(trackerView->tracker_info.tracker_id);
+                if (ImGui::Button("Tracker Video") || trackerView->tracker_info.tracker_id == m_ShowTrackerVideoId)
                 {
-                    m_overrideTrackerId = -1;
+                    m_ShowTrackerVideoId = -1;
+                    m_renderTrackerListIndex = trackerView->tracker_info.tracker_id;
                     setState(eMenuState::showTrackerVideo);
                 }
                 ImGui::PopID();
@@ -419,11 +418,6 @@ void AppStage_HMDTrackingTest::onExitState(eMenuState newState)
     {
     case eMenuState::inactive:
         break;
-    case eMenuState::pendingHmdListRequest:
-    case eMenuState::pendingHmdStartRequest:
-    case eMenuState::pendingTrackerListRequest:
-    case eMenuState::pendingTrackerStartRequest:
-        break;
     case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
     case eMenuState::failedTrackerListRequest:
@@ -433,6 +427,7 @@ void AppStage_HMDTrackingTest::onExitState(eMenuState newState)
         m_app->setCameraType(_cameraFixed);
         break;
     case eMenuState::showTrackerVideo:
+        m_renderTrackerListIndex = -1;
         break;
     default:
         assert(0 && "unreachable");
@@ -444,20 +439,6 @@ void AppStage_HMDTrackingTest::onEnterState(eMenuState newState)
     switch (newState)
     {
     case eMenuState::inactive:
-        break;
-    case eMenuState::pendingHmdListRequest:
-        break;
-    case eMenuState::pendingHmdStartRequest:
-        m_hmdViews.clear();
-        m_pendingHmdStartCount = 0;
-        break;
-    case eMenuState::pendingTrackerListRequest:
-        break;
-    case eMenuState::pendingTrackerStartRequest:
-        m_trackerView= nullptr;
-        m_textureAsset[0]= nullptr;
-        m_textureAsset[1]= nullptr;
-        m_pendingTrackerStartCount = 0;
         break;
     case eMenuState::failedHmdListRequest:
     case eMenuState::failedHmdStartRequest:
@@ -477,52 +458,57 @@ void AppStage_HMDTrackingTest::onEnterState(eMenuState newState)
 
 void AppStage_HMDTrackingTest::update_tracker_video()
 {
-    const int tracker_id= m_trackerView->tracker_info.tracker_id;
-
-    // Render the latest from the currently active tracker
-    const unsigned char *buffer= nullptr;
-    if (m_bIsStereoTracker)
+    const TrackerState *trackerState = getRenderTrackerState();
+    if (trackerState != nullptr)
     {
-        if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Left, &buffer) == PSVRResult_Success)
-        {
-            m_textureAsset[0]->copyBufferIntoTexture(buffer);
-        }
+        const int tracker_id = trackerState->trackerView->tracker_info.tracker_id;
 
-        if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Right, &buffer) == PSVRResult_Success)
+        // Render the latest from the currently active tracker
+        const unsigned char *buffer = nullptr;
+        if (trackerState->bIsStereoTracker)
         {
-            m_textureAsset[1]->copyBufferIntoTexture(buffer);
+            if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Left, &buffer) == PSVRResult_Success)
+            {
+                trackerState->textureAsset[0]->copyBufferIntoTexture(buffer);
+            }
+
+            if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Right, &buffer) == PSVRResult_Success)
+            {
+                trackerState->textureAsset[1]->copyBufferIntoTexture(buffer);
+            }
         }
-    }
-    else
-    {
-        if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Primary, &buffer) == PSVRResult_Success)
+        else
         {
-            m_textureAsset[0]->copyBufferIntoTexture(buffer);
+            if (PSVR_GetTrackerVideoFrameBuffer(tracker_id, PSVRVideoFrameSection_Primary, &buffer) == PSVRResult_Success)
+            {
+                trackerState->textureAsset[0]->copyBufferIntoTexture(buffer);
+            }
         }
     }
 }
 
 void AppStage_HMDTrackingTest::render_tracker_video()
 {
-    if (m_bIsStereoTracker)
+    // Render the calibration debug state from the point of view
+    // of the currently selected camera
+    const TrackerState *tracker_state = getRenderTrackerState();
+    if (tracker_state != nullptr)
     {
-        if (m_textureAsset[0] != nullptr && m_textureAsset[1] != nullptr)
+        if (tracker_state->bIsStereoTracker)
         {
-            drawFullscreenStereoTexture(m_textureAsset[0]->texture_id, m_textureAsset[1]->texture_id);
+            if (tracker_state->textureAsset[0] != nullptr && tracker_state->textureAsset[1] != nullptr)
+            {
+                drawFullscreenStereoTexture(tracker_state->textureAsset[0]->texture_id, tracker_state->textureAsset[1]->texture_id);
+            }
+        }
+        else
+        {
+            if (tracker_state->textureAsset[0] != nullptr)
+            {
+                drawFullscreenTexture(tracker_state->textureAsset[0]->texture_id);
+            }
         }
     }
-    else
-    {
-        if (m_textureAsset[0] != nullptr)
-        {
-            drawFullscreenTexture(m_textureAsset[0]->texture_id);
-        }
-    }
-}
-
-PSVRTracker *AppStage_HMDTrackingTest::get_render_tracker_view() const
-{
-    return m_trackerView;
 }
 
 PSVRHeadMountedDisplay *AppStage_HMDTrackingTest::get_calibration_hmd_view() const
@@ -544,33 +530,33 @@ void AppStage_HMDTrackingTest::release_devices()
         }
     }
     m_hmdViews.clear();
-    m_pendingHmdStartCount = 0;
 
-    if (m_trackerView != nullptr)
+    for (TrackerState& tracker_state : m_trackerList)
     {
-        if (m_textureAsset[1] != nullptr)
-        {
-            delete m_textureAsset[1];
-            m_textureAsset[1]= nullptr;
-        }
+        PSVRTracker *trackerView= tracker_state.trackerView;
 
-        if (m_textureAsset[0] != nullptr)
+        if (trackerView != nullptr)
         {
-            delete m_textureAsset[0];
-            m_textureAsset[0]= nullptr;
-        }
-
-        if (m_trackerView != nullptr)
-        {
-            const int tracker_id= m_trackerView->tracker_info.tracker_id;
+            const int tracker_id = trackerView->tracker_info.tracker_id;
 
             PSVR_CloseTrackerVideoStream(tracker_id);
             PSVR_StopTrackerDataStream(tracker_id);
             PSVR_FreeTrackerListener(tracker_id);
+
+            if (tracker_state.textureAsset[1] != nullptr)
+            {
+                delete tracker_state.textureAsset[1];
+                tracker_state.textureAsset[1] = nullptr;
+            }
+
+            if (tracker_state.textureAsset[0] != nullptr)
+            {
+                delete tracker_state.textureAsset[0];
+                tracker_state.textureAsset[0] = nullptr;
+            }
         }
     }
-    m_trackerView= nullptr;
-    m_pendingTrackerStartCount= 0;
+    m_trackerList.clear();
 }
 
 void AppStage_HMDTrackingTest::request_exit_to_app_stage(const char *app_stage_name)
@@ -580,89 +566,74 @@ void AppStage_HMDTrackingTest::request_exit_to_app_stage(const char *app_stage_n
     m_app->setAppStage(app_stage_name);
 }
 
-void AppStage_HMDTrackingTest::request_hmd_list()
+bool AppStage_HMDTrackingTest::setup_hmd()
 {
-    if (m_menuState != AppStage_HMDTrackingTest::pendingHmdListRequest)
+    bool bStartedAnyHMDs = false;
+
+    // Request a list of controllers back from the server
+    PSVRHmdList hmd_list;
+    if (PSVR_GetHmdList(&hmd_list) == PSVRResult_Success)
     {
-        m_menuState = AppStage_HMDTrackingTest::pendingHmdListRequest;
-        
-        // Request a list of controllers back from the server
-        PSVRHmdList hmd_list;
-        if (PSVR_GetHmdList(&hmd_list) == PSVRResult_Success)
+        if (m_overrideHmdId == -1)
         {
-            handle_hmd_list_response(hmd_list);
+            // Start first valid head mounted displays
+            for (int list_index = 0; list_index < hmd_list.count; ++list_index)
+            {
+                if (hmd_list.hmds[list_index].hmd_type == PSVRHmd_Morpheus ||
+                    hmd_list.hmds[list_index].hmd_type == PSVRHmd_Virtual)
+                {
+                    const PSVRHmdID trackedHmdId = hmd_list.hmds[list_index].hmd_id;
+                    const PSVRTrackingColorType trackingColorType = hmd_list.hmds[list_index].tracking_color_type;
+
+                    if (start_hmd_stream(trackedHmdId, list_index, trackingColorType))
+                    {
+                        bStartedAnyHMDs = true;
+                        break;
+                    }
+                }
+            }
         }
         else
         {
-            setState(AppStage_HMDTrackingTest::failedHmdListRequest);
-        }
-    }
-}
+            int trackedHmdId = -1;
+            int trackedHmdListIndex = -1;
+            PSVRTrackingColorType trackingColorType;
 
-void AppStage_HMDTrackingTest::handle_hmd_list_response(
-    const PSVRHmdList &hmd_list)
-{
-    if (m_overrideHmdId == -1)
-    {
-        bool bStartedAnyHMDs = false;
-
-        // Start all head mounted displays
-        for (int list_index = 0; list_index < hmd_list.count; ++list_index)
-        {
-            if (hmd_list.hmds[list_index].hmd_type == PSVRHmd_Morpheus ||
-                hmd_list.hmds[list_index].hmd_type == PSVRHmd_Virtual)
+            // Start only the selected HMD
+            for (int list_index = 0; list_index < hmd_list.count; ++list_index)
             {
-                const PSVRHmdID trackedHmdId = hmd_list.hmds[list_index].hmd_id;
-                const PSVRTrackingColorType trackingColorType= hmd_list.hmds[list_index].tracking_color_type;
-
-                request_start_hmd_stream(trackedHmdId, list_index, trackingColorType);
-                bStartedAnyHMDs = true;
+                if (hmd_list.hmds[list_index].hmd_id == m_overrideHmdId)
+                {
+                    trackingColorType = hmd_list.hmds[list_index].tracking_color_type;
+                    trackedHmdId = hmd_list.hmds[list_index].hmd_id;
+                    trackedHmdListIndex = list_index;
+                    break;
+                }
             }
-        }
 
-        if (!bStartedAnyHMDs)
-        {
-            // Move on to the tracker list if there are no HMDs
-            request_tracker_list();
+            if (trackedHmdId != -1)
+            {
+                if (start_hmd_stream(trackedHmdId, trackedHmdListIndex, trackingColorType))
+                {
+                    bStartedAnyHMDs = true;
+                }
+            }
         }
     }
     else
     {
-        int trackedHmdId = -1;
-        int trackedHmdListIndex = -1;
-        PSVRTrackingColorType trackingColorType;
-
-        // Start only the selected HMD
-        for (int list_index = 0; list_index < hmd_list.count; ++list_index)
-        {
-            if (hmd_list.hmds[list_index].hmd_id == m_overrideHmdId)
-            {
-                trackingColorType = hmd_list.hmds[list_index].tracking_color_type;
-                trackedHmdId = hmd_list.hmds[list_index].hmd_id;
-                trackedHmdListIndex = list_index;
-                break;
-            }
-        }
-
-        if (trackedHmdId != -1)
-        {
-            request_start_hmd_stream(trackedHmdId, trackedHmdListIndex, trackingColorType);
-        }
-        else
-        {
-            setState(AppStage_HMDTrackingTest::failedHmdListRequest);
-        }
+        setState(AppStage_HMDTrackingTest::failedHmdListRequest);
     }
+
+    return bStartedAnyHMDs;
 }
 
-void AppStage_HMDTrackingTest::request_start_hmd_stream(
+bool AppStage_HMDTrackingTest::start_hmd_stream(
     PSVRHmdID HmdID,
     int listIndex,
     PSVRTrackingColorType trackingColorType)
 {
     HMDState hmdState;
-
-    setState(eMenuState::pendingHmdStartRequest);
 
     // Allocate a new HMD view
     PSVR_AllocateHmdListener(HmdID);
@@ -674,155 +645,131 @@ void AppStage_HMDTrackingTest::request_start_hmd_stream(
     assert(m_hmdViews.find(HmdID) == m_hmdViews.end());
     m_hmdViews.insert(t_id_hmd_state_pair(HmdID, hmdState));
 
-    // Increment the number of requests we're waiting to get back
-    ++m_pendingHmdStartCount;
-
     unsigned int flags =
         PSVRStreamFlags_includePositionData |
         PSVRStreamFlags_includeRawTrackerData;
 
-    // Start off getting getting projection data from tracker 0
-    PSVR_SetHmdDataStreamTrackerIndex(hmdState.hmdView->HmdID, static_cast<PSVRTrackerID>(0));
-
     // Start receiving data from the controller
-    if (PSVR_StartHmdDataStream(hmdState.hmdView->HmdID, flags) == PSVRResult_Success)
+    if (PSVR_StartHmdDataStream(hmdState.hmdView->HmdID, flags) != PSVRResult_Success)
     {
-        handle_start_hmd_response();
+        setState(AppStage_HMDTrackingTest::failedHmdStartRequest);
+        return false;
     }
     else
     {
-        setState(AppStage_HMDTrackingTest::failedHmdStartRequest);
+        return true;
     }
 }
 
-void AppStage_HMDTrackingTest::handle_start_hmd_response()
+bool AppStage_HMDTrackingTest::setup_trackers()
 {
-    // See if this was the last controller we were waiting to get a response from
-    --m_pendingHmdStartCount;
-    if (m_pendingHmdStartCount <= 0)
-    {
-        // Move on to the trackers
-        request_tracker_list();
-    }
-}
+    bool bSetupAllTrackers = false;
 
-void AppStage_HMDTrackingTest::request_tracker_list()
-{
-    if (m_menuState != eMenuState::pendingTrackerListRequest)
+    // Tell the PSVRove service that we we want a list of trackers connected to this machine
+    PSVRTrackerList tracker_list;
+    if (PSVR_GetTrackerList(&tracker_list) == PSVRResult_Success && tracker_list.count > 0)
     {
-        setState(eMenuState::pendingTrackerListRequest);
+        m_trackerList.clear();
+        bSetupAllTrackers = true;
 
-        // Tell the PSVRove service that we we want a list of trackers connected to this machine
-        PSVRTrackerList tracker_list;
-        if (PSVR_GetTrackerList(&tracker_list) == PSVRResult_Success &&
-            tracker_list.count > 0)
-        {
-            handle_tracker_list_response(tracker_list);
-        }
-        else
-        {
-            setState(eMenuState::failedTrackerListRequest);
-        }
-    }
-}
-
-void AppStage_HMDTrackingTest::handle_tracker_list_response(
-    const PSVRTrackerList &tracker_list)
-{
-    const PSVRClientTrackerInfo *TrackerInfo= nullptr;
-    if (m_overrideTrackerId != -1)
-    {
         for (int list_index = 0; list_index < tracker_list.count; ++list_index)
         {
-            if (tracker_list.trackers[list_index].tracker_id == m_overrideTrackerId)
+            if (!start_tracker_stream(&tracker_list.trackers[list_index]))
             {
-                TrackerInfo= &tracker_list.trackers[list_index];
+                bSetupAllTrackers = false;
                 break;
             }
         }
     }
     else
     {
-        TrackerInfo= &tracker_list.trackers[0];
+        setState(eMenuState::failedTrackerListRequest);
     }
 
-    request_tracker_start_stream(TrackerInfo);
+    return bSetupAllTrackers;
 }
 
-void AppStage_HMDTrackingTest::request_tracker_start_stream(
+bool AppStage_HMDTrackingTest::start_tracker_stream(
     const PSVRClientTrackerInfo *TrackerInfo)
 {
-    setState(eMenuState::pendingTrackerStartRequest);
+    TrackerState trackerState;
+    bool bStartedTracker = false;
 
     // Allocate a new tracker view
-    const PSVRTrackerID tracker_id= TrackerInfo->tracker_id;
+    const int tracker_id = TrackerInfo->tracker_id;
     PSVR_AllocateTrackerListener(tracker_id, TrackerInfo);
-    m_trackerView = PSVR_GetTracker(tracker_id);
-    m_textureAsset[0] = nullptr;
-    m_textureAsset[1] = nullptr;
-    m_bIsStereoTracker= false;
+    trackerState.trackerView = PSVR_GetTracker(tracker_id);
+    trackerState.textureAsset[0] = nullptr;
+    trackerState.textureAsset[1] = nullptr;
+    trackerState.bIsStereoTracker = false;
 
-    // Increment the number of requests we're waiting to get back
-    ++m_pendingTrackerStartCount;
+    // Add the tracker to the list of trackers we're monitoring
+    assert(std::find_if(
+                m_trackerList.begin(), m_trackerList.end(),
+                [tracker_id](const TrackerState &elem)->bool {
+                    return elem.trackerView->tracker_info.tracker_id == tracker_id;
+                }) 
+            == m_trackerList.end());
+    m_trackerList.push_back(trackerState);
 
     // Request data to start streaming to the tracker
     if (PSVR_StartTrackerDataStream(TrackerInfo->tracker_id) == PSVRResult_Success)
     {
-        handle_tracker_start_stream_response(TrackerInfo);
-    }
-    else
-    {
-        setState(eMenuState::failedTrackerStartRequest);
-    }
-}
+        // Get the tracker state associated with the tracker id
+        auto trackerStateIter =
+            std::find_if(
+                m_trackerList.begin(), m_trackerList.end(),
+                [TrackerInfo](const TrackerState &elem)->bool {
+                    return elem.trackerView->tracker_info.tracker_id == TrackerInfo->tracker_id;
+                });
+        assert(trackerStateIter != m_trackerList.end());
 
-void AppStage_HMDTrackingTest::handle_tracker_start_stream_response(
-    const PSVRClientTrackerInfo *TrackerInfo)
-{
-    // Get the tracker ID this request was for
-    const PSVRTrackerID tracker_id= TrackerInfo->tracker_id;
+        // The context holds everything a handler needs to evaluate a response
+        TrackerState &trackerState = *trackerStateIter;
+        PSVRClientTrackerInfo &trackerInfo = trackerState.trackerView->tracker_info;
 
-    // Open the shared memory that the video stream is being written to
-    if (PSVR_OpenTrackerVideoStream(tracker_id) == PSVRResult_Success)
-    {
-        PSVRVector2f screenSize;
-        PSVR_GetTrackerScreenSize(tracker_id, &screenSize);
-        const unsigned int frameWidth = static_cast<unsigned int>(screenSize.x);
-        const unsigned int frameHeight = static_cast<unsigned int>(screenSize.y);
-
-        // Create a texture to render the video frame to
-        m_textureAsset[0] = new TextureAsset();
-        m_textureAsset[0]->init(
-            frameWidth,
-            frameHeight,
-            GL_RGB, // texture format
-            GL_BGR, // buffer format
-            nullptr);
-
-        if (TrackerInfo->tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+        // Open the shared memory that the video stream is being written to
+        if (PSVR_OpenTrackerVideoStream(trackerInfo.tracker_id) == PSVRResult_Success)
         {
-            m_textureAsset[1] = new TextureAsset();
-            m_textureAsset[1]->init(
-                frameWidth,
-                frameHeight,
-                GL_RGB, // texture format
-                GL_BGR, // buffer format
-                nullptr);
-            m_bIsStereoTracker= true;
+            PSVRVector2f screenSize;
+            PSVR_GetTrackerScreenSize(tracker_id, &screenSize);
+            const unsigned int frameWidth = static_cast<unsigned int>(screenSize.x);
+            const unsigned int frameHeight = static_cast<unsigned int>(screenSize.y);
+
+            // Create a texture to render the video frame to
+            trackerState.textureAsset[0] = new TextureAsset();
+
+            bStartedTracker =
+                trackerState.textureAsset[0]->init(
+                    frameWidth,
+                    frameHeight,
+                    GL_RGB, // texture format
+                    GL_BGR, // buffer format
+                    nullptr);
+
+            if (bStartedTracker &&
+                TrackerInfo->tracker_intrinsics.intrinsics_type == PSVR_STEREO_TRACKER_INTRINSICS)
+            {
+                trackerState.textureAsset[1] = new TextureAsset();
+
+                bStartedTracker= trackerState.textureAsset[1]->init(
+                    frameWidth,
+                    frameHeight,
+                    GL_RGB, // texture format
+                    GL_BGR, // buffer format
+                    nullptr);
+
+                trackerState.bIsStereoTracker = true;
+            }
         }
     }
 
-    // See if this was the last tracker we were waiting to get a response from
-    --m_pendingTrackerStartCount;
-    if (m_pendingTrackerStartCount <= 0)
+    if (!bStartedTracker)
     {
-        handle_all_devices_ready();
+        setState(eMenuState::failedTrackerStartRequest);
     }
-}
 
-void AppStage_HMDTrackingTest::handle_all_devices_ready()
-{
-    setState(eMenuState::testTracking);
+    return bStartedTracker;
 }
 
 bool AppStage_HMDTrackingTest::does_tracker_see_any_hmd(const PSVRTracker *trackerView)
@@ -837,8 +784,7 @@ bool AppStage_HMDTrackingTest::does_tracker_see_any_hmd(const PSVRTracker *track
             hmdView->HmdState.MorpheusState.bIsCurrentlyTracking)
         {
             bTrackerSeesAnyHmd= 
-                (hmdView->HmdState.MorpheusState.RawTrackerData.ValidTrackerBitmask | 
-                 (1 << tracker_id)) > 0;
+                (hmdView->HmdState.MorpheusState.ValidTrackerBitmask | (1 << tracker_id)) > 0;
             break;
         }
     }

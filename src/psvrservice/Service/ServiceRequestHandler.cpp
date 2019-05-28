@@ -551,28 +551,6 @@ PSVRResult ServiceRequestHandler::reset_orientation(PSVRControllerID controller_
 	return result;
 }
 
-PSVRResult ServiceRequestHandler::set_controller_data_stream_tracker_index(
-	PSVRControllerID controller_id, 
-	PSVRTrackerID tracker_id)
-{
-	PSVRResult result= PSVRResult_Error;
-
-    if (Utility::is_index_valid(controller_id, m_deviceManager->getControllerViewMaxCount()) &&
-        Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
-    {
-        ServerControllerViewPtr controller_view = m_deviceManager->getControllerViewPtr(controller_id);
-        ControllerStreamInfo &streamInfo = m_peristentRequestState->active_controller_stream_info[controller_id];
-
-        PSVR_LOG_INFO("ServerRequestHandler") << "Set controller(" << controller_id << ") stream tracker id: " << tracker_id;
-
-        streamInfo.selected_tracker_index= tracker_id;
-
-        result= PSVRResult_Success;
-    }
-		
-	return result;
-}
-
 PSVRResult ServiceRequestHandler::set_controller_hand(PSVRControllerID controller_id, PSVRControllerHand controller_hand)
 {
 	PSVRResult result= PSVRResult_Error;
@@ -1624,28 +1602,6 @@ PSVRResult ServiceRequestHandler::set_hmd_prediction_time(
 
             result= PSVRResult_Success;
         }
-    }
-		
-	return result;
-}
-
-PSVRResult ServiceRequestHandler::set_hmd_data_stream_tracker_index(
-	const PSVRTrackerID tracker_id,
-    const PSVRHmdID hmd_id)
-{
-	PSVRResult result= PSVRResult_Error;
-
-    if (Utility::is_index_valid(hmd_id, m_deviceManager->getHMDViewMaxCount()) &&
-        Utility::is_index_valid(tracker_id, m_deviceManager->getTrackerViewMaxCount()))
-    {
-        ServerHMDViewPtr hmd_view = m_deviceManager->getHMDViewPtr(hmd_id);
-        HMDStreamInfo &streamInfo = m_peristentRequestState->active_hmd_stream_info[hmd_id];
-
-        PSVR_LOG_INFO("ServerRequestHandler") << "Set hmd(" << hmd_id << ") stream tracker id: " << tracker_id;
-
-        streamInfo.selected_tracker_index= tracker_id;
-
-        result= PSVRResult_Success;
     }
 		
 	return result;
