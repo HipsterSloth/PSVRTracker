@@ -17,6 +17,10 @@
 #define _USE_MATH_DEFINES
 #endif
 #include <math.h>
+#ifdef _WIN32 //UDP
+#include <Winsock2.h> 
+#pragma comment(lib,"Ws2_32.lib")
+#endif
 
 //-- constants -----
 #define INTERRUPT_TRANSFER_TIMEOUT	  500 /* timeout in ms */
@@ -107,7 +111,9 @@ enum eMorpheusButton : unsigned char
 
 struct MorpheusRawSensorFrame
 {
-	unsigned char seq_frame[2];
+	unsigned char seq_frame[3];
+	unsigned char seq_padding;
+
 	unsigned char gyro_yaw[2];
 	unsigned char gyro_pitch[2];
 	unsigned char gyro_roll[2];
@@ -136,16 +142,16 @@ struct MorpheusSensorData
 			unsigned char microphoneMuted : 1;
 			unsigned char headphonesPresent : 1;
 			unsigned char unk1 : 2;
-			unsigned char timer : 1;
+			unsigned char timer : 1; // appears to alternate every second
 		};
 	} headsetFlags;								// byte 8
 
 	unsigned char unkFlags;     				// byte 9
-	unsigned char unk2[8];						// byte 10-17
+	
+	unsigned char unk2[6];						// byte 10-15
 
-	MorpheusRawSensorFrame imu_frame_0;         // byte 18-31
-	unsigned char unk3[2];						// byte 32-33
-	MorpheusRawSensorFrame imu_frame_1;         // byte 34-47
+	MorpheusRawSensorFrame imu_frame_0;         // byte 16-31
+	MorpheusRawSensorFrame imu_frame_1;         // byte 32-47
 
 	unsigned char calibration_status;           // byte 48: 255 = boot, 0 - 3 calibrating ? 4 = calibrated, maybe a bit mask with sensor status ? (0 bad, 1 good) ?
 	unsigned char sensors_ready;                // byte 49 
@@ -191,6 +197,16 @@ public:
     virtual void stop() = 0;
 };
 
+struct MorpheusUDP
+{
+	class MorpheusUSBContext *ctx;
+	const MorpheusHMDConfig *cfg;
+	const MorpheusHMDSensorFrame *st;
+	const MorpheusSensorData *st2;
+
+	~MorpheusUDP(); 
+};
+
 class MorpheusHIDSensorProcessor : public WorkerThread, public IMorpheusSensorProcessor
 {
 public:
@@ -200,6 +216,7 @@ public:
 		, m_hidDevice(nullptr)
 		, m_nextPollSequenceNumber(0)
 		, m_rawHIDPacket(nullptr)
+		, m_ctx(nullptr) //UDP
 	{
 		m_rawHIDPacket = new MorpheusSensorData;
 	}
@@ -213,6 +230,8 @@ public:
     {
 		if (!hasThreadStarted())
 		{
+			m_ctx = USBContext; //UDP
+
 			m_hidDevice= USBContext->sensor_hid_handle;
 			m_hmdListener= hmd_listener;
 			WorkerThread::startThread();
@@ -222,6 +241,8 @@ public:
 	void stop() override
 	{
 		WorkerThread::stopThread();
+
+		MorpheusUDP udp = {m_ctx,&m_cfg}; // Close		
 	}
 
 protected:
@@ -249,6 +270,11 @@ protected:
 			newState.parse_data_input(&m_cfg, m_rawHIDPacket);
 
 			m_hmdListener->notifySensorDataReceived(&newState);
+
+			if(m_cfg.UDP_status_port>0)
+			{
+				MorpheusUDP udp = {m_ctx,&m_cfg,&newState.SensorFrames[0],m_rawHIDPacket};
+			}
 		}
 		else if (res < 0)
 		{
@@ -276,17 +302,20 @@ protected:
     // Worker thread state
     int m_nextPollSequenceNumber;
     struct MorpheusSensorData *m_rawHIDPacket;                        // Buffer to hold most recent MorpheusAPI tracking state
+
+	class MorpheusUSBContext *m_ctx; //UDP
 };
 
 class MorpheusUSBSensorProcessor : public IMorpheusSensorProcessor
 {
 public:
 	MorpheusUSBSensorProcessor(const MorpheusHMDConfig &cfg) 
-		: m_cfg(cfg)
+		: m_cfg(cfg)		
 		, m_usbDeviceHandle(k_invalid_usb_device_handle)
         , m_hmdListener(nullptr)
         , m_bStartedStream(false)
 		, m_nextPollSequenceNumber(0)
+		, m_ctx(nullptr) //UDP
 	{
 	}
 
@@ -294,6 +323,8 @@ public:
     {
         if (!m_bStartedStream)
         {
+			m_ctx = USBContext; //UDP
+
 		    m_usbDeviceHandle= USBContext->sensor_usb_device_handle;
 		    m_hmdListener= hmd_listener;
 
@@ -332,6 +363,8 @@ public:
 		    PSVR_LOG_INFO("MorpheusUSBSensorProcessor::stop - transfer bundle stop result: ") << usb_device_get_error_string(result.payload.bulk_transfer_bundle.result_code); 
 
             m_bStartedStream= false;
+
+			MorpheusUDP udp = {m_ctx,&m_cfg}; // Close
         }
 	}
 
@@ -356,8 +389,13 @@ protected:
 
 		// Processes the IMU data
 		newState.parse_data_input(&m_cfg, m_rawUSBPacket);
-
+				
 		m_hmdListener->notifySensorDataReceived(&newState);
+
+		if(m_cfg.UDP_status_port>0)
+		{
+			MorpheusUDP udp = {m_ctx,&m_cfg,&newState.SensorFrames[0],m_rawUSBPacket};
+		}
     }
 
     // Multithreaded state
@@ -368,20 +406,22 @@ protected:
 
     // Worker thread state
     int m_nextPollSequenceNumber;
+
+	class MorpheusUSBContext *m_ctx; //UDP
 };
 
 // -- private methods
 static bool morpheus_open_usb_command_interface(MorpheusUSBContext *morpheus_context, USBDeviceEnumerator* usb_device_enumerator);
 static void morpheus_close_usb_command_interface(MorpheusUSBContext *morpheus_context);
-static bool morpheus_enable_tracking(MorpheusUSBContext *morpheus_context);
-static bool morpheus_set_headset_power(MorpheusUSBContext *morpheus_context, bool bIsOn);
-static bool morpheus_set_led_brightness(MorpheusUSBContext *morpheus_context, unsigned short led_bitmask, unsigned char intensity);
-static bool morpheus_turn_off_processor_unit(MorpheusUSBContext *morpheus_context);
-static bool morpheus_set_vr_mode(MorpheusUSBContext *morpheus_context, bool bIsOn);
+static bool morpheus_enable_tracking(MorpheusUSBContext *morpheus_context, bool async=false);
+static bool morpheus_set_headset_power(MorpheusUSBContext *morpheus_context, bool bIsOn, bool async=false);
+static bool morpheus_set_led_brightness(MorpheusUSBContext *morpheus_context, unsigned short led_bitmask, unsigned char intensity, bool async=false);
+static bool morpheus_turn_off_processor_unit(MorpheusUSBContext *morpheus_context, bool async=false);
+static bool morpheus_set_vr_mode(MorpheusUSBContext *morpheus_context, bool bIsOn, bool async=false);
 static bool morpheus_set_cinematic_configuration(
 	MorpheusUSBContext *morpheus_context,
-	unsigned char ScreenDistance, unsigned char ScreenSize, unsigned char Brightness, unsigned char MicVolume, bool UnknownVRSetting);
-static bool morpheus_send_command(MorpheusUSBContext *morpheus_context, MorpheusCommand &command);
+	unsigned char ScreenDistance, unsigned char ScreenSize, unsigned char Brightness, unsigned char MicVolume, bool UnknownVRSetting, bool async=false);
+static bool morpheus_send_command(MorpheusUSBContext *morpheus_context, MorpheusCommand &command, bool async);
 
 // -- public interface
 // -- Morpheus HMD Config
@@ -390,36 +430,42 @@ const int MorpheusHMDConfig::CONFIG_VERSION = 2;
 const configuru::Config
 MorpheusHMDConfig::writeToJSON()
 {
-    configuru::Config pt{
-	    {"is_valid", is_valid},
-	    {"version", MorpheusHMDConfig::CONFIG_VERSION},
-	    {"Calibration.Accel.X.k", accelerometer_gain.x},
-	    {"Calibration.Accel.Y.k", accelerometer_gain.y},
-	    {"Calibration.Accel.Z.k", accelerometer_gain.z},
-	    {"Calibration.Accel.X.b", raw_accelerometer_bias.x},
-	    {"Calibration.Accel.Y.b", raw_accelerometer_bias.y},
-	    {"Calibration.Accel.Z.b", raw_accelerometer_bias.z},
-	    {"Calibration.Accel.Variance", raw_accelerometer_variance},
-	    {"Calibration.Gyro.X.k", gyro_gain.x},
-	    {"Calibration.Gyro.Y.k", gyro_gain.y},
-	    {"Calibration.Gyro.Z.k", gyro_gain.z},
-	    {"Calibration.Gyro.X.b", raw_gyro_bias.x},
-	    {"Calibration.Gyro.Y.b", raw_gyro_bias.y},
-	    {"Calibration.Gyro.Z.b", raw_gyro_bias.z},
-	    {"Calibration.Gyro.Variance", raw_gyro_variance},
-	    {"Calibration.Gyro.Drift", raw_gyro_drift},
-	    {"Calibration.Identity.Gravity.X", identity_gravity_direction.x},
-	    {"Calibration.Identity.Gravity.Y", identity_gravity_direction.y},
-	    {"Calibration.Identity.Gravity.Z", identity_gravity_direction.z},
-	    {"Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a},
-	    {"Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b},
-	    {"Calibration.Orientation.Variance", orientation_variance},
-	    {"Calibration.Time.MeanUpdateTime", mean_update_time_delta},
-	    {"OrientationFilter.FilterType", orientation_filter_type},
-	    {"PositionFilter.FilterType", position_filter_type},
-	    {"PositionFilter.MaxVelocity", max_velocity},
-	    {"prediction_time", prediction_time},
-	    {"poll_timeout_ms", poll_timeout_ms}
+	configuru::Config pt{
+		{"is_valid", is_valid},
+		{"version", MorpheusHMDConfig::CONFIG_VERSION},
+		{"Calibration.Accel.X.k", accelerometer_gain.x},
+		{"Calibration.Accel.Y.k", accelerometer_gain.y},
+		{"Calibration.Accel.Z.k", accelerometer_gain.z},
+		{"Calibration.Accel.X.b", raw_accelerometer_bias.x},
+		{"Calibration.Accel.Y.b", raw_accelerometer_bias.y},
+		{"Calibration.Accel.Z.b", raw_accelerometer_bias.z},
+		{"Calibration.Accel.Variance", raw_accelerometer_variance},
+		{"Calibration.Gyro.X.k", gyro_gain.x},
+		{"Calibration.Gyro.Y.k", gyro_gain.y},
+		{"Calibration.Gyro.Z.k", gyro_gain.z},
+		{"Calibration.Gyro.X.b", raw_gyro_bias.x},
+		{"Calibration.Gyro.Y.b", raw_gyro_bias.y},
+		{"Calibration.Gyro.Z.b", raw_gyro_bias.z},
+		{"Calibration.Gyro.Variance", raw_gyro_variance},
+		{"Calibration.Gyro.Drift", raw_gyro_drift},
+		{"Calibration.Identity.Gravity.X", identity_gravity_direction.x},
+		{"Calibration.Identity.Gravity.Y", identity_gravity_direction.y},
+		{"Calibration.Identity.Gravity.Z", identity_gravity_direction.z},
+		{"Calibration.Position.VarianceExpFitA", position_variance_exp_fit_a},
+		{"Calibration.Position.VarianceExpFitB", position_variance_exp_fit_b},
+		{"Calibration.Orientation.Variance", orientation_variance},
+		{"Calibration.Time.MeanUpdateTime", mean_update_time_delta},
+		{"OrientationFilter.FilterType", orientation_filter_type},
+		{"PositionFilter.FilterType", position_filter_type},
+		{"PositionFilter.MaxVelocity", max_velocity},
+		{"prediction_time", prediction_time},
+		{"poll_timeout_ms", poll_timeout_ms},
+		{"UDP_status_port",UDP_status_port},
+		{"UDP_command_port",UDP_command_port},
+		{"screen_size",screen_size},
+		{"screen_distance",screen_distance},
+		{"screen_brightness",screen_brightness},
+		{"mic_volume",mic_volume},
     };
 
 	writeTrackingColor(pt, tracking_color_id);
@@ -477,6 +523,14 @@ MorpheusHMDConfig::readFromJSON(const configuru::Config &pt)
 
 		// Read the tracking color
 		tracking_color_id = static_cast<PSVRTrackingColorType>(readTrackingColor(pt));
+
+		// PSVRToolbox emulation
+		UDP_status_port = pt.get_or<int>("UDP_status_port",UDP_status_port);
+		UDP_command_port = pt.get_or<int>("UDP_command_port",UDP_command_port);
+		screen_size = pt.get_or<int>("screen_size",screen_size);
+		screen_distance = pt.get_or<int>("screen_distance",screen_distance);
+		screen_brightness = pt.get_or<int>("screen_brightness",screen_brightness);
+		mic_volume = pt.get_or<int>("mic_volume",mic_volume);
     }
     else
     {
@@ -491,7 +545,8 @@ void MorpheusHMDSensorFrame::parse_data_input(
 	const MorpheusHMDConfig *config,
 	const MorpheusRawSensorFrame *data_input)
 {
-	short raw_seq = static_cast<short>((data_input->seq_frame[1] << 8) | data_input->seq_frame[0]);
+	//short raw_seq = static_cast<short>((data_input->seq_frame[1] << 8) | data_input->seq_frame[0]);
+	int raw_seq = static_cast<int>((data_input->seq_frame[2] << 16) | (data_input->seq_frame[1] << 8) | data_input->seq_frame[0]);
 
 	// Piece together the 12-bit accelerometer data 
 	// rotate data 90degrees about Z so that sensor Y is up, flip X and Z)
@@ -500,25 +555,27 @@ void MorpheusHMDSensorFrame::parse_data_input(
 	// +Z - goes out the back of the headset
 	short raw_accelX = static_cast<short>(((data_input->accel_y[1] << 8) | data_input->accel_y[0])) >> 4;						
 	short raw_accelY = static_cast<short>(((data_input->accel_x[1] << 8) | data_input->accel_x[0])) >> 4;
+	//- ?
 	short raw_accelZ = -(static_cast<short>(((data_input->accel_z[1] << 8) | data_input->accel_z[0])) >> 4);
 
 	// Piece together the 16-bit gyroscope data
 	short raw_gyroYaw = static_cast<short>((data_input->gyro_yaw[1] << 8) | data_input->gyro_yaw[0]);
 	short raw_gyroPitch = static_cast<short>((data_input->gyro_pitch[1] << 8) | data_input->gyro_pitch[0]);
+	//- ?
 	short raw_gyroRoll = -static_cast<short>((data_input->gyro_roll[1] << 8) | data_input->gyro_roll[0]);
 
 	// Save the sequence number
 	SequenceNumber = static_cast<int>(raw_seq);
 
 	// Save the raw accelerometer values
-	RawAccel.x = static_cast<int>(raw_accelX);
-	RawAccel.y = static_cast<int>(raw_accelY);
-	RawAccel.z = static_cast<int>(raw_accelZ);
+	RawAccel.x = static_cast<int>(raw_accelX); //y
+	RawAccel.y = static_cast<int>(raw_accelY); //x
+	RawAccel.z = static_cast<int>(raw_accelZ); //-
 
 	// Save the raw gyro values
-	RawGyro.x = static_cast<int>(raw_gyroPitch);
-	RawGyro.y = static_cast<int>(raw_gyroYaw);
-	RawGyro.z = static_cast<int>(raw_gyroRoll);
+	RawGyro.x = static_cast<int>(raw_gyroPitch); //y
+	RawGyro.y = static_cast<int>(raw_gyroYaw); //x
+	RawGyro.z = static_cast<int>(raw_gyroRoll); //-
 
 	// calibrated_acc= (raw_acc - acc_bias) * acc_gain
 	CalibratedAccel.x = (static_cast<float>(raw_accelX) - config->raw_accelerometer_bias.x) * config->accelerometer_gain.x;
@@ -878,7 +935,7 @@ static bool morpheus_open_usb_command_interface(
 	    const t_usb_device_handle usb_device_handle = usb_device_open(usb_device_enumerator, MORPHEUS_COMMAND_INTERFACE);
 	    if (usb_device_handle != k_invalid_usb_device_handle)
 	    {
-		    PSVR_LOG_INFO("morpeus_open_usb_devicen") << "  Successfully opened USB handle " << usb_device_handle.unique_id;
+		    PSVR_LOG_INFO("morpeus_open_usb_device") << "  Successfully opened USB handle " << usb_device_handle.unique_id;
 
             char szPathBuffer[512];
             if (usb_device_enumerator_get_path(usb_device_enumerator, szPathBuffer, sizeof(szPathBuffer)))
@@ -911,14 +968,14 @@ static void morpheus_close_usb_command_interface(
 {
 	if (morpheus_context->command_usb_device_handle != k_invalid_usb_device_handle)
 	{
-		PSVR_LOG_INFO("morpheus_close_usb_device") << "Closing PSNaviController(" << morpheus_context->command_usb_device_path << ")";
+		PSVR_LOG_INFO("morpheus_close_usb_device") << "Closing Morpheus USB command interface (" << morpheus_context->command_usb_device_path << ")";
 		usb_device_close(morpheus_context->command_usb_device_handle);
 		morpheus_context->command_usb_device_handle = k_invalid_usb_device_handle;
 	}
 }
 
 static bool morpheus_enable_tracking(
-	MorpheusUSBContext *morpheus_context)
+	MorpheusUSBContext *morpheus_context, bool async)
 {
 	MorpheusCommand command = { {0} };
 	command.header.request_id = Morpheus_Req_EnableTracking;
@@ -927,12 +984,11 @@ static bool morpheus_enable_tracking(
 	((int*)command.payload)[0] = 0xFFFFFF00; // Magic numbers!  Turns on the VR mode and the blue lights on the front
 	((int*)command.payload)[1] = 0x00000000;
 
-	return morpheus_send_command(morpheus_context, command);
+	return morpheus_send_command(morpheus_context, command,async);
 }
 
 static bool morpheus_set_headset_power(
-	MorpheusUSBContext *morpheus_context,
-	bool bIsOn)
+	MorpheusUSBContext *morpheus_context, bool bIsOn, bool async)
 {
 	MorpheusCommand command = { {0} };
 	command.header.request_id = Morpheus_Req_SetHeadsetPower;
@@ -940,32 +996,46 @@ static bool morpheus_set_headset_power(
 	command.header.length = 4;
 	((int*)command.payload)[0] = bIsOn ? 0x00000001 : 0x00000000;
 
-	return morpheus_send_command(morpheus_context, command);
+	return morpheus_send_command(morpheus_context, command,async);
 }
 
 static bool morpheus_set_led_brightness(
 	MorpheusUSBContext *morpheus_context,
-	unsigned short led_bitmask,
-	unsigned char intensity)
+	unsigned char (&intensity)[9], 
+	bool async)
 {
 	MorpheusCommand command = { {0} };
 	command.header.request_id = Morpheus_Req_SetLEDBrightness;
 	command.header.magic = MORPHEUS_COMMAND_MAGIC;
 	command.header.length = 16;
-	((unsigned short*)command.payload)[0] = led_bitmask;
 
-	unsigned short mask = led_bitmask;
+	unsigned short led_bitmask = 0;
 	for (int led_index = 0; led_index < 9; ++led_index)
 	{
-		command.payload[2 + led_index] = ((mask & 0x001) > 0) ? intensity : 0;
-		mask = mask >> 1;
+		if(intensity[led_index]) led_bitmask|=1<<led_index;
+	}
+	((unsigned short*)command.payload)[0] = led_bitmask;
+	memcpy(command.payload+2,intensity,9);
+
+	return morpheus_send_command(morpheus_context,command,async);
+}
+static bool morpheus_set_led_brightness(
+	MorpheusUSBContext *morpheus_context,
+	unsigned short led_bitmask,
+	unsigned char intensity, bool async)
+{
+	unsigned char i[9];
+	for (int led_index = 0; led_index < 9; ++led_index)
+	{
+		i[led_index] = led_bitmask&1?intensity:0;
+		led_bitmask>>=1;
 	}
 
-	return morpheus_send_command(morpheus_context, command);
+	return morpheus_set_led_brightness(morpheus_context,i,async);
 }
 
 static bool morpheus_turn_off_processor_unit(
-	MorpheusUSBContext *morpheus_context)
+	MorpheusUSBContext *morpheus_context, bool async)
 {
 	MorpheusCommand command = { {0} };
 	command.header.request_id = Morpheus_Req_TurnOffProcessorUnit;
@@ -973,12 +1043,11 @@ static bool morpheus_turn_off_processor_unit(
 	command.header.length = 4;
 	((int*)command.payload)[0] = 0x00000001;
 
-	return morpheus_send_command(morpheus_context, command);
+	return morpheus_send_command(morpheus_context, command,async);
 }
 
 static bool morpheus_set_vr_mode(
-	MorpheusUSBContext *morpheus_context,
-	bool bIsOn)
+	MorpheusUSBContext *morpheus_context, bool bIsOn, bool async)
 {
 	MorpheusCommand command = { {0} };
 	command.header.request_id = Morpheus_Req_SetVRMode;
@@ -986,7 +1055,7 @@ static bool morpheus_set_vr_mode(
 	command.header.length = 4;
 	((int*)command.payload)[0] = bIsOn ? 0x00000001 : 0x00000000;
 
-	return morpheus_send_command(morpheus_context, command);
+	return morpheus_send_command(morpheus_context, command,async);
 }
 
 static bool morpheus_set_cinematic_configuration(
@@ -995,7 +1064,7 @@ static bool morpheus_set_cinematic_configuration(
 	unsigned char ScreenSize, 
 	unsigned char Brightness, 
 	unsigned char MicVolume, 
-	bool UnknownVRSetting)
+	bool UnknownVRSetting, bool async) // Is this necessary?
 {
 	MorpheusCommand command = { {0} };
 	command.header.request_id = Morpheus_Req_SetCinematicConfiguration;
@@ -1005,14 +1074,32 @@ static bool morpheus_set_cinematic_configuration(
 	command.payload[2] = ScreenDistance;
 	command.payload[10] = Brightness;
 	command.payload[11] = MicVolume;
+	// https://github.com/gusmanb/PSVRFramework/wiki/Report-0x21---Display-settings
+	// Social Screen Frequency? (0=60Hz, 1=58Hz? Intermittent) 
 	command.payload[14] = UnknownVRSetting ? 0 : 1;
 
-	return morpheus_send_command(morpheus_context, command);
+	return morpheus_send_command(morpheus_context,command,async);
+}
+
+static void morpheus_send_command_success(const USBTransferResult &transfer_result)
+{
+	if (transfer_result.payload.interrupt_transfer.result_code == _USBResultCode_Completed)
+	{
+		//result = transfer_result.payload.interrupt_transfer.dataLength;
+        //return true; //bSuccess= true;
+	}
+	else
+	{
+		const char * error_text = usb_device_get_error_string(transfer_result.payload.interrupt_transfer.result_code);
+		PSVR_LOG_ERROR("morpheus_send_command") << "interrupt transfer failed with error: " << error_text;
+		//result = -static_cast<int>(transfer_result.payload.interrupt_transfer.result_code);
+		//return false;
+	}
 }
 
 static bool morpheus_send_command(
 	MorpheusUSBContext *morpheus_context,
-	MorpheusCommand &command)
+	MorpheusCommand &command, bool async=false)
 {
     bool bSuccess= false;
 
@@ -1030,7 +1117,8 @@ static bool morpheus_send_command(
 		//		.bEndpointAddress) & ~MORPHEUS_ENDPOINT_IN;
 
         const size_t command_length = static_cast<size_t>(command.header.length) + sizeof(command.header);
-	    int result = 0;
+	  
+		//int result = 0; //UNUSED
 
 	    USBTransferRequest transfer_request;
 	    transfer_request.request_type = _USBRequestType_InterruptTransfer;
@@ -1044,22 +1132,389 @@ static bool morpheus_send_command(
 		static_assert(sizeof(transfer_request.payload.bulk_transfer.data) >= sizeof(MorpheusCommand), "bulk_transfer max payload too small for MorpheusCommand");
 		memcpy(transfer_request.payload.interrupt_transfer.data, (unsigned char *)&command, command_length);
 
-	    USBTransferResult transfer_result = usb_device_submit_transfer_request_blocking(transfer_request);
-	    assert(transfer_result.result_type == _USBRequestType_InterruptTransfer);
-
-	    if (transfer_result.payload.interrupt_transfer.result_code == _USBResultCode_Completed)
-	    {
-		    result = transfer_result.payload.interrupt_transfer.dataLength;
-            bSuccess= true;
-	    }
-	    else
-	    {
-		    const char * error_text = usb_device_get_error_string(transfer_result.payload.interrupt_transfer.result_code);
-		    PSVR_LOG_ERROR("morpheus_send_command") << "interrupt transfer failed with error: " << error_text;
-		    result = -static_cast<int>(transfer_result.payload.interrupt_transfer.result_code);
-	    }
+		USBTransferResult transfer_result; if(!async)
+		{
+			transfer_result = usb_device_submit_transfer_request_blocking(transfer_request);
+			assert(transfer_result.result_type == _USBRequestType_InterruptTransfer);
+			if(!transfer_result.payload.interrupt_transfer.result_code!=_USBResultCode_Completed)
+			{
+				morpheus_send_command_success(transfer_result);
+			}
+			else bSuccess = true;
+		}
+		else bSuccess = usb_device_submit_transfer_request_async(transfer_request,morpheus_send_command_success); 	    
 	}
 
-
     return bSuccess;
+}
+
+struct MorpheusUDP_pair : std::pair<const char*,int>
+{
+	typedef std::vector<MorpheusUDP_pair*> vec;
+
+	MorpheusUDP_pair(const char *f, int s, vec &v):pair(f,s)
+	{
+		v.push_back(this); 
+	}
+
+	void operator=(int v){ second = v; }
+};
+
+namespace MorpheusUDP_PSVRToolbox_status
+{
+	static MorpheusUDP_pair::vec vec;
+	#define _(x) static MorpheusUDP_pair x(#x,0,vec);
+	_(Buttons)
+	_(Volume)
+	_(Worn) //bool
+	_(DisplayActive) //bool
+	_(Muted) //bool
+	_(EarphonesConnected) //bool ("true" or "false")
+	_(Timestamp1)
+	_(RawGyroYaw1)
+	_(RawGyroPitch1)
+	_(RawGyroRoll1)
+	_(RawMotionX1)
+	_(RawMotionY1)
+	_(RawMotionZ1)
+	_(Timestamp2)
+	_(RawGyroYaw2)
+	_(RawGyroPitch2)
+	_(RawGyroRoll2)
+	_(RawMotionX2)
+	_(RawMotionY2)
+	_(RawMotionZ2)
+	_(IRSensor)
+	_(CalStatus)
+	_(Ready)
+	_(PacketSequence)
+	_(VoltageReference)
+	_(VoltageValue)
+	//Note: configuru converts these into std:map objects
+	//{"LinearAcceleration1",{"X",-0.0224609375},{"Y",-0.198242188},{"Z",0.959960938}},
+	//{"AngularAcceleration1",{"X",-0.00425650924},{"Y",-0.00106412731},{"Z",-0.007448891}},
+	//{"LinearAcceleration2",{"X",-0.015625},{"Y",-0.198242188},{"Z",0.9589844}},
+	//{"AngularAcceleration2",{"X",-0.00106412731},{"Y",0.00212825462},{"Z",0.0}},
+	//{"Pose",{"X",-0.000336476718},{"Y",0.00708646653},{"Z",-0.0353542566},{"W",0.9993495},{"IsIdentity",false}},
+	//{"Orientation",{"X",3.140419},{"Y",0.0141403927},{"Z",-0.0707333162}},
+	//Note: These aren't the LED lights
+	//_(A)_(B)_(C)_(D)_(E)_(F)_(G)_(H)_(I)
+	#undef _
+	static int fill(char(&buf)[1024])
+	{
+		char *b = buf;
+		*b++ = '{';
+		MorpheusUDP_pair::vec::iterator it = vec.begin();		
+		for(int n,s=sizeof(buf)-1;it<vec.end();it++,s-=n,b+=n)
+		{
+			n = snprintf(b,s,"\"%s\":%d,",(*it)->first,(*it)->second);			
+			assert(n>=0);
+		}
+		b[-1] = '}'; return int(b-buf);
+	}
+}
+namespace MorpheusUDP_PSVRToolbox_command
+{
+	static MorpheusUDP_pair::vec vec;
+	#define _(x) static MorpheusUDP_pair x(#x,sizeof(#x)-1,vec);
+	_(HeadsetOn) //HeadSetOn
+	_(HeadsetOff) //HeadSetOff
+	_(EnableVRTracking)
+	_(EnableVRMode)
+	_(EnableCinematicMode)
+	_(Shutdown)
+	_(CinematicSettings)
+	_(LedSettings)
+	//_(StoreSettings)
+	//_(DiscardSettings)
+	#undef _
+		
+	//This is my settings.json file. It contains the "StoreSettings" values. 
+	/*{
+	"ControlModifier":true,
+	"ShiftModifier":false,
+	"AltModifier":false,
+	"HeadSetOn":0, //hotkey
+	"HeadSetOff":0, //hotkey
+	"EnableVRAndTracking":0, //hotkey
+	"EnableVR":13, //hotkey
+	"EnableTheater":106, //hotkey
+	"Recenter":32, //hotkey
+	"Shutdown":0, //hotkey
+	"EnableUDPBroadcast":true,
+	"UDPBroadcastAddress":"255.255.255.255",
+	"UDPBroadcastPort":9090,
+	"OpenTrackPort":4242,
+	"StartMinimized":false,
+	"ScreenSize":41, //CinematicSettings
+	"ScreenDistance":50, //CinematicSettings
+	"Brightness":32, //CinematicSettings
+	"MicVol":0,
+	"LedAIntensity":49,"LedBIntensity":49,"LedCIntensity":49,"LedDIntensity":49,"LedEIntensity":49,
+	"LedFIntensity":49,"LedGIntensity":49,"LedHIntensity":49,"LedIIntensity":49
+	}*/
+
+	static void send(const char *c, MorpheusUSBContext *mc)
+	{
+		if(*c=='{')
+		{
+			if(*++c==' ') c++;
+			if(c==strstr(c,"\"Command\":\"")) c+=10;
+			else return;			
+		}		
+		size_t s = 0; if(*c=='\"')
+		{
+			c++; s = strchr(c,'"')-c;
+		}
+		else while(c[s]&&c[s]!=',') s++;
+
+		MorpheusUDP_pair::vec::iterator it = vec.begin();		
+		while(it<vec.end()) if(s==(*it)->second&&!memcmp(c,(*it)->first,s))
+		break; else it++; if(it==vec.end()) return;
+
+		const bool async = true;
+		MorpheusUDP_pair *p = *it;
+		if(p==&HeadsetOn)
+		morpheus_set_headset_power(mc,true,async);
+		if(p==&HeadsetOff)
+		morpheus_set_headset_power(mc,false,async);
+		if(p==&EnableVRTracking)
+		morpheus_enable_tracking(mc,async);
+		if(p==&EnableVRMode)
+		morpheus_set_vr_mode(mc,true,async);
+		if(p==&EnableCinematicMode)
+		morpheus_set_vr_mode(mc,false,async);
+		if(p==&Shutdown)
+		morpheus_turn_off_processor_unit(mc,async);
+		if(p==&CinematicSettings)
+		{
+			//{ "Command":"CinematicSettings", 
+			//"Brightness":(value), "Size":(size), "Distance":(distance) }    
+
+			unsigned char cc[4] = {}; //Mic Volume?
+
+			for(c+=p->second;*c;c++) if(*c>='A'&&*c<='Z')
+			{
+				int i = *c;
+
+				while(*c<'1'||*c>'9'&&*c) c++;
+
+				unsigned char l = 0xFF&strtoul(c,(char**)&c,10);
+
+				switch(i) //TODO? Defaults?
+				{
+				case 'D': cc[0] = l; break; //Distance
+				case 'S': cc[1] = l; break; //Size
+				case 'B': cc[2] = l; break; //Brightness
+
+				default: cc[3] = 0xFF&l; //Mic Volume?
+				}
+			}
+			morpheus_set_cinematic_configuration(mc,cc[0],cc[1],cc[2],cc[3],0,async);
+		}
+		if(p==&LedSettings)
+		{
+			//{ "Command":"LedSettings", 
+			//"LedA":(value), "LedB":(value), "LedI":(value) }    
+
+			if(s==11&&!memcmp(c,"LedSettings",s))
+			{
+				unsigned char i['I'-'A'+1] = {};
+				const char *cc = c; cc+=p->second;
+				for(int a='A';a<='I';a++) if(c=strchr(cc,a))
+				{
+					while(*c==','||*c=='"'||*c==' ') c++;
+
+					i[a-'A'] = 0xFF&strtoul(c,(char**)&c,10);
+				}
+				else continue;
+
+				morpheus_set_led_brightness(mc,i,async);
+			}
+		}
+	}
+}
+
+static struct MorpheusUDP_PSVRToolbox
+{		
+	//Can the port be bidirectional? I guess would have to wade
+	//through its own packets if so? Or would it?
+
+	struct Sym 
+	{
+		SOCKADDR_IN in; SOCKET udp;
+
+		Sym():udp(INVALID_SOCKET){}
+
+		bool valid(){ return udp!=INVALID_SOCKET; }
+
+		void open(int i, int port)
+		{
+			if(port<=0) return;
+
+			udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP); 
+			u_long mode = 1; // 1 to enable non-blocking socket
+			if(!i) ioctlsocket(udp,FIONBIO,&mode);
+
+			//localhost
+			hostent *lh = gethostbyname("");
+			char *ip = inet_ntoa(*(struct in_addr*)*lh->h_addr_list);
+
+			memset(&in,0x00,sizeof(in));
+			in.sin_family = AF_INET;		
+			in.sin_port = htons(port);
+			//I think this needs setsockopt to work?
+			//in.sin_addr.s_addr = INADDR_BROADCAST; 
+			in.sin_addr.s_addr = inet_addr(ip);	
+			/*Picky: Only recv sockets should bind
+			int err = bind(udp,(SOCKADDR*)&in,sizeof(in));
+			err = err; //breakpoint*/
+		}
+		void close()
+		{
+			closesocket(udp); //udp = INVALID_SOCKET;
+		}
+
+		void send(char *d, int len)
+		{
+			if(-1==sendto(udp,d,len,0,(SOCKADDR*)&in,sizeof(in)))
+			{
+				len = WSAGetLastError();
+				len = len; //breakpoint
+			}	
+		}
+		int recv(char *d, int len)
+		{
+			return recvfrom(udp,d,len,0,0,0);
+		}
+		void recv_bind() // Only recv sockets should bind
+		{
+			int err = bind(udp,(SOCKADDR*)&in,sizeof(in));
+			err = err; //breakpoint
+		}
+
+	}io[2]; 
+
+	~MorpheusUDP_PSVRToolbox()
+	{			
+		io[0].close(); io[1].close();
+	}
+	MorpheusUDP_PSVRToolbox(const MorpheusHMDConfig &cfg, MorpheusUSBContext *ctx)
+	{
+		WSADATA w; 
+		if(0!=WSAStartup(0x202,&w))
+		return;
+
+		morpheus_set_cinematic_configuration(ctx,
+		cfg.screen_distance,cfg.screen_size,cfg.screen_brightness,cfg.mic_volume,0,true);
+
+		io[0].open(0,cfg.UDP_command_port);
+		io[0].recv_bind();
+		io[1].open(1,cfg.UDP_status_port);
+	}
+
+	void send(char *str, int len, MorpheusUSBContext *ctx)
+	{
+		io[1].send(str,len+1);
+
+		if(ctx&&io[0].valid())
+		{
+			char json[1024];
+			len = io[0].recv(json,sizeof(json)-1);
+			if(len>0)
+			{
+				json[len] = '\0';
+				MorpheusUDP_PSVRToolbox_command::send(json,ctx);
+			}
+		}
+	}
+
+}*MorpheusUDP_PSVRToolbox = nullptr;
+
+MorpheusUDP::~MorpheusUDP()
+{	
+	if(!MorpheusUDP_PSVRToolbox)
+	{
+		if(!st) return;
+
+		#ifdef _WIN32
+		//2018: Read somewhere this gives A/V applications priority
+		HMODULE av = LoadLibraryA("Avrt.dll"); if(av)
+		{
+			//AvRevertMmThreadCharacteristics exists
+			//AvSetMmMaxThreadCharacteristics also works?
+			DWORD avid = 0;
+			if(void*pa=GetProcAddress(av,"AvSetMmThreadCharacteristicsA"))
+			{
+				HANDLE avh = (HANDLE(WINAPI*)(LPCSTR,LPDWORD))("Games",&avid);
+				assert(avh&&avh!=INVALID_HANDLE_VALUE);		
+				//should it be freed?
+				//FreeLibrary(av);
+			}
+			else assert(0);
+		}
+		#endif
+
+		MorpheusUDP_PSVRToolbox = new struct MorpheusUDP_PSVRToolbox(*cfg,ctx);
+	}
+	else if(!st)
+	{
+		delete MorpheusUDP_PSVRToolbox; MorpheusUDP_PSVRToolbox = nullptr; 
+		
+		return;
+	}
+	
+	char json[1024];
+	{	
+		using namespace MorpheusUDP_PSVRToolbox_status;
+ 
+		Timestamp1    = st[0].SequenceNumber;
+		RawGyroPitch1 = st[0].RawGyro.x; //y
+		RawGyroYaw1   = st[0].RawGyro.y; //x
+		RawGyroRoll1  =-st[0].RawGyro.z; //-
+		RawMotionX1   = st[0].RawAccel.y; //y
+		RawMotionY1   = st[0].RawAccel.x; //x
+		RawMotionZ1   =-st[0].RawAccel.z; //-
+		Timestamp2    = st[1].SequenceNumber;
+		RawGyroPitch2 = st[1].RawGyro.x; //y
+		RawGyroYaw2   = st[1].RawGyro.y; //x
+		RawGyroRoll2  =-st[1].RawGyro.z; //-
+		RawMotionX2   = st[1].RawAccel.y; //x
+		RawMotionY2   = st[1].RawAccel.x; //y
+		RawMotionZ2   =-st[1].RawAccel.z; //-
+
+		Buttons = (int)st2->buttons;
+		Volume  = st2->volume;
+		Worn    = st2->headsetFlags.hmdOnHead;
+		DisplayActive = st2->headsetFlags.displayIsOn;
+		Muted   = st2->headsetFlags.microphoneMuted;
+		EarphonesConnected = st2->headsetFlags.headphonesPresent;
+		IRSensor = (int)st2->face_distance[1]<<8+st2->face_distance[0];
+		CalStatus = st2->calibration_status;
+		Ready = st2->sensors_ready;
+		PacketSequence = st2->sequence;
+		VoltageReference = st2->unk5; //iffy
+		VoltageValue = st2->unk6; //iffy
+		
+		/*Note: These aren't the LED lights
+		A = st2->unk4[0];
+		B = st2->unk4[1];
+		C = st2->unk4[2];
+		D = st2->unk7[1];
+		E = st2->unk4[2];
+		F = st2->unk4[3];
+		G = st2->unk4[4];
+		H = st2->unk4[5];*/
+	}
+	int len = MorpheusUDP_PSVRToolbox_status::fill(json);
+
+	//These aren't filled out.
+	//{"LinearAcceleration1",{"X",-0.0224609375},{"Y",-0.198242188},{"Z",0.959960938}},
+	//{"AngularAcceleration1",{"X",-0.00425650924},{"Y",-0.00106412731},{"Z",-0.007448891}},
+	//{"LinearAcceleration2",{"X",-0.015625},{"Y",-0.198242188},{"Z",0.9589844}},
+	//{"AngularAcceleration2",{"X",-0.00106412731},{"Y",0.00212825462},{"Z",0.0}},
+	//{"Pose",{"X",-0.000336476718},{"Y",0.00708646653},{"Z",-0.0353542566},{"W",0.9993495},{"IsIdentity",false}},
+	//{"Orientation",{"X",3.140419},{"Y",0.0141403927},{"Z",-0.0707333162}},
+
+	MorpheusUDP_PSVRToolbox->send(json,len,ctx);
 }

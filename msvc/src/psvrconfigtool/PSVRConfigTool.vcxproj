@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -70,19 +70,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-    </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen..\..\..\src\psvrconfigtool\..\..\src\psvrmath;..\..\..\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen..\..\..\src\psvrconfigtool\..\..\src\psvrmath;..\..\..\src\psvrconfigtool\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\src\psvrmath\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
-      <HeaderFileName>%(Filename).h</HeaderFileName>
-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
-    </Midl>
+    </ClCompile>  
     <PostBuildEvent>
       <Message>
       </Message>
@@ -125,19 +113,7 @@ echo F|XCOPY "$(SolutionDir)..\deps\opencv\build\x64\vc15\bin\opencv_world343d.d
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
-    </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;HAS_OPENCV;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>..\..\..\thirdparty\eigen;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\Utils;..\..\..\thirdparty\glm;..\..\..\thirdparty\stb;..\..\..\thirdparty\imgui;..\..\..\thirdparty\SDL2\include;..\..\..\deps\opencv\build\include;..\..\..\thirdparty\glm;..\..\..\src\psvrmath;..\..\..\src\psvrservice\ClientAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
-      <HeaderFileName>%(Filename).h</HeaderFileName>
-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
-    </Midl>
+    </ClCompile>  
     <PostBuildEvent>
       <Message>
       </Message>

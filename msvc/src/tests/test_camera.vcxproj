@@ -69,21 +69,9 @@
       <PreprocessorDefinitions>WIN32;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;HAS_OPENCV;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\deps\opencv\build\include;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\PSVRTracker\PSEye;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>..\..\..\deps\opencv\build\include;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\PSVRTracker\PSEye;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
-      <HeaderFileName>%(Filename).h</HeaderFileName>
-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
-    </Midl>
     <Link>
       <AdditionalDependencies>bthprops.lib;setupapi.lib;hid.lib;dinput8.lib;shlwapi.lib;mfplat.lib;mf.lib;mfuuid.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalDependencies>bthprops.lib;setupapi.lib;hid.lib;dinput8.lib;shlwapi.lib;mfplat.lib;mf.lib;mfuuid.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>bthprops.lib;setupapi.lib;hid.lib;dinput8.lib;shlwapi.lib;mfplat.lib;mf.lib;mfuuid.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343d.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -100,7 +88,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\deps\opencv\build\include;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\PSVRTracker\PSEye;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\deps\local\include;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\PSVRTracker\PSEye;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -116,18 +104,6 @@
       <DebugInformationFormat>
       </DebugInformationFormat>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;HAS_OPENCV;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\deps\opencv\build\include;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\PSVRTracker\PSEye;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>..\..\..\deps\opencv\build\include;..\..\..\src\psvrservice\ClientAPI;..\..\..\src\psvrservice\PSVRTracker\PSEye;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
-      <HeaderFileName>%(Filename).h</HeaderFileName>
-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
-    </Midl>
     <Link>
       <AdditionalDependencies>bthprops.lib;setupapi.lib;hid.lib;dinput8.lib;shlwapi.lib;mfplat.lib;mf.lib;mfuuid.lib;..\..\..\deps\opencv\build\x64\vc15\lib\opencv_world343.lib;vfw32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

@@ -69,8 +69,15 @@ public:
         , poll_timeout_ms(1000)
         , prediction_time(0.f)
 		, tracking_color_id(PSVRTrackingColorType_Blue)
+		// PSVRToolbox emulation
+		, UDP_status_port(-9090)
+		, UDP_command_port(-14598)
+		// These defaults are just my current settings
+		, screen_size(41)
+		, screen_distance(50)
+		, screen_brightness(32)
+		, mic_volume(0)
     {
-
 		// Accelerometer configured at ±2g
 		accelerometer_gain.x = ACCELEROMETER_SENSITIVITY_2G;
 		accelerometer_gain.y = ACCELEROMETER_SENSITIVITY_2G;
@@ -170,6 +177,14 @@ public:
 	float prediction_time;
 
 	PSVRTrackingColorType tracking_color_id;
+
+	// PSVRToolbox emulation
+	int UDP_status_port;
+	int UDP_command_port;
+	int screen_size;
+	int screen_distance;
+	int screen_brightness;
+	int mic_volume;
 };
 
 struct MorpheusHMDSensorFrame
