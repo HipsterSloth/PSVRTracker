@@ -132,7 +132,7 @@ public:
 	const PoseSensorPacket *getLastIMUSensorPacket() const { return m_lastIMUSensorPacket; }
 
 	// Get the last optical sensor packet posted for this HMD from the given tracker ID
-	const PoseSensorPacket *getLastOpticalSensorPacket(int tracker_id) const { return m_lastOpticalSensorPacket; }
+    const PoseSensorPacket *getLastOpticalSensorPacket(int tracker_id) const;
 
     // Fetch the latest controller state from the HID processing thread
     const CommonControllerState * getControllerState() const;

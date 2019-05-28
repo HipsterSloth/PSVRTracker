@@ -643,9 +643,8 @@ computeTrackerCameraPose(
 	//###HipsterSloth $TODO: This probably isn't correct for stereo cameras
 
     // Get the pixel width and height of the tracker image
-    const PSVRVector2f trackerPixelDimensions = {
-		trackerView->tracker_info.tracker_intrinsics.intrinsics.mono.pixel_width,
-		trackerView->tracker_info.tracker_intrinsics.intrinsics.mono.pixel_height};
+    const PSVRMonoTrackerIntrinsics &mono_intrinsics= trackerView->tracker_info.tracker_intrinsics.intrinsics.mono;
+    const PSVRVector2f trackerPixelDimensions = {mono_intrinsics.pixel_width, mono_intrinsics.pixel_height};
 
     // Get the tracker "intrinsic" matrix that encodes the camera FOV
     PSVRMatrix3d cameraMatrix= trackerView->tracker_info.tracker_intrinsics.intrinsics.mono.camera_matrix;
@@ -669,13 +668,18 @@ computeTrackerCameraPose(
         cvImagePoints.push_back(cv::Point2f(screenPoint.x, trackerPixelDimensions.y - screenPoint.y));
     }
 
-    // Assume no distortion
-    // TODO: Probably should get the distortion coefficients out of the tracker
-    cv::Mat cvDistCoeffs(4, 1, cv::DataType<float>::type);
-    cvDistCoeffs.at<float>(0) = 0;
-    cvDistCoeffs.at<float>(1) = 0;
-    cvDistCoeffs.at<float>(2) = 0;
-    cvDistCoeffs.at<float>(3) = 0;
+    // Radial lens distortion coefficients computed from lens calibration
+    // See: https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+    const PSVRDistortionCoefficients &distort_coeffs= mono_intrinsics.distortion_coefficients;
+    cv::Mat cvDistCoeffs(8, 1, cv::DataType<float>::type);
+    cvDistCoeffs.at<float>(0) = distort_coeffs.k1;
+    cvDistCoeffs.at<float>(1) = distort_coeffs.k2;
+    cvDistCoeffs.at<float>(2) = distort_coeffs.p1;
+    cvDistCoeffs.at<float>(3) = distort_coeffs.p2;
+    cvDistCoeffs.at<float>(4) = distort_coeffs.k3;
+    cvDistCoeffs.at<float>(5) = distort_coeffs.k4;
+    cvDistCoeffs.at<float>(6) = distort_coeffs.k5;
+    cvDistCoeffs.at<float>(7) = distort_coeffs.k6;
 
     // Solve the Project N-Point problem:
     // Given a set of 3D points and their corresponding 2D pixel projections,

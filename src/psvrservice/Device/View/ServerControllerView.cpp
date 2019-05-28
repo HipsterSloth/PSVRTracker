@@ -869,6 +869,11 @@ ServerControllerView::getControllerDeviceType() const
     return m_device->getDeviceType();
 }
 
+const PoseSensorPacket *ServerControllerView::getLastOpticalSensorPacket(int tracker_id) const
+{ 
+    return (tracker_id < TrackerManager::k_max_devices) ? &m_lastOpticalSensorPacket[tracker_id] : nullptr; 
+}
+
 const struct CommonControllerState * ServerControllerView::getControllerState() const
 {
     const struct CommonControllerState *device_state = m_device->getControllerState();
@@ -1270,21 +1275,26 @@ static void generate_psmove_data_frame_for_stream(
                         const ServerTrackerViewPtr tracker_view = 
 							DeviceManager::getInstance()->getTrackerViewPtr(selectedTrackerId);
 
-                        // Project the 3d camera position back onto the tracker screen
+                        // Use the center of the ellipse projection as our "screen location"
 						if (tracker_view->getIsStereoCamera())
                         {
-							raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Left]= 
-                                tracker_view->projectTrackerRelativePosition(
-									PSVRVideoFrameSection_Left, &trackerRelativePosition);
+                            const PSVRTrackingProjectionData &left_projection_data=
+                                optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Left];
+                            const PSVRTrackingProjectionData &right_projection_data =
+                                optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Right];
+
+                            raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Left] =
+                                left_projection_data.shape.ellipse.center;
 							raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Right]= 
-                                tracker_view->projectTrackerRelativePosition(
-									PSVRVideoFrameSection_Right, &trackerRelativePosition);
+                                right_projection_data.shape.ellipse.center;
                         }
 						else
 						{
-							raw_tracker_data->ScreenLocations[0]= 
-                                tracker_view->projectTrackerRelativePosition(
-									PSVRVideoFrameSection_Primary, &trackerRelativePosition);
+                            const PSVRTrackingProjectionData &mono_projection_data =
+                                optical_packet->optical_tracking_projection.projections[PSVRVideoFrameSection_Primary];
+
+                            raw_tracker_data->ScreenLocations[PSVRVideoFrameSection_Primary]=
+                                mono_projection_data.shape.ellipse.center;
 						}
 
                         // Add the tracker relative 3d position

@@ -47,9 +47,6 @@ static void post_optical_filter_packet_for_morpheus_hmd(
 static void generate_morpheus_hmd_data_frame_for_stream(
     const ServerHMDView *hmd_view, const HMDStreamInfo *stream_info,
     DeviceOutputDataFrame &data_frame);
-static void generate_virtual_hmd_data_frame_for_stream(
-    const ServerHMDView *hmd_view, const HMDStreamInfo *stream_info,
-    DeviceOutputDataFrame &data_frame);
 
 //-- public implementation -----
 ServerHMDView::ServerHMDView(const int device_id)
